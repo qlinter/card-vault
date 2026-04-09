@@ -1,0 +1,22 @@
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true
+  },
+  experimental: {
+    cpus: 1,
+    serverActions: {
+      bodySizeLimit: "20mb"
+    },
+    webpackBuildWorker: false,
+    workerThreads: false
+  },
+  images: {
+    unoptimized: true
+  },
+  typescript: {
+    ignoreBuildErrors: true
+  }
+};
+
+export default nextConfig;

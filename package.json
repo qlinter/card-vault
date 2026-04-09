@@ -1,18 +1,18 @@
 {
-  "name": "card-vault-local-app",
-  "version": "0.1.0",
+  "name": "card-vault",
+  "version": "1.0.0",
   "private": true,
-  "description": "QL's local desktop app for managing and showcasing sports cards.",
+  "description": "Local desktop app for managing and showcasing sports cards.",
   "author": "QL",
   "main": "electron/main.js",
-  "productName": "QL's card vault",
+  "productName": "card vault",
   "scripts": {
     "build": "next build",
     "start": "next start",
     "prepare:local": "node scripts/prepare-local.js",
     "make:icon": "node scripts/make-icon.js",
     "electron": "electron electron/main.js",
-    "dist:win": "npm run make:icon && electron-builder --win dir",
+    "dist:win": "npm run make:icon && electron-builder --win nsis dir",
     "db:init": "node scripts/init-db.js",
     "prisma:generate": "prisma generate"
   },
@@ -35,10 +35,11 @@
   },
   "build": {
     "appId": "com.ql.cardvault",
-    "productName": "QL's card vault",
+    "productName": "card vault",
     "executableName": "card vault",
     "asar": false,
     "npmRebuild": false,
+    "electronDist": "node_modules/electron/dist",
     "directories": {
       "buildResources": "build",
       "output": "dist"
@@ -68,11 +69,16 @@
     },
     "win": {
       "target": [
+        "nsis",
         "dir"
       ],
-      "artifactName": "QL-card-vault-${version}.${ext}",
       "icon": "build/icon.ico",
       "signAndEditExecutable": false
+    },
+    "nsis": {
+      "artifactName": "card-vault-${version}-setup.${ext}",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   }
 }

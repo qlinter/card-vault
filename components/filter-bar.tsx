@@ -58,8 +58,8 @@ export function FilterBar({ query, sports, teams, years, sets }: FilterBarProps)
           <option value="false">否</option>
         </select>
 
-        <select name="isSerialNumbered" defaultValue={query.isSerialNumbered ?? ""}>
-          <option value="">编号卡</option>
+        <select name="isPatch" defaultValue={query.isPatch ?? ""}>
+          <option value="">Patch/Jersey</option>
           <option value="true">是</option>
           <option value="false">否</option>
         </select>
@@ -90,7 +90,14 @@ export function FilterBar({ query, sports, teams, years, sets }: FilterBarProps)
         </a>
       </div>
 
-      {(query.q || query.sport || query.team || query.year || query.setName || selected(query.isAutograph, "true")) && (
+      {(query.q ||
+        query.sport ||
+        query.team ||
+        query.year ||
+        query.setName ||
+        selected(query.isAutograph, "true") ||
+        selected(query.isPatch, "true") ||
+        selected(query.isGraded, "true")) && (
         <p className="muted" style={{ marginTop: "0.7rem" }}>
           当前已应用筛选条件
         </p>

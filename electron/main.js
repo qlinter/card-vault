@@ -181,7 +181,7 @@ function stopServer() {
 ipcMain.handle("card-vault:choose-storage-directory", async () => {
   try {
     const result = await dialog.showOpenDialog({
-      title: "选择卡牌资料存储路径",
+      title: "选择卡片资料存储路径",
       properties: ["openDirectory", "createDirectory"],
       defaultPath: storage.getDataDir()
     });

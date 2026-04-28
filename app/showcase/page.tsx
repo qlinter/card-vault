@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { ShowcaseGroupFilter } from "@/components/showcase-group-filter";
 import { normalizeImagePath } from "@/lib/image-path";
-import { buildShowcaseCardHref, normalizeGroupName, toShowcaseWhere } from "@/lib/showcase";
 import { prisma } from "@/lib/prisma";
+import { buildShowcaseCardHref, normalizeGroupName, toShowcaseWhere } from "@/lib/showcase";
 
 type ShowcasePageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -41,25 +42,40 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
   const groups = Array.from(
     groupRows.reduce((map, row) => {
       const name = normalizeGroupName(row.playerName);
-      if (!name || map.has(name)) {
+      if (!name) {
+        return map;
+      }
+
+      const existing = map.get(name);
+      if (existing) {
+        existing.count += 1;
         return map;
       }
 
       map.set(name, {
         name,
-        coverPath: row.images[0]?.path ?? null
+        count: 1
       });
       return map;
-    }, new Map<string, { name: string; coverPath: string | null }>())
+    }, new Map<string, { name: string; count: number }>())
   ).map(([, group]) => group);
 
   return (
     <div className="page showcase-page showcase-backdrop">
+      <div className="title-row">
+        <div>
+          <h1 className="h1">展示页</h1>
+          <p className="muted">
+            当前展示 {cards.length} 张卡片，来自 {groups.length} 位球员或组合
+          </p>
+        </div>
+      </div>
+
       <form className="panel showcase-search" method="get">
         <input
           name="q"
           defaultValue={query.q ?? ""}
-          placeholder="Search players, teams, sets, years, tags..."
+          placeholder="搜索球员、球队、系列、年份、标签..."
           className="showcase-search-input"
         />
         {query.group ? <input type="hidden" name="group" value={query.group} /> : null}
@@ -71,35 +87,14 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
         </Link>
       </form>
 
-      <section className="showcase-groups">
-        <div className="showcase-section-head">
-          <p className="muted">按球员浏览</p>
-        </div>
-        <div className="showcase-group-row">
-          <Link
-            href={query.q ? `/showcase?q=${encodeURIComponent(query.q)}` : "/showcase"}
-            className={`showcase-chip${!query.group ? " active" : ""}`}
-          >
-            全部
-          </Link>
-          {groups.map((group) => {
-            const href = query.q
-              ? `/showcase?group=${encodeURIComponent(group.name)}&q=${encodeURIComponent(query.q)}`
-              : `/showcase?group=${encodeURIComponent(group.name)}`;
-
-            return (
-              <Link key={group.name} href={href} className={`showcase-chip${query.group === group.name ? " active" : ""}`}>
-                {group.name}
-              </Link>
-            );
-          })}
-        </div>
-      </section>
+      <ShowcaseGroupFilter groups={groups} activeGroup={query.group} queryText={query.q} />
 
       <section className="showcase-grid-wrap">
         <div className="showcase-section-head">
-          <h2>{activeGroupLabel(query.group)}</h2>
-          <p className="muted">{cards.length} 张卡</p>
+          <div>
+            <h2>{activeGroupLabel(query.group)}</h2>
+            <p className="muted">共 {cards.length} 张卡片</p>
+          </div>
         </div>
         <div className="showcase-grid">
           {cards.map((card) => (

@@ -6,12 +6,18 @@ import path from "path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseTags } from "@/lib/card-helpers";
+import { CardFormValues } from "@/lib/card-form-values";
 import { prisma } from "@/lib/prisma";
 import { getUploadsDir } from "@/lib/storage-paths";
 
 const uploadDir = getUploadsDir();
 const validMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const maxImagesPerCard = 5;
+
+export type CreateCardFormState = {
+  error?: string;
+  values: CardFormValues;
+};
 
 function toImagePublicPath(fileName: string): string {
   return `/media/${fileName}`;
@@ -32,7 +38,7 @@ function toOptionalFloat(value: FormDataEntryValue | null): number | null {
     return null;
   }
 
-  const normalized = raw.replace(/[￥,\s]/g, "");
+  const normalized = raw.replace(/[¥\s]/g, "");
   if (!normalized) {
     return null;
   }
@@ -53,6 +59,37 @@ function toOptionalDate(value: FormDataEntryValue | null): Date | null {
 
 function parseBoolean(formData: FormData, field: string): boolean {
   return formData.get(field) === "on";
+}
+
+function getCreateCardValues(formData: FormData): CardFormValues {
+  const getString = (field: keyof CardFormValues) => {
+    const value = formData.get(field);
+    return typeof value === "string" ? value : "";
+  };
+
+  return {
+    playerName: getString("playerName"),
+    cardTitle: getString("cardTitle"),
+    sport: getString("sport"),
+    team: getString("team"),
+    year: getString("year"),
+    setName: getString("setName"),
+    cardNumber: getString("cardNumber"),
+    serialNumber: getString("serialNumber"),
+    serialRange: getString("serialRange"),
+    gradingCompany: getString("gradingCompany"),
+    grade: getString("grade"),
+    gradingLink: getString("gradingLink"),
+    purchaseDate: getString("purchaseDate"),
+    purchasePrice: getString("purchasePrice"),
+    currentValue: getString("currentValue"),
+    purchaseSource: getString("purchaseSource"),
+    tags: getString("tags"),
+    publicDescription: getString("publicDescription"),
+    notes: getString("notes"),
+    isAutograph: parseBoolean(formData, "isAutograph"),
+    isPatch: parseBoolean(formData, "isPatch")
+  };
 }
 
 function ensureBaseFields(formData: FormData): { playerName: string; cardTitle: string; sport: string } {
@@ -101,12 +138,10 @@ export async function createCardAction(formData: FormData): Promise<void> {
 
   try {
     const { playerName, cardTitle, sport } = ensureBaseFields(formData);
-    const files = formData
-      .getAll("images")
-      .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+    const files = formData.getAll("images").filter((entry): entry is File => entry instanceof File && entry.size > 0);
 
     if (files.length < 1) {
-      throw new Error("至少上传 1 张主图。");
+      throw new Error("至少上传 1 张图片。");
     }
     if (files.length > maxImagesPerCard) {
       throw new Error(`最多上传 ${maxImagesPerCard} 张图片。`);
@@ -126,7 +161,7 @@ export async function createCardAction(formData: FormData): Promise<void> {
         year: toOptionalString(formData.get("year")),
         setName: toOptionalString(formData.get("setName")),
         cardNumber: toOptionalString(formData.get("cardNumber")),
-        isSerialNumbered: parseBoolean(formData, "isSerialNumbered"),
+        isSerialNumbered: false,
         serialNumber: toOptionalString(formData.get("serialNumber")),
         serialRange: toOptionalString(formData.get("serialRange")),
         isAutograph: parseBoolean(formData, "isAutograph"),
@@ -158,6 +193,67 @@ export async function createCardAction(formData: FormData): Promise<void> {
   redirect(redirectPath);
 }
 
+export async function createCardFormAction(
+  _previousState: CreateCardFormState,
+  formData: FormData
+): Promise<CreateCardFormState> {
+  try {
+    const { playerName, cardTitle, sport } = ensureBaseFields(formData);
+    const files = formData.getAll("images").filter((entry): entry is File => entry instanceof File && entry.size > 0);
+
+    if (files.length < 1) {
+      throw new Error("至少上传 1 张图片。");
+    }
+    if (files.length > maxImagesPerCard) {
+      throw new Error(`最多上传 ${maxImagesPerCard} 张图片。`);
+    }
+
+    validateFileList(files);
+
+    const imagePaths = await Promise.all(files.map((file) => saveUpload(file)));
+    const tagsRaw = toOptionalString(formData.get("tags"));
+
+    const card = await prisma.card.create({
+      data: {
+        playerName,
+        cardTitle,
+        sport,
+        team: toOptionalString(formData.get("team")),
+        year: toOptionalString(formData.get("year")),
+        setName: toOptionalString(formData.get("setName")),
+        cardNumber: toOptionalString(formData.get("cardNumber")),
+        isSerialNumbered: false,
+        serialNumber: toOptionalString(formData.get("serialNumber")),
+        serialRange: toOptionalString(formData.get("serialRange")),
+        isAutograph: parseBoolean(formData, "isAutograph"),
+        isPatch: parseBoolean(formData, "isPatch"),
+        gradingCompany: toOptionalString(formData.get("gradingCompany")),
+        grade: toOptionalString(formData.get("grade")),
+        gradingLink: toOptionalString(formData.get("gradingLink")),
+        purchaseDate: toOptionalDate(formData.get("purchaseDate")),
+        purchasePrice: toOptionalFloat(formData.get("purchasePrice")),
+        currentValue: toOptionalFloat(formData.get("currentValue")),
+        purchaseSource: toOptionalString(formData.get("purchaseSource")),
+        tags: tagsRaw ? parseTags(tagsRaw).join(",") : null,
+        publicDescription: toOptionalString(formData.get("publicDescription")),
+        notes: toOptionalString(formData.get("notes")),
+        images: {
+          create: imagePaths.map((pathValue) => ({ path: pathValue }))
+        }
+      }
+    });
+
+    revalidatePath("/");
+    revalidatePath("/showcase");
+    redirect(`/cards/${card.id}?success=created`);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "创建失败，请稍后重试。",
+      values: getCreateCardValues(formData)
+    };
+  }
+}
+
 export async function updateCardAction(cardId: string, formData: FormData): Promise<void> {
   let redirectPath = `/cards/${cardId}/edit?error=unknown`;
 
@@ -173,9 +269,7 @@ export async function updateCardAction(cardId: string, formData: FormData): Prom
 
     const { playerName, cardTitle, sport } = ensureBaseFields(formData);
     const removeImageIds = formData.getAll("removeImageIds").map((value) => String(value));
-    const files = formData
-      .getAll("images")
-      .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+    const files = formData.getAll("images").filter((entry): entry is File => entry instanceof File && entry.size > 0);
 
     validateFileList(files);
 
@@ -203,7 +297,7 @@ export async function updateCardAction(cardId: string, formData: FormData): Prom
           year: toOptionalString(formData.get("year")),
           setName: toOptionalString(formData.get("setName")),
           cardNumber: toOptionalString(formData.get("cardNumber")),
-          isSerialNumbered: parseBoolean(formData, "isSerialNumbered"),
+          isSerialNumbered: existing.isSerialNumbered,
           serialNumber: toOptionalString(formData.get("serialNumber")),
           serialRange: toOptionalString(formData.get("serialRange")),
           isAutograph: parseBoolean(formData, "isAutograph"),

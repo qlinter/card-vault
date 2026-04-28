@@ -1,6 +1,6 @@
+import { normalizeImagePath } from "@/lib/image-path";
 import { splitTagString } from "@/lib/card-helpers";
 import { prisma } from "@/lib/prisma";
-import { normalizeImagePath } from "@/lib/image-path";
 import { notFound } from "next/navigation";
 
 type DetailProps = {
@@ -29,7 +29,7 @@ function currencyOrDash(value: number | null | undefined): string {
     return "-";
   }
 
-  return `￥${value.toFixed(2)}`;
+  return `¥${value.toFixed(2)}`;
 }
 
 export default async function CardDetailPage({ params, searchParams }: DetailProps) {
@@ -149,7 +149,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
               <span>{currencyOrDash(card.purchasePrice)}</span>
             </div>
             <div className="info-item">
-              <strong>现值</strong>
+              <strong>当前估值</strong>
               <span>{currencyOrDash(card.currentValue)}</span>
             </div>
             <div className="info-item">

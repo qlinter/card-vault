@@ -18,7 +18,9 @@ export default async function DeleteCardPage({ params }: DeleteProps) {
     <div className="page">
       <div className="panel" style={{ maxWidth: "680px", margin: "0 auto" }}>
         <h1 className="h1">确认删除</h1>
-        <p>即将删除：{card.playerName} - {card.cardTitle}</p>
+        <p>
+          即将删除：{card.playerName} - {card.cardTitle}
+        </p>
         <p className="muted">删除后无法恢复，请再次确认。</p>
 
         <form action={deleteCardAction.bind(null, id)} style={{ display: "flex", gap: "0.7rem", marginTop: "1rem" }}>

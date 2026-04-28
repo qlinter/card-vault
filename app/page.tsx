@@ -1,9 +1,9 @@
-import { splitTagString, buildCardFilters, buildCardSorting } from "@/lib/card-helpers";
-import { prisma } from "@/lib/prisma";
-import { normalizeImagePath } from "@/lib/image-path";
-import { resolveConfiguredDataDir } from "@/lib/storage-resolver";
 import { FilterBar } from "@/components/filter-bar";
 import { StorageSettings } from "@/components/storage-settings";
+import { splitTagString, buildCardFilters, buildCardSorting } from "@/lib/card-helpers";
+import { normalizeImagePath } from "@/lib/image-path";
+import { prisma } from "@/lib/prisma";
+import { resolveConfiguredDataDir } from "@/lib/storage-resolver";
 
 type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -24,7 +24,7 @@ function uniqueStrings(values: Array<string | null>): string[] {
 }
 
 function formatCurrency(value: number): string {
-  return `￥${value.toFixed(2)}`;
+  return `¥${value.toFixed(2)}`;
 }
 
 export default async function Home({ searchParams }: HomeProps) {
@@ -36,7 +36,7 @@ export default async function Home({ searchParams }: HomeProps) {
     year: toScalar(params.year),
     setName: toScalar(params.setName),
     isAutograph: toScalar(params.isAutograph),
-    isSerialNumbered: toScalar(params.isSerialNumbered),
+    isPatch: toScalar(params.isPatch),
     isGraded: toScalar(params.isGraded),
     sort: toScalar(params.sort)
   };
@@ -67,18 +67,26 @@ export default async function Home({ searchParams }: HomeProps) {
       <div className="title-row">
         <div>
           <h1 className="h1">我的球星卡收藏</h1>
-          <p className="muted">离线录入、管理、搜索筛选与展示一体化</p>
+          <p className="muted">当前显示 {cards.length} 张卡片，支持离线录入、管理、筛选与展示</p>
         </div>
         <a href="/cards/new" className="btn btn-primary">
           新增卡片
         </a>
       </div>
 
-      <div className="panel" style={{ marginBottom: "1rem" }}>
-        <strong>总价值</strong>
-        <p className="h1" style={{ marginTop: "0.35rem" }}>
-          {formatCurrency(totalValue)}
-        </p>
+      <div className="summary-grid">
+        <div className="panel">
+          <strong>卡片数量</strong>
+          <p className="h1" style={{ marginTop: "0.35rem" }}>
+            {cards.length}
+          </p>
+        </div>
+        <div className="panel">
+          <strong>总估值</strong>
+          <p className="h1" style={{ marginTop: "0.35rem" }}>
+            {formatCurrency(totalValue)}
+          </p>
+        </div>
       </div>
 
       <StorageSettings currentPath={currentStoragePath} />
@@ -103,9 +111,7 @@ export default async function Home({ searchParams }: HomeProps) {
               <div className="card-body">
                 <h2 className="card-title">{card.playerName}</h2>
                 <p className="card-sub">{card.cardTitle}</p>
-                <p className="card-sub">
-                  {[card.year, card.team, card.setName].filter(Boolean).join(" · ") || "未补充更多信息"}
-                </p>
+                <p className="card-sub">{[card.year, card.team, card.setName].filter(Boolean).join(" / ") || "未补充更多信息"}</p>
                 {tags.length > 0 ? (
                   <div className="tags">
                     {tags.slice(0, 4).map((tag) => (

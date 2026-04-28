@@ -1,12 +1,14 @@
 import { Card, CardImage } from "@prisma/client";
-import { stringifyTags, splitTagString } from "@/lib/card-helpers";
+import { splitTagString, stringifyTags } from "@/lib/card-helpers";
+import { CardFormValues } from "@/lib/card-form-values";
 import { normalizeImagePath } from "@/lib/image-path";
 
 type CardFormProps = {
   mode: "create" | "edit";
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => void | Promise<void>;
   error?: string;
   card?: Card & { images: CardImage[] };
+  values?: CardFormValues;
 };
 
 function formatDate(date: Date | null): string {
@@ -22,10 +24,14 @@ function formatCurrencyInput(value: number | null | undefined): string {
     return "";
   }
 
-  return `￥${value}`;
+  return `${value}`;
 }
 
-export function CardForm({ mode, action, error, card }: CardFormProps) {
+function pickValue(value: string | undefined, fallback: string): string {
+  return value ?? fallback;
+}
+
+export function CardForm({ mode, action, error, card, values }: CardFormProps) {
   const tags = splitTagString(card?.tags ?? null);
 
   return (
@@ -35,57 +41,67 @@ export function CardForm({ mode, action, error, card }: CardFormProps) {
       <div className="form-grid">
         <label className="field">
           <span>球员姓名 *</span>
-          <input name="playerName" required defaultValue={card?.playerName ?? ""} />
+          <input name="playerName" required defaultValue={pickValue(values?.playerName, card?.playerName ?? "")} />
         </label>
 
         <label className="field">
           <span>卡片名称 *</span>
-          <input name="cardTitle" required defaultValue={card?.cardTitle ?? ""} />
+          <input name="cardTitle" required defaultValue={pickValue(values?.cardTitle, card?.cardTitle ?? "")} />
         </label>
 
         <label className="field">
           <span>运动类型 *</span>
-          <input name="sport" required placeholder="篮球 / 足球 / 棒球" defaultValue={card?.sport ?? ""} />
+          <input
+            name="sport"
+            required
+            placeholder="篮球 / 足球 / 棒球"
+            defaultValue={pickValue(values?.sport, card?.sport ?? "")}
+          />
         </label>
 
         <label className="field">
           <span>球队</span>
-          <input name="team" defaultValue={card?.team ?? ""} />
+          <input name="team" defaultValue={pickValue(values?.team, card?.team ?? "")} />
         </label>
 
         <label className="field">
           <span>年份</span>
-          <input name="year" type="text" placeholder="例如 2016-17" defaultValue={card?.year ?? ""} />
+          <input name="year" type="text" placeholder="例如 2016-17" defaultValue={pickValue(values?.year, card?.year ?? "")} />
         </label>
 
         <label className="field">
           <span>系列 / 产品线</span>
-          <input name="setName" defaultValue={card?.setName ?? ""} />
+          <input name="setName" defaultValue={pickValue(values?.setName, card?.setName ?? "")} />
         </label>
 
         <label className="field">
           <span>卡号</span>
-          <input name="cardNumber" defaultValue={card?.cardNumber ?? ""} />
+          <input name="cardNumber" defaultValue={pickValue(values?.cardNumber, card?.cardNumber ?? "")} />
         </label>
 
         <label className="field">
           <span>编号</span>
-          <input name="serialNumber" defaultValue={card?.serialNumber ?? ""} />
+          <input name="serialNumber" defaultValue={pickValue(values?.serialNumber, card?.serialNumber ?? "")} />
         </label>
 
         <label className="field">
           <span>编号范围</span>
-          <input name="serialRange" placeholder="例如 /99" defaultValue={card?.serialRange ?? ""} />
+          <input name="serialRange" placeholder="例如 /99" defaultValue={pickValue(values?.serialRange, card?.serialRange ?? "")} />
         </label>
 
         <label className="field">
           <span>评级机构</span>
-          <input name="gradingCompany" defaultValue={card?.gradingCompany ?? ""} />
+          <input name="gradingCompany" defaultValue={pickValue(values?.gradingCompany, card?.gradingCompany ?? "")} />
         </label>
 
         <label className="field">
           <span>评级</span>
-          <input name="grade" type="text" placeholder="例如 9.5 / Auto Auth / Authentic" defaultValue={card?.grade ?? ""} />
+          <input
+            name="grade"
+            type="text"
+            placeholder="例如 9.5 / Auto Auth / Authentic"
+            defaultValue={pickValue(values?.grade, card?.grade ?? "")}
+          />
         </label>
 
         <label className="field full">
@@ -94,64 +110,79 @@ export function CardForm({ mode, action, error, card }: CardFormProps) {
             name="gradingLink"
             type="url"
             placeholder="https://www.psacard.com/..."
-            defaultValue={card?.gradingLink ?? ""}
+            defaultValue={pickValue(values?.gradingLink, card?.gradingLink ?? "")}
           />
         </label>
 
         <label className="field">
           <span>购买日期</span>
-          <input name="purchaseDate" type="date" defaultValue={formatDate(card?.purchaseDate ?? null)} />
+          <input
+            name="purchaseDate"
+            type="date"
+            defaultValue={pickValue(values?.purchaseDate, formatDate(card?.purchaseDate ?? null))}
+          />
         </label>
 
         <label className="field">
           <span>购买价格</span>
-          <input name="purchasePrice" type="text" inputMode="decimal" defaultValue={formatCurrencyInput(card?.purchasePrice)} />
+          <input
+            name="purchasePrice"
+            type="text"
+            inputMode="decimal"
+            defaultValue={pickValue(values?.purchasePrice, formatCurrencyInput(card?.purchasePrice))}
+          />
         </label>
 
         <label className="field">
           <span>当前估值</span>
-          <input name="currentValue" type="text" inputMode="decimal" defaultValue={formatCurrencyInput(card?.currentValue)} />
+          <input
+            name="currentValue"
+            type="text"
+            inputMode="decimal"
+            defaultValue={pickValue(values?.currentValue, formatCurrencyInput(card?.currentValue))}
+          />
         </label>
 
         <label className="field">
           <span>购买渠道</span>
-          <input name="purchaseSource" defaultValue={card?.purchaseSource ?? ""} />
+          <input name="purchaseSource" defaultValue={pickValue(values?.purchaseSource, card?.purchaseSource ?? "")} />
         </label>
 
         <label className="field full">
           <span>标签（逗号分隔）</span>
-          <input name="tags" placeholder="rookie, holo, psa" defaultValue={stringifyTags(tags)} />
+          <input name="tags" placeholder="rookie, holo, psa" defaultValue={pickValue(values?.tags, stringifyTags(tags))} />
         </label>
 
         <label className="field full">
           <span>展示描述</span>
           <textarea
             name="publicDescription"
-            defaultValue={card?.publicDescription ?? ""}
+            defaultValue={pickValue(values?.publicDescription, card?.publicDescription ?? "")}
             placeholder="这段文字会显示在对外展示页的单卡详情中。"
           />
         </label>
 
         <label className="field full">
           <span>备注</span>
-          <textarea name="notes" defaultValue={card?.notes ?? ""} />
+          <textarea name="notes" defaultValue={pickValue(values?.notes, card?.notes ?? "")} />
         </label>
 
         <label className="field">
           <span>
-            <input name="isAutograph" type="checkbox" defaultChecked={card?.isAutograph ?? false} /> 是否签名卡
+            <input name="isAutograph" type="checkbox" defaultChecked={values?.isAutograph ?? card?.isAutograph ?? false} /> 是否签名卡
           </span>
         </label>
 
         <label className="field">
           <span>
-            <input name="isPatch" type="checkbox" defaultChecked={card?.isPatch ?? false} /> 是否 Patch/Jersey
+            <input name="isPatch" type="checkbox" defaultChecked={values?.isPatch ?? card?.isPatch ?? false} /> 是否 Patch/Jersey
           </span>
         </label>
 
         <label className="field full">
-          <span>{mode === "create" ? "上传图片（1-5 张）*" : "新增图片（可选，最多总计 5 张）"}</span>
+          <span>{mode === "create" ? "上传图片（1-5 张）*" : "新增图片（可选，单张卡总计最多 5 张）"}</span>
           <input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple />
+          {mode === "create" ? <small className="muted">提交失败时，文字和勾选项会保留；图片需要重新选择。</small> : null}
         </label>
       </div>
 

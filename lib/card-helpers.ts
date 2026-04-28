@@ -7,7 +7,7 @@ type CardFilterInput = {
   year?: string;
   setName?: string;
   isAutograph?: string;
-  isSerialNumbered?: string;
+  isPatch?: string;
   isGraded?: string;
   sort?: string;
 };
@@ -67,10 +67,10 @@ export function buildCardFilters(input: CardFilterInput): Prisma.CardWhereInput 
   } else if (input.isAutograph === "false") {
     andParts.push({ isAutograph: false });
   }
-  if (input.isSerialNumbered === "true") {
-    andParts.push({ isSerialNumbered: true });
-  } else if (input.isSerialNumbered === "false") {
-    andParts.push({ isSerialNumbered: false });
+  if (input.isPatch === "true") {
+    andParts.push({ isPatch: true });
+  } else if (input.isPatch === "false") {
+    andParts.push({ isPatch: false });
   }
   if (input.isGraded === "true") {
     andParts.push({ grade: { not: null } });

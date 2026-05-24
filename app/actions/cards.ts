@@ -47,6 +47,14 @@ function toOptionalFloat(value: FormDataEntryValue | null): number | null {
   return Number.isFinite(numberValue) ? numberValue : null;
 }
 
+function calculateTotalCost(purchasePrice: number | null, gradingFee: number | null): number | null {
+  if (purchasePrice === null && gradingFee === null) {
+    return null;
+  }
+
+  return (purchasePrice ?? 0) + (gradingFee ?? 0);
+}
+
 function toOptionalDate(value: FormDataEntryValue | null): Date | null {
   const raw = toOptionalString(value);
   if (!raw) {
@@ -82,6 +90,8 @@ function getCreateCardValues(formData: FormData): CardFormValues {
     gradingLink: getString("gradingLink"),
     purchaseDate: getString("purchaseDate"),
     purchasePrice: getString("purchasePrice"),
+    gradingFee: getString("gradingFee"),
+    totalCost: getString("totalCost"),
     currentValue: getString("currentValue"),
     purchaseSource: getString("purchaseSource"),
     tags: getString("tags"),
@@ -152,6 +162,10 @@ export async function createCardAction(formData: FormData): Promise<void> {
     const imagePaths = await Promise.all(files.map((file) => saveUpload(file)));
     const tagsRaw = toOptionalString(formData.get("tags"));
 
+    const purchasePrice = toOptionalFloat(formData.get("purchasePrice"));
+    const gradingFee = toOptionalFloat(formData.get("gradingFee"));
+    const totalCost = calculateTotalCost(purchasePrice, gradingFee);
+
     const card = await prisma.card.create({
       data: {
         playerName,
@@ -170,7 +184,9 @@ export async function createCardAction(formData: FormData): Promise<void> {
         grade: toOptionalString(formData.get("grade")),
         gradingLink: toOptionalString(formData.get("gradingLink")),
         purchaseDate: toOptionalDate(formData.get("purchaseDate")),
-        purchasePrice: toOptionalFloat(formData.get("purchasePrice")),
+        purchasePrice,
+        gradingFee,
+        totalCost,
         currentValue: toOptionalFloat(formData.get("currentValue")),
         purchaseSource: toOptionalString(formData.get("purchaseSource")),
         tags: tagsRaw ? parseTags(tagsRaw).join(",") : null,
@@ -197,6 +213,8 @@ export async function createCardFormAction(
   _previousState: CreateCardFormState,
   formData: FormData
 ): Promise<CreateCardFormState> {
+  let redirectPath: string | null = null;
+
   try {
     const { playerName, cardTitle, sport } = ensureBaseFields(formData);
     const files = formData.getAll("images").filter((entry): entry is File => entry instanceof File && entry.size > 0);
@@ -212,6 +230,10 @@ export async function createCardFormAction(
 
     const imagePaths = await Promise.all(files.map((file) => saveUpload(file)));
     const tagsRaw = toOptionalString(formData.get("tags"));
+
+    const purchasePrice = toOptionalFloat(formData.get("purchasePrice"));
+    const gradingFee = toOptionalFloat(formData.get("gradingFee"));
+    const totalCost = calculateTotalCost(purchasePrice, gradingFee);
 
     const card = await prisma.card.create({
       data: {
@@ -231,7 +253,9 @@ export async function createCardFormAction(
         grade: toOptionalString(formData.get("grade")),
         gradingLink: toOptionalString(formData.get("gradingLink")),
         purchaseDate: toOptionalDate(formData.get("purchaseDate")),
-        purchasePrice: toOptionalFloat(formData.get("purchasePrice")),
+        purchasePrice,
+        gradingFee,
+        totalCost,
         currentValue: toOptionalFloat(formData.get("currentValue")),
         purchaseSource: toOptionalString(formData.get("purchaseSource")),
         tags: tagsRaw ? parseTags(tagsRaw).join(",") : null,
@@ -245,13 +269,15 @@ export async function createCardFormAction(
 
     revalidatePath("/");
     revalidatePath("/showcase");
-    redirect(`/cards/${card.id}?success=created`);
+    redirectPath = `/cards/${card.id}?success=created`;
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : "创建失败，请稍后重试。",
       values: getCreateCardValues(formData)
     };
   }
+
+  redirect(redirectPath);
 }
 
 export async function updateCardAction(cardId: string, formData: FormData): Promise<void> {
@@ -285,6 +311,9 @@ export async function updateCardAction(cardId: string, formData: FormData): Prom
 
     const imagePaths = await Promise.all(files.map((file) => saveUpload(file)));
     const tagsRaw = toOptionalString(formData.get("tags"));
+    const purchasePrice = toOptionalFloat(formData.get("purchasePrice"));
+    const gradingFee = toOptionalFloat(formData.get("gradingFee"));
+    const totalCost = calculateTotalCost(purchasePrice, gradingFee);
 
     await prisma.$transaction(async (transaction) => {
       await transaction.card.update({
@@ -306,7 +335,9 @@ export async function updateCardAction(cardId: string, formData: FormData): Prom
           grade: toOptionalString(formData.get("grade")),
           gradingLink: toOptionalString(formData.get("gradingLink")),
           purchaseDate: toOptionalDate(formData.get("purchaseDate")),
-          purchasePrice: toOptionalFloat(formData.get("purchasePrice")),
+          purchasePrice,
+          gradingFee,
+          totalCost,
           currentValue: toOptionalFloat(formData.get("currentValue")),
           purchaseSource: toOptionalString(formData.get("purchaseSource")),
           tags: tagsRaw ? parseTags(tagsRaw).join(",") : null,

@@ -1,6 +1,6 @@
 {
   "name": "card-vault",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Local desktop app for managing and showcasing sports cards.",
   "author": "QL",
@@ -40,6 +40,7 @@
     "asar": false,
     "npmRebuild": false,
     "electronDist": "node_modules/electron/dist",
+    "afterPack": "scripts/patch-exe-icon.js",
     "directories": {
       "buildResources": "build",
       "output": "dist"
@@ -56,6 +57,7 @@
       "app/**/*",
       "components/**/*",
       "electron/**/*",
+      "build/icon.ico",
       "lib/**/*",
       "prisma/**/*",
       "public/**/*",

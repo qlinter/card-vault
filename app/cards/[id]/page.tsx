@@ -1,5 +1,5 @@
-import { normalizeImagePath } from "@/lib/image-path";
 import { splitTagString } from "@/lib/card-helpers";
+import { normalizeImagePath } from "@/lib/image-path";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 
@@ -32,10 +32,24 @@ function currencyOrDash(value: number | null | undefined): string {
   return `¥${value.toFixed(2)}`;
 }
 
+function successText(value: string | undefined): string | null {
+  switch (value) {
+    case "created":
+    case "added":
+      return "添加成功";
+    case "updated":
+      return "修改成功";
+    case "deleted":
+      return "删除成功";
+    default:
+      return value ?? null;
+  }
+}
+
 export default async function CardDetailPage({ params, searchParams }: DetailProps) {
   const { id } = await params;
   const query = await searchParams;
-  const success = toScalar(query.success);
+  const success = successText(toScalar(query.success));
 
   const card = await prisma.card.findUnique({
     where: { id },
@@ -65,7 +79,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
         </div>
       </div>
 
-      {success ? <p className="note-ok">操作成功：{success}</p> : null}
+      {success ? <p className="note-ok">{success}</p> : null}
 
       <div className="details">
         <section className="panel">
@@ -147,6 +161,14 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
             <div className="info-item">
               <strong>购买价格</strong>
               <span>{currencyOrDash(card.purchasePrice)}</span>
+            </div>
+            <div className="info-item">
+              <strong>评级费用</strong>
+              <span>{currencyOrDash(card.gradingFee)}</span>
+            </div>
+            <div className="info-item">
+              <strong>总投入</strong>
+              <span>{currencyOrDash(card.totalCost)}</span>
             </div>
             <div className="info-item">
               <strong>当前估值</strong>

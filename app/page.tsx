@@ -27,6 +27,20 @@ function formatCurrency(value: number): string {
   return `¥${value.toFixed(2)}`;
 }
 
+function successText(value: string | undefined): string | null {
+  switch (value) {
+    case "created":
+    case "added":
+      return "添加成功";
+    case "updated":
+      return "修改成功";
+    case "deleted":
+      return "删除成功";
+    default:
+      return value ?? null;
+  }
+}
+
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
   const query = {
@@ -57,7 +71,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const years = uniqueStrings(optionRows.map((row) => row.year));
   const sets = uniqueStrings(optionRows.map((row) => row.setName));
 
-  const successMessage = toScalar(params.success);
+  const successMessage = successText(toScalar(params.success));
   const errorMessage = toScalar(params.error);
   const totalValue = cards.reduce((sum, card) => sum + (card.currentValue ?? 0), 0);
   const currentStoragePath = resolveConfiguredDataDir() ?? "未设置";
@@ -91,7 +105,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
       <StorageSettings currentPath={currentStoragePath} />
 
-      {successMessage ? <p className="note-ok">操作成功：{successMessage}</p> : null}
+      {successMessage ? <p className="note-ok">{successMessage}</p> : null}
       {errorMessage ? <p className="note-error">操作失败：{errorMessage}</p> : null}
 
       <FilterBar query={query} sports={sports} teams={teams} years={years} sets={sets} />

@@ -48,6 +48,8 @@ function recreateCardTableWithTextFields() {
       gradingLink TEXT,
       purchaseDate DATETIME,
       purchasePrice REAL,
+      gradingFee REAL,
+      totalCost REAL,
       currentValue REAL,
       purchaseSource TEXT,
       tags TEXT,
@@ -141,6 +143,8 @@ CREATE TABLE IF NOT EXISTS Card (
   gradingLink TEXT,
   purchaseDate DATETIME,
   purchasePrice REAL,
+  gradingFee REAL,
+  totalCost REAL,
   currentValue REAL,
   purchaseSource TEXT,
   tags TEXT,
@@ -166,6 +170,18 @@ try {
 
 try {
   db.exec("ALTER TABLE Card ADD COLUMN currentValue REAL;");
+} catch {
+  // column already exists
+}
+
+try {
+  db.exec("ALTER TABLE Card ADD COLUMN gradingFee REAL;");
+} catch {
+  // column already exists
+}
+
+try {
+  db.exec("ALTER TABLE Card ADD COLUMN totalCost REAL;");
 } catch {
   // column already exists
 }

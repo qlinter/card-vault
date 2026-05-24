@@ -1,4 +1,5 @@
 import { Card, CardImage } from "@prisma/client";
+import { InvestmentInputs } from "@/components/investment-inputs";
 import { splitTagString, stringifyTags } from "@/lib/card-helpers";
 import { CardFormValues } from "@/lib/card-form-values";
 import { normalizeImagePath } from "@/lib/image-path";
@@ -123,25 +124,12 @@ export function CardForm({ mode, action, error, card, values }: CardFormProps) {
           />
         </label>
 
-        <label className="field">
-          <span>购买价格</span>
-          <input
-            name="purchasePrice"
-            type="text"
-            inputMode="decimal"
-            defaultValue={pickValue(values?.purchasePrice, formatCurrencyInput(card?.purchasePrice))}
-          />
-        </label>
-
-        <label className="field">
-          <span>当前估值</span>
-          <input
-            name="currentValue"
-            type="text"
-            inputMode="decimal"
-            defaultValue={pickValue(values?.currentValue, formatCurrencyInput(card?.currentValue))}
-          />
-        </label>
+        <InvestmentInputs
+          purchasePrice={pickValue(values?.purchasePrice, formatCurrencyInput(card?.purchasePrice))}
+          gradingFee={pickValue(values?.gradingFee, formatCurrencyInput(card?.gradingFee))}
+          totalCost={pickValue(values?.totalCost, formatCurrencyInput(card?.totalCost))}
+          currentValue={pickValue(values?.currentValue, formatCurrencyInput(card?.currentValue))}
+        />
 
         <label className="field">
           <span>购买渠道</span>

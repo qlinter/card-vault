@@ -11,10 +11,15 @@ const nextBuildIdPath = path.join(rootDir, ".next", "BUILD_ID");
 const nextCliPath = path.join(rootDir, "node_modules", "next", "dist", "bin", "next");
 const initDbScriptPath = path.join(rootDir, "scripts", "init-db.js");
 const prepareLocalScriptPath = path.join(rootDir, "scripts", "prepare-local.js");
+const appIconPath = path.join(rootDir, "build", "icon.ico");
 const serverUrl = "http://127.0.0.1:3000";
 
 let mainWindow = null;
 let serverProcess = null;
+
+if (process.platform === "win32") {
+  app.setAppUserModelId("com.ql.cardvault");
+}
 
 function ensureLogsDir() {
   fs.mkdirSync(logsDir, { recursive: true });
@@ -159,6 +164,7 @@ async function createMainWindow() {
     autoHideMenuBar: true,
     show: false,
     title: "QL's card vault",
+    icon: appIconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.js")
     }

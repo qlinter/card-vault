@@ -13,6 +13,8 @@ export type CardFormValues = {
   gradingLink: string;
   purchaseDate: string;
   purchasePrice: string;
+  gradingFee: string;
+  totalCost: string;
   currentValue: string;
   purchaseSource: string;
   tags: string;
@@ -37,6 +39,8 @@ export const emptyCardFormValues: CardFormValues = {
   gradingLink: "",
   purchaseDate: "",
   purchasePrice: "",
+  gradingFee: "",
+  totalCost: "",
   currentValue: "",
   purchaseSource: "",
   tags: "",

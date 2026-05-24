@@ -26,6 +26,8 @@ model Card {
   gradingLink       String?
   purchaseDate      DateTime?
   purchasePrice     Float?
+  gradingFee        Float?
+  totalCost         Float?
   currentValue      Float?
   purchaseSource    String?
   tags              String?

@@ -1,4 +1,4 @@
-import { deleteCardAction } from "@/app/actions/cards";
+﻿import { deleteCardAction } from "@/app/actions/cards";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 

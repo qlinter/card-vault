@@ -14,16 +14,25 @@ model Card {
   sport             String
   team              String?
   year              String?
-  setName           String?
+  brand             String?
+  productLine       String?
+  subsetName        String?
+  parallel          String?
   cardNumber        String?
   isSerialNumbered  Boolean     @default(false)
   serialNumber      String?
   serialRange       String?
+  isRookie          Boolean     @default(false)
   isAutograph       Boolean     @default(false)
+  autoType          String?
   isPatch           Boolean     @default(false)
+  patchType         String?
   gradingCompany    String?
   grade             String?
+  certNumber        String?
   gradingLink       String?
+  visibility        String      @default("private")
+  collectionStatus  String      @default("holding")
   purchaseDate      DateTime?
   purchasePrice     Float?
   gradingFee        Float?
@@ -42,7 +51,11 @@ model Card {
   @@index([sport])
   @@index([team])
   @@index([year])
-  @@index([setName])
+  @@index([brand])
+  @@index([productLine])
+  @@index([parallel])
+  @@index([visibility])
+  @@index([collectionStatus])
   @@index([createdAt(sort: Desc)])
 }
 

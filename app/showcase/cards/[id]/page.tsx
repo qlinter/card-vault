@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { ShowcaseGallery } from "@/components/showcase-gallery";
 import { prisma } from "@/lib/prisma";
 import { buildShowcaseCardHref, toShowcaseWhere } from "@/lib/showcase";

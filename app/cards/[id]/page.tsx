@@ -32,6 +32,40 @@ function currencyOrDash(value: number | null | undefined): string {
   return `¥${value.toFixed(2)}`;
 }
 
+function yesNo(value: boolean): string {
+  return value ? "是" : "否";
+}
+
+function visibilityText(value: string): string {
+  switch (value) {
+    case "public":
+      return "公开";
+    case "linkOnly":
+      return "仅链接可见";
+    case "private":
+      return "私密";
+    default:
+      return value;
+  }
+}
+
+function collectionStatusText(value: string): string {
+  switch (value) {
+    case "holding":
+      return "持有中";
+    case "listed":
+      return "在售";
+    case "sold":
+      return "已售出";
+    case "grading":
+      return "送评中";
+    case "target":
+      return "目标卡";
+    default:
+      return value;
+  }
+}
+
 function successText(value: string | undefined): string | null {
   switch (value) {
     case "created":
@@ -111,8 +145,20 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
               <span>{valueOrDash(card.year)}</span>
             </div>
             <div className="info-item">
-              <strong>系列</strong>
-              <span>{valueOrDash(card.setName)}</span>
+              <strong>品牌</strong>
+              <span>{valueOrDash(card.brand)}</span>
+            </div>
+            <div className="info-item">
+              <strong>产品线</strong>
+              <span>{valueOrDash(card.productLine)}</span>
+            </div>
+            <div className="info-item">
+              <strong>子系列</strong>
+              <span>{valueOrDash(card.subsetName)}</span>
+            </div>
+            <div className="info-item">
+              <strong>平行版本</strong>
+              <span>{valueOrDash(card.parallel)}</span>
             </div>
             <div className="info-item">
               <strong>卡号</strong>
@@ -127,12 +173,24 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
               <span>{valueOrDash(card.serialRange)}</span>
             </div>
             <div className="info-item">
+              <strong>Rookie</strong>
+              <span>{yesNo(card.isRookie)}</span>
+            </div>
+            <div className="info-item">
               <strong>签名卡</strong>
-              <span>{card.isAutograph ? "是" : "否"}</span>
+              <span>{yesNo(card.isAutograph)}</span>
+            </div>
+            <div className="info-item">
+              <strong>签字类型</strong>
+              <span>{valueOrDash(card.autoType)}</span>
             </div>
             <div className="info-item">
               <strong>Patch/Jersey</strong>
-              <span>{card.isPatch ? "是" : "否"}</span>
+              <span>{yesNo(card.isPatch)}</span>
+            </div>
+            <div className="info-item">
+              <strong>Patch 类型</strong>
+              <span>{valueOrDash(card.patchType)}</span>
             </div>
             <div className="info-item">
               <strong>评级机构</strong>
@@ -141,6 +199,10 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
             <div className="info-item">
               <strong>评级</strong>
               <span>{valueOrDash(card.grade)}</span>
+            </div>
+            <div className="info-item">
+              <strong>证书号</strong>
+              <span>{valueOrDash(card.certNumber)}</span>
             </div>
             <div className="info-item">
               <strong>评级链接</strong>
@@ -153,6 +215,14 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
                   "-"
                 )}
               </span>
+            </div>
+            <div className="info-item">
+              <strong>公开状态</strong>
+              <span>{visibilityText(card.visibility)}</span>
+            </div>
+            <div className="info-item">
+              <strong>收藏状态</strong>
+              <span>{collectionStatusText(card.collectionStatus)}</span>
             </div>
             <div className="info-item">
               <strong>购买日期</strong>
@@ -193,3 +263,6 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
     </div>
   );
 }
+
+
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 
@@ -10,7 +10,7 @@ type InvestmentInputsProps = {
 };
 
 function parseMoney(value: string): number {
-  const normalized = value.replace(/[¥,\s]/g, "");
+  const normalized = value.replace(/[¥￥,\s]/g, "");
   const parsed = Number.parseFloat(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
 }

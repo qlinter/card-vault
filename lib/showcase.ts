@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+﻿import { Prisma } from "@prisma/client";
 
 export type ShowcaseQuery = {
   q?: string;
@@ -18,7 +18,7 @@ export function toShowcaseWhere(input: ShowcaseQuery): Prisma.CardWhereInput {
         { playerName: { contains: input.q } },
         { cardTitle: { contains: input.q } },
         { team: { contains: input.q } },
-        { setName: { contains: input.q } },
+        { productLine: { contains: input.q } },
         { cardNumber: { contains: input.q } },
         { tags: { contains: input.q } },
         { sport: { contains: input.q } },
@@ -49,3 +49,4 @@ export function buildShowcaseCardHref(cardId: string, query: ShowcaseQuery, base
   const suffix = params.toString();
   return suffix ? `${basePath}/${cardId}?${suffix}` : `${basePath}/${cardId}`;
 }
+

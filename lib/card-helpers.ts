@@ -5,10 +5,24 @@ type CardFilterInput = {
   sport?: string;
   team?: string;
   year?: string;
-  setName?: string;
+  brand?: string;
+  productLine?: string;
+  subsetName?: string;
+  parallel?: string;
+  cardNumber?: string;
+  serialNumber?: string;
+  serialRange?: string;
+  isRookie?: string;
   isAutograph?: string;
+  autoType?: string;
   isPatch?: string;
+  patchType?: string;
   isGraded?: string;
+  gradingCompany?: string;
+  grade?: string;
+  certNumber?: string;
+  visibility?: string;
+  collectionStatus?: string;
   sort?: string;
 };
 
@@ -31,6 +45,14 @@ export function splitTagString(value: string | null): string[] {
   return parseTags(value);
 }
 
+function addBooleanFilter(parts: Prisma.CardWhereInput[], value: string | undefined, field: "isRookie" | "isAutograph" | "isPatch"): void {
+  if (value === "true") {
+    parts.push({ [field]: true });
+  } else if (value === "false") {
+    parts.push({ [field]: false });
+  }
+}
+
 export function buildCardFilters(input: CardFilterInput): Prisma.CardWhereInput {
   const where: Prisma.CardWhereInput = {};
   const andParts: Prisma.CardWhereInput[] = [];
@@ -40,12 +62,25 @@ export function buildCardFilters(input: CardFilterInput): Prisma.CardWhereInput 
       OR: [
         { playerName: { contains: input.q } },
         { cardTitle: { contains: input.q } },
-        { setName: { contains: input.q } },
+        { sport: { contains: input.q } },
         { team: { contains: input.q } },
-        { cardNumber: { contains: input.q } },
-        { tags: { contains: input.q } },
         { year: { contains: input.q } },
-        { grade: { contains: input.q } }
+        { brand: { contains: input.q } },
+        { productLine: { contains: input.q } },
+        { subsetName: { contains: input.q } },
+        { parallel: { contains: input.q } },
+        { cardNumber: { contains: input.q } },
+        { serialNumber: { contains: input.q } },
+        { serialRange: { contains: input.q } },
+        { gradingCompany: { contains: input.q } },
+        { grade: { contains: input.q } },
+        { certNumber: { contains: input.q } },
+        { autoType: { contains: input.q } },
+        { patchType: { contains: input.q } },
+        { purchaseSource: { contains: input.q } },
+        { tags: { contains: input.q } },
+        { publicDescription: { contains: input.q } },
+        { notes: { contains: input.q } }
       ]
     });
   }
@@ -59,19 +94,53 @@ export function buildCardFilters(input: CardFilterInput): Prisma.CardWhereInput 
   if (input.year) {
     andParts.push({ year: input.year });
   }
-  if (input.setName) {
-    andParts.push({ setName: input.setName });
+  if (input.brand) {
+    andParts.push({ brand: input.brand });
   }
-  if (input.isAutograph === "true") {
-    andParts.push({ isAutograph: true });
-  } else if (input.isAutograph === "false") {
-    andParts.push({ isAutograph: false });
+  if (input.productLine) {
+    andParts.push({ productLine: input.productLine });
   }
-  if (input.isPatch === "true") {
-    andParts.push({ isPatch: true });
-  } else if (input.isPatch === "false") {
-    andParts.push({ isPatch: false });
+  if (input.subsetName) {
+    andParts.push({ subsetName: input.subsetName });
   }
+  if (input.parallel) {
+    andParts.push({ parallel: input.parallel });
+  }
+  if (input.cardNumber) {
+    andParts.push({ cardNumber: { contains: input.cardNumber } });
+  }
+  if (input.serialNumber) {
+    andParts.push({ serialNumber: { contains: input.serialNumber } });
+  }
+  if (input.serialRange) {
+    andParts.push({ serialRange: { contains: input.serialRange } });
+  }
+  if (input.autoType) {
+    andParts.push({ autoType: input.autoType });
+  }
+  if (input.patchType) {
+    andParts.push({ patchType: input.patchType });
+  }
+  if (input.gradingCompany) {
+    andParts.push({ gradingCompany: input.gradingCompany });
+  }
+  if (input.grade) {
+    andParts.push({ grade: input.grade });
+  }
+  if (input.certNumber) {
+    andParts.push({ certNumber: { contains: input.certNumber } });
+  }
+  if (input.visibility) {
+    andParts.push({ visibility: input.visibility });
+  }
+  if (input.collectionStatus) {
+    andParts.push({ collectionStatus: input.collectionStatus });
+  }
+
+  addBooleanFilter(andParts, input.isRookie, "isRookie");
+  addBooleanFilter(andParts, input.isAutograph, "isAutograph");
+  addBooleanFilter(andParts, input.isPatch, "isPatch");
+
   if (input.isGraded === "true") {
     andParts.push({ grade: { not: null } });
   } else if (input.isGraded === "false") {

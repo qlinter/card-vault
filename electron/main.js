@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain } = require("electron");
+﻿const { app, BrowserWindow, dialog, ipcMain } = require("electron");
 const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
@@ -259,3 +259,5 @@ app.on("activate", async () => {
     await createMainWindow();
   }
 });
+
+

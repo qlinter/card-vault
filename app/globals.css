@@ -1367,24 +1367,3 @@ body:has(.showcase-backdrop) main.container {
 .showcase-backdrop .h1 {
   color: #ffffff;
 }
-
-.filter-details {
-  margin-top: 0.75rem;
-  border-top: 1px solid rgba(16, 19, 26, 0.08);
-  padding-top: 0.75rem;
-}
-
-.filter-details summary {
-  cursor: pointer;
-  font-weight: 800;
-  color: var(--slate);
-  width: fit-content;
-}
-
-.filter-details summary:hover {
-  color: var(--ink);
-}
-
-.filter-details-grid {
-  margin-top: 0.75rem;
-}

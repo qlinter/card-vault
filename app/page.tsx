@@ -48,24 +48,10 @@ export default async function Home({ searchParams }: HomeProps) {
     sport: toScalar(params.sport),
     team: toScalar(params.team),
     year: toScalar(params.year),
-    brand: toScalar(params.brand),
-    productLine: toScalar(params.productLine),
-    subsetName: toScalar(params.subsetName),
-    parallel: toScalar(params.parallel),
-    cardNumber: toScalar(params.cardNumber),
-    serialNumber: toScalar(params.serialNumber),
-    serialRange: toScalar(params.serialRange),
-    isRookie: toScalar(params.isRookie),
+    setName: toScalar(params.setName),
     isAutograph: toScalar(params.isAutograph),
-    autoType: toScalar(params.autoType),
     isPatch: toScalar(params.isPatch),
-    patchType: toScalar(params.patchType),
     isGraded: toScalar(params.isGraded),
-    gradingCompany: toScalar(params.gradingCompany),
-    grade: toScalar(params.grade),
-    certNumber: toScalar(params.certNumber),
-    visibility: toScalar(params.visibility),
-    collectionStatus: toScalar(params.collectionStatus),
     sort: toScalar(params.sort)
   };
 
@@ -76,33 +62,14 @@ export default async function Home({ searchParams }: HomeProps) {
       orderBy: buildCardSorting(query.sort)
     }),
     prisma.card.findMany({
-      select: {
-        sport: true,
-        team: true,
-        year: true,
-        brand: true,
-        productLine: true,
-        subsetName: true,
-        parallel: true,
-        gradingCompany: true,
-        grade: true,
-        autoType: true,
-        patchType: true
-      }
+      select: { sport: true, team: true, year: true, setName: true }
     })
   ]);
 
   const sports = uniqueStrings(optionRows.map((row) => row.sport));
   const teams = uniqueStrings(optionRows.map((row) => row.team));
   const years = uniqueStrings(optionRows.map((row) => row.year));
-  const brands = uniqueStrings(optionRows.map((row) => row.brand));
-  const productLines = uniqueStrings(optionRows.map((row) => row.productLine));
-  const subsetNames = uniqueStrings(optionRows.map((row) => row.subsetName));
-  const parallels = uniqueStrings(optionRows.map((row) => row.parallel));
-  const gradingCompanies = uniqueStrings(optionRows.map((row) => row.gradingCompany));
-  const grades = uniqueStrings(optionRows.map((row) => row.grade));
-  const autoTypes = uniqueStrings(optionRows.map((row) => row.autoType));
-  const patchTypes = uniqueStrings(optionRows.map((row) => row.patchType));
+  const sets = uniqueStrings(optionRows.map((row) => row.setName));
 
   const successMessage = successText(toScalar(params.success));
   const errorMessage = toScalar(params.error);
@@ -113,25 +80,23 @@ export default async function Home({ searchParams }: HomeProps) {
     <div className="page">
       <div className="title-row">
         <div>
-          <h1 className="h1">{"我的球星卡收藏"}</h1>
-          <p className="muted">
-            {"当前显示 "}{cards.length}{" 张卡片，支持离线录入、管理、筛选与展示"}
-          </p>
+          <h1 className="h1">我的球星卡收藏</h1>
+          <p className="muted">当前显示 {cards.length} 张卡片，支持离线录入、管理、筛选与展示</p>
         </div>
         <a href="/cards/new" className="btn btn-primary">
-          {"新增卡片"}
+          新增卡片
         </a>
       </div>
 
       <div className="summary-grid">
         <div className="panel">
-          <strong>{"卡片数量"}</strong>
+          <strong>卡片数量</strong>
           <p className="h1" style={{ marginTop: "0.35rem" }}>
             {cards.length}
           </p>
         </div>
         <div className="panel">
-          <strong>{"总估值"}</strong>
+          <strong>总估值</strong>
           <p className="h1" style={{ marginTop: "0.35rem" }}>
             {formatCurrency(totalValue)}
           </p>
@@ -141,22 +106,9 @@ export default async function Home({ searchParams }: HomeProps) {
       <StorageSettings currentPath={currentStoragePath} />
 
       {successMessage ? <p className="note-ok">{successMessage}</p> : null}
-      {errorMessage ? <p className="note-error">{"操作失败："}{errorMessage}</p> : null}
+      {errorMessage ? <p className="note-error">操作失败：{errorMessage}</p> : null}
 
-      <FilterBar
-        query={query}
-        sports={sports}
-        teams={teams}
-        years={years}
-        brands={brands}
-        productLines={productLines}
-        subsetNames={subsetNames}
-        parallels={parallels}
-        gradingCompanies={gradingCompanies}
-        grades={grades}
-        autoTypes={autoTypes}
-        patchTypes={patchTypes}
-      />
+      <FilterBar query={query} sports={sports} teams={teams} years={years} sets={sets} />
 
       <section className="cards-grid">
         {cards.map((card) => {
@@ -173,9 +125,7 @@ export default async function Home({ searchParams }: HomeProps) {
               <div className="card-body">
                 <h2 className="card-title">{card.playerName}</h2>
                 <p className="card-sub">{card.cardTitle}</p>
-                <p className="card-sub">
-                  {[card.year, card.team, card.productLine].filter(Boolean).join(" / ") || "未补充更多信息"}
-                </p>
+                <p className="card-sub">{[card.year, card.team, card.setName].filter(Boolean).join(" / ") || "未补充更多信息"}</p>
                 {tags.length > 0 ? (
                   <div className="tags">
                     {tags.slice(0, 4).map((tag) => (
@@ -193,7 +143,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
       {cards.length === 0 ? (
         <div className="panel" style={{ marginTop: "1rem" }}>
-          <p>{"没有找到符合条件的卡片，试试放宽筛选条件或新增一张卡片。"}</p>
+          <p>没有找到符合条件的卡片，试试放宽筛选条件或新增一张卡片。</p>
         </div>
       ) : null}
     </div>

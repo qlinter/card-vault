@@ -1,22 +1,16 @@
-﻿export type CardFormValues = {
+export type CardFormValues = {
   playerName: string;
   cardTitle: string;
   sport: string;
   team: string;
   year: string;
-  brand: string;
-  productLine: string;
-  subsetName: string;
-  parallel: string;
+  setName: string;
   cardNumber: string;
   serialNumber: string;
   serialRange: string;
   gradingCompany: string;
   grade: string;
-  certNumber: string;
   gradingLink: string;
-  visibility: string;
-  collectionStatus: string;
   purchaseDate: string;
   purchasePrice: string;
   gradingFee: string;
@@ -26,11 +20,8 @@
   tags: string;
   publicDescription: string;
   notes: string;
-  isRookie: boolean;
   isAutograph: boolean;
-  autoType: string;
   isPatch: boolean;
-  patchType: string;
 };
 
 export const emptyCardFormValues: CardFormValues = {
@@ -39,19 +30,13 @@ export const emptyCardFormValues: CardFormValues = {
   sport: "",
   team: "",
   year: "",
-  brand: "",
-  productLine: "",
-  subsetName: "",
-  parallel: "",
+  setName: "",
   cardNumber: "",
   serialNumber: "",
   serialRange: "",
   gradingCompany: "",
   grade: "",
-  certNumber: "",
   gradingLink: "",
-  visibility: "private",
-  collectionStatus: "holding",
   purchaseDate: "",
   purchasePrice: "",
   gradingFee: "",
@@ -61,11 +46,6 @@ export const emptyCardFormValues: CardFormValues = {
   tags: "",
   publicDescription: "",
   notes: "",
-  isRookie: false,
   isAutograph: false,
-  autoType: "",
-  isPatch: false,
-  patchType: ""
+  isPatch: false
 };
-
-

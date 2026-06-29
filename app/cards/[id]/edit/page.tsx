@@ -1,4 +1,4 @@
-﻿import { updateCardAction } from "@/app/actions/cards";
+import { updateCardAction } from "@/app/actions/cards";
 import { CardForm } from "@/components/card-form";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
@@ -35,7 +35,7 @@ export default async function EditCardPage({ params, searchParams }: EditProps) 
       <div className="title-row">
         <div>
           <h1 className="h1">编辑球星卡</h1>
-          <p className="muted">支持更新字段，并可替换、新增或删除图片，总数需保留 1-5 张。</p>
+          <p className="muted">支持更新字段，并可替换、新增或删除图片，总数可保留 1-5 张。</p>
         </div>
       </div>
       <CardForm mode="edit" card={card} action={updateCardAction.bind(null, id)} error={error} />

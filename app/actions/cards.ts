@@ -38,7 +38,7 @@ function toOptionalFloat(value: FormDataEntryValue | null): number | null {
     return null;
   }
 
-  const normalized = raw.replace(/[¥￥\s]/g, "");
+  const normalized = raw.replace(/[¥\s]/g, "");
   if (!normalized) {
     return null;
   }
@@ -81,19 +81,13 @@ function getCreateCardValues(formData: FormData): CardFormValues {
     sport: getString("sport"),
     team: getString("team"),
     year: getString("year"),
-    brand: getString("brand"),
-    productLine: getString("productLine"),
-    subsetName: getString("subsetName"),
-    parallel: getString("parallel"),
+    setName: getString("setName"),
     cardNumber: getString("cardNumber"),
     serialNumber: getString("serialNumber"),
     serialRange: getString("serialRange"),
     gradingCompany: getString("gradingCompany"),
     grade: getString("grade"),
-    certNumber: getString("certNumber"),
     gradingLink: getString("gradingLink"),
-    visibility: getString("visibility") || "private",
-    collectionStatus: getString("collectionStatus") || "holding",
     purchaseDate: getString("purchaseDate"),
     purchasePrice: getString("purchasePrice"),
     gradingFee: getString("gradingFee"),
@@ -103,11 +97,8 @@ function getCreateCardValues(formData: FormData): CardFormValues {
     tags: getString("tags"),
     publicDescription: getString("publicDescription"),
     notes: getString("notes"),
-    isRookie: parseBoolean(formData, "isRookie"),
     isAutograph: parseBoolean(formData, "isAutograph"),
-    autoType: getString("autoType"),
-    isPatch: parseBoolean(formData, "isPatch"),
-    patchType: getString("patchType")
+    isPatch: parseBoolean(formData, "isPatch")
   };
 }
 
@@ -148,7 +139,7 @@ async function removeImageIfExists(relativePath: string): Promise<void> {
   try {
     await unlink(fullPath);
   } catch {
-    // 图片文件可能已经被手动移除，忽略即可。
+    // noop
   }
 }
 
@@ -182,25 +173,16 @@ export async function createCardAction(formData: FormData): Promise<void> {
         sport,
         team: toOptionalString(formData.get("team")),
         year: toOptionalString(formData.get("year")),
-        brand: toOptionalString(formData.get("brand")),
-        productLine: toOptionalString(formData.get("productLine")),
-        subsetName: toOptionalString(formData.get("subsetName")),
-        parallel: toOptionalString(formData.get("parallel")),
+        setName: toOptionalString(formData.get("setName")),
         cardNumber: toOptionalString(formData.get("cardNumber")),
         isSerialNumbered: false,
         serialNumber: toOptionalString(formData.get("serialNumber")),
         serialRange: toOptionalString(formData.get("serialRange")),
-        isRookie: parseBoolean(formData, "isRookie"),
         isAutograph: parseBoolean(formData, "isAutograph"),
-        autoType: toOptionalString(formData.get("autoType")),
         isPatch: parseBoolean(formData, "isPatch"),
-        patchType: toOptionalString(formData.get("patchType")),
         gradingCompany: toOptionalString(formData.get("gradingCompany")),
         grade: toOptionalString(formData.get("grade")),
-        certNumber: toOptionalString(formData.get("certNumber")),
         gradingLink: toOptionalString(formData.get("gradingLink")),
-        visibility: toOptionalString(formData.get("visibility")) ?? "private",
-        collectionStatus: toOptionalString(formData.get("collectionStatus")) ?? "holding",
         purchaseDate: toOptionalDate(formData.get("purchaseDate")),
         purchasePrice,
         gradingFee,
@@ -260,25 +242,16 @@ export async function createCardFormAction(
         sport,
         team: toOptionalString(formData.get("team")),
         year: toOptionalString(formData.get("year")),
-        brand: toOptionalString(formData.get("brand")),
-        productLine: toOptionalString(formData.get("productLine")),
-        subsetName: toOptionalString(formData.get("subsetName")),
-        parallel: toOptionalString(formData.get("parallel")),
+        setName: toOptionalString(formData.get("setName")),
         cardNumber: toOptionalString(formData.get("cardNumber")),
         isSerialNumbered: false,
         serialNumber: toOptionalString(formData.get("serialNumber")),
         serialRange: toOptionalString(formData.get("serialRange")),
-        isRookie: parseBoolean(formData, "isRookie"),
         isAutograph: parseBoolean(formData, "isAutograph"),
-        autoType: toOptionalString(formData.get("autoType")),
         isPatch: parseBoolean(formData, "isPatch"),
-        patchType: toOptionalString(formData.get("patchType")),
         gradingCompany: toOptionalString(formData.get("gradingCompany")),
         grade: toOptionalString(formData.get("grade")),
-        certNumber: toOptionalString(formData.get("certNumber")),
         gradingLink: toOptionalString(formData.get("gradingLink")),
-        visibility: toOptionalString(formData.get("visibility")) ?? "private",
-        collectionStatus: toOptionalString(formData.get("collectionStatus")) ?? "holding",
         purchaseDate: toOptionalDate(formData.get("purchaseDate")),
         purchasePrice,
         gradingFee,
@@ -351,25 +324,16 @@ export async function updateCardAction(cardId: string, formData: FormData): Prom
           sport,
           team: toOptionalString(formData.get("team")),
           year: toOptionalString(formData.get("year")),
-          brand: toOptionalString(formData.get("brand")),
-          productLine: toOptionalString(formData.get("productLine")),
-          subsetName: toOptionalString(formData.get("subsetName")),
-          parallel: toOptionalString(formData.get("parallel")),
+          setName: toOptionalString(formData.get("setName")),
           cardNumber: toOptionalString(formData.get("cardNumber")),
           isSerialNumbered: existing.isSerialNumbered,
           serialNumber: toOptionalString(formData.get("serialNumber")),
           serialRange: toOptionalString(formData.get("serialRange")),
-          isRookie: parseBoolean(formData, "isRookie"),
           isAutograph: parseBoolean(formData, "isAutograph"),
-          autoType: toOptionalString(formData.get("autoType")),
           isPatch: parseBoolean(formData, "isPatch"),
-          patchType: toOptionalString(formData.get("patchType")),
           gradingCompany: toOptionalString(formData.get("gradingCompany")),
           grade: toOptionalString(formData.get("grade")),
-          certNumber: toOptionalString(formData.get("certNumber")),
           gradingLink: toOptionalString(formData.get("gradingLink")),
-          visibility: toOptionalString(formData.get("visibility")) ?? "private",
-          collectionStatus: toOptionalString(formData.get("collectionStatus")) ?? "holding",
           purchaseDate: toOptionalDate(formData.get("purchaseDate")),
           purchasePrice,
           gradingFee,
@@ -436,5 +400,3 @@ export async function deleteCardAction(cardId: string): Promise<void> {
 
   redirect(redirectPath);
 }
-
-

@@ -1,4 +1,4 @@
-﻿const fs = require("node:fs");
+const fs = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 const { resolveDbPath } = require("./storage-paths");
@@ -10,24 +10,6 @@ const dbDir = path.dirname(dbPath);
 fs.mkdirSync(dbDir, { recursive: true });
 
 const db = new DatabaseSync(dbPath);
-
-const cardColumns = [
-  ["brand", "TEXT"],
-  ["productLine", "TEXT"],
-  ["subsetName", "TEXT"],
-  ["parallel", "TEXT"],
-  ["isRookie", "BOOLEAN NOT NULL DEFAULT 0"],
-  ["autoType", "TEXT"],
-  ["patchType", "TEXT"],
-  ["certNumber", "TEXT"],
-  ["visibility", "TEXT NOT NULL DEFAULT 'private'"],
-  ["collectionStatus", "TEXT NOT NULL DEFAULT 'holding'"],
-  ["publicDescription", "TEXT"],
-  ["currentValue", "REAL"],
-  ["gradingFee", "REAL"],
-  ["totalCost", "REAL"],
-  ["gradingLink", "TEXT"]
-];
 
 function getCardColumnTypes() {
   try {
@@ -43,39 +25,7 @@ function getCardColumnTypes() {
   }
 }
 
-function columnExists(tableName, columnName) {
-  return db.prepare(`PRAGMA table_info(${tableName})`).all().some((column) => column.name === columnName);
-}
-
-function addColumnIfMissing(tableName, columnName, definition) {
-  if (columnExists(tableName, columnName)) {
-    return;
-  }
-
-  db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition};`);
-}
-
-function selectableColumn(columnName, fallbackSql = "NULL") {
-  return columnExists("Card", columnName) ? columnName : fallbackSql;
-}
-
-function productLineSelectSql() {
-  const hasProductLine = columnExists("Card", "productLine");
-  const hasSetName = columnExists("Card", "setName");
-
-  if (hasProductLine && hasSetName) {
-    return "COALESCE(NULLIF(productLine, ''), NULLIF(setName, ''))";
-  }
-  if (hasProductLine) {
-    return "productLine";
-  }
-  if (hasSetName) {
-    return "setName";
-  }
-  return "NULL";
-}
-
-function recreateCardTableWithoutSetName() {
+function recreateCardTableWithTextFields() {
   db.exec("PRAGMA foreign_keys = OFF;");
 
   db.exec(`
@@ -86,25 +36,16 @@ function recreateCardTableWithoutSetName() {
       sport TEXT NOT NULL,
       team TEXT,
       year TEXT,
-      brand TEXT,
-      productLine TEXT,
-      subsetName TEXT,
-      parallel TEXT,
+      setName TEXT,
       cardNumber TEXT,
       isSerialNumbered BOOLEAN NOT NULL DEFAULT 0,
       serialNumber TEXT,
       serialRange TEXT,
-      isRookie BOOLEAN NOT NULL DEFAULT 0,
       isAutograph BOOLEAN NOT NULL DEFAULT 0,
-      autoType TEXT,
       isPatch BOOLEAN NOT NULL DEFAULT 0,
-      patchType TEXT,
       gradingCompany TEXT,
       grade TEXT,
-      certNumber TEXT,
       gradingLink TEXT,
-      visibility TEXT NOT NULL DEFAULT 'private',
-      collectionStatus TEXT NOT NULL DEFAULT 'holding',
       purchaseDate DATETIME,
       purchasePrice REAL,
       gradingFee REAL,
@@ -127,29 +68,18 @@ function recreateCardTableWithoutSetName() {
       sport,
       team,
       year,
-      brand,
-      productLine,
-      subsetName,
-      parallel,
+      setName,
       cardNumber,
       isSerialNumbered,
       serialNumber,
       serialRange,
-      isRookie,
       isAutograph,
-      autoType,
       isPatch,
-      patchType,
       gradingCompany,
       grade,
-      certNumber,
       gradingLink,
-      visibility,
-      collectionStatus,
       purchaseDate,
       purchasePrice,
-      gradingFee,
-      totalCost,
       currentValue,
       purchaseSource,
       tags,
@@ -165,33 +95,22 @@ function recreateCardTableWithoutSetName() {
       sport,
       team,
       CASE WHEN year IS NULL THEN NULL ELSE CAST(year AS TEXT) END,
-      ${selectableColumn("brand")},
-      ${productLineSelectSql()},
-      ${selectableColumn("subsetName")},
-      ${selectableColumn("parallel")},
+      setName,
       cardNumber,
       isSerialNumbered,
       serialNumber,
       serialRange,
-      ${selectableColumn("isRookie", "0")},
       isAutograph,
-      ${selectableColumn("autoType")},
       isPatch,
-      ${selectableColumn("patchType")},
       gradingCompany,
       CASE WHEN grade IS NULL THEN NULL ELSE CAST(grade AS TEXT) END,
-      ${selectableColumn("certNumber")},
-      ${selectableColumn("gradingLink")},
-      ${selectableColumn("visibility", "'private'")},
-      ${selectableColumn("collectionStatus", "'holding'")},
+      gradingLink,
       purchaseDate,
       purchasePrice,
-      ${selectableColumn("gradingFee")},
-      ${selectableColumn("totalCost")},
-      ${selectableColumn("currentValue")},
+      currentValue,
       purchaseSource,
       tags,
-      ${selectableColumn("publicDescription")},
+      publicDescription,
       notes,
       createdAt,
       updatedAt
@@ -212,25 +131,16 @@ CREATE TABLE IF NOT EXISTS Card (
   sport TEXT NOT NULL,
   team TEXT,
   year TEXT,
-  brand TEXT,
-  productLine TEXT,
-  subsetName TEXT,
-  parallel TEXT,
+  setName TEXT,
   cardNumber TEXT,
   isSerialNumbered BOOLEAN NOT NULL DEFAULT 0,
   serialNumber TEXT,
   serialRange TEXT,
-  isRookie BOOLEAN NOT NULL DEFAULT 0,
   isAutograph BOOLEAN NOT NULL DEFAULT 0,
-  autoType TEXT,
   isPatch BOOLEAN NOT NULL DEFAULT 0,
-  patchType TEXT,
   gradingCompany TEXT,
   grade TEXT,
-  certNumber TEXT,
   gradingLink TEXT,
-  visibility TEXT NOT NULL DEFAULT 'private',
-  collectionStatus TEXT NOT NULL DEFAULT 'holding',
   purchaseDate DATETIME,
   purchasePrice REAL,
   gradingFee REAL,
@@ -252,17 +162,39 @@ CREATE TABLE IF NOT EXISTS CardImage (
 );
 `);
 
-for (const [columnName, definition] of cardColumns) {
-  addColumnIfMissing("Card", columnName, definition);
+try {
+  db.exec("ALTER TABLE Card ADD COLUMN publicDescription TEXT;");
+} catch {
+  // column already exists
+}
+
+try {
+  db.exec("ALTER TABLE Card ADD COLUMN currentValue REAL;");
+} catch {
+  // column already exists
+}
+
+try {
+  db.exec("ALTER TABLE Card ADD COLUMN gradingFee REAL;");
+} catch {
+  // column already exists
+}
+
+try {
+  db.exec("ALTER TABLE Card ADD COLUMN totalCost REAL;");
+} catch {
+  // column already exists
+}
+
+try {
+  db.exec("ALTER TABLE Card ADD COLUMN gradingLink TEXT;");
+} catch {
+  // column already exists
 }
 
 const cardColumnTypes = getCardColumnTypes();
-if (
-  columnExists("Card", "setName") ||
-  (cardColumnTypes.year && cardColumnTypes.year !== "TEXT") ||
-  (cardColumnTypes.grade && cardColumnTypes.grade !== "TEXT")
-) {
-  recreateCardTableWithoutSetName();
+if (cardColumnTypes.year && cardColumnTypes.year !== "TEXT") {
+  recreateCardTableWithTextFields();
 }
 
 db.exec(`
@@ -271,11 +203,7 @@ CREATE INDEX IF NOT EXISTS Card_cardTitle_idx ON Card(cardTitle);
 CREATE INDEX IF NOT EXISTS Card_sport_idx ON Card(sport);
 CREATE INDEX IF NOT EXISTS Card_team_idx ON Card(team);
 CREATE INDEX IF NOT EXISTS Card_year_idx ON Card(year);
-CREATE INDEX IF NOT EXISTS Card_brand_idx ON Card(brand);
-CREATE INDEX IF NOT EXISTS Card_productLine_idx ON Card(productLine);
-CREATE INDEX IF NOT EXISTS Card_parallel_idx ON Card(parallel);
-CREATE INDEX IF NOT EXISTS Card_visibility_idx ON Card(visibility);
-CREATE INDEX IF NOT EXISTS Card_collectionStatus_idx ON Card(collectionStatus);
+CREATE INDEX IF NOT EXISTS Card_setName_idx ON Card(setName);
 CREATE INDEX IF NOT EXISTS Card_createdAt_idx ON Card(createdAt DESC);
 CREATE INDEX IF NOT EXISTS CardImage_cardId_idx ON CardImage(cardId);
 `);

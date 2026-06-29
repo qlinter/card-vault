@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 
@@ -54,11 +54,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
           {isPending ? "处理中..." : "更改路径"}
         </button>
       </div>
-      {message ? (
-        <p className="muted" style={{ margin: 0 }}>
-          {message}
-        </p>
-      ) : null}
+      {message ? <p className="muted" style={{ margin: 0 }}>{message}</p> : null}
     </div>
   );
 }

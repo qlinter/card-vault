@@ -71,23 +71,8 @@ export function CardForm({ mode, action, error, card, values }: CardFormProps) {
         </label>
 
         <label className="field">
-          <span>品牌</span>
-          <input name="brand" placeholder="例如 Panini / Topps" defaultValue={pickValue(values?.brand, card?.brand ?? "")} />
-        </label>
-
-        <label className="field">
-          <span>产品线</span>
-          <input name="productLine" placeholder="例如 Prizm / Select / Immaculate" defaultValue={pickValue(values?.productLine, card?.productLine ?? "")} />
-        </label>
-
-        <label className="field">
-          <span>子系列</span>
-          <input name="subsetName" defaultValue={pickValue(values?.subsetName, card?.subsetName ?? "")} />
-        </label>
-
-        <label className="field">
-          <span>平行版本</span>
-          <input name="parallel" placeholder="例如 Gold / Mojo / Refractor" defaultValue={pickValue(values?.parallel, card?.parallel ?? "")} />
+          <span>系列 / 产品线</span>
+          <input name="setName" defaultValue={pickValue(values?.setName, card?.setName ?? "")} />
         </label>
 
         <label className="field">
@@ -118,11 +103,6 @@ export function CardForm({ mode, action, error, card, values }: CardFormProps) {
             placeholder="例如 9.5 / Auto Auth / Authentic"
             defaultValue={pickValue(values?.grade, card?.grade ?? "")}
           />
-        </label>
-
-        <label className="field">
-          <span>证书号</span>
-          <input name="certNumber" defaultValue={pickValue(values?.certNumber, card?.certNumber ?? "")} />
         </label>
 
         <label className="field full">
@@ -156,26 +136,6 @@ export function CardForm({ mode, action, error, card, values }: CardFormProps) {
           <input name="purchaseSource" defaultValue={pickValue(values?.purchaseSource, card?.purchaseSource ?? "")} />
         </label>
 
-        <label className="field">
-          <span>公开状态</span>
-          <select name="visibility" defaultValue={pickValue(values?.visibility, card?.visibility ?? "private")}>
-            <option value="private">私密</option>
-            <option value="public">公开</option>
-            <option value="linkOnly">仅链接可见</option>
-          </select>
-        </label>
-
-        <label className="field">
-          <span>收藏状态</span>
-          <select name="collectionStatus" defaultValue={pickValue(values?.collectionStatus, card?.collectionStatus ?? "holding")}>
-            <option value="holding">持有中</option>
-            <option value="listed">在售</option>
-            <option value="sold">已售出</option>
-            <option value="grading">送评中</option>
-            <option value="target">目标卡</option>
-          </select>
-        </label>
-
         <label className="field full">
           <span>标签（逗号分隔）</span>
           <input name="tags" placeholder="rookie, holo, psa" defaultValue={pickValue(values?.tags, stringifyTags(tags))} />
@@ -197,30 +157,14 @@ export function CardForm({ mode, action, error, card, values }: CardFormProps) {
 
         <label className="field">
           <span>
-            <input name="isRookie" type="checkbox" defaultChecked={values?.isRookie ?? card?.isRookie ?? false} /> 是否 Rookie
-          </span>
-        </label>
-
-        <label className="field">
-          <span>
             <input name="isAutograph" type="checkbox" defaultChecked={values?.isAutograph ?? card?.isAutograph ?? false} /> 是否签名卡
           </span>
-        </label>
-
-        <label className="field">
-          <span>签字类型</span>
-          <input name="autoType" placeholder="例如 on-card / sticker" defaultValue={pickValue(values?.autoType, card?.autoType ?? "")} />
         </label>
 
         <label className="field">
           <span>
             <input name="isPatch" type="checkbox" defaultChecked={values?.isPatch ?? card?.isPatch ?? false} /> 是否 Patch/Jersey
           </span>
-        </label>
-
-        <label className="field">
-          <span>Patch 类型</span>
-          <input name="patchType" placeholder="例如 multi-color / logo patch" defaultValue={pickValue(values?.patchType, card?.patchType ?? "")} />
         </label>
 
         <label className="field full">
@@ -257,5 +201,3 @@ export function CardForm({ mode, action, error, card, values }: CardFormProps) {
     </form>
   );
 }
-
-

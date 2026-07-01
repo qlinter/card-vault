@@ -1,6 +1,6 @@
 {
   "name": "card-vault",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "description": "Local desktop app for managing and showcasing sports cards.",
   "author": "QL",
@@ -8,7 +8,10 @@
   "productName": "card vault",
   "scripts": {
     "build": "next build",
+    "check:encoding": "node scripts/check-encoding.js",
+    "prebuild": "npm run check:encoding",
     "start": "next start",
+    "postinstall": "prisma generate",
     "prepare:local": "node scripts/prepare-local.js",
     "make:icon": "node scripts/make-icon.js",
     "electron": "electron electron/main.js",

@@ -6,7 +6,7 @@ Card Vault 是一个本地优先的球星卡收藏管理工具，用于录入、
 
 ## 当前版本
 
-- `1.0.3`
+- `1.0.4`
 
 ## 版本说明
 
@@ -71,10 +71,27 @@ Card Vault 是一个本地优先的球星卡收藏管理工具，用于录入、
 - 数据库初始化和迁移脚本兼容旧数据，会自动补充新增字段并处理“系列”到“产品线”的迁移。
 - 继续清理中文乱码风险，对本次涉及的首页和筛选组件做了额外检查。
 
+### 1.0.4 升级内容
+
+`1.0.4` 主要围绕 AI 识图录入、全局设置入口和跨电脑维护稳定性进行升级。
+
+- 新增顶部“设置”入口，提供全局配置页，为后续非 AI 设置预留空间。
+- AI 识图设置迁移到全局设置页，新建卡片和编辑卡片共用同一套模型配置。
+- AI 服务商支持 Azure OpenAI 和 MiniMax，二者的 Endpoint、API Key、模型 / 部署配置独立保存，切换服务商不会互相覆盖。
+- 新增“读取模型”能力，可从当前服务商读取模型或部署列表，并支持使用当前界面配置测试连接。
+- 新增卡片时支持使用 1-2 张正反面图片生成录入建议。
+- 编辑已有卡片时支持使用当前卡片已有默认图片进行 AI 填充，也可重新选择图片识别。
+- AI 填充默认不覆盖已有字段；需要刷新已有信息时可手动勾选“覆盖当前字段”。
+- AI 生成展示描述时改为中文，侧重球星生涯、代表性成就和卡片收藏意义；备注字段保持为空。
+- 加强 MiniMax 返回内容解析，兼容非严格 JSON、多段 content 和 JSON 修复兜底。
+- 增加编码维护护栏，统一 UTF-8 / LF，并在构建前执行编码检查，降低跨电脑同步乱码风险。
+- `npm install` 后自动执行 Prisma Client 生成，改善新电脑同步开发体验。
+
 ## 主要功能
 
 - 新增、编辑、删除球星卡。
 - 单张卡片最多上传 5 张图片。
+- 支持 AI 识图录入和已有卡片 AI 填充，可用 1-2 张正反面图片生成字段建议，当前支持 Azure OpenAI 和 MiniMax。
 - 支持自由输入年份，例如 `2016-17`。
 - 支持自由输入评级，例如 `9.5`、`Auto Auth`、`Authentic`。
 - 支持购买价格、评级费用、总投入、当前估值记录。
@@ -154,7 +171,7 @@ start-desktop.bat
 
 文件：
 
-- `dist/card-vault-1.0.3-setup.exe`
+- `dist/card-vault-1.0.4-setup.exe`
 
 特点：
 
@@ -167,7 +184,7 @@ start-desktop.bat
 
 文件：
 
-- `dist/card-vault-1.0.3-portable.zip`
+- `dist/card-vault-1.0.4-portable.zip`
 
 使用方式：
 
@@ -195,12 +212,26 @@ start-desktop.bat
 ## 常用脚本
 
 - `npm run build`：构建 Next.js 应用。
+- `npm run check:encoding`：检查源码是否存在典型中文乱码或非法 UTF-8 内容。
 - `npm run start`：启动 Next.js 生产服务。
 - `npm run electron`：启动 Electron 桌面端。
 - `npm run prepare:local`：准备本地桌面运行所需构建。
 - `npm run db:init`：初始化或迁移本地数据库。
 - `npm run prisma:generate`：生成 Prisma Client。
 - `npm run dist:win`：构建 Windows 安装版和发布目录。
+
+## AI 识图录入
+
+顶部“设置”页提供全局 AI 识图设置；新增卡片和编辑卡片页面提供 AI 识图录入 / 填充入口。当前支持 Azure OpenAI 和 MiniMax。
+
+- 桌面端会把 AI 设置保存到本机用户数据目录中的 `ai-config.json`，不会写入 Git 仓库或卡片数据库。
+- Azure OpenAI 设置项包括 Endpoint、API Key、Deployment 和 API Version。
+- MiniMax 设置项包括 API Endpoint、API Key 和 Model。
+- 开发态可以通过 `.env.local` 配置 `CARD_VAULT_AI_PROVIDER`，并按服务商填写 `AZURE_OPENAI_*` 或 `MINIMAX_*`。
+- 识图录入支持 1-2 张 `jpg/png/webp` 图片，适合上传卡片正面和背面。
+- 已录入卡片可在编辑页使用已有默认图片进行 AI 填充。
+- AI 结果只作为录入建议填入表单，用户可以继续修改后再保存。
+- 默认只填空字段，勾选“覆盖当前字段”后才会替换已有输入。
 
 ## 数据存储
 
@@ -241,13 +272,24 @@ prisma/dev.db
 - GitHub 仓库用于保存源码、文档和配置。
 - 安装版 / 便携版用于给第三方电脑直接运行。
 
+## 跨电脑同步与编码约定
+
+项目源码统一使用 `UTF-8` 编码，并通过 `.editorconfig` 和 `.gitattributes` 固定常见文本文件的编码与换行规则。
+
+在不同电脑之间通过 GitHub 同步源码时，建议：
+
+- 使用支持 `.editorconfig` 的编辑器，并确认文件以 `UTF-8` 打开和保存。
+- 不要用 GBK、ANSI 或系统默认编码重新保存 `.ts`、`.tsx`、`.js`、`.md` 等源码文件。
+- 提交前运行 `npm run check:encoding`，检查源码是否出现典型中文乱码或非法 UTF-8 内容。
+- 收藏数据仍然按“数据备份说明”单独迁移，不要提交本地数据库、图片、构建产物或日志。
+
 ## 后续规划方向
 
 下一阶段建议优先考虑：
 
 - 分享页 / 静态数字展馆导出。
 - 主题展馆和收藏家主页。
-- AI 识别录入，采用“AI 建议 + 用户确认”的方式。
+- AI 识别录入的准确率优化、更多识别场景和字段置信度提示。
 - 手动成交参考与 AI 估值解释。
 
 ## 说明

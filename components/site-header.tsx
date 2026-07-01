@@ -16,6 +16,7 @@ export function SiteHeader() {
         <nav className="nav-links">
           <Link href="/">首页</Link>
           <Link href="/showcase">展示页</Link>
+          <Link href="/settings">设置</Link>
         </nav>
       </div>
     </header>

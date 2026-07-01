@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-type StorageEnv = Partial<Record<"CARD_VAULT_DATA_DIR" | "CARD_VAULT_DB_PATH" | "CARD_VAULT_STORAGE_CONFIG_PATH" | "APPDATA", string>>;
+type StorageEnv = Record<string, string | undefined>;
 
 function getEnvValue(env: StorageEnv, key: keyof StorageEnv): string | null {
   const value = env[key]?.trim();

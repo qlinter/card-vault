@@ -1,4 +1,5 @@
 import { Card, CardImage } from "@prisma/client";
+import { AiRecognitionPanel } from "@/components/ai-recognition-panel";
 import { InvestmentInputs } from "@/components/investment-inputs";
 import { splitTagString, stringifyTags } from "@/lib/card-helpers";
 import { CardFormValues } from "@/lib/card-form-values";
@@ -34,10 +35,13 @@ function pickValue(value: string | undefined, fallback: string): string {
 
 export function CardForm({ mode, action, error, card, values }: CardFormProps) {
   const tags = splitTagString(card?.tags ?? null);
+  const defaultAiImageUrls = card?.images.slice(0, 2).map((image) => normalizeImagePath(image.path)) ?? [];
 
   return (
     <form action={action} className="panel" encType="multipart/form-data">
       {error ? <p className="note-error">{error}</p> : null}
+
+      <AiRecognitionPanel mode={mode} defaultImageUrls={defaultAiImageUrls} />
 
       <div className="form-grid">
         <label className="field">

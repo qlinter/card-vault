@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
+const { createAiConfigManager } = require("./ai-config");
 const { createStorageManager } = require("./storage");
 
 const rootDir = path.resolve(__dirname, "..");
@@ -13,6 +14,7 @@ const initDbScriptPath = path.join(rootDir, "scripts", "init-db.js");
 const prepareLocalScriptPath = path.join(rootDir, "scripts", "prepare-local.js");
 const appIconPath = path.join(rootDir, "build", "icon.ico");
 const serverUrl = "http://127.0.0.1:3000";
+const aiConfigPath = path.join(app.getPath("userData"), "ai-config.json");
 
 let mainWindow = null;
 let serverProcess = null;
@@ -39,6 +41,14 @@ const storage = createStorageManager({
   projectRoot: rootDir,
   log: (message) => appendLog("desktop.log", message)
 });
+const aiConfig = createAiConfigManager(aiConfigPath);
+
+function getDesktopEnv() {
+  return {
+    ...storage.getEnv(),
+    CARD_VAULT_AI_CONFIG_PATH: aiConfig.getConfigPath()
+  };
+}
 
 function runNodeCommand(scriptPath, args, logFile) {
   return new Promise((resolve, reject) => {
@@ -47,7 +57,7 @@ function runNodeCommand(scriptPath, args, logFile) {
       windowsHide: true,
       env: {
         ...process.env,
-        ...storage.getEnv(),
+        ...getDesktopEnv(),
         ELECTRON_RUN_AS_NODE: "1"
       }
     });
@@ -131,7 +141,7 @@ async function startServer() {
     windowsHide: true,
     env: {
       ...process.env,
-      ...storage.getEnv(),
+      ...getDesktopEnv(),
       ELECTRON_RUN_AS_NODE: "1",
       DATABASE_URL: `file:${dbPath.replace(/\\/g, "/")}`
     }
@@ -215,6 +225,20 @@ ipcMain.handle("card-vault:choose-storage-directory", async () => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown storage path error.";
     appendLog("desktop.log", `Storage path update failed: ${message}`);
+    throw error;
+  }
+});
+
+ipcMain.handle("card-vault:get-ai-settings", async () => aiConfig.getPublicSettings());
+
+ipcMain.handle("card-vault:save-ai-settings", async (_event, settings) => {
+  try {
+    const result = aiConfig.save(settings ?? {});
+    appendLog("desktop.log", "Azure OpenAI settings saved.");
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown Azure OpenAI settings error.";
+    appendLog("desktop.log", `Azure OpenAI settings save failed: ${message}`);
     throw error;
   }
 });

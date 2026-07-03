@@ -43,6 +43,7 @@ model Card {
   publicDescription String?
   notes             String?
   images            CardImage[]
+  shareItems        ShareCollectionItem[]
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
@@ -67,4 +68,37 @@ model CardImage {
   card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
   @@index([cardId])
+}
+
+model ShareCollection {
+  id             String                @id @default(cuid())
+  title          String
+  subtitle       String?
+  slug           String                @unique
+  description    String?
+  themeNarrative String?
+  themeHighlights String?
+  groupNotes     String?
+  coverImagePath String?
+  items          ShareCollectionItem[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@index([createdAt(sort: Desc)])
+}
+
+model ShareCollectionItem {
+  id                String          @id @default(cuid())
+  shareCollectionId String
+  cardId            String
+  sortOrder         Int             @default(0)
+  displayTitle      String?
+  displayDescription String?
+  shareCollection   ShareCollection @relation(fields: [shareCollectionId], references: [id], onDelete: Cascade)
+  card              Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([shareCollectionId, cardId])
+  @@index([shareCollectionId])
+  @@index([cardId])
+  @@index([sortOrder])
 }

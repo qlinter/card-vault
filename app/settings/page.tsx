@@ -11,6 +11,13 @@ export default function SettingsPage() {
       </div>
 
       <AzureOpenAISettings defaultOpen />
+
+      <section className="panel settings-section">
+        <h2>云端发布</h2>
+        <p className="muted">
+          当前版本先生成适配阿里云 ECS / Nginx 的静态发布包。后续一键上传会在这里配置服务器地址、远程目录和 SSH/SFTP 凭证。
+        </p>
+      </section>
     </div>
   );
 }

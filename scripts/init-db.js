@@ -250,6 +250,29 @@ CREATE TABLE IF NOT EXISTS CardImage (
   createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT CardImage_cardId_fkey FOREIGN KEY (cardId) REFERENCES Card (id) ON DELETE CASCADE ON UPDATE CASCADE
 );
+CREATE TABLE IF NOT EXISTS ShareCollection (
+  id TEXT PRIMARY KEY NOT NULL,
+  title TEXT NOT NULL,
+  subtitle TEXT,
+  slug TEXT NOT NULL,
+  description TEXT,
+  themeNarrative TEXT,
+  themeHighlights TEXT,
+  groupNotes TEXT,
+  coverImagePath TEXT,
+  createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS ShareCollectionItem (
+  id TEXT PRIMARY KEY NOT NULL,
+  shareCollectionId TEXT NOT NULL,
+  cardId TEXT NOT NULL,
+  sortOrder INTEGER NOT NULL DEFAULT 0,
+  displayTitle TEXT,
+  displayDescription TEXT,
+  CONSTRAINT ShareCollectionItem_shareCollectionId_fkey FOREIGN KEY (shareCollectionId) REFERENCES ShareCollection (id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT ShareCollectionItem_cardId_fkey FOREIGN KEY (cardId) REFERENCES Card (id) ON DELETE CASCADE ON UPDATE CASCADE
+);
 `);
 
 for (const [columnName, definition] of cardColumns) {
@@ -278,6 +301,12 @@ CREATE INDEX IF NOT EXISTS Card_visibility_idx ON Card(visibility);
 CREATE INDEX IF NOT EXISTS Card_collectionStatus_idx ON Card(collectionStatus);
 CREATE INDEX IF NOT EXISTS Card_createdAt_idx ON Card(createdAt DESC);
 CREATE INDEX IF NOT EXISTS CardImage_cardId_idx ON CardImage(cardId);
+CREATE UNIQUE INDEX IF NOT EXISTS ShareCollection_slug_key ON ShareCollection(slug);
+CREATE INDEX IF NOT EXISTS ShareCollection_createdAt_idx ON ShareCollection(createdAt DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS ShareCollectionItem_shareCollectionId_cardId_key ON ShareCollectionItem(shareCollectionId, cardId);
+CREATE INDEX IF NOT EXISTS ShareCollectionItem_shareCollectionId_idx ON ShareCollectionItem(shareCollectionId);
+CREATE INDEX IF NOT EXISTS ShareCollectionItem_cardId_idx ON ShareCollectionItem(cardId);
+CREATE INDEX IF NOT EXISTS ShareCollectionItem_sortOrder_idx ON ShareCollectionItem(sortOrder);
 `);
 
 console.log(`Database ready: ${dbPath}`);

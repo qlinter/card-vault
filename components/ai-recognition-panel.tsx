@@ -278,7 +278,7 @@ export function AiRecognitionPanel({ mode = "create", defaultImageUrls = [] }: A
         <button
           ref={actionButtonRef}
           type="button"
-          className="btn btn-secondary"
+          className="btn btn-primary"
           onClick={handleRecognize}
           disabled={isPending}
         >

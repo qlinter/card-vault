@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 export type ShareThemeCard = {
   id: string;
@@ -27,15 +27,18 @@ export type ShareThemeCard = {
   publicDescription: string | null;
 };
 
+export const shareThemeFields = ["title", "subtitle", "description", "themeNarrative", "themeHighlights", "groupNotes"] as const;
+
+export type ShareThemeField = (typeof shareThemeFields)[number];
+export type ShareThemeValues = Record<ShareThemeField, string>;
+
 type ShareThemeGeneratorProps = {
   cards: ShareThemeCard[];
+  currentValues: ShareThemeValues;
+  onApplySuggestion: (suggestion: Partial<Record<ShareThemeField, unknown>>, overwrite: boolean) => ShareThemeField[];
 };
 
-const targetFields = ["title", "subtitle", "description", "themeNarrative", "themeHighlights", "groupNotes"] as const;
-
-type TargetField = (typeof targetFields)[number];
-
-function fieldLabel(field: TargetField): string {
+function fieldLabel(field: ShareThemeField): string {
   switch (field) {
     case "title":
       return "标题";
@@ -52,23 +55,13 @@ function fieldLabel(field: TargetField): string {
   }
 }
 
-function getField(name: string): HTMLInputElement | HTMLTextAreaElement | null {
-  return document.querySelector(`[name="${name}"]`);
-}
-
-export function ShareThemeGenerator({ cards }: ShareThemeGeneratorProps) {
+export function ShareThemeGenerator({ cards, currentValues, onApplySuggestion }: ShareThemeGeneratorProps) {
   const [overwrite, setOverwrite] = useState(false);
   const [status, setStatus] = useState<string>("选择卡片后，可用 AI 生成展馆文案。");
   const [loading, setLoading] = useState(false);
-  const cardMap = useMemo(() => new Map(cards.map((card) => [card.id, card])), [cards]);
 
   async function generateTheme() {
-    const selectedIds = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="cardIds"]:checked')).map(
-      (input) => input.value
-    );
-    const selectedCards = selectedIds.map((id) => cardMap.get(id)).filter((card): card is ShareThemeCard => Boolean(card));
-
-    if (selectedCards.length === 0) {
+    if (cards.length === 0) {
       setStatus("请先选择至少一张卡片。");
       return;
     }
@@ -77,38 +70,25 @@ export function ShareThemeGenerator({ cards }: ShareThemeGeneratorProps) {
     setStatus("AI 正在生成分享集主题...");
 
     try {
-      const current = Object.fromEntries(targetFields.map((field) => [field, getField(field)?.value ?? ""]));
       const response = await fetch("/api/ai/share-theme", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ current, cards: selectedCards })
+        body: JSON.stringify({ current: currentValues, cards })
       });
-      const data = (await response.json()) as { suggestion?: Partial<Record<TargetField, string>>; error?: string };
+      const data = (await response.json()) as { suggestion?: Partial<Record<ShareThemeField, unknown>>; error?: string };
 
       if (!response.ok || data.error) {
         throw new Error(data.error || `AI 主题生成失败：${response.status}`);
       }
 
-      let filled = 0;
-      for (const field of targetFields) {
-        const value = data.suggestion?.[field]?.trim();
-        const input = getField(field);
-        if (!value || !input) {
-          continue;
-        }
-        if (!overwrite && input.value.trim()) {
-          continue;
-        }
-        input.value = value;
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-        filled += 1;
-      }
+      const filledFields = onApplySuggestion(data.suggestion ?? {}, overwrite);
+      const filledLabels = filledFields.map(fieldLabel);
 
-      const labels = targetFields
-        .filter((field) => data.suggestion?.[field])
-        .map(fieldLabel)
-        .join("、");
-      setStatus(filled > 0 ? `已生成并填入：${labels || "展馆文案"}。` : "AI 已生成主题；当前字段已有内容，未覆盖。");
+      setStatus(
+        filledLabels.length > 0
+          ? `已生成并填入：${filledLabels.join("、")}。`
+          : "AI 已生成主题；当前字段已有内容，未覆盖。"
+      );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "AI 主题生成失败，请稍后重试。");
     } finally {
@@ -127,7 +107,7 @@ export function ShareThemeGenerator({ cards }: ShareThemeGeneratorProps) {
           <input type="checkbox" checked={overwrite} onChange={(event) => setOverwrite(event.target.checked)} />
           覆盖当前文案
         </label>
-        <button type="button" className="btn btn-secondary" onClick={generateTheme} disabled={loading}>
+        <button type="button" className="btn btn-primary" onClick={generateTheme} disabled={loading}>
           {loading ? "生成中..." : "生成主题"}
         </button>
       </div>

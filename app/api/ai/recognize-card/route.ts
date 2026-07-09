@@ -6,6 +6,7 @@ import {
   getChatCompletionsModel,
   getChatCompletionsUrl
 } from "@/lib/azure-openai-settings";
+import { extractJsonRecord, responseToText, safeText } from "@/lib/ai-response-parsing";
 
 export const runtime = "nodejs";
 
@@ -45,144 +46,6 @@ function providerName(provider: string): string {
   return provider === "minimax" ? "MiniMax" : "Azure OpenAI";
 }
 
-function contentToText(content: unknown): string {
-  if (typeof content === "string") {
-    return content;
-  }
-
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => {
-        if (typeof part === "string") {
-          return part;
-        }
-        if (part && typeof part === "object") {
-          const record = part as Record<string, unknown>;
-          if (typeof record.text === "string") {
-            return record.text;
-          }
-          if (typeof record.content === "string") {
-            return record.content;
-          }
-        }
-        return "";
-      })
-      .join("\n");
-  }
-
-  return "";
-}
-
-function responseToText(data: unknown): string {
-  if (!data || typeof data !== "object") {
-    return "";
-  }
-
-  const record = data as Record<string, unknown>;
-  const directCandidates = [record.reply, record.output_text, record.text, record.content];
-  for (const candidate of directCandidates) {
-    const text = contentToText(candidate);
-    if (text.trim()) {
-      return text;
-    }
-  }
-
-  const choices = Array.isArray(record.choices) ? record.choices : [];
-  for (const choice of choices) {
-    if (!choice || typeof choice !== "object") {
-      continue;
-    }
-    const choiceRecord = choice as Record<string, unknown>;
-    const message = choiceRecord.message && typeof choiceRecord.message === "object" ? (choiceRecord.message as Record<string, unknown>) : null;
-    const text =
-      contentToText(message?.content) ||
-      contentToText(choiceRecord.text) ||
-      contentToText(choiceRecord.content) ||
-      contentToText(choiceRecord.delta);
-    if (text.trim()) {
-      return text;
-    }
-  }
-
-  return "";
-}
-
-function findJsonSlice(value: string): string | null {
-  const withoutFence = value
-    .trim()
-    .replace(/^```(?:json)?/i, "")
-    .replace(/```$/i, "")
-    .trim();
-
-  let start = -1;
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-
-  for (let index = 0; index < withoutFence.length; index += 1) {
-    const char = withoutFence[index];
-
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (char === "\\") {
-      escaped = true;
-      continue;
-    }
-    if (char === "\"") {
-      inString = !inString;
-      continue;
-    }
-    if (inString) {
-      continue;
-    }
-    if (char === "{") {
-      if (depth === 0) {
-        start = index;
-      }
-      depth += 1;
-    } else if (char === "}") {
-      depth -= 1;
-      if (depth === 0 && start >= 0) {
-        return withoutFence.slice(start, index + 1);
-      }
-    }
-  }
-
-  return null;
-}
-
-function extractJsonObject(value: string): AiSuggestion {
-  const trimmed = value.trim();
-  try {
-    const parsed = JSON.parse(trimmed) as unknown;
-    if (typeof parsed === "string") {
-      return extractJsonObject(parsed);
-    }
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return pickSuggestionFields(parsed as Record<string, unknown>);
-    }
-  } catch {
-    // Continue with substring extraction.
-  }
-
-  const jsonSlice = findJsonSlice(value);
-
-  if (!jsonSlice) {
-    throw new Error("AI 返回内容不是有效 JSON。");
-  }
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(jsonSlice) as Record<string, unknown>;
-  } catch {
-    throw new Error("AI 返回内容不是有效 JSON。");
-  }
-
-  return pickSuggestionFields(parsed);
-}
-
 function pickSuggestionFields(parsed: Record<string, unknown>): AiSuggestion {
   const result: AiSuggestion = {};
 
@@ -201,6 +64,10 @@ function pickSuggestionFields(parsed: Record<string, unknown>): AiSuggestion {
   return result;
 }
 
+function extractSuggestion(value: unknown): AiSuggestion {
+  return pickSuggestionFields(extractJsonRecord(value));
+}
+
 async function repairJsonFromText(settings: ActiveAiSettings, rawText: string): Promise<AiSuggestion> {
   const url = getChatCompletionsUrl(settings);
   const headers = getChatCompletionsHeaders(settings);
@@ -211,7 +78,7 @@ async function repairJsonFromText(settings: ActiveAiSettings, rawText: string): 
     "字段限制为：playerName, cardTitle, sport, team, year, brand, productLine, subsetName, parallel, cardNumber, serialNumber, serialRange, isRookie, isAutograph, autoType, isPatch, patchType, gradingCompany, grade, certNumber, publicDescription。",
     "不要输出 notes。publicDescription 必须是中文，并侧重球星生涯和卡片收藏意义。",
     "",
-    rawText.slice(0, 4000)
+    safeText(rawText).slice(0, 4000)
   ].join("\n");
 
   const requestInit = (tokenField: "max_completion_tokens" | "max_tokens") => ({
@@ -237,9 +104,7 @@ async function repairJsonFromText(settings: ActiveAiSettings, rawText: string): 
     throw new Error(`${providerName(settings.provider)} JSON 修复失败：${response.status} ${detail.slice(0, 240)}`);
   }
 
-  const data = await response.json();
-  const repairedText = responseToText(data);
-  return extractJsonObject(repairedText);
+  return extractSuggestion(responseToText(await response.json()));
 }
 
 function buildPrompt(): string {
@@ -316,14 +181,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await response.json();
-    const content = responseToText(data);
+    const content = responseToText(await response.json());
     if (!content) {
       return NextResponse.json({ error: `${providerName(settings.provider)} 没有返回可用识别结果。` }, { status: 502 });
     }
 
     try {
-      return NextResponse.json({ suggestion: extractJsonObject(content) });
+      return NextResponse.json({ suggestion: extractSuggestion(content) });
     } catch {
       return NextResponse.json({ suggestion: await repairJsonFromText(settings, content) });
     }

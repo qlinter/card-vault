@@ -1,15 +1,17 @@
 {
   "name": "card-vault",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "description": "Local desktop app for managing and showcasing sports cards.",
   "author": "QL",
   "main": "electron/main.js",
-  "productName": "card vault",
+  "productName": "Card Vault",
   "scripts": {
     "build": "next build",
     "check:encoding": "node scripts/check-encoding.js",
-    "prebuild": "npm run check:encoding",
+    "typecheck": "tsc --noEmit",
+    "clean:cache": "node scripts/clean-cache.js",
+    "prebuild": "npm run check:encoding && npm run typecheck",
     "start": "next start",
     "postinstall": "prisma generate",
     "prepare:local": "node scripts/prepare-local.js",
@@ -38,8 +40,8 @@
   },
   "build": {
     "appId": "com.ql.cardvault",
-    "productName": "card vault",
-    "executableName": "card vault",
+    "productName": "Card Vault",
+    "executableName": "Card Vault",
     "asar": false,
     "npmRebuild": false,
     "electronDist": "node_modules/electron/dist",
@@ -66,8 +68,7 @@
       "public/**/*",
       "scripts/**/*",
       "next.config.mjs",
-      "package.json",
-      ".env"
+      "package.json"
     ],
     "extraMetadata": {
       "main": "electron/main.js"

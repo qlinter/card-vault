@@ -1,9 +1,16 @@
 "use server";
 
+import { randomUUID } from "crypto";
+import { mkdir, writeFile } from "fs/promises";
+import path from "path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { exportShareCollection, ShareExportMode } from "@/lib/share-export";
+import { getShareCoversDir } from "@/lib/storage-paths";
+
+const shareCoverDir = getShareCoversDir();
+const validCoverMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 function toOptionalString(value: FormDataEntryValue | null): string | null {
   if (!value || typeof value !== "string") {
@@ -22,6 +29,23 @@ function slugify(value: string): string {
     .replace(/^-+|-+$/g, "");
 
   return slug || "share";
+}
+
+function toShareCoverPublicPath(fileName: string): string {
+  return `/share-covers/${fileName}`;
+}
+
+async function saveCoverUpload(file: File): Promise<string> {
+  if (!validCoverMimeTypes.has(file.type)) {
+    throw new Error("分享封面仅支持 jpg、jpeg、png、webp 图片格式。");
+  }
+
+  await mkdir(shareCoverDir, { recursive: true });
+  const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : "jpg";
+  const fileName = `share-cover-${Date.now()}-${randomUUID()}.${extension ?? "jpg"}`;
+  const fullPath = path.join(shareCoverDir, fileName);
+  await writeFile(fullPath, Buffer.from(await file.arrayBuffer()));
+  return toShareCoverPublicPath(fileName);
 }
 
 async function uniqueSlug(title: string, existingId?: string): Promise<string> {
@@ -54,7 +78,21 @@ function selectedCardIds(formData: FormData): string[] {
     });
 }
 
-function collectionData(formData: FormData) {
+async function resolveCoverImagePath(formData: FormData): Promise<string | null> {
+  const coverMode = toOptionalString(formData.get("coverMode")) ?? "auto";
+  if (coverMode !== "custom") {
+    return null;
+  }
+
+  const upload = formData.get("coverImage");
+  if (upload instanceof File && upload.size > 0) {
+    return saveCoverUpload(upload);
+  }
+
+  return toOptionalString(formData.get("existingCoverImagePath"));
+}
+
+async function collectionData(formData: FormData) {
   const title = toOptionalString(formData.get("title"));
   if (!title) {
     throw new Error("请填写分享集标题。");
@@ -67,7 +105,7 @@ function collectionData(formData: FormData) {
     themeNarrative: toOptionalString(formData.get("themeNarrative")),
     themeHighlights: toOptionalString(formData.get("themeHighlights")),
     groupNotes: toOptionalString(formData.get("groupNotes")),
-    coverImagePath: toOptionalString(formData.get("coverImagePath"))
+    coverImagePath: await resolveCoverImagePath(formData)
   };
 }
 
@@ -89,7 +127,7 @@ export async function createShareCollectionAction(formData: FormData): Promise<v
   let redirectPath = "/shares/new?error=unknown";
 
   try {
-    const data = collectionData(formData);
+    const data = await collectionData(formData);
     const cardIds = selectedCardIds(formData);
     if (cardIds.length === 0) {
       throw new Error("请至少选择一张卡片。");
@@ -125,7 +163,7 @@ export async function updateShareCollectionAction(shareId: string, formData: For
       throw new Error("分享集不存在或已删除。");
     }
 
-    const data = collectionData(formData);
+    const data = await collectionData(formData);
     const cardIds = selectedCardIds(formData);
     if (cardIds.length === 0) {
       throw new Error("请至少选择一张卡片。");

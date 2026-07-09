@@ -6,6 +6,7 @@ dist
 coverage
 logs
 backups
+data
 *.log
 tsconfig.tsbuildinfo
 prisma/dev.db

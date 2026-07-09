@@ -129,11 +129,13 @@ async function startServer() {
   appendLog("desktop.log", "Starting local Next server.");
   const dataDir = storage.getDataDir();
   const uploadsDir = storage.getUploadsDir();
+  const shareCoversDir = storage.getShareCoversDir();
   const dbPath = storage.getDbPath();
 
   storage.repairDataLayout(dataDir);
   fs.mkdirSync(dataDir, { recursive: true });
   fs.mkdirSync(uploadsDir, { recursive: true });
+  fs.mkdirSync(shareCoversDir, { recursive: true });
   await runNodeCommand(initDbScriptPath, [], "prepare.log");
 
   serverProcess = spawn(process.execPath, [nextCliPath, "start", "--hostname", "127.0.0.1", "--port", "3000"], {
@@ -173,7 +175,7 @@ async function createMainWindow() {
     backgroundColor: "#10131a",
     autoHideMenuBar: true,
     show: false,
-    title: "QL's card vault",
+    title: "Card Vault",
     icon: appIconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.js")

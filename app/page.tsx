@@ -110,7 +110,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const currentStoragePath = resolveConfiguredDataDir() ?? "未设置";
 
   return (
-    <div className="page">
+    <div className="page home-page">
       <div className="title-row">
         <div>
           <h1 className="h1">{"我的球星卡收藏"}</h1>

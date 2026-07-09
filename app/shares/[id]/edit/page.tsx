@@ -49,7 +49,7 @@ export default async function EditSharePage({ params, searchParams }: EditShareP
   const error = toScalar(query.error);
 
   return (
-    <div className="page">
+    <div className="page shares-page">
       <div className="title-row">
         <div>
           <h1 className="h1">编辑分享集</h1>

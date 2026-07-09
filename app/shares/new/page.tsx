@@ -18,7 +18,7 @@ export default async function NewSharePage({ searchParams }: NewSharePageProps) 
   });
 
   return (
-    <div className="page">
+    <div className="page shares-page">
       <div className="title-row">
         <div>
           <h1 className="h1">新建分享集</h1>

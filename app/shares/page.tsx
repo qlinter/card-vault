@@ -27,11 +27,11 @@ export default async function SharesPage({ searchParams }: SharesPageProps) {
   const error = toScalar(params.error);
 
   return (
-    <div className="page">
+    <div className="page shares-page">
       <div className="title-row">
         <div>
           <h1 className="h1">分享</h1>
-          <p className="muted">创建可静态导出、可部署到阿里云服务器的球星卡精品展馆。</p>
+          <p className="muted">创建球星卡精品展馆</p>
         </div>
         <Link className="btn btn-primary" href="/shares/new">
           新建分享集
@@ -62,7 +62,7 @@ export default async function SharesPage({ searchParams }: SharesPageProps) {
                 导出
               </Link>
               <form action={deleteShareCollectionAction.bind(null, share.id)}>
-                <button className="btn btn-secondary" type="submit">
+                <button className="btn btn-danger" type="submit">
                   删除
                 </button>
               </form>

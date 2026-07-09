@@ -30,8 +30,13 @@ function resolveUploadsDir(rootDir, env = process.env) {
   return path.join(resolveDataDir(rootDir, env), "uploads");
 }
 
+function resolveShareCoversDir(rootDir, env = process.env) {
+  return path.join(resolveDataDir(rootDir, env), "share-covers");
+}
+
 module.exports = {
   resolveDataDir,
   resolveDbPath,
+  resolveShareCoversDir,
   resolveUploadsDir
 };

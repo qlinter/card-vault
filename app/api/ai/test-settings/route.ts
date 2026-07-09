@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "AI 识图设置测试失败。";
+    const message = error instanceof Error ? error.message : "AI 设置测试失败。";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

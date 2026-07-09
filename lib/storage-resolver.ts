@@ -56,3 +56,7 @@ export function resolveDatabasePath(env: StorageEnv = process.env): string {
 export function resolveUploadsDir(env: StorageEnv = process.env): string {
   return path.join(resolveDataDir(env), "uploads");
 }
+
+export function resolveShareCoversDir(env: StorageEnv = process.env): string {
+  return path.join(resolveDataDir(env), "share-covers");
+}

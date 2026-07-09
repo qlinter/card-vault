@@ -30,7 +30,7 @@ export default async function ExportSharePage({ params, searchParams }: ExportSh
   const zipPath = toScalar(query.zip);
 
   return (
-    <div className="page">
+    <div className="page shares-page">
       <div className="title-row">
         <div>
           <h1 className="h1">导出分享集</h1>
@@ -50,7 +50,7 @@ export default async function ExportSharePage({ params, searchParams }: ExportSh
       {error ? <p className="note-error">{error}</p> : null}
       {success ? (
         <div className="panel export-result">
-          <h2>{success === "aliyun" ? "阿里云发布包已生成" : "静态分享包已生成"}</h2>
+          <h2>{success === "cloud" ? "云端发布包已生成" : "静态分享包已生成"}</h2>
           <p>文件夹：{folderPath}</p>
           <p>压缩包：{zipPath}</p>
           <p className="muted">导出包使用相对路径，不包含价格、成本、购买渠道、备注、AI Key 或本地数据库路径。</p>
@@ -66,11 +66,11 @@ export default async function ExportSharePage({ params, searchParams }: ExportSh
           </button>
         </form>
 
-        <form action={exportShareCollectionAction.bind(null, share.id, "aliyun")} className="panel share-export-card">
-          <h2>阿里云发布包</h2>
-          <p className="muted">生成适合上传到阿里云 ECS + Nginx 静态目录的发布包，包含部署说明和 Nginx 示例配置。</p>
+        <form action={exportShareCollectionAction.bind(null, share.id, "cloud")} className="panel share-export-card">
+          <h2>云端发布包</h2>
+          <p className="muted">生成适合上传到服务器静态目录的发布包，包含部署说明和 Nginx 示例配置。</p>
           <button className="btn btn-primary" type="submit">
-            生成阿里云发布包
+            生成云端发布包
           </button>
         </form>
       </section>

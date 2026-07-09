@@ -87,7 +87,7 @@ export function AzureOpenAISettings({ defaultOpen = false }: AzureOpenAISettings
         }
       } catch {
         if (!cancelled) {
-          setMessage("读取 AI 识图设置失败。");
+          setMessage("读取 AI 设置失败。");
         }
       }
     }
@@ -233,7 +233,7 @@ export function AzureOpenAISettings({ defaultOpen = false }: AzureOpenAISettings
     <div className="panel ai-settings-panel">
       <button type="button" className="ai-settings-toggle" onClick={() => setIsOpen((value) => !value)}>
         <span>
-          <strong>AI 识图设置</strong>
+          <strong>AI 设置</strong>
           <span className="muted">{configured ? `已配置 ${providerName(settings.provider)}` : "未配置"}</span>
         </span>
         <span>{isOpen ? "收起" : "展开"}</span>

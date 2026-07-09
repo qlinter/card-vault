@@ -190,7 +190,7 @@ export function CardForm({ mode, action, error, card, values }: CardFormProps) {
           <textarea
             name="publicDescription"
             defaultValue={pickValue(values?.publicDescription, card?.publicDescription ?? "")}
-            placeholder="这段文字会显示在对外展示页的单卡详情中。"
+            placeholder="这段文字会显示在展示或分享的单卡详情中。"
           />
         </label>
 

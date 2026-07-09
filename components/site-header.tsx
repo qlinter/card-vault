@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 export function SiteHeader() {
   const pathname = usePathname();
   const homeHref = pathname.startsWith("/showcase") ? "/showcase" : "/";
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
   return (
     <header className="topbar">
@@ -14,10 +15,10 @@ export function SiteHeader() {
           Card Vault
         </Link>
         <nav className="nav-links">
-          <Link href="/">首页</Link>
-          <Link href="/showcase">展示页</Link>
-          <Link href="/shares">分享</Link>
-          <Link href="/settings">设置</Link>
+          <Link href="/" className={isActive("/") ? "active" : undefined}>首页</Link>
+          <Link href="/showcase" className={isActive("/showcase") ? "active" : undefined}>展示</Link>
+          <Link href="/shares" className={isActive("/shares") ? "active" : undefined}>分享</Link>
+          <Link href="/settings" className={isActive("/settings") ? "active" : undefined}>设置</Link>
         </nav>
       </div>
     </header>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShowcaseGallery } from "@/components/showcase-gallery";
+import { SharePreviewCards, SharePreviewItem } from "@/components/share-preview-cards";
 import { normalizeImagePath } from "@/lib/image-path";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
@@ -24,10 +24,17 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
     notFound();
   }
 
-  const coverItem =
-    share.items.find((item) => item.card.images.some((image) => image.path === share.coverImagePath)) ??
-    share.items.find((item) => item.card.images.length > 0);
-  const coverImage = coverItem?.card.images.find((image) => image.path === share.coverImagePath) ?? coverItem?.card.images[0];
+  const fallbackCover = share.items.find((item) => item.card.images.length > 0)?.card.images[0]?.path ?? null;
+  const coverImagePath = share.coverImagePath?.startsWith("/share-covers/") ? share.coverImagePath : fallbackCover;
+  const previewItems: SharePreviewItem[] = share.items.map((item) => ({
+    id: item.id,
+    playerName: item.card.playerName,
+    cardTitle: item.card.cardTitle,
+    displayTitle: item.displayTitle || item.card.cardTitle,
+    displayDescription: item.displayDescription || item.card.publicDescription || "",
+    meta: [item.card.year, item.card.brand, item.card.productLine, item.card.grade].filter(Boolean).join(" / "),
+    images: item.card.images.map((image) => ({ id: image.id, path: image.path }))
+  }));
 
   return (
     <div className="share-preview-page">
@@ -39,7 +46,7 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
 
         <section className="share-preview-hero">
           <div>
-            <p className="showcase-kicker">Card Vault Share</p>
+            <p className="showcase-kicker">Card Vault 展馆</p>
             <h1>{share.title}</h1>
             {share.subtitle ? <p className="share-preview-subtitle">{share.subtitle}</p> : null}
             {share.description ? <p className="share-preview-copy">{share.description}</p> : null}
@@ -48,46 +55,33 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
               <span>{new Set(share.items.map((item) => item.card.playerName)).size} 位球员或组合</span>
             </div>
           </div>
-          {coverImage ? <img src={normalizeImagePath(coverImage.path)} alt={coverItem?.card.cardTitle ?? share.title} /> : null}
+          {coverImagePath ? <img src={normalizeImagePath(coverImagePath)} alt={share.title} /> : null}
         </section>
 
         {share.themeNarrative || share.themeHighlights || share.groupNotes ? (
           <section className="share-preview-story">
-            {share.themeNarrative ? <article><h2>展馆叙事</h2><p>{share.themeNarrative}</p></article> : null}
-            {share.themeHighlights ? <article><h2>收藏亮点</h2><p>{share.themeHighlights}</p></article> : null}
-            {share.groupNotes ? <article><h2>主题分组</h2><p>{share.groupNotes}</p></article> : null}
+            {share.themeNarrative ? (
+              <article>
+                <h2>展馆叙事</h2>
+                <p>{share.themeNarrative}</p>
+              </article>
+            ) : null}
+            {share.themeHighlights ? (
+              <article>
+                <h2>收藏亮点</h2>
+                <p>{share.themeHighlights}</p>
+              </article>
+            ) : null}
+            {share.groupNotes ? (
+              <article>
+                <h2>主题分组</h2>
+                <p>{share.groupNotes}</p>
+              </article>
+            ) : null}
           </section>
         ) : null}
 
-        <section className="share-preview-grid">
-          {share.items.map((item) => (
-            <article className="share-preview-card" key={item.id}>
-              {item.card.images[0] ? (
-                <img src={normalizeImagePath(item.card.images[0].path)} alt={item.card.cardTitle} />
-              ) : (
-                <div className="share-card-placeholder" />
-              )}
-              <div>
-                <h2>{item.card.playerName}</h2>
-                <p>{item.displayTitle || item.card.cardTitle}</p>
-                <p className="muted">{[item.card.year, item.card.brand, item.card.productLine, item.card.grade].filter(Boolean).join(" / ")}</p>
-              </div>
-            </article>
-          ))}
-        </section>
-
-        {share.items[0] ? (
-          <section className="share-preview-detail">
-            <div className="panel">
-              <ShowcaseGallery cardTitle={share.items[0].card.cardTitle} images={share.items[0].card.images} />
-            </div>
-            <div className="panel">
-              <h2>{share.items[0].card.playerName}</h2>
-              <p className="share-preview-subtitle">{share.items[0].displayTitle || share.items[0].card.cardTitle}</p>
-              <p className="share-preview-copy">{share.items[0].displayDescription || share.items[0].card.publicDescription}</p>
-            </div>
-          </section>
-        ) : null}
+        <SharePreviewCards items={previewItems} />
       </main>
     </div>
   );

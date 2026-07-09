@@ -3,6 +3,10 @@ export function normalizeImagePath(imagePath: string): string {
     return imagePath;
   }
 
+  if (imagePath.startsWith("/share-covers/")) {
+    return imagePath;
+  }
+
   if (imagePath.startsWith("/uploads/")) {
     return imagePath.replace("/uploads/", "/media/");
   }

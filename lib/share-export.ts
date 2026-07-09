@@ -2,9 +2,9 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import fs from "fs";
 import path from "path";
 import { Card, CardImage, ShareCollection, ShareCollectionItem } from "@prisma/client";
-import { getUploadsDir, resolveDataDir } from "@/lib/storage-paths";
+import { getShareCoversDir, getUploadsDir, resolveDataDir } from "@/lib/storage-paths";
 
-export type ShareExportMode = "static" | "aliyun";
+export type ShareExportMode = "static" | "cloud";
 
 type ShareCollectionWithItems = ShareCollection & {
   items: Array<
@@ -37,6 +37,14 @@ type ExportCard = {
   gradingCompany: string | null;
   grade: string | null;
   certNumber: string | null;
+  href: string;
+  images: string[];
+};
+
+type ExportCardInput = {
+  item: ShareCollectionItem & {
+    card: Card & { images: CardImage[] };
+  };
   href: string;
   images: string[];
 };
@@ -84,6 +92,10 @@ function imageSourcePath(imagePath: string): string {
   return path.join(getUploadsDir(), path.basename(imagePath));
 }
 
+function coverSourcePath(imagePath: string): string {
+  return path.join(getShareCoversDir(), path.basename(imagePath));
+}
+
 function safeFileName(value: string): string {
   const parsed = path.parse(value);
   const name = slugify(parsed.name);
@@ -119,6 +131,37 @@ function cardMeta(card: ExportCard): Array<[string, string]> {
   ];
 
   return rows.filter((row): row is [string, string] => Boolean(row[1]));
+}
+
+function toPublicExportCard({ item, href, images }: ExportCardInput): ExportCard {
+  const card = item.card;
+
+  return {
+    playerName: card.playerName,
+    cardTitle: card.cardTitle,
+    displayTitle: item.displayTitle || card.cardTitle,
+    description: item.displayDescription || card.publicDescription || "",
+    sport: card.sport,
+    team: card.team,
+    year: card.year,
+    brand: card.brand,
+    productLine: card.productLine,
+    subsetName: card.subsetName,
+    parallel: card.parallel,
+    cardNumber: card.cardNumber,
+    serialNumber: card.serialNumber,
+    serialRange: card.serialRange,
+    isRookie: card.isRookie,
+    isAutograph: card.isAutograph,
+    autoType: card.autoType,
+    isPatch: card.isPatch,
+    patchType: card.patchType,
+    gradingCompany: card.gradingCompany,
+    grade: card.grade,
+    certNumber: card.certNumber,
+    href,
+    images
+  };
 }
 
 function renderLayout(title: string, body: string, depth: "root" | "card" = "root"): string {
@@ -182,7 +225,7 @@ function renderIndex(data: ExportData): string {
   const body = `<main class="shell">
     <section class="hero">
       <div class="hero-copy">
-        <p class="kicker">Card Vault Share</p>
+        <p class="kicker">Card Vault 展馆</p>
         <h1>${escapeHtml(data.title)}</h1>
         ${data.subtitle ? `<p class="subtitle">${escapeHtml(data.subtitle)}</p>` : ""}
         ${paragraphHtml(data.description)}
@@ -339,10 +382,10 @@ function readmeDeploy(data: ExportData): string {
 `;
 }
 
-function aliyunReadme(data: ExportData): string {
-  return `# ${data.title} - 阿里云部署说明
+function cloudReadme(data: ExportData): string {
+  return `# ${data.title} - 云端部署说明
 
-本目录是 Card Vault 生成的静态展馆发布包，适合上传到阿里云 ECS + Nginx 静态目录。
+本目录是 Card Vault 生成的静态展馆发布包，适合上传到服务器静态目录，并通过 Nginx 等服务对外访问。
 
 ## 推荐目录
 
@@ -358,7 +401,7 @@ function aliyunReadme(data: ExportData): string {
 
 ## 服务器开关
 
-没有分享需求时可以关闭 ECS。服务器关闭时公网链接不可访问；重新启动后，只要文件仍保留在服务器目录中，链接会恢复。
+没有分享需求时可以关闭服务器。服务器关闭时公网链接不可访问；重新启动后，只要文件仍保留在服务器目录中，链接会恢复。
 
 ## 后续一键发布预留
 
@@ -497,6 +540,7 @@ export async function exportShareCollection(
   let imageCount = 0;
   let coverImage: string | null = null;
   const sortedItems = [...collection.items].sort((a, b) => a.sortOrder - b.sortOrder);
+  const customCoverPath = collection.coverImagePath;
 
   for (const [cardIndex, item] of sortedItems.entries()) {
     const card = item.card;
@@ -513,39 +557,26 @@ export async function exportShareCollection(
       const relative = `assets/images/${fileName}`;
       await fs.promises.copyFile(source, path.join(imageDir, fileName));
       images.push(relative);
-      if (image.path === collection.coverImagePath) {
-        coverImage = relative;
-      }
       imageCount += 1;
     }
 
-    cards.push({
-      playerName: card.playerName,
-      cardTitle: card.cardTitle,
-      displayTitle: item.displayTitle || card.cardTitle,
-      description: item.displayDescription || card.publicDescription || "",
-      sport: card.sport,
-      team: card.team,
-      year: card.year,
-      brand: card.brand,
-      productLine: card.productLine,
-      subsetName: card.subsetName,
-      parallel: card.parallel,
-      cardNumber: card.cardNumber,
-      serialNumber: card.serialNumber,
-      serialRange: card.serialRange,
-      isRookie: card.isRookie,
-      isAutograph: card.isAutograph,
-      autoType: card.autoType,
-      isPatch: card.isPatch,
-      patchType: card.patchType,
-      gradingCompany: card.gradingCompany,
-      grade: card.grade,
-      certNumber: card.certNumber,
-      publicDescription: undefined,
-      href: `cards/${cardSlug}.html`,
-      images
-    } as ExportCard);
+    cards.push(
+      toPublicExportCard({
+        item,
+        href: `cards/${cardSlug}.html`,
+        images
+      })
+    );
+  }
+
+  if (!coverImage && customCoverPath?.startsWith("/share-covers/")) {
+    const source = coverSourcePath(customCoverPath);
+    if (fs.existsSync(source)) {
+      const fileName = `cover-${safeFileName(path.basename(customCoverPath))}`;
+      coverImage = `assets/images/${fileName}`;
+      await fs.promises.copyFile(source, path.join(imageDir, fileName));
+      imageCount += 1;
+    }
   }
 
   const data: ExportData = {
@@ -566,8 +597,8 @@ export async function exportShareCollection(
   await writeFile(path.join(folderPath, "index.html"), renderIndex(data), "utf8");
   await writeFile(path.join(folderPath, "README-deploy.md"), readmeDeploy(data), "utf8");
 
-  if (mode === "aliyun") {
-    await writeFile(path.join(folderPath, "README-deploy-aliyun.md"), aliyunReadme(data), "utf8");
+  if (mode === "cloud") {
+    await writeFile(path.join(folderPath, "README-deploy-cloud.md"), cloudReadme(data), "utf8");
     await writeFile(path.join(folderPath, "nginx-card-vault-share.conf"), nginxConf(data), "utf8");
   }
 

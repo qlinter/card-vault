@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { resolveDbPath, resolveUploadsDir } = require("../scripts/storage-paths");
+const { resolveDbPath, resolveShareCoversDir, resolveUploadsDir } = require("../scripts/storage-paths");
 
 function loadJson(filePath) {
   try {
@@ -80,6 +80,10 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     return resolveUploadsDir(projectRoot, { CARD_VAULT_DATA_DIR: getDataDir() });
   }
 
+  function getShareCoversDir() {
+    return resolveShareCoversDir(projectRoot, { CARD_VAULT_DATA_DIR: getDataDir() });
+  }
+
   function getDbPath() {
     return resolveDbPath(projectRoot, {
       CARD_VAULT_DATA_DIR: getDataDir(),
@@ -112,11 +116,13 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
 
   function repairDataLayout(dataDir) {
     const uploadsDir = path.join(dataDir, "uploads");
+    const shareCoversDir = path.join(dataDir, "share-covers");
     const rootDbPath = path.join(dataDir, "dev.db");
     const misplacedDbPath = path.join(uploadsDir, "dev.db");
 
     fs.mkdirSync(dataDir, { recursive: true });
     fs.mkdirSync(uploadsDir, { recursive: true });
+    fs.mkdirSync(shareCoversDir, { recursive: true });
 
     if (fs.existsSync(misplacedDbPath) && !fs.existsSync(rootDbPath)) {
       fs.renameSync(misplacedDbPath, rootDbPath);
@@ -147,10 +153,15 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     }
 
     const oldUploadsDir = path.join(resolvedSourceDir, "uploads");
+    const oldShareCoversDir = path.join(resolvedSourceDir, "share-covers");
     const oldDbPath = path.join(resolvedSourceDir, "dev.db");
 
     if (fs.existsSync(oldUploadsDir)) {
       fs.rmSync(oldUploadsDir, { recursive: true, force: true });
+    }
+
+    if (fs.existsSync(oldShareCoversDir)) {
+      fs.rmSync(oldShareCoversDir, { recursive: true, force: true });
     }
 
     if (fs.existsSync(oldDbPath)) {
@@ -163,8 +174,10 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     const sourceDataDir = getDataDir();
     const sourceDbPath = getDbPath();
     const sourceUploadsDir = getUploadsDir();
+    const sourceShareCoversDir = getShareCoversDir();
     const targetDbPath = path.join(targetDir, "dev.db");
     const targetUploadsDir = path.join(targetDir, "uploads");
+    const targetShareCoversDir = path.join(targetDir, "share-covers");
 
     repairDataLayout(sourceDataDir);
 
@@ -178,6 +191,7 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
 
     fs.mkdirSync(targetDir, { recursive: true });
     fs.mkdirSync(targetUploadsDir, { recursive: true });
+    fs.mkdirSync(targetShareCoversDir, { recursive: true });
 
     if (fs.existsSync(sourceDbPath) && !fs.existsSync(targetDbPath)) {
       fs.copyFileSync(sourceDbPath, targetDbPath);
@@ -190,6 +204,16 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
         }
 
         copyFileIfMissing(path.join(sourceUploadsDir, entry.name), path.join(targetUploadsDir, entry.name));
+      }
+    }
+
+    if (fs.existsSync(sourceShareCoversDir)) {
+      for (const entry of fs.readdirSync(sourceShareCoversDir, { withFileTypes: true })) {
+        if (!entry.isFile()) {
+          continue;
+        }
+
+        copyFileIfMissing(path.join(sourceShareCoversDir, entry.name), path.join(targetShareCoversDir, entry.name));
       }
     }
 
@@ -223,6 +247,7 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
   return {
     getDataDir,
     getUploadsDir,
+    getShareCoversDir,
     getDbPath,
     getEnv,
     repairDataLayout,

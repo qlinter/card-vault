@@ -64,7 +64,7 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
     <div className="page showcase-page showcase-backdrop">
       <div className="title-row">
         <div>
-          <h1 className="h1">展示页</h1>
+          <h1 className="h1">展示</h1>
           <p className="muted">
             当前展示 {cards.length} 张卡片，来自 {groups.length} 位球员或组合
           </p>

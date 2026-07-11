@@ -141,10 +141,10 @@ export function AzureOpenAISettings({ defaultOpen = false }: AzureOpenAISettings
       });
       setAzureApiKey("");
       setMiniMaxApiKey("");
-      setMessage(`${providerName(saved.provider)} 设置已保存。`);
+      setMessage(providerName(saved.provider) + " 设置已保存。");
     } catch (error) {
       const detail = error instanceof Error ? error.message : "请稍后重试。";
-      setMessage(`保存失败：${detail}`);
+      setMessage("保存失败：" + detail);
     } finally {
       setIsSaving(false);
     }
@@ -163,10 +163,10 @@ export function AzureOpenAISettings({ defaultOpen = false }: AzureOpenAISettings
       const data = (await response.json()) as { ok?: boolean; error?: string };
 
       if (!response.ok || !data.ok) {
-        throw new Error(data.error || `${providerName(settings.provider)} 连接测试失败。`);
+        throw new Error(data.error || providerName(settings.provider) + " 连接测试失败。");
       }
 
-      setMessage(`${providerName(settings.provider)} 连接测试通过。`);
+      setMessage(providerName(settings.provider) + " 连接测试通过。");
     } catch (error) {
       const detail =
         error instanceof Error
@@ -198,7 +198,7 @@ export function AzureOpenAISettings({ defaultOpen = false }: AzureOpenAISettings
 
       const models = data.models ?? [];
       setModelOptions(models);
-      setMessage(models.length > 0 ? `已读取 ${models.length} 个模型。` : "没有读取到可用模型。");
+      setMessage(models.length > 0 ? "已读取 " + models.length + " 个模型。" : "没有读取到可用模型。");
     } catch (error) {
       const detail = error instanceof Error ? error.message : "请检查当前服务商的 Endpoint 和 API Key。";
       setMessage(detail);
@@ -230,11 +230,11 @@ export function AzureOpenAISettings({ defaultOpen = false }: AzureOpenAISettings
       : Boolean(settings.azure.endpoint && (settings.azure.hasApiKey || azureApiKey.trim()));
 
   return (
-    <div className="panel ai-settings-panel">
+    <section className="panel settings-section ai-settings-panel">
       <button type="button" className="ai-settings-toggle" onClick={() => setIsOpen((value) => !value)}>
         <span>
-          <strong>AI 设置</strong>
-          <span className="muted">{configured ? `已配置 ${providerName(settings.provider)}` : "未配置"}</span>
+          <strong>{"AI 识图设置"}</strong>
+          <span className="muted">{configured ? "已配置 " + providerName(settings.provider) : "未配置"}</span>
         </span>
         <span>{isOpen ? "收起" : "展开"}</span>
       </button>
@@ -242,12 +242,12 @@ export function AzureOpenAISettings({ defaultOpen = false }: AzureOpenAISettings
       {isOpen ? (
         <>
           <p className="muted" style={{ margin: "0.75rem 0" }}>
-            Azure OpenAI 和 MiniMax 的 Endpoint 会分别保存。切换服务商后，可直接测试当前服务商。
+            {"配置 AI 识图和分享文案生成所需的服务商、模型和连接信息。"}
           </p>
 
           <div className="form-grid">
             <label className="field">
-              <span>服务商</span>
+              <span>{"服务商"}</span>
               <select value={settings.provider} onChange={(event) => updateProvider(event.target.value as AiProvider)} disabled={!isDesktop}>
                 <option value="azure">Azure OpenAI</option>
                 <option value="minimax">MiniMax</option>
@@ -360,7 +360,7 @@ export function AzureOpenAISettings({ defaultOpen = false }: AzureOpenAISettings
               <label className="field">
                 <span>{settings.provider === "minimax" ? "选择模型" : "选择 Deployment"}</span>
                 <select value={settings.provider === "minimax" ? settings.minimax.model : settings.azure.deployment} onChange={(event) => handleModelOptionChange(event.target.value)}>
-                  <option value="">请选择</option>
+                  <option value="">{"请选择"}</option>
                   {modelOptions.map((model) => (
                     <option key={model} value={model}>
                       {model}
@@ -385,7 +385,7 @@ export function AzureOpenAISettings({ defaultOpen = false }: AzureOpenAISettings
 
           {!isDesktop ? (
             <p className="muted" style={{ margin: "0.65rem 0 0" }}>
-              当前不是桌面端环境，界面内保存不可用；开发态可通过 .env.local 配置 AI 服务商。
+              {"当前不是桌面端环境，界面内保存不可用；开发态可通过 .env.local 配置 AI 服务商。"}
             </p>
           ) : null}
         </>
@@ -396,6 +396,6 @@ export function AzureOpenAISettings({ defaultOpen = false }: AzureOpenAISettings
           {message}
         </p>
       ) : null}
-    </div>
+    </section>
   );
 }

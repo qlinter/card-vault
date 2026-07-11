@@ -43,6 +43,37 @@ function copyFileIfMissing(sourcePath, targetPath) {
   }
 }
 
+function dateFolderName(date = new Date()) {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return [year, month, day].join("-");
+}
+
+function timeSuffix(date = new Date()) {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return [hours, minutes, seconds].join("");
+}
+
+function uniqueBackupTarget(dateDir) {
+  const firstTarget = path.join(dateDir, "data");
+  if (!fs.existsSync(firstTarget)) {
+    return firstTarget;
+  }
+
+  let index = 0;
+  while (true) {
+    const suffix = index === 0 ? timeSuffix() : timeSuffix() + "-" + (index + 1);
+    const target = path.join(dateDir, "data-" + suffix);
+    if (!fs.existsSync(target)) {
+      return target;
+    }
+    index += 1;
+  }
+}
+
 function flattenNestedUploads(uploadsDir) {
   const nestedUploadsDir = path.join(uploadsDir, "uploads");
   if (!fs.existsSync(nestedUploadsDir)) {
@@ -76,6 +107,10 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     return loadStorageConfig().dataDir || path.join(appDataRoot, "data");
   }
 
+  function getBackupDir() {
+    return loadStorageConfig().backupDir || path.join(appDataRoot, "backups");
+  }
+
   function getUploadsDir() {
     return resolveUploadsDir(projectRoot, { CARD_VAULT_DATA_DIR: getDataDir() });
   }
@@ -103,7 +138,22 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
   }
 
   function saveStorageConfig(dataDir) {
-    saveJson(storageConfigPath, { dataDir });
+    const current = loadStorageConfig();
+    saveJson(storageConfigPath, { ...current, dataDir });
+  }
+
+  function saveBackupConfig(backupDir) {
+    const current = loadStorageConfig();
+    saveJson(storageConfigPath, { ...current, backupDir });
+  }
+
+  function validateBackupDir(backupDir) {
+    const dataDir = path.resolve(getDataDir());
+    const resolvedBackupDir = path.resolve(backupDir);
+
+    if (pathsEqual(dataDir, resolvedBackupDir) || isSubPath(dataDir, resolvedBackupDir)) {
+      throw new Error("Backup path cannot be inside the current data folder.");
+    }
   }
 
   function saveCleanupConfig(pendingDeleteDir) {
@@ -222,6 +272,35 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     return { changed: true, previousPath: sourceDataDir, currentPath: targetDir };
   }
 
+  function chooseBackupDir(selectedPath) {
+    const backupDir = path.resolve(selectedPath);
+    validateBackupDir(backupDir);
+    saveBackupConfig(backupDir);
+    fs.mkdirSync(backupDir, { recursive: true });
+    return { path: backupDir };
+  }
+
+  function backupDataFolder() {
+    const sourceDataDir = getDataDir();
+    const backupDir = getBackupDir();
+    validateBackupDir(backupDir);
+    repairDataLayout(sourceDataDir);
+
+    if (!fs.existsSync(sourceDataDir)) {
+      throw new Error("Data folder does not exist.");
+    }
+
+    const dateDir = path.join(backupDir, dateFolderName());
+    fs.mkdirSync(dateDir, { recursive: true });
+    const targetDataDir = uniqueBackupTarget(dateDir);
+    fs.cpSync(sourceDataDir, targetDataDir, { recursive: true });
+    return { backupRoot: backupDir, datePath: dateDir, backupPath: targetDataDir };
+  }
+
+  function getBackupSettings() {
+    return { path: getBackupDir() };
+  }
+
   function runPendingCleanup() {
     const pendingDeleteDir = loadCleanupConfig().pendingDeleteDir;
     if (!pendingDeleteDir) {
@@ -246,11 +325,15 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
 
   return {
     getDataDir,
+    getBackupDir,
     getUploadsDir,
     getShareCoversDir,
     getDbPath,
     getEnv,
     repairDataLayout,
+    chooseBackupDir,
+    backupDataFolder,
+    getBackupSettings,
     migrateTo,
     runPendingCleanup
   };

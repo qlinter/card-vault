@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 
@@ -32,33 +32,36 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
         return;
       }
 
-      setMessage(`新路径已保存到 ${result.path}，应用正在重启。`);
+      setMessage("新路径已保存到 " + result.path + "，应用正在重启。");
     } catch (error) {
       const detail = error instanceof Error ? error.message : "请稍后重试。";
-      setMessage(`修改存储路径失败：${detail}`);
+      setMessage("修改存储路径失败：" + detail);
     } finally {
       setIsPending(false);
     }
   }
 
   return (
-    <div className="panel" style={{ marginBottom: "1rem" }}>
+    <section className="panel settings-section">
       <div className="title-row" style={{ marginBottom: "0.4rem" }}>
         <div>
-          <strong>存储路径</strong>
+          <h2>{"存储路径"}</h2>
           <p className="muted" style={{ margin: "0.35rem 0 0" }}>
-            {currentPath}
+            {"设置数据库、卡片图片、分享封面和导出文件的本地保存位置。"}
           </p>
         </div>
         <button type="button" className="btn btn-secondary" onClick={handleChooseDirectory} disabled={isPending}>
-          {isPending ? "处理中..." : "更改路径"}
+          {isPending ? "处理中..." : "更改存储路径"}
         </button>
       </div>
+      <p className="muted" style={{ margin: "0.35rem 0 0" }}>
+        <strong>{"当前路径："}</strong>{currentPath}
+      </p>
       {message ? (
-        <p className="muted" style={{ margin: 0 }}>
+        <p className="muted" style={{ margin: "0.5rem 0 0" }}>
           {message}
         </p>
       ) : null}
-    </div>
+    </section>
   );
 }

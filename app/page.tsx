@@ -1,9 +1,7 @@
 import { FilterBar } from "@/components/filter-bar";
-import { StorageSettings } from "@/components/storage-settings";
 import { splitTagString, buildCardFilters, buildCardSorting } from "@/lib/card-helpers";
 import { normalizeImagePath } from "@/lib/image-path";
 import { prisma } from "@/lib/prisma";
-import { resolveConfiguredDataDir } from "@/lib/storage-resolver";
 
 type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -107,7 +105,6 @@ export default async function Home({ searchParams }: HomeProps) {
   const successMessage = successText(toScalar(params.success));
   const errorMessage = toScalar(params.error);
   const totalValue = cards.reduce((sum, card) => sum + (card.currentValue ?? 0), 0);
-  const currentStoragePath = resolveConfiguredDataDir() ?? "未设置";
 
   return (
     <div className="page home-page">
@@ -137,8 +134,6 @@ export default async function Home({ searchParams }: HomeProps) {
           </p>
         </div>
       </div>
-
-      <StorageSettings currentPath={currentStoragePath} />
 
       {successMessage ? <p className="note-ok">{successMessage}</p> : null}
       {errorMessage ? <p className="note-error">{"操作失败："}{errorMessage}</p> : null}

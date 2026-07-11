@@ -231,6 +231,43 @@ ipcMain.handle("card-vault:choose-storage-directory", async () => {
   }
 });
 
+ipcMain.handle("card-vault:get-backup-settings", async () => storage.getBackupSettings());
+
+ipcMain.handle("card-vault:choose-backup-directory", async () => {
+  try {
+    const result = await dialog.showOpenDialog({
+      title: "\u9009\u62e9\u5907\u4efd\u4fdd\u5b58\u8def\u5f84",
+      properties: ["openDirectory", "createDirectory"],
+      defaultPath: storage.getBackupDir()
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      appendLog("desktop.log", "Backup path change cancelled.");
+      return { cancelled: true, path: storage.getBackupDir() };
+    }
+
+    const backup = storage.chooseBackupDir(result.filePaths[0]);
+    appendLog("desktop.log", "Backup path updated to: " + backup.path);
+    return { cancelled: false, path: backup.path };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown backup path error.";
+    appendLog("desktop.log", "Backup path update failed: " + message);
+    throw error;
+  }
+});
+
+ipcMain.handle("card-vault:backup-data-folder", async () => {
+  try {
+    const result = storage.backupDataFolder();
+    appendLog("desktop.log", "Data folder backup created: " + result.backupPath);
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown backup error.";
+    appendLog("desktop.log", "Data folder backup failed: " + message);
+    throw error;
+  }
+});
+
 ipcMain.handle("card-vault:get-ai-settings", async () => aiConfig.getPublicSettings());
 
 ipcMain.handle("card-vault:save-ai-settings", async (_event, settings) => {

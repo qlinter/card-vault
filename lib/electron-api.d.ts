@@ -4,6 +4,9 @@ declare global {
   interface Window {
     cardVaultDesktop?: {
       chooseStorageDirectory: () => Promise<{ path: string; changed: boolean; cancelled: boolean }>;
+      getBackupSettings: () => Promise<{ path: string }>;
+      chooseBackupDirectory: () => Promise<{ path: string; cancelled: boolean }>;
+      backupDataFolder: () => Promise<{ backupRoot: string; datePath: string; backupPath: string }>;
       getAiSettings: () => Promise<{
         provider: "azure" | "minimax";
         azure: {

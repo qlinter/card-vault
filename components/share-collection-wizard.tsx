@@ -17,6 +17,7 @@ type ShareCollectionWizardProps = {
   aiCards: ShareThemeCard[];
   initialValues: ShareThemeValues & {
     coverImagePath: string;
+    backgroundImagePath: string;
   };
   error?: string;
 };
@@ -53,19 +54,23 @@ function initialDrafts(cards: SharePickerCard[]): Record<string, ShareCardDraft>
 
 function selectedLabels(cards: SharePickerCard[], selectedIds: string[], drafts: Record<string, ShareCardDraft>): string[] {
   const selectedSet = new Set(selectedIds);
+  const selectedOrder = new Map(selectedIds.map((id, index) => [id, index]));
 
   return cards
     .filter((card) => selectedSet.has(card.id))
     .sort((a, b) => {
       const aOrder = Number.parseInt(drafts[a.id]?.sortOrder ?? `${a.sortOrder}`, 10);
       const bOrder = Number.parseInt(drafts[b.id]?.sortOrder ?? `${b.sortOrder}`, 10);
-      return aOrder - bOrder;
+      const aRank = Number.isFinite(aOrder) && aOrder > 0 ? aOrder : selectedOrder.get(a.id) ?? 0;
+      const bRank = Number.isFinite(bOrder) && bOrder > 0 ? bOrder : selectedOrder.get(b.id) ?? 0;
+      return aRank - bRank;
     })
     .map((card) => `${card.playerName} - ${card.cardTitle}`);
 }
 
 export function ShareCollectionWizard({ action, cards, aiCards, initialValues, error }: ShareCollectionWizardProps) {
   const initialCoverImagePath = initialValues.coverImagePath.startsWith("/share-covers/") ? initialValues.coverImagePath : "";
+  const initialBackgroundImagePath = initialValues.backgroundImagePath.startsWith("/share-backgrounds/") ? initialValues.backgroundImagePath : "";
   const [activeStep, setActiveStep] = useState(0);
   const [selectedIds, setSelectedIds] = useState(() => cards.filter((card) => card.selected).map((card) => card.id));
   const [drafts, setDrafts] = useState(() => initialDrafts(cards));
@@ -85,6 +90,19 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
     return aiCards.filter((card) => selectedSet.has(card.id));
   }, [aiCards, selectedIds]);
   const selectedCardLabels = useMemo(() => selectedLabels(cards, selectedIds, drafts), [cards, selectedIds, drafts]);
+  const selectedCards = useMemo(() => {
+    const selectedSet = new Set(selectedIds);
+    const selectedOrder = new Map(selectedIds.map((id, index) => [id, index]));
+    return cards
+      .filter((card) => selectedSet.has(card.id))
+      .sort((a, b) => {
+        const aOrder = Number.parseInt(drafts[a.id]?.sortOrder ?? `${a.sortOrder}`, 10);
+        const bOrder = Number.parseInt(drafts[b.id]?.sortOrder ?? `${b.sortOrder}`, 10);
+        const aRank = Number.isFinite(aOrder) && aOrder > 0 ? aOrder : selectedOrder.get(a.id) ?? 0;
+        const bRank = Number.isFinite(bOrder) && bOrder > 0 ? bOrder : selectedOrder.get(b.id) ?? 0;
+        return aRank - bRank;
+      });
+  }, [cards, drafts, selectedIds]);
 
   function updateSelection(cardId: string, selected: boolean) {
     setSelectedIds((current) => {
@@ -177,6 +195,9 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
 
   return (
     <form action={action} className="share-form" onSubmit={handleSubmit} encType="multipart/form-data">
+      {selectedIds.map((cardId) => (
+        <input key={cardId} type="hidden" name="cardIds" value={cardId} />
+      ))}
       {error ? <p className="note-error">{error}</p> : null}
       {message ? <p className="note-error">{message}</p> : null}
 
@@ -274,6 +295,24 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
               <textarea name="groupNotes" value={themeValues.groupNotes} onChange={(event) => updateThemeField("groupNotes", event.target.value)} />
             </label>
             <label className="field full">
+              <span>分享集背景图</span>
+              <div className="share-background-upload">
+                <input type="hidden" name="existingBackgroundImagePath" value={initialBackgroundImagePath} />
+                <input name="backgroundImage" type="file" accept="image/jpeg,image/png,image/webp" />
+                {initialBackgroundImagePath ? (
+                  <>
+                    <p className="muted">未重新上传时，将继续使用当前背景图。</p>
+                    <label className="inline-check">
+                      <input type="checkbox" name="clearBackgroundImage" />
+                      清除当前背景图
+                    </label>
+                  </>
+                ) : (
+                  <p className="muted">可上传一张横版图片作为分享展馆背景。未上传时使用默认背景。</p>
+                )}
+              </div>
+            </label>
+            <label className="field full">
               <span>封面图</span>
               <div className="share-cover-options">
                 <label className="inline-check">
@@ -293,6 +332,56 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
                 ) : null}
               </div>
             </label>
+          </div>
+        </section>
+        <section className="panel share-section">
+          <div className="share-section-head">
+            <div>
+              <h2>单卡展示编辑</h2>
+              <p className="muted">为每张已选卡片设置对外展示标题、描述和顺序。留空时使用卡片原始信息。</p>
+            </div>
+            <span className="muted">{selectedCards.length} 张卡片</span>
+          </div>
+          <div className="share-item-editor">
+            {selectedCards.map((card, index) => {
+              const draft = drafts[card.id] ?? {
+                sortOrder: String(card.sortOrder),
+                displayTitle: card.displayTitle,
+                displayDescription: card.displayDescription
+              };
+
+              return (
+                <article key={card.id} className="share-item-edit-card">
+                  <input type="hidden" name={`sortOrder-${card.id}`} value={draft.sortOrder || "0"} />
+                  <input type="hidden" name={`displayTitle-${card.id}`} value={draft.displayTitle} />
+                  <input type="hidden" name={`displayDescription-${card.id}`} value={draft.displayDescription} />
+                  <div>
+                    <strong>{card.playerName}</strong>
+                    <p className="muted">{card.cardTitle}</p>
+                  </div>
+                  <label className="field share-sort-field">
+                    <span>排序</span>
+                    <input
+                      type="number"
+                      value={draft.sortOrder}
+                      onChange={(event) => updateDraft(card.id, { sortOrder: event.target.value })}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>展示标题</span>
+                    <input value={draft.displayTitle} placeholder={card.cardTitle} onChange={(event) => updateDraft(card.id, { displayTitle: event.target.value })} />
+                  </label>
+                  <label className="field full">
+                    <span>展示描述</span>
+                    <textarea
+                      value={draft.displayDescription}
+                      placeholder={card.publicDescription || "留空时使用卡片公开描述"}
+                      onChange={(event) => updateDraft(card.id, { displayDescription: event.target.value })}
+                    />
+                  </label>
+                </article>
+              );
+            })}
           </div>
         </section>
       </div>

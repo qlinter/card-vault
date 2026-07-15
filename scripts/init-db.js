@@ -28,6 +28,7 @@ const cardColumns = [
   ["totalCost", "REAL"],
   ["gradingLink", "TEXT"]
 ];
+const shareCollectionColumns = [["backgroundImagePath", "TEXT"]];
 
 function getCardColumnTypes() {
   try {
@@ -260,6 +261,7 @@ CREATE TABLE IF NOT EXISTS ShareCollection (
   themeHighlights TEXT,
   groupNotes TEXT,
   coverImagePath TEXT,
+  backgroundImagePath TEXT,
   createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -277,6 +279,10 @@ CREATE TABLE IF NOT EXISTS ShareCollectionItem (
 
 for (const [columnName, definition] of cardColumns) {
   addColumnIfMissing("Card", columnName, definition);
+}
+
+for (const [columnName, definition] of shareCollectionColumns) {
+  addColumnIfMissing("ShareCollection", columnName, definition);
 }
 
 const cardColumnTypes = getCardColumnTypes();

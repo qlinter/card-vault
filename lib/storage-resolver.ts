@@ -60,3 +60,7 @@ export function resolveUploadsDir(env: StorageEnv = process.env): string {
 export function resolveShareCoversDir(env: StorageEnv = process.env): string {
   return path.join(resolveDataDir(env), "share-covers");
 }
+
+export function resolveShareBackgroundsDir(env: StorageEnv = process.env): string {
+  return path.join(resolveDataDir(env), "share-backgrounds");
+}

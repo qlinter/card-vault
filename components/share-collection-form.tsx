@@ -75,7 +75,7 @@ function toPickerCard(card: CardOption, item: (ShareCollectionItem & { card: Car
     tags: card.tags,
     imagePath: card.images[0]?.path ?? null,
     selected: Boolean(item),
-    sortOrder: item?.sortOrder ?? index,
+    sortOrder: item?.sortOrder ?? 0,
     displayTitle: item?.displayTitle ?? "",
     displayDescription: item?.displayDescription ?? ""
   };
@@ -111,7 +111,8 @@ export function ShareCollectionForm({ action, cards, share, error }: ShareCollec
         themeNarrative: value(share?.themeNarrative),
         themeHighlights: value(share?.themeHighlights),
         groupNotes: value(share?.groupNotes),
-        coverImagePath: value(share?.coverImagePath)
+        coverImagePath: value(share?.coverImagePath),
+        backgroundImagePath: value(share?.backgroundImagePath)
       }}
       error={error}
     />

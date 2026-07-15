@@ -7,9 +7,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { exportShareCollection, ShareExportMode } from "@/lib/share-export";
-import { getShareCoversDir } from "@/lib/storage-paths";
+import { getShareBackgroundsDir, getShareCoversDir } from "@/lib/storage-paths";
 
 const shareCoverDir = getShareCoversDir();
+const shareBackgroundDir = getShareBackgroundsDir();
 const validCoverMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 function toOptionalString(value: FormDataEntryValue | null): string | null {
@@ -35,6 +36,10 @@ function toShareCoverPublicPath(fileName: string): string {
   return `/share-covers/${fileName}`;
 }
 
+function toShareBackgroundPublicPath(fileName: string): string {
+  return `/share-backgrounds/${fileName}`;
+}
+
 async function saveCoverUpload(file: File): Promise<string> {
   if (!validCoverMimeTypes.has(file.type)) {
     throw new Error("分享封面仅支持 jpg、jpeg、png、webp 图片格式。");
@@ -46,6 +51,19 @@ async function saveCoverUpload(file: File): Promise<string> {
   const fullPath = path.join(shareCoverDir, fileName);
   await writeFile(fullPath, Buffer.from(await file.arrayBuffer()));
   return toShareCoverPublicPath(fileName);
+}
+
+async function saveBackgroundUpload(file: File): Promise<string> {
+  if (!validCoverMimeTypes.has(file.type)) {
+    throw new Error("分享背景仅支持 jpg、jpeg、png、webp 图片格式。");
+  }
+
+  await mkdir(shareBackgroundDir, { recursive: true });
+  const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : "jpg";
+  const fileName = `share-background-${Date.now()}-${randomUUID()}.${extension ?? "jpg"}`;
+  const fullPath = path.join(shareBackgroundDir, fileName);
+  await writeFile(fullPath, Buffer.from(await file.arrayBuffer()));
+  return toShareBackgroundPublicPath(fileName);
 }
 
 async function uniqueSlug(title: string, existingId?: string): Promise<string> {
@@ -92,6 +110,19 @@ async function resolveCoverImagePath(formData: FormData): Promise<string | null>
   return toOptionalString(formData.get("existingCoverImagePath"));
 }
 
+async function resolveBackgroundImagePath(formData: FormData): Promise<string | null> {
+  if (formData.get("clearBackgroundImage") === "on") {
+    return null;
+  }
+
+  const upload = formData.get("backgroundImage");
+  if (upload instanceof File && upload.size > 0) {
+    return saveBackgroundUpload(upload);
+  }
+
+  return toOptionalString(formData.get("existingBackgroundImagePath"));
+}
+
 async function collectionData(formData: FormData) {
   const title = toOptionalString(formData.get("title"));
   if (!title) {
@@ -105,7 +136,8 @@ async function collectionData(formData: FormData) {
     themeNarrative: toOptionalString(formData.get("themeNarrative")),
     themeHighlights: toOptionalString(formData.get("themeHighlights")),
     groupNotes: toOptionalString(formData.get("groupNotes")),
-    coverImagePath: await resolveCoverImagePath(formData)
+    coverImagePath: await resolveCoverImagePath(formData),
+    backgroundImagePath: await resolveBackgroundImagePath(formData)
   };
 }
 
@@ -115,7 +147,7 @@ function itemData(cardIds: string[], formData: FormData) {
       const sortValue = Number.parseInt(String(formData.get(`sortOrder-${cardId}`) ?? ""), 10);
       return {
         cardId,
-        sortOrder: Number.isFinite(sortValue) ? sortValue : index,
+        sortOrder: Number.isFinite(sortValue) && sortValue > 0 ? sortValue : index,
         displayTitle: toOptionalString(formData.get(`displayTitle-${cardId}`)),
         displayDescription: toOptionalString(formData.get(`displayDescription-${cardId}`))
       };
@@ -134,7 +166,7 @@ export async function createShareCollectionAction(formData: FormData): Promise<v
     }
 
     const slug = await uniqueSlug(data.title);
-    const share = await prisma.shareCollection.create({
+    await prisma.shareCollection.create({
       data: {
         ...data,
         slug,
@@ -145,7 +177,7 @@ export async function createShareCollectionAction(formData: FormData): Promise<v
     });
 
     revalidatePath("/shares");
-    redirectPath = `/shares/${share.id}/edit?success=created`;
+    redirectPath = "/shares?success=created";
   } catch (error) {
     const message = error instanceof Error ? error.message : "创建分享集失败，请稍后重试。";
     redirectPath = `/shares/new?error=${encodeURIComponent(message)}`;

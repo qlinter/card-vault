@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import fs from "fs";
 import path from "path";
 import { Card, CardImage, ShareCollection, ShareCollectionItem } from "@prisma/client";
-import { getShareCoversDir, getUploadsDir, resolveDataDir } from "@/lib/storage-paths";
+import { getShareBackgroundsDir, getShareCoversDir, getUploadsDir, resolveDataDir } from "@/lib/storage-paths";
 
 export type ShareExportMode = "static" | "cloud";
 
@@ -57,6 +57,7 @@ type ExportData = {
   themeHighlights: string | null;
   groupNotes: string | null;
   coverImage: string | null;
+  backgroundImage: string | null;
   generatedAt: string;
   mode: ShareExportMode;
   cards: ExportCard[];
@@ -94,6 +95,10 @@ function imageSourcePath(imagePath: string): string {
 
 function coverSourcePath(imagePath: string): string {
   return path.join(getShareCoversDir(), path.basename(imagePath));
+}
+
+function backgroundSourcePath(imagePath: string): string {
+  return path.join(getShareBackgroundsDir(), path.basename(imagePath));
 }
 
 function safeFileName(value: string): string {
@@ -164,8 +169,10 @@ function toPublicExportCard({ item, href, images }: ExportCardInput): ExportCard
   };
 }
 
-function renderLayout(title: string, body: string, depth: "root" | "card" = "root"): string {
+function renderLayout(title: string, body: string, depth: "root" | "card" = "root", backgroundImage?: string | null): string {
   const prefix = depth === "root" ? "" : "../";
+  const backgroundStyle = backgroundImage ? ` style="--share-bg-image: url('${prefix}${escapeHtml(backgroundImage)}')"` : "";
+  const bodyClass = backgroundImage ? ` class="has-custom-bg"` : "";
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -173,8 +180,9 @@ function renderLayout(title: string, body: string, depth: "root" | "card" = "roo
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(title)}</title>
   <link rel="stylesheet" href="${prefix}assets/site.css" />
+  <script src="${prefix}assets/site.js" defer></script>
 </head>
-<body>
+<body${bodyClass}${backgroundStyle}>
 ${body}
 </body>
 </html>
@@ -211,14 +219,16 @@ function renderIndex(data: ExportData): string {
         .map((item) => `<span>${escapeHtml(item)}</span>`)
         .join("");
 
-      return `<a class="card" href="${escapeHtml(card.href)}">
+      const index = data.cards.indexOf(card);
+      return `<article class="card carousel-card" data-index="${escapeHtml(String(index))}" style="--offset:${index};--abs-offset:${Math.abs(index)}">
         <div class="card-image">${image}</div>
         <div class="card-body">
           <h2>${escapeHtml(card.playerName)}</h2>
           <p>${escapeHtml(card.displayTitle)}</p>
           <div class="badges">${badges}</div>
+          <a class="detail-link" href="${escapeHtml(card.href)}">查看单卡</a>
         </div>
-      </a>`;
+      </article>`;
     })
     .join("");
 
@@ -252,10 +262,17 @@ function renderIndex(data: ExportData): string {
     }
 
     <section class="groups">${groupHtml}</section>
-    <section class="grid">${cardsHtml}</section>
+    <section class="carousel" aria-label="卡片立体切换">
+      <div class="carousel-toolbar">
+        <button type="button" data-carousel-prev>上一张</button>
+        <span><strong data-carousel-current>1</strong> / ${data.cards.length}</span>
+        <button type="button" data-carousel-next>下一张</button>
+      </div>
+      <div class="card-stage">${cardsHtml}</div>
+    </section>
   </main>`;
 
-  return renderLayout(data.title, body);
+  return renderLayout(data.title, body, "root", data.backgroundImage);
 }
 
 function renderCardPage(data: ExportData, card: ExportCard): string {
@@ -280,7 +297,7 @@ function renderCardPage(data: ExportData, card: ExportCard): string {
     </section>
   </main>`;
 
-  return renderLayout(`${card.playerName} - ${data.title}`, body, "card");
+  return renderLayout(`${card.playerName} - ${data.title}`, body, "card", data.backgroundImage);
 }
 
 function siteCss(): string {
@@ -296,6 +313,7 @@ function siteCss(): string {
 }
 * { box-sizing: border-box; }
 body {
+  position: relative;
   margin: 0;
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
@@ -304,9 +322,18 @@ body {
     linear-gradient(145deg, #08090b 0%, #111722 55%, #06070a 100%);
   color: var(--text);
 }
+body.has-custom-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(120deg, rgba(4, 7, 12, 0.88), rgba(7, 12, 20, 0.64)),
+    var(--share-bg-image) center / cover no-repeat;
+}
 a { color: inherit; text-decoration: none; }
 img { display: block; max-width: 100%; }
-.shell { width: min(1160px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 48px; }
+.shell { position: relative; z-index: 1; width: min(1160px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 48px; }
 .hero {
   min-height: 72vh;
   display: grid;
@@ -336,13 +363,52 @@ img { display: block; max-width: 100%; }
 .story { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; padding: 24px; margin: 0 0 28px; }
 .story h2 { margin: 0 0 10px; font-size: 20px; }
 .groups { margin-bottom: 24px; }
+.carousel { margin-top: 20px; }
+.carousel-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.carousel-toolbar button, .detail-link {
+  border: 1px solid var(--line);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 9px 13px;
+  font: inherit;
+  cursor: pointer;
+}
+.card-stage {
+  position: relative;
+  min-height: 560px;
+  perspective: 1500px;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+.carousel-card {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(330px, 76vw);
+  transform:
+    translateX(calc(-50% + (var(--offset) * 250px)))
+    rotateY(calc(var(--offset) * -14deg))
+    scale(calc(1 - (var(--abs-offset) * 0.08)));
+  opacity: calc(1 - (var(--abs-offset) * 0.24));
+  z-index: calc(10 - var(--abs-offset));
+  transition: transform 220ms ease, opacity 220ms ease, border-color 180ms ease;
+}
+.carousel-card[aria-hidden="true"] { pointer-events: none; opacity: 0; }
+.carousel-card.active { border-color: rgba(215, 187, 122, 0.55); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
 .card { overflow: hidden; transition: transform 160ms ease, border-color 160ms ease; }
-.card:hover { transform: translateY(-3px); border-color: rgba(215, 187, 122, 0.45); }
+.card:not(.carousel-card):hover { transform: translateY(-3px); border-color: rgba(215, 187, 122, 0.45); }
 .card-image img, .placeholder { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; background: rgba(255,255,255,0.06); }
 .card-body { padding: 14px; }
 .card-body h2 { margin: 0 0 6px; font-size: 20px; }
 .card-body p { margin: 0 0 12px; color: var(--muted); line-height: 1.45; }
+.detail-link { display: inline-flex; margin-top: 12px; color: var(--accent); font-weight: 700; }
 .detail-shell { padding-top: 20px; }
 .back { margin-bottom: 18px; color: var(--accent); font-weight: 700; }
 .detail { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(320px, 0.8fr); gap: 24px; align-items: start; }
@@ -360,7 +426,66 @@ img { display: block; max-width: 100%; }
   .hero-copy h1, .detail-copy h1 { font-size: clamp(34px, 14vw, 58px); }
   .detail-copy { position: static; }
   .meta { grid-template-columns: 1fr; }
+  .card-stage { min-height: 500px; }
+  .carousel-card {
+    width: min(300px, 78vw);
+    transform:
+      translateX(calc(-50% + (var(--offset) * 170px)))
+      rotateY(calc(var(--offset) * -10deg))
+      scale(calc(1 - (var(--abs-offset) * 0.09)));
+  }
 }`;
+}
+
+function siteJs(): string {
+  return `(() => {
+  const cards = Array.from(document.querySelectorAll(".carousel-card"));
+  const current = document.querySelector("[data-carousel-current]");
+  const prev = document.querySelector("[data-carousel-prev]");
+  const next = document.querySelector("[data-carousel-next]");
+  const stage = document.querySelector(".card-stage");
+  if (!cards.length || !stage) return;
+
+  let activeIndex = 0;
+  let touchStartX = null;
+
+  function render() {
+    cards.forEach((card, index) => {
+      const offset = index - activeIndex;
+      card.style.setProperty("--offset", String(offset));
+      card.style.setProperty("--abs-offset", String(Math.abs(offset)));
+      card.classList.toggle("active", offset === 0);
+      card.setAttribute("aria-hidden", Math.abs(offset) > 2 ? "true" : "false");
+    });
+    if (current) current.textContent = String(activeIndex + 1);
+  }
+
+  function goTo(index) {
+    activeIndex = (index + cards.length) % cards.length;
+    render();
+  }
+
+  cards.forEach((card, index) => card.addEventListener("click", (event) => {
+    if (index !== activeIndex) {
+      event.preventDefault();
+      goTo(index);
+    }
+  }));
+  prev?.addEventListener("click", () => goTo(activeIndex - 1));
+  next?.addEventListener("click", () => goTo(activeIndex + 1));
+  stage.addEventListener("touchstart", (event) => {
+    touchStartX = event.touches[0]?.clientX ?? null;
+  }, { passive: true });
+  stage.addEventListener("touchend", (event) => {
+    if (touchStartX === null) return;
+    const delta = (event.changedTouches[0]?.clientX ?? touchStartX) - touchStartX;
+    touchStartX = null;
+    if (Math.abs(delta) < 36) return;
+    goTo(activeIndex + (delta < 0 ? 1 : -1));
+  });
+
+  render();
+})();`;
 }
 
 function readmeDeploy(data: ExportData): string {
@@ -539,8 +664,10 @@ export async function exportShareCollection(
   const cards: ExportCard[] = [];
   let imageCount = 0;
   let coverImage: string | null = null;
+  let backgroundImage: string | null = null;
   const sortedItems = [...collection.items].sort((a, b) => a.sortOrder - b.sortOrder);
   const customCoverPath = collection.coverImagePath;
+  const customBackgroundPath = collection.backgroundImagePath;
 
   for (const [cardIndex, item] of sortedItems.entries()) {
     const card = item.card;
@@ -552,7 +679,6 @@ export async function exportShareCollection(
       if (!fs.existsSync(source)) {
         continue;
       }
-
       const fileName = `${cardIndex + 1}-${imageIndex + 1}-${safeFileName(path.basename(image.path))}`;
       const relative = `assets/images/${fileName}`;
       await fs.promises.copyFile(source, path.join(imageDir, fileName));
@@ -579,6 +705,16 @@ export async function exportShareCollection(
     }
   }
 
+  if (customBackgroundPath?.startsWith("/share-backgrounds/")) {
+    const source = backgroundSourcePath(customBackgroundPath);
+    if (fs.existsSync(source)) {
+      const fileName = `background-${safeFileName(path.basename(customBackgroundPath))}`;
+      backgroundImage = `assets/images/${fileName}`;
+      await fs.promises.copyFile(source, path.join(imageDir, fileName));
+      imageCount += 1;
+    }
+  }
+
   const data: ExportData = {
     title: collection.title,
     subtitle: collection.subtitle,
@@ -587,12 +723,14 @@ export async function exportShareCollection(
     themeHighlights: collection.themeHighlights,
     groupNotes: collection.groupNotes,
     coverImage,
+    backgroundImage,
     generatedAt: new Date().toISOString(),
     mode,
     cards
   };
 
   await writeFile(path.join(assetsDir, "site.css"), siteCss(), "utf8");
+  await writeFile(path.join(assetsDir, "site.js"), siteJs(), "utf8");
   await writeFile(path.join(assetsDir, "data.json"), JSON.stringify(data, null, 2), "utf8");
   await writeFile(path.join(folderPath, "index.html"), renderIndex(data), "utf8");
   await writeFile(path.join(folderPath, "README-deploy.md"), readmeDeploy(data), "utf8");

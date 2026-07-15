@@ -1,13 +1,14 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
-const { resolveShareCoversDir, resolveUploadsDir } = require("./storage-paths");
+const { resolveShareBackgroundsDir, resolveShareCoversDir, resolveUploadsDir } = require("./storage-paths");
 
 const rootDir = path.resolve(__dirname, "..");
 const envExamplePath = path.join(rootDir, ".env.example");
 const envPath = path.join(rootDir, ".env");
 const uploadsDir = resolveUploadsDir(rootDir);
 const shareCoversDir = resolveShareCoversDir(rootDir);
+const shareBackgroundsDir = resolveShareBackgroundsDir(rootDir);
 const nextDir = path.join(rootDir, ".next");
 
 function runCommand(label, command, args) {
@@ -41,6 +42,7 @@ async function main() {
 
   fs.mkdirSync(uploadsDir, { recursive: true });
   fs.mkdirSync(shareCoversDir, { recursive: true });
+  fs.mkdirSync(shareBackgroundsDir, { recursive: true });
   process.stdout.write("[2/5] App data directory is ready.\n");
 
   if (fs.existsSync(nextDir)) {

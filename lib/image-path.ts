@@ -7,6 +7,10 @@ export function normalizeImagePath(imagePath: string): string {
     return imagePath;
   }
 
+  if (imagePath.startsWith("/share-backgrounds/")) {
+    return imagePath;
+  }
+
   if (imagePath.startsWith("/uploads/")) {
     return imagePath.replace("/uploads/", "/media/");
   }

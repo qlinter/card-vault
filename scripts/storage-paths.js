@@ -34,9 +34,14 @@ function resolveShareCoversDir(rootDir, env = process.env) {
   return path.join(resolveDataDir(rootDir, env), "share-covers");
 }
 
+function resolveShareBackgroundsDir(rootDir, env = process.env) {
+  return path.join(resolveDataDir(rootDir, env), "share-backgrounds");
+}
+
 module.exports = {
   resolveDataDir,
   resolveDbPath,
+  resolveShareBackgroundsDir,
   resolveShareCoversDir,
   resolveUploadsDir
 };

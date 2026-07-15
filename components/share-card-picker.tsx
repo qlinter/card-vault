@@ -179,8 +179,6 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
                       <label className="share-card-select">
                         <input
                           type="checkbox"
-                          name="cardIds"
-                          value={card.id}
                           checked={selectedSet.has(card.id)}
                           onChange={(event) => onSelectionChange(card.id, event.target.checked)}
                         />
@@ -200,7 +198,6 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
                         <label className="field share-sort-field">
                           <span>排序</span>
                           <input
-                            name={`sortOrder-${card.id}`}
                             type="number"
                             value={draft.sortOrder}
                             onChange={(event) => onDraftChange(card.id, { sortOrder: event.target.value })}
@@ -211,7 +208,6 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
                           <label className="field">
                             <span>展示标题</span>
                             <input
-                              name={`displayTitle-${card.id}`}
                               value={draft.displayTitle}
                               placeholder={card.cardTitle}
                               onChange={(event) => onDraftChange(card.id, { displayTitle: event.target.value })}
@@ -220,7 +216,6 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
                           <label className="field">
                             <span>展示描述</span>
                             <textarea
-                              name={`displayDescription-${card.id}`}
                               value={draft.displayDescription}
                               placeholder={value(card.publicDescription) || "默认使用卡片展示描述"}
                               onChange={(event) => onDraftChange(card.id, { displayDescription: event.target.value })}

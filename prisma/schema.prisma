@@ -80,6 +80,7 @@ model ShareCollection {
   themeHighlights String?
   groupNotes     String?
   coverImagePath String?
+  backgroundImagePath String?
   items          ShareCollectionItem[]
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt

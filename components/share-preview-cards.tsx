@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties, TouchEvent } from "react";
 import { useState } from "react";
 import { ShowcaseGallery } from "@/components/showcase-gallery";
 import { normalizeImagePath } from "@/lib/image-path";
@@ -24,25 +25,65 @@ type SharePreviewCardsProps = {
 };
 
 export function SharePreviewCards({ items }: SharePreviewCardsProps) {
-  const [activeId, setActiveId] = useState(items[0]?.id ?? "");
-  const activeItem = items.find((item) => item.id === activeId) ?? items[0];
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const activeItem = items[activeIndex] ?? items[0];
 
   if (!activeItem) {
     return null;
   }
 
+  function goTo(index: number) {
+    if (items.length === 0) {
+      return;
+    }
+    setActiveIndex((index + items.length) % items.length);
+  }
+
+  function handleTouchEnd(event: TouchEvent<HTMLElement>) {
+    if (touchStartX === null) {
+      return;
+    }
+    const delta = event.changedTouches[0].clientX - touchStartX;
+    setTouchStartX(null);
+    if (Math.abs(delta) < 36) {
+      return;
+    }
+    goTo(activeIndex + (delta < 0 ? 1 : -1));
+  }
+
   return (
     <>
-      <section className="share-preview-grid" aria-label="分享集卡片列表">
+      <section
+        className="share-preview-carousel"
+        aria-label="分享集卡片切换"
+        onTouchStart={(event) => setTouchStartX(event.touches[0].clientX)}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="share-carousel-toolbar">
+          <button type="button" className="btn btn-secondary" onClick={() => goTo(activeIndex - 1)} disabled={items.length <= 1}>
+            上一张
+          </button>
+          <span>
+            {activeIndex + 1} / {items.length}
+          </span>
+          <button type="button" className="btn btn-secondary" onClick={() => goTo(activeIndex + 1)} disabled={items.length <= 1}>
+            下一张
+          </button>
+        </div>
+        <div className="share-card-stage">
         {items.map((item) => {
           const image = item.images[0];
-          const active = item.id === activeItem.id;
+          const offset = items.indexOf(item) - activeIndex;
+          const visible = Math.abs(offset) <= 2;
           return (
             <button
               key={item.id}
               type="button"
-              className={`share-preview-card${active ? " active" : ""}`}
-              onClick={() => setActiveId(item.id)}
+              className={`share-preview-card${offset === 0 ? " active" : ""}`}
+              style={{ "--offset": offset, "--abs-offset": Math.abs(offset) } as CSSProperties}
+              aria-hidden={!visible}
+              onClick={() => goTo(items.indexOf(item))}
             >
               {image ? (
                 <img src={normalizeImagePath(image.path)} alt={item.cardTitle} />
@@ -57,6 +98,7 @@ export function SharePreviewCards({ items }: SharePreviewCardsProps) {
             </button>
           );
         })}
+        </div>
       </section>
 
       <section className="share-preview-detail">

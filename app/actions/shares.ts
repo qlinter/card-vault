@@ -1,18 +1,17 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { prepareImageUpload } from "@/lib/image-upload";
 import { prisma } from "@/lib/prisma";
 import { exportShareCollection, ShareExportMode } from "@/lib/share-export";
 import { getShareBackgroundsDir, getShareCoversDir } from "@/lib/storage-paths";
 
 const shareCoverDir = getShareCoversDir();
 const shareBackgroundDir = getShareBackgroundsDir();
-const validCoverMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-
 function toOptionalString(value: FormDataEntryValue | null): string | null {
   if (!value || typeof value !== "string") {
     return null;
@@ -41,29 +40,42 @@ function toShareBackgroundPublicPath(fileName: string): string {
 }
 
 async function saveCoverUpload(file: File): Promise<string> {
-  if (!validCoverMimeTypes.has(file.type)) {
-    throw new Error("分享封面仅支持 jpg、jpeg、png、webp 图片格式。");
-  }
-
+  const prepared = await prepareImageUpload(file, "分享封面");
   await mkdir(shareCoverDir, { recursive: true });
-  const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : "jpg";
-  const fileName = `share-cover-${Date.now()}-${randomUUID()}.${extension ?? "jpg"}`;
+  const fileName = `share-cover-${Date.now()}-${randomUUID()}.${prepared.extension}`;
   const fullPath = path.join(shareCoverDir, fileName);
-  await writeFile(fullPath, Buffer.from(await file.arrayBuffer()));
+  await writeFile(fullPath, prepared.buffer);
   return toShareCoverPublicPath(fileName);
 }
 
 async function saveBackgroundUpload(file: File): Promise<string> {
-  if (!validCoverMimeTypes.has(file.type)) {
-    throw new Error("分享背景仅支持 jpg、jpeg、png、webp 图片格式。");
+  const prepared = await prepareImageUpload(file, "分享背景");
+  await mkdir(shareBackgroundDir, { recursive: true });
+  const fileName = `share-background-${Date.now()}-${randomUUID()}.${prepared.extension}`;
+  const fullPath = path.join(shareBackgroundDir, fileName);
+  await writeFile(fullPath, prepared.buffer);
+  return toShareBackgroundPublicPath(fileName);
+}
+
+async function removeManagedShareImage(imagePath: string | null): Promise<void> {
+  if (!imagePath) {
+    return;
   }
 
-  await mkdir(shareBackgroundDir, { recursive: true });
-  const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : "jpg";
-  const fileName = `share-background-${Date.now()}-${randomUUID()}.${extension ?? "jpg"}`;
-  const fullPath = path.join(shareBackgroundDir, fileName);
-  await writeFile(fullPath, Buffer.from(await file.arrayBuffer()));
-  return toShareBackgroundPublicPath(fileName);
+  const targetDir = imagePath.startsWith("/share-covers/")
+    ? shareCoverDir
+    : imagePath.startsWith("/share-backgrounds/")
+      ? shareBackgroundDir
+      : null;
+  if (!targetDir) {
+    return;
+  }
+
+  try {
+    await unlink(path.join(targetDir, path.basename(imagePath)));
+  } catch {
+    // Missing files do not need to block share collection updates.
+  }
 }
 
 async function uniqueSlug(title: string, existingId?: string): Promise<string> {
@@ -96,49 +108,50 @@ function selectedCardIds(formData: FormData): string[] {
     });
 }
 
-async function resolveCoverImagePath(formData: FormData): Promise<string | null> {
-  const coverMode = toOptionalString(formData.get("coverMode")) ?? "auto";
-  if (coverMode !== "custom") {
-    return null;
-  }
-
-  const upload = formData.get("coverImage");
-  if (upload instanceof File && upload.size > 0) {
-    return saveCoverUpload(upload);
-  }
-
-  return toOptionalString(formData.get("existingCoverImagePath"));
-}
-
-async function resolveBackgroundImagePath(formData: FormData): Promise<string | null> {
-  if (formData.get("clearBackgroundImage") === "on") {
-    return null;
-  }
-
-  const upload = formData.get("backgroundImage");
-  if (upload instanceof File && upload.size > 0) {
-    return saveBackgroundUpload(upload);
-  }
-
-  return toOptionalString(formData.get("existingBackgroundImagePath"));
-}
-
 async function collectionData(formData: FormData) {
   const title = toOptionalString(formData.get("title"));
   if (!title) {
     throw new Error("请填写分享集标题。");
   }
 
-  return {
-    title,
-    subtitle: toOptionalString(formData.get("subtitle")),
-    description: toOptionalString(formData.get("description")),
-    themeNarrative: toOptionalString(formData.get("themeNarrative")),
-    themeHighlights: toOptionalString(formData.get("themeHighlights")),
-    groupNotes: toOptionalString(formData.get("groupNotes")),
-    coverImagePath: await resolveCoverImagePath(formData),
-    backgroundImagePath: await resolveBackgroundImagePath(formData)
-  };
+  const uploadedPaths: string[] = [];
+  try {
+    const coverMode = toOptionalString(formData.get("coverMode")) ?? "auto";
+    const coverUpload = formData.get("coverImage");
+    let coverImagePath =
+      coverMode === "custom" ? toOptionalString(formData.get("existingCoverImagePath")) : null;
+    if (coverMode === "custom" && coverUpload instanceof File && coverUpload.size > 0) {
+      coverImagePath = await saveCoverUpload(coverUpload);
+      uploadedPaths.push(coverImagePath);
+    }
+
+    const backgroundUpload = formData.get("backgroundImage");
+    let backgroundImagePath =
+      formData.get("clearBackgroundImage") === "on"
+        ? null
+        : toOptionalString(formData.get("existingBackgroundImagePath"));
+    if (backgroundUpload instanceof File && backgroundUpload.size > 0) {
+      backgroundImagePath = await saveBackgroundUpload(backgroundUpload);
+      uploadedPaths.push(backgroundImagePath);
+    }
+
+    return {
+      data: {
+        title,
+        subtitle: toOptionalString(formData.get("subtitle")),
+        description: toOptionalString(formData.get("description")),
+        themeNarrative: toOptionalString(formData.get("themeNarrative")),
+        themeHighlights: toOptionalString(formData.get("themeHighlights")),
+        groupNotes: toOptionalString(formData.get("groupNotes")),
+        coverImagePath,
+        backgroundImagePath
+      },
+      uploadedPaths
+    };
+  } catch (error) {
+    await Promise.all(uploadedPaths.map((imagePath) => removeManagedShareImage(imagePath)));
+    throw error;
+  }
 }
 
 function itemData(cardIds: string[], formData: FormData) {
@@ -157,14 +170,17 @@ function itemData(cardIds: string[], formData: FormData) {
 
 export async function createShareCollectionAction(formData: FormData): Promise<void> {
   let redirectPath = "/shares/new?error=unknown";
+  let uploadedPaths: string[] = [];
 
   try {
-    const data = await collectionData(formData);
     const cardIds = selectedCardIds(formData);
     if (cardIds.length === 0) {
       throw new Error("请至少选择一张卡片。");
     }
 
+    const collection = await collectionData(formData);
+    const data = collection.data;
+    uploadedPaths = collection.uploadedPaths;
     const slug = await uniqueSlug(data.title);
     await prisma.shareCollection.create({
       data: {
@@ -175,10 +191,12 @@ export async function createShareCollectionAction(formData: FormData): Promise<v
         }
       }
     });
+    uploadedPaths = [];
 
     revalidatePath("/shares");
     redirectPath = "/shares?success=created";
   } catch (error) {
+    await Promise.all(uploadedPaths.map((imagePath) => removeManagedShareImage(imagePath)));
     const message = error instanceof Error ? error.message : "创建分享集失败，请稍后重试。";
     redirectPath = `/shares/new?error=${encodeURIComponent(message)}`;
   }
@@ -188,6 +206,7 @@ export async function createShareCollectionAction(formData: FormData): Promise<v
 
 export async function updateShareCollectionAction(shareId: string, formData: FormData): Promise<void> {
   let redirectPath = `/shares/${shareId}/edit?error=unknown`;
+  let uploadedPaths: string[] = [];
 
   try {
     const existing = await prisma.shareCollection.findUnique({ where: { id: shareId } });
@@ -195,12 +214,14 @@ export async function updateShareCollectionAction(shareId: string, formData: For
       throw new Error("分享集不存在或已删除。");
     }
 
-    const data = await collectionData(formData);
     const cardIds = selectedCardIds(formData);
     if (cardIds.length === 0) {
       throw new Error("请至少选择一张卡片。");
     }
 
+    const collection = await collectionData(formData);
+    const data = collection.data;
+    uploadedPaths = collection.uploadedPaths;
     const slug = await uniqueSlug(data.title, shareId);
     await prisma.$transaction(async (transaction) => {
       await transaction.shareCollection.update({
@@ -212,6 +233,13 @@ export async function updateShareCollectionAction(shareId: string, formData: For
         data: itemData(cardIds, formData).map((item) => ({ ...item, shareCollectionId: shareId }))
       });
     });
+    uploadedPaths = [];
+
+    const replacedPaths = [
+      existing.coverImagePath !== data.coverImagePath ? existing.coverImagePath : null,
+      existing.backgroundImagePath !== data.backgroundImagePath ? existing.backgroundImagePath : null
+    ].filter((imagePath): imagePath is string => Boolean(imagePath));
+    await Promise.all(replacedPaths.map((imagePath) => removeManagedShareImage(imagePath)));
 
     revalidatePath("/shares");
     revalidatePath(`/shares/${shareId}/edit`);
@@ -219,6 +247,7 @@ export async function updateShareCollectionAction(shareId: string, formData: For
     revalidatePath(`/shares/${shareId}/export`);
     redirectPath = `/shares/${shareId}/edit?success=updated`;
   } catch (error) {
+    await Promise.all(uploadedPaths.map((imagePath) => removeManagedShareImage(imagePath)));
     const message = error instanceof Error ? error.message : "更新分享集失败，请稍后重试。";
     redirectPath = `/shares/${shareId}/edit?error=${encodeURIComponent(message)}`;
   }
@@ -230,7 +259,14 @@ export async function deleteShareCollectionAction(shareId: string): Promise<void
   let redirectPath = "/shares?success=deleted";
 
   try {
+    const existing = await prisma.shareCollection.findUnique({ where: { id: shareId } });
+    if (!existing) {
+      throw new Error("分享集不存在或已删除。");
+    }
     await prisma.shareCollection.delete({ where: { id: shareId } });
+    await Promise.all(
+      [existing.coverImagePath, existing.backgroundImagePath].map((imagePath) => removeManagedShareImage(imagePath))
+    );
     revalidatePath("/shares");
   } catch (error) {
     const message = error instanceof Error ? error.message : "删除分享集失败，请稍后重试。";

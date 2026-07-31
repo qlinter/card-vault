@@ -5,7 +5,7 @@ import {
   getAiSettingsFile,
   getChatCompletionsHeaders,
   getModelsUrl
-} from "@/lib/azure-openai-settings";
+} from "@/lib/ai-settings";
 
 export const runtime = "nodejs";
 

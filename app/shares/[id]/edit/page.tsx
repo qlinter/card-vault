@@ -30,13 +30,13 @@ export default async function EditSharePage({ params, searchParams }: EditShareP
       where: { id },
       include: {
         items: {
-          include: { card: { include: { images: { orderBy: { createdAt: "asc" } } } } },
+          include: { card: { include: { images: { take: 1, orderBy: { createdAt: "asc" } } } } },
           orderBy: { sortOrder: "asc" }
         }
       }
     }),
     prisma.card.findMany({
-      include: { images: { orderBy: { createdAt: "asc" } } },
+      include: { images: { take: 1, orderBy: { createdAt: "asc" } } },
       orderBy: [{ playerName: "asc" }, { createdAt: "desc" }]
     })
   ]);

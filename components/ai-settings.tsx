@@ -50,11 +50,11 @@ function canTest(settings: PublicSettings, azureApiKey: string, minimaxApiKey: s
     : Boolean(settings.azure.endpoint && settings.azure.deployment && (settings.azure.hasApiKey || azureApiKey.trim()));
 }
 
-type AzureOpenAISettingsProps = {
+type AiSettingsProps = {
   defaultOpen?: boolean;
 };
 
-export function AzureOpenAISettings({ defaultOpen = false }: AzureOpenAISettingsProps) {
+export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   const [settings, setSettings] = useState<PublicSettings>(emptySettings);
   const [azureApiKey, setAzureApiKey] = useState("");
   const [minimaxApiKey, setMiniMaxApiKey] = useState("");

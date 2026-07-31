@@ -124,7 +124,7 @@ export function getAiSettings(): ActiveAiSettings {
   return { provider: "azure", ...settings.azure };
 }
 
-export function getPublicAzureOpenAISettings(): PublicAiSettings {
+export function getPublicAiSettings(): PublicAiSettings {
   const settings = getAiSettingsFile();
 
   return {
@@ -165,10 +165,6 @@ export function ensureAiSettings(): ActiveAiSettings {
   }
 
   return settings;
-}
-
-export function ensureAzureOpenAISettings(): ActiveAiSettings {
-  return ensureAiSettings();
 }
 
 export function getChatCompletionsUrl(settings: ActiveAiSettings): string {

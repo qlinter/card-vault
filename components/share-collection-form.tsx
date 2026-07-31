@@ -52,7 +52,7 @@ function cardSummary(card: CardOption): ShareThemeCard {
   };
 }
 
-function toPickerCard(card: CardOption, item: (ShareCollectionItem & { card: CardOption }) | undefined, index: number): SharePickerCard {
+function toPickerCard(card: CardOption, item: (ShareCollectionItem & { card: CardOption }) | undefined): SharePickerCard {
   return {
     id: card.id,
     playerName: card.playerName,
@@ -97,7 +97,7 @@ export function ShareCollectionForm({ action, cards, share, error }: ShareCollec
     }
     return a.playerName.localeCompare(b.playerName);
   });
-  const pickerCards = sortedCards.map((card, index) => toPickerCard(card, selected.get(card.id), index));
+  const pickerCards = sortedCards.map((card) => toPickerCard(card, selected.get(card.id)));
 
   return (
     <ShareCollectionWizard

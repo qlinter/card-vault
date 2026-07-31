@@ -164,10 +164,6 @@ export function buildCardSorting(sort?: string): Prisma.CardOrderByWithRelationI
       return [{ purchasePrice: "asc" }, { createdAt: "desc" }];
     case "priceDesc":
       return [{ purchasePrice: "desc" }, { createdAt: "desc" }];
-    case "gradeAsc":
-      return [{ grade: "asc" }, { createdAt: "desc" }];
-    case "gradeDesc":
-      return [{ grade: "desc" }, { createdAt: "desc" }];
     default:
       return [{ createdAt: "desc" }];
   }

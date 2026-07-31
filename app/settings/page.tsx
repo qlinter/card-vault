@@ -1,4 +1,4 @@
-import { AzureOpenAISettings } from "@/components/azure-openai-settings";
+import { AiSettings } from "@/components/ai-settings";
 import { BackupSettings } from "@/components/backup-settings";
 import { StorageSettings } from "@/components/storage-settings";
 import { resolveConfiguredDataDir } from "@/lib/storage-resolver";
@@ -21,7 +21,7 @@ export default function SettingsPage() {
 
       <BackupSettings />
 
-      <AzureOpenAISettings />
+      <AiSettings />
 
       <section className="panel settings-section">
         <h2>{"\u4e91\u7aef\u53d1\u5e03"}</h2>

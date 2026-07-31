@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   ActiveAiSettings,
-  ensureAiSettings,
-  getChatCompletionsHeaders,
-  getChatCompletionsModel,
-  getChatCompletionsUrl
-} from "@/lib/azure-openai-settings";
-import { extractJsonRecord, responseToText, safeText } from "@/lib/ai-response-parsing";
+  ensureAiSettings
+} from "@/lib/ai-settings";
+import { AiUpstreamError, requestAiChatText } from "@/lib/ai-chat-client";
+import { extractJsonRecord, safeText } from "@/lib/ai-response-parsing";
 
 export const runtime = "nodejs";
 
@@ -38,14 +36,6 @@ const suggestionFields = [
 
 type AiSuggestion = Partial<Record<(typeof suggestionFields)[number], string | boolean>>;
 
-function isUnsupportedTokenParameter(detail: string): boolean {
-  return detail.includes("Unsupported parameter") && detail.includes("max_completion_tokens");
-}
-
-function providerName(provider: string): string {
-  return provider === "minimax" ? "MiniMax" : "Azure OpenAI";
-}
-
 function pickSuggestionFields(parsed: Record<string, unknown>): AiSuggestion {
   const result: AiSuggestion = {};
 
@@ -69,9 +59,6 @@ function extractSuggestion(value: unknown): AiSuggestion {
 }
 
 async function repairJsonFromText(settings: ActiveAiSettings, rawText: string): Promise<AiSuggestion> {
-  const url = getChatCompletionsUrl(settings);
-  const headers = getChatCompletionsHeaders(settings);
-  const model = getChatCompletionsModel(settings);
   const prompt = [
     "请把下面这段球星卡识别结果转换为一个严格 JSON 对象。",
     "只能输出 JSON，不要 Markdown，不要解释。",
@@ -81,30 +68,13 @@ async function repairJsonFromText(settings: ActiveAiSettings, rawText: string): 
     safeText(rawText).slice(0, 4000)
   ].join("\n");
 
-  const requestInit = (tokenField: "max_completion_tokens" | "max_tokens") => ({
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      ...(model ? { model } : {}),
-      messages: [{ role: "user", content: prompt }],
-      [tokenField]: 700,
-      temperature: 0
-    })
+  const content = await requestAiChatText(settings, {
+    messages: [{ role: "user", content: prompt }],
+    maxTokens: 700,
+    temperature: 0,
+    operation: "JSON 修复"
   });
-
-  let response = await fetch(url, requestInit("max_completion_tokens"));
-  let detail = response.ok ? "" : await response.text();
-
-  if (!response.ok && isUnsupportedTokenParameter(detail)) {
-    response = await fetch(url, requestInit("max_tokens"));
-    detail = response.ok ? "" : await response.text();
-  }
-
-  if (!response.ok) {
-    throw new Error(`${providerName(settings.provider)} JSON 修复失败：${response.status} ${detail.slice(0, 240)}`);
-  }
-
-  return extractSuggestion(responseToText(await response.json()));
+  return extractSuggestion(content);
 }
 
 function buildPrompt(): string {
@@ -147,44 +117,18 @@ export async function POST(request: NextRequest) {
       }))
     );
 
-    const url = getChatCompletionsUrl(settings);
-    const headers = getChatCompletionsHeaders(settings);
-    const model = getChatCompletionsModel(settings);
-    const requestInit = (tokenField: "max_completion_tokens" | "max_tokens") => ({
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        ...(model ? { model } : {}),
-        messages: [
-          {
-            role: "user",
-            content: [{ type: "text", text: buildPrompt() }, ...imageParts]
-          }
-        ],
-        [tokenField]: 900,
-        temperature: 0
-      })
+    const content = await requestAiChatText(settings, {
+      messages: [
+        {
+          role: "user",
+          content: [{ type: "text", text: buildPrompt() }, ...imageParts]
+        }
+      ],
+      maxTokens: 900,
+      temperature: 0,
+      operation: "识别",
+      timeoutMs: 90000
     });
-
-    let response = await fetch(url, requestInit("max_completion_tokens"));
-    let detail = response.ok ? "" : await response.text();
-
-    if (!response.ok && isUnsupportedTokenParameter(detail)) {
-      response = await fetch(url, requestInit("max_tokens"));
-      detail = response.ok ? "" : await response.text();
-    }
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: `${providerName(settings.provider)} 识别失败：${response.status} ${detail.slice(0, 320)}` },
-        { status: 502 }
-      );
-    }
-
-    const content = responseToText(await response.json());
-    if (!content) {
-      return NextResponse.json({ error: `${providerName(settings.provider)} 没有返回可用识别结果。` }, { status: 502 });
-    }
 
     try {
       return NextResponse.json({ suggestion: extractSuggestion(content) });
@@ -193,6 +137,6 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI 识别失败，请稍后重试。";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: message }, { status: error instanceof AiUpstreamError ? 502 : 400 });
   }
 }

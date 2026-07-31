@@ -7,11 +7,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseTags } from "@/lib/card-helpers";
 import { CardFormValues } from "@/lib/card-form-values";
+import { prepareImageUpload } from "@/lib/image-upload";
 import { prisma } from "@/lib/prisma";
 import { getUploadsDir } from "@/lib/storage-paths";
 
 const uploadDir = getUploadsDir();
-const validMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const maxImagesPerCard = 5;
 
 export type CreateCardFormState = {
@@ -123,22 +123,65 @@ function ensureBaseFields(formData: FormData): { playerName: string; cardTitle: 
   return { playerName, cardTitle, sport };
 }
 
-function validateFileList(files: File[]): void {
-  for (const file of files) {
-    if (!validMimeTypes.has(file.type)) {
-      throw new Error("仅支持 jpg、jpeg、png、webp 图片格式。");
-    }
-  }
+function buildCardData(formData: FormData, isSerialNumbered: boolean) {
+  const { playerName, cardTitle, sport } = ensureBaseFields(formData);
+  const purchasePrice = toOptionalFloat(formData.get("purchasePrice"));
+  const gradingFee = toOptionalFloat(formData.get("gradingFee"));
+  const tagsRaw = toOptionalString(formData.get("tags"));
+
+  return {
+    playerName,
+    cardTitle,
+    sport,
+    team: toOptionalString(formData.get("team")),
+    year: toOptionalString(formData.get("year")),
+    brand: toOptionalString(formData.get("brand")),
+    productLine: toOptionalString(formData.get("productLine")),
+    subsetName: toOptionalString(formData.get("subsetName")),
+    parallel: toOptionalString(formData.get("parallel")),
+    cardNumber: toOptionalString(formData.get("cardNumber")),
+    isSerialNumbered,
+    serialNumber: toOptionalString(formData.get("serialNumber")),
+    serialRange: toOptionalString(formData.get("serialRange")),
+    isRookie: parseBoolean(formData, "isRookie"),
+    isAutograph: parseBoolean(formData, "isAutograph"),
+    autoType: toOptionalString(formData.get("autoType")),
+    isPatch: parseBoolean(formData, "isPatch"),
+    patchType: toOptionalString(formData.get("patchType")),
+    gradingCompany: toOptionalString(formData.get("gradingCompany")),
+    grade: toOptionalString(formData.get("grade")),
+    certNumber: toOptionalString(formData.get("certNumber")),
+    gradingLink: toOptionalString(formData.get("gradingLink")),
+    visibility: toOptionalString(formData.get("visibility")) ?? "private",
+    collectionStatus: toOptionalString(formData.get("collectionStatus")) ?? "holding",
+    purchaseDate: toOptionalDate(formData.get("purchaseDate")),
+    purchasePrice,
+    gradingFee,
+    totalCost: calculateTotalCost(purchasePrice, gradingFee),
+    currentValue: toOptionalFloat(formData.get("currentValue")),
+    purchaseSource: toOptionalString(formData.get("purchaseSource")),
+    tags: tagsRaw ? parseTags(tagsRaw).join(",") : null,
+    publicDescription: toOptionalString(formData.get("publicDescription")),
+    notes: toOptionalString(formData.get("notes"))
+  };
 }
 
-async function saveUpload(file: File): Promise<string> {
+async function saveUploads(files: File[]): Promise<string[]> {
+  const preparedFiles = await Promise.all(files.map((file) => prepareImageUpload(file, "卡片图片")));
   await mkdir(uploadDir, { recursive: true });
-  const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : "jpg";
-  const fileName = `${Date.now()}-${randomUUID()}.${extension ?? "jpg"}`;
-  const fullPath = path.join(uploadDir, fileName);
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(fullPath, buffer);
-  return toImagePublicPath(fileName);
+  const imagePaths: string[] = [];
+
+  try {
+    for (const prepared of preparedFiles) {
+      const fileName = `${Date.now()}-${randomUUID()}.${prepared.extension}`;
+      await writeFile(path.join(uploadDir, fileName), prepared.buffer);
+      imagePaths.push(toImagePublicPath(fileName));
+    }
+    return imagePaths;
+  } catch (error) {
+    await Promise.all(imagePaths.map((imagePath) => removeImageIfExists(imagePath)));
+    throw error;
+  }
 }
 
 async function removeImageIfExists(relativePath: string): Promise<void> {
@@ -152,89 +195,15 @@ async function removeImageIfExists(relativePath: string): Promise<void> {
   }
 }
 
-export async function createCardAction(formData: FormData): Promise<void> {
-  let redirectPath = "/cards/new?error=unknown";
-
-  try {
-    const { playerName, cardTitle, sport } = ensureBaseFields(formData);
-    const files = formData.getAll("images").filter((entry): entry is File => entry instanceof File && entry.size > 0);
-
-    if (files.length < 1) {
-      throw new Error("至少上传 1 张图片。");
-    }
-    if (files.length > maxImagesPerCard) {
-      throw new Error(`最多上传 ${maxImagesPerCard} 张图片。`);
-    }
-
-    validateFileList(files);
-
-    const imagePaths = await Promise.all(files.map((file) => saveUpload(file)));
-    const tagsRaw = toOptionalString(formData.get("tags"));
-
-    const purchasePrice = toOptionalFloat(formData.get("purchasePrice"));
-    const gradingFee = toOptionalFloat(formData.get("gradingFee"));
-    const totalCost = calculateTotalCost(purchasePrice, gradingFee);
-
-    const card = await prisma.card.create({
-      data: {
-        playerName,
-        cardTitle,
-        sport,
-        team: toOptionalString(formData.get("team")),
-        year: toOptionalString(formData.get("year")),
-        brand: toOptionalString(formData.get("brand")),
-        productLine: toOptionalString(formData.get("productLine")),
-        subsetName: toOptionalString(formData.get("subsetName")),
-        parallel: toOptionalString(formData.get("parallel")),
-        cardNumber: toOptionalString(formData.get("cardNumber")),
-        isSerialNumbered: false,
-        serialNumber: toOptionalString(formData.get("serialNumber")),
-        serialRange: toOptionalString(formData.get("serialRange")),
-        isRookie: parseBoolean(formData, "isRookie"),
-        isAutograph: parseBoolean(formData, "isAutograph"),
-        autoType: toOptionalString(formData.get("autoType")),
-        isPatch: parseBoolean(formData, "isPatch"),
-        patchType: toOptionalString(formData.get("patchType")),
-        gradingCompany: toOptionalString(formData.get("gradingCompany")),
-        grade: toOptionalString(formData.get("grade")),
-        certNumber: toOptionalString(formData.get("certNumber")),
-        gradingLink: toOptionalString(formData.get("gradingLink")),
-        visibility: toOptionalString(formData.get("visibility")) ?? "private",
-        collectionStatus: toOptionalString(formData.get("collectionStatus")) ?? "holding",
-        purchaseDate: toOptionalDate(formData.get("purchaseDate")),
-        purchasePrice,
-        gradingFee,
-        totalCost,
-        currentValue: toOptionalFloat(formData.get("currentValue")),
-        purchaseSource: toOptionalString(formData.get("purchaseSource")),
-        tags: tagsRaw ? parseTags(tagsRaw).join(",") : null,
-        publicDescription: toOptionalString(formData.get("publicDescription")),
-        notes: toOptionalString(formData.get("notes")),
-        images: {
-          create: imagePaths.map((pathValue) => ({ path: pathValue }))
-        }
-      }
-    });
-
-    revalidatePath("/");
-    revalidatePath("/showcase");
-    redirectPath = `/cards/${card.id}?success=created`;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "创建失败，请稍后重试。";
-    redirectPath = `/cards/new?error=${encodeURIComponent(message)}`;
-  }
-
-  redirect(redirectPath);
-}
-
 export async function createCardFormAction(
   _previousState: CreateCardFormState,
   formData: FormData
 ): Promise<CreateCardFormState> {
   let redirectPath: string | null = null;
+  let imagePaths: string[] = [];
 
   try {
-    const { playerName, cardTitle, sport } = ensureBaseFields(formData);
+    const cardData = buildCardData(formData, false);
     const files = formData.getAll("images").filter((entry): entry is File => entry instanceof File && entry.size > 0);
 
     if (files.length < 1) {
@@ -244,60 +213,22 @@ export async function createCardFormAction(
       throw new Error(`最多上传 ${maxImagesPerCard} 张图片。`);
     }
 
-    validateFileList(files);
-
-    const imagePaths = await Promise.all(files.map((file) => saveUpload(file)));
-    const tagsRaw = toOptionalString(formData.get("tags"));
-
-    const purchasePrice = toOptionalFloat(formData.get("purchasePrice"));
-    const gradingFee = toOptionalFloat(formData.get("gradingFee"));
-    const totalCost = calculateTotalCost(purchasePrice, gradingFee);
-
+    imagePaths = await saveUploads(files);
     const card = await prisma.card.create({
       data: {
-        playerName,
-        cardTitle,
-        sport,
-        team: toOptionalString(formData.get("team")),
-        year: toOptionalString(formData.get("year")),
-        brand: toOptionalString(formData.get("brand")),
-        productLine: toOptionalString(formData.get("productLine")),
-        subsetName: toOptionalString(formData.get("subsetName")),
-        parallel: toOptionalString(formData.get("parallel")),
-        cardNumber: toOptionalString(formData.get("cardNumber")),
-        isSerialNumbered: false,
-        serialNumber: toOptionalString(formData.get("serialNumber")),
-        serialRange: toOptionalString(formData.get("serialRange")),
-        isRookie: parseBoolean(formData, "isRookie"),
-        isAutograph: parseBoolean(formData, "isAutograph"),
-        autoType: toOptionalString(formData.get("autoType")),
-        isPatch: parseBoolean(formData, "isPatch"),
-        patchType: toOptionalString(formData.get("patchType")),
-        gradingCompany: toOptionalString(formData.get("gradingCompany")),
-        grade: toOptionalString(formData.get("grade")),
-        certNumber: toOptionalString(formData.get("certNumber")),
-        gradingLink: toOptionalString(formData.get("gradingLink")),
-        visibility: toOptionalString(formData.get("visibility")) ?? "private",
-        collectionStatus: toOptionalString(formData.get("collectionStatus")) ?? "holding",
-        purchaseDate: toOptionalDate(formData.get("purchaseDate")),
-        purchasePrice,
-        gradingFee,
-        totalCost,
-        currentValue: toOptionalFloat(formData.get("currentValue")),
-        purchaseSource: toOptionalString(formData.get("purchaseSource")),
-        tags: tagsRaw ? parseTags(tagsRaw).join(",") : null,
-        publicDescription: toOptionalString(formData.get("publicDescription")),
-        notes: toOptionalString(formData.get("notes")),
+        ...cardData,
         images: {
           create: imagePaths.map((pathValue) => ({ path: pathValue }))
         }
       }
     });
+    imagePaths = [];
 
     revalidatePath("/");
     revalidatePath("/showcase");
     redirectPath = `/cards/${card.id}?success=created`;
   } catch (error) {
+    await Promise.all(imagePaths.map((imagePath) => removeImageIfExists(imagePath)));
     return {
       error: error instanceof Error ? error.message : "创建失败，请稍后重试。",
       values: getCreateCardValues(formData)
@@ -320,11 +251,9 @@ export async function updateCardAction(cardId: string, formData: FormData): Prom
       throw new Error("卡片不存在或已删除。");
     }
 
-    const { playerName, cardTitle, sport } = ensureBaseFields(formData);
+    const cardData = buildCardData(formData, existing.isSerialNumbered);
     const removeImageIds = formData.getAll("removeImageIds").map((value) => String(value));
     const files = formData.getAll("images").filter((entry): entry is File => entry instanceof File && entry.size > 0);
-
-    validateFileList(files);
 
     const imagesToRemove = existing.images.filter((image) => removeImageIds.includes(image.id));
     const remainingCount = existing.images.length - imagesToRemove.length + files.length;
@@ -336,64 +265,30 @@ export async function updateCardAction(cardId: string, formData: FormData): Prom
       throw new Error(`最多保留 ${maxImagesPerCard} 张图片。`);
     }
 
-    const imagePaths = await Promise.all(files.map((file) => saveUpload(file)));
-    const tagsRaw = toOptionalString(formData.get("tags"));
-    const purchasePrice = toOptionalFloat(formData.get("purchasePrice"));
-    const gradingFee = toOptionalFloat(formData.get("gradingFee"));
-    const totalCost = calculateTotalCost(purchasePrice, gradingFee);
+    const imagePaths = await saveUploads(files);
+    try {
+      await prisma.$transaction(async (transaction) => {
+        await transaction.card.update({
+          where: { id: cardId },
+          data: cardData
+        });
 
-    await prisma.$transaction(async (transaction) => {
-      await transaction.card.update({
-        where: { id: cardId },
-        data: {
-          playerName,
-          cardTitle,
-          sport,
-          team: toOptionalString(formData.get("team")),
-          year: toOptionalString(formData.get("year")),
-          brand: toOptionalString(formData.get("brand")),
-          productLine: toOptionalString(formData.get("productLine")),
-          subsetName: toOptionalString(formData.get("subsetName")),
-          parallel: toOptionalString(formData.get("parallel")),
-          cardNumber: toOptionalString(formData.get("cardNumber")),
-          isSerialNumbered: existing.isSerialNumbered,
-          serialNumber: toOptionalString(formData.get("serialNumber")),
-          serialRange: toOptionalString(formData.get("serialRange")),
-          isRookie: parseBoolean(formData, "isRookie"),
-          isAutograph: parseBoolean(formData, "isAutograph"),
-          autoType: toOptionalString(formData.get("autoType")),
-          isPatch: parseBoolean(formData, "isPatch"),
-          patchType: toOptionalString(formData.get("patchType")),
-          gradingCompany: toOptionalString(formData.get("gradingCompany")),
-          grade: toOptionalString(formData.get("grade")),
-          certNumber: toOptionalString(formData.get("certNumber")),
-          gradingLink: toOptionalString(formData.get("gradingLink")),
-          visibility: toOptionalString(formData.get("visibility")) ?? "private",
-          collectionStatus: toOptionalString(formData.get("collectionStatus")) ?? "holding",
-          purchaseDate: toOptionalDate(formData.get("purchaseDate")),
-          purchasePrice,
-          gradingFee,
-          totalCost,
-          currentValue: toOptionalFloat(formData.get("currentValue")),
-          purchaseSource: toOptionalString(formData.get("purchaseSource")),
-          tags: tagsRaw ? parseTags(tagsRaw).join(",") : null,
-          publicDescription: toOptionalString(formData.get("publicDescription")),
-          notes: toOptionalString(formData.get("notes"))
+        if (imagesToRemove.length > 0) {
+          await transaction.cardImage.deleteMany({
+            where: { id: { in: imagesToRemove.map((image) => image.id) } }
+          });
+        }
+
+        if (imagePaths.length > 0) {
+          await transaction.cardImage.createMany({
+            data: imagePaths.map((pathValue) => ({ cardId, path: pathValue }))
+          });
         }
       });
-
-      if (imagesToRemove.length > 0) {
-        await transaction.cardImage.deleteMany({
-          where: { id: { in: imagesToRemove.map((image) => image.id) } }
-        });
-      }
-
-      if (imagePaths.length > 0) {
-        await transaction.cardImage.createMany({
-          data: imagePaths.map((pathValue) => ({ cardId, path: pathValue }))
-        });
-      }
-    });
+    } catch (error) {
+      await Promise.all(imagePaths.map((imagePath) => removeImageIfExists(imagePath)));
+      throw error;
+    }
 
     await Promise.all(imagesToRemove.map((image) => removeImageIfExists(image.path)));
 

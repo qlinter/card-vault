@@ -1,6 +1,12 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { resolveDbPath, resolveShareCoversDir, resolveUploadsDir } = require("../scripts/storage-paths");
+const { DatabaseSync } = require("node:sqlite");
+const {
+  resolveDbPath,
+  resolveShareBackgroundsDir,
+  resolveShareCoversDir,
+  resolveUploadsDir
+} = require("../scripts/storage-paths");
 
 function loadJson(filePath) {
   try {
@@ -40,6 +46,74 @@ function copyFileIfMissing(sourcePath, targetPath) {
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
   if (!fs.existsSync(targetPath)) {
     fs.copyFileSync(sourcePath, targetPath);
+  }
+}
+
+function copyDirectoryFilesIfMissing(sourceDir, targetDir) {
+  if (!fs.existsSync(sourceDir)) {
+    return;
+  }
+
+  fs.mkdirSync(targetDir, { recursive: true });
+  for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+    if (!entry.isFile()) {
+      continue;
+    }
+
+    copyFileIfMissing(path.join(sourceDir, entry.name), path.join(targetDir, entry.name));
+  }
+}
+
+function sqliteStringLiteral(value) {
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+function createDatabaseSnapshot(sourceDbPath, targetDbPath) {
+  if (!fs.existsSync(sourceDbPath)) {
+    throw new Error("Database file does not exist.");
+  }
+
+  fs.mkdirSync(path.dirname(targetDbPath), { recursive: true });
+  const sourceDb = new DatabaseSync(sourceDbPath);
+  try {
+    sourceDb.exec(`VACUUM INTO ${sqliteStringLiteral(targetDbPath)};`);
+  } finally {
+    sourceDb.close();
+  }
+
+  const backupDb = new DatabaseSync(targetDbPath, { readOnly: true });
+  try {
+    const integrityRows = backupDb.prepare("PRAGMA integrity_check;").all();
+    const isValid =
+      integrityRows.length === 1 &&
+      Object.values(integrityRows[0]).some((value) => String(value).toLowerCase() === "ok");
+    if (!isValid) {
+      throw new Error("Backup database integrity check failed.");
+    }
+  } finally {
+    backupDb.close();
+  }
+}
+
+function copyDataFilesForBackup(sourceDataDir, targetDataDir, sourceDbPath) {
+  const sourceDbDir = path.dirname(path.resolve(sourceDbPath));
+  const sourceDbName = path.basename(sourceDbPath);
+  const skippedDatabaseNames = new Set([
+    sourceDbName,
+    `${sourceDbName}-journal`,
+    `${sourceDbName}-shm`,
+    `${sourceDbName}-wal`
+  ]);
+
+  fs.mkdirSync(targetDataDir, { recursive: true });
+  for (const entry of fs.readdirSync(sourceDataDir, { withFileTypes: true })) {
+    if (pathsEqual(sourceDataDir, sourceDbDir) && skippedDatabaseNames.has(entry.name)) {
+      continue;
+    }
+
+    const sourcePath = path.join(sourceDataDir, entry.name);
+    const targetPath = path.join(targetDataDir, entry.name);
+    fs.cpSync(sourcePath, targetPath, { recursive: entry.isDirectory() });
   }
 }
 
@@ -119,6 +193,10 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     return resolveShareCoversDir(projectRoot, { CARD_VAULT_DATA_DIR: getDataDir() });
   }
 
+  function getShareBackgroundsDir() {
+    return resolveShareBackgroundsDir(projectRoot, { CARD_VAULT_DATA_DIR: getDataDir() });
+  }
+
   function getDbPath() {
     return resolveDbPath(projectRoot, {
       CARD_VAULT_DATA_DIR: getDataDir(),
@@ -167,12 +245,14 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
   function repairDataLayout(dataDir) {
     const uploadsDir = path.join(dataDir, "uploads");
     const shareCoversDir = path.join(dataDir, "share-covers");
+    const shareBackgroundsDir = path.join(dataDir, "share-backgrounds");
     const rootDbPath = path.join(dataDir, "dev.db");
     const misplacedDbPath = path.join(uploadsDir, "dev.db");
 
     fs.mkdirSync(dataDir, { recursive: true });
     fs.mkdirSync(uploadsDir, { recursive: true });
     fs.mkdirSync(shareCoversDir, { recursive: true });
+    fs.mkdirSync(shareBackgroundsDir, { recursive: true });
 
     if (fs.existsSync(misplacedDbPath) && !fs.existsSync(rootDbPath)) {
       fs.renameSync(misplacedDbPath, rootDbPath);
@@ -204,6 +284,7 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
 
     const oldUploadsDir = path.join(resolvedSourceDir, "uploads");
     const oldShareCoversDir = path.join(resolvedSourceDir, "share-covers");
+    const oldShareBackgroundsDir = path.join(resolvedSourceDir, "share-backgrounds");
     const oldDbPath = path.join(resolvedSourceDir, "dev.db");
 
     if (fs.existsSync(oldUploadsDir)) {
@@ -212,6 +293,10 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
 
     if (fs.existsSync(oldShareCoversDir)) {
       fs.rmSync(oldShareCoversDir, { recursive: true, force: true });
+    }
+
+    if (fs.existsSync(oldShareBackgroundsDir)) {
+      fs.rmSync(oldShareBackgroundsDir, { recursive: true, force: true });
     }
 
     if (fs.existsSync(oldDbPath)) {
@@ -225,9 +310,11 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     const sourceDbPath = getDbPath();
     const sourceUploadsDir = getUploadsDir();
     const sourceShareCoversDir = getShareCoversDir();
+    const sourceShareBackgroundsDir = getShareBackgroundsDir();
     const targetDbPath = path.join(targetDir, "dev.db");
     const targetUploadsDir = path.join(targetDir, "uploads");
     const targetShareCoversDir = path.join(targetDir, "share-covers");
+    const targetShareBackgroundsDir = path.join(targetDir, "share-backgrounds");
 
     repairDataLayout(sourceDataDir);
 
@@ -242,30 +329,15 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     fs.mkdirSync(targetDir, { recursive: true });
     fs.mkdirSync(targetUploadsDir, { recursive: true });
     fs.mkdirSync(targetShareCoversDir, { recursive: true });
+    fs.mkdirSync(targetShareBackgroundsDir, { recursive: true });
 
     if (fs.existsSync(sourceDbPath) && !fs.existsSync(targetDbPath)) {
       fs.copyFileSync(sourceDbPath, targetDbPath);
     }
 
-    if (fs.existsSync(sourceUploadsDir)) {
-      for (const entry of fs.readdirSync(sourceUploadsDir, { withFileTypes: true })) {
-        if (!entry.isFile() || entry.name === "dev.db") {
-          continue;
-        }
-
-        copyFileIfMissing(path.join(sourceUploadsDir, entry.name), path.join(targetUploadsDir, entry.name));
-      }
-    }
-
-    if (fs.existsSync(sourceShareCoversDir)) {
-      for (const entry of fs.readdirSync(sourceShareCoversDir, { withFileTypes: true })) {
-        if (!entry.isFile()) {
-          continue;
-        }
-
-        copyFileIfMissing(path.join(sourceShareCoversDir, entry.name), path.join(targetShareCoversDir, entry.name));
-      }
-    }
+    copyDirectoryFilesIfMissing(sourceUploadsDir, targetUploadsDir);
+    copyDirectoryFilesIfMissing(sourceShareCoversDir, targetShareCoversDir);
+    copyDirectoryFilesIfMissing(sourceShareBackgroundsDir, targetShareBackgroundsDir);
 
     saveStorageConfig(targetDir);
     saveCleanupConfig(sourceDataDir);
@@ -282,6 +354,7 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
 
   function backupDataFolder() {
     const sourceDataDir = getDataDir();
+    const sourceDbPath = getDbPath();
     const backupDir = getBackupDir();
     validateBackupDir(backupDir);
     repairDataLayout(sourceDataDir);
@@ -293,7 +366,15 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     const dateDir = path.join(backupDir, dateFolderName());
     fs.mkdirSync(dateDir, { recursive: true });
     const targetDataDir = uniqueBackupTarget(dateDir);
-    fs.cpSync(sourceDataDir, targetDataDir, { recursive: true });
+    try {
+      copyDataFilesForBackup(sourceDataDir, targetDataDir, sourceDbPath);
+      const targetDbPath = path.join(targetDataDir, "dev.db");
+      fs.rmSync(targetDbPath, { force: true });
+      createDatabaseSnapshot(sourceDbPath, targetDbPath);
+    } catch (error) {
+      fs.rmSync(targetDataDir, { recursive: true, force: true });
+      throw error;
+    }
     return { backupRoot: backupDir, datePath: dateDir, backupPath: targetDataDir };
   }
 
@@ -328,6 +409,7 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     getBackupDir,
     getUploadsDir,
     getShareCoversDir,
+    getShareBackgroundsDir,
     getDbPath,
     getEnv,
     repairDataLayout,

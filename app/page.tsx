@@ -1,5 +1,6 @@
 import { FilterBar } from "@/components/filter-bar";
 import { splitTagString, buildCardFilters, buildCardSorting } from "@/lib/card-helpers";
+import { calculateOwnedCardsValue } from "@/lib/card-stats";
 import { normalizeImagePath } from "@/lib/image-path";
 import { prisma } from "@/lib/prisma";
 
@@ -70,7 +71,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const [cards, optionRows] = await Promise.all([
     prisma.card.findMany({
       where: buildCardFilters(query),
-      include: { images: { orderBy: { createdAt: "asc" } } },
+      include: { images: { take: 1, orderBy: { createdAt: "asc" } } },
       orderBy: buildCardSorting(query.sort)
     }),
     prisma.card.findMany({
@@ -104,7 +105,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
   const successMessage = successText(toScalar(params.success));
   const errorMessage = toScalar(params.error);
-  const totalValue = cards.reduce((sum, card) => sum + (card.currentValue ?? 0), 0);
+  const totalValue = calculateOwnedCardsValue(cards);
 
   return (
     <div className="page home-page">

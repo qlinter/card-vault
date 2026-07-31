@@ -1,6 +1,7 @@
 ﻿const { app, BrowserWindow, dialog, ipcMain } = require("electron");
 const fs = require("node:fs");
 const http = require("node:http");
+const net = require("node:net");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { createAiConfigManager } = require("./ai-config");
@@ -13,7 +14,9 @@ const nextCliPath = path.join(rootDir, "node_modules", "next", "dist", "bin", "n
 const initDbScriptPath = path.join(rootDir, "scripts", "init-db.js");
 const prepareLocalScriptPath = path.join(rootDir, "scripts", "prepare-local.js");
 const appIconPath = path.join(rootDir, "build", "icon.ico");
-const serverUrl = "http://127.0.0.1:3000";
+const defaultServerPort = 3000;
+let serverPort = defaultServerPort;
+let serverUrl = `http://127.0.0.1:${serverPort}`;
 const aiConfigPath = path.join(app.getPath("userData"), "ai-config.json");
 
 let mainWindow = null;
@@ -22,6 +25,8 @@ let serverProcess = null;
 if (process.platform === "win32") {
   app.setAppUserModelId("com.ql.cardvault");
 }
+
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
 function ensureLogsDir() {
   fs.mkdirSync(logsDir, { recursive: true });
@@ -82,37 +87,78 @@ function runNodeCommand(scriptPath, args, logFile) {
   });
 }
 
+function checkCardVaultServer(url) {
+  return new Promise((resolve) => {
+    const request = http.get(`${url}/api/health`, (response) => {
+      let body = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => {
+        body += chunk;
+      });
+      response.on("end", () => {
+        try {
+          const payload = JSON.parse(body);
+          resolve(response.statusCode === 200 && payload.app === "card-vault");
+        } catch {
+          resolve(false);
+        }
+      });
+    });
+
+    request.setTimeout(1500, () => request.destroy());
+    request.on("error", () => resolve(false));
+  });
+}
+
 function waitForServer(url, timeoutMs = 30000) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
 
-    const attempt = () => {
-      const request = http.get(url, (response) => {
-        response.resume();
+    const attempt = async () => {
+      if (await checkCardVaultServer(url)) {
         resolve();
-      });
+        return;
+      }
+      if (Date.now() - startedAt >= timeoutMs) {
+        reject(new Error(`Timed out waiting for ${url}`));
+        return;
+      }
 
-      request.on("error", () => {
-        if (Date.now() - startedAt >= timeoutMs) {
-          reject(new Error(`Timed out waiting for ${url}`));
-          return;
-        }
-
-        setTimeout(attempt, 1000);
-      });
+      setTimeout(attempt, 500);
     };
 
     attempt();
   });
 }
 
-async function isServerReachable(url) {
-  try {
-    await waitForServer(url, 2000);
-    return true;
-  } catch {
-    return false;
+function canListenOnPort(port) {
+  return new Promise((resolve) => {
+    const probe = net.createServer();
+    probe.unref();
+    probe.once("error", () => resolve(false));
+    probe.listen({ host: "127.0.0.1", port }, () => {
+      probe.close(() => resolve(true));
+    });
+  });
+}
+
+async function selectServerTarget() {
+  const defaultUrl = `http://127.0.0.1:${defaultServerPort}`;
+  if (await checkCardVaultServer(defaultUrl)) {
+    serverPort = defaultServerPort;
+    serverUrl = defaultUrl;
+    return { reuse: true };
   }
+
+  for (let candidate = defaultServerPort; candidate < defaultServerPort + 20; candidate += 1) {
+    if (await canListenOnPort(candidate)) {
+      serverPort = candidate;
+      serverUrl = `http://127.0.0.1:${serverPort}`;
+      return { reuse: false };
+    }
+  }
+
+  throw new Error("No available local port found for Card Vault.");
 }
 
 async function ensurePreparedBuild() {
@@ -130,15 +176,17 @@ async function startServer() {
   const dataDir = storage.getDataDir();
   const uploadsDir = storage.getUploadsDir();
   const shareCoversDir = storage.getShareCoversDir();
+  const shareBackgroundsDir = storage.getShareBackgroundsDir();
   const dbPath = storage.getDbPath();
 
   storage.repairDataLayout(dataDir);
   fs.mkdirSync(dataDir, { recursive: true });
   fs.mkdirSync(uploadsDir, { recursive: true });
   fs.mkdirSync(shareCoversDir, { recursive: true });
+  fs.mkdirSync(shareBackgroundsDir, { recursive: true });
   await runNodeCommand(initDbScriptPath, [], "prepare.log");
 
-  serverProcess = spawn(process.execPath, [nextCliPath, "start", "--hostname", "127.0.0.1", "--port", "3000"], {
+  serverProcess = spawn(process.execPath, [nextCliPath, "start", "--hostname", "127.0.0.1", "--port", String(serverPort)], {
     cwd: rootDir,
     windowsHide: true,
     env: {
@@ -289,11 +337,12 @@ async function bootDesktopApp() {
     storage.runPendingCleanup();
     await ensurePreparedBuild();
 
-    if (!(await isServerReachable(serverUrl))) {
+    const serverTarget = await selectServerTarget();
+    if (!serverTarget.reuse) {
       await startServer();
       await waitForServer(serverUrl, 30000);
     } else {
-      appendLog("desktop.log", "Reusing existing local server.");
+      appendLog("desktop.log", `Reusing verified Card Vault server: ${serverUrl}`);
     }
 
     await createMainWindow();
@@ -306,7 +355,23 @@ async function bootDesktopApp() {
   }
 }
 
-app.whenReady().then(bootDesktopApp);
+if (hasSingleInstanceLock) {
+  app.whenReady().then(bootDesktopApp);
+} else {
+  app.quit();
+}
+
+app.on("second-instance", () => {
+  if (!mainWindow) {
+    return;
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+  mainWindow.show();
+  mainWindow.focus();
+});
 
 app.on("window-all-closed", () => {
   stopServer();
@@ -322,5 +387,3 @@ app.on("activate", async () => {
     await createMainWindow();
   }
 });
-
-

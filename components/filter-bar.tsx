@@ -109,8 +109,6 @@ export function FilterBar({
           <option value="yearDesc">{"年份降序"}</option>
           <option value="priceAsc">{"价格升序"}</option>
           <option value="priceDesc">{"价格降序"}</option>
-          <option value="gradeAsc">{"评级升序"}</option>
-          <option value="gradeDesc">{"评级降序"}</option>
         </select>
       </div>
 

@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   ActiveAiSettings,
   AiProvider,
-  getAiSettingsFile,
-  getChatCompletionsHeaders,
-  getChatCompletionsModel,
-  getChatCompletionsUrl
-} from "@/lib/azure-openai-settings";
+  getAiSettingsFile
+} from "@/lib/ai-settings";
+import { AiUpstreamError, aiProviderName, requestAiChat } from "@/lib/ai-chat-client";
 
 export const runtime = "nodejs";
 
@@ -24,14 +22,6 @@ type TestSettingsPayload = {
     model?: string;
   };
 };
-
-function isUnsupportedTokenParameter(detail: string): boolean {
-  return detail.includes("Unsupported parameter") && detail.includes("max_completion_tokens");
-}
-
-function providerName(provider: string): string {
-  return provider === "minimax" ? "MiniMax" : "Azure OpenAI";
-}
 
 function trimOrFallback(value: string | undefined, fallback: string): string {
   const trimmed = value?.trim();
@@ -76,7 +66,7 @@ function assertComplete(settings: ActiveAiSettings): void {
   const missingLabels = missing.filter(Boolean);
 
   if (missingLabels.length > 0) {
-    throw new Error(`${providerName(settings.provider)} 设置不完整：缺少 ${missingLabels.join("、")}。`);
+    throw new Error(`${aiProviderName(settings.provider)} 设置不完整：缺少 ${missingLabels.join("、")}。`);
   }
 }
 
@@ -86,39 +76,17 @@ export async function POST(request: NextRequest) {
     const settings = activeSettingsFromPayload(payload);
     assertComplete(settings);
 
-    const url = getChatCompletionsUrl(settings);
-    const headers = getChatCompletionsHeaders(settings);
-    const model = getChatCompletionsModel(settings);
-
-    const requestInit = (tokenField: "max_completion_tokens" | "max_tokens") => ({
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        ...(model ? { model } : {}),
-        messages: [{ role: "user", content: "Reply with OK." }],
-        [tokenField]: 8,
-        temperature: 0
-      })
+    await requestAiChat(settings, {
+      messages: [{ role: "user", content: "Reply with OK." }],
+      maxTokens: 8,
+      temperature: 0,
+      operation: "连接测试",
+      timeoutMs: 30000
     });
-
-    let response = await fetch(url, requestInit("max_completion_tokens"));
-    let detail = response.ok ? "" : await response.text();
-
-    if (!response.ok && isUnsupportedTokenParameter(detail)) {
-      response = await fetch(url, requestInit("max_tokens"));
-      detail = response.ok ? "" : await response.text();
-    }
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: `${providerName(settings.provider)} 连接失败：${response.status} ${detail.slice(0, 240)}` },
-        { status: 502 }
-      );
-    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI 设置测试失败。";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: message }, { status: error instanceof AiUpstreamError ? 502 : 400 });
   }
 }

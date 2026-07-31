@@ -343,7 +343,7 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
             <span className="muted">{selectedCards.length} 张卡片</span>
           </div>
           <div className="share-item-editor">
-            {selectedCards.map((card, index) => {
+            {selectedCards.map((card) => {
               const draft = drafts[card.id] ?? {
                 sortOrder: String(card.sortOrder),
                 displayTitle: card.displayTitle,

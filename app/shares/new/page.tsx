@@ -13,7 +13,7 @@ function toScalar(value: string | string[] | undefined): string | undefined {
 export default async function NewSharePage({ searchParams }: NewSharePageProps) {
   const params = await searchParams;
   const cards = await prisma.card.findMany({
-    include: { images: { orderBy: { createdAt: "asc" } } },
+    include: { images: { take: 1, orderBy: { createdAt: "asc" } } },
     orderBy: [{ playerName: "asc" }, { createdAt: "desc" }]
   });
 

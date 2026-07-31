@@ -32,7 +32,7 @@ export default async function ShowcaseCardPage({ params, searchParams }: Showcas
     }),
     prisma.card.findMany({
       where: toShowcaseWhere(query),
-      include: { images: { orderBy: { createdAt: "asc" } } },
+      select: { id: true },
       orderBy: [{ playerName: "asc" }, { createdAt: "desc" }]
     })
   ]);

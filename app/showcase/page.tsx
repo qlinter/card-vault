@@ -30,7 +30,7 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
   const [cards, groupRows] = await Promise.all([
     prisma.card.findMany({
       where: toShowcaseWhere(query),
-      include: { images: { orderBy: { createdAt: "asc" } } },
+      include: { images: { take: 1, orderBy: { createdAt: "asc" } } },
       orderBy: [{ playerName: "asc" }, { createdAt: "desc" }]
     }),
     prisma.card.findMany({

@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   ActiveAiSettings,
-  ensureAiSettings,
-  getChatCompletionsHeaders,
-  getChatCompletionsModel,
-  getChatCompletionsUrl
-} from "@/lib/azure-openai-settings";
-import { cleanGeneratedText, extractJsonRecord, responseToText, safeText } from "@/lib/ai-response-parsing";
+  ensureAiSettings
+} from "@/lib/ai-settings";
+import { AiUpstreamError, requestAiChatText } from "@/lib/ai-chat-client";
+import { cleanGeneratedText, extractJsonRecord, safeText } from "@/lib/ai-response-parsing";
 
 export const runtime = "nodejs";
 
@@ -65,15 +63,6 @@ const cardTextFields = [
   "publicDescription"
 ] as const;
 
-function providerName(provider: string): string {
-  return provider === "minimax" ? "MiniMax" : "Azure OpenAI";
-}
-
-function isUnsupportedTokenParameter(detail: string, tokenField: string): boolean {
-  const text = safeText(detail);
-  return text.includes("Unsupported parameter") && text.includes(tokenField);
-}
-
 function pickThemeFields(parsed: Record<string, unknown>): ShareThemeSuggestion {
   const result: ShareThemeSuggestion = {};
   const nested = parsed.suggestion && typeof parsed.suggestion === "object" ? (parsed.suggestion as Record<string, unknown>) : parsed;
@@ -125,39 +114,12 @@ function coerceThemeFromText(rawText: string, cards: SanitizedCard[]): ShareThem
 }
 
 async function callChat(settings: ActiveAiSettings, prompt: string, maxTokens: number, temperature: number): Promise<string> {
-  const url = getChatCompletionsUrl(settings);
-  const headers = getChatCompletionsHeaders(settings);
-  const model = getChatCompletionsModel(settings);
-  const bodyFor = (tokenField: "max_completion_tokens" | "max_tokens") => ({
-    ...(model ? { model } : {}),
+  return requestAiChatText(settings, {
     messages: [{ role: "user", content: prompt }],
-    [tokenField]: maxTokens,
-    temperature
+    maxTokens,
+    temperature,
+    operation: "主题生成"
   });
-  const requestInit = (tokenField: "max_completion_tokens" | "max_tokens") => ({
-    method: "POST",
-    headers,
-    body: JSON.stringify(bodyFor(tokenField))
-  });
-
-  let response = await fetch(url, requestInit("max_completion_tokens"));
-  let detail = response.ok ? "" : await response.text();
-
-  if (!response.ok && isUnsupportedTokenParameter(detail, "max_completion_tokens")) {
-    response = await fetch(url, requestInit("max_tokens"));
-    detail = response.ok ? "" : await response.text();
-  }
-
-  if (!response.ok) {
-    throw new Error(`${providerName(settings.provider)} 主题生成失败：${response.status} ${detail.slice(0, 320)}`);
-  }
-
-  const content = responseToText(await response.json());
-  if (!safeText(content)) {
-    throw new Error(`${providerName(settings.provider)} 没有返回可用主题内容。`);
-  }
-
-  return content;
 }
 
 async function repairJsonFromText(settings: ActiveAiSettings, rawText: string, cards: SanitizedCard[]): Promise<ShareThemeSuggestion> {
@@ -275,6 +237,6 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI 主题生成失败，请稍后重试。";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: message }, { status: error instanceof AiUpstreamError ? 502 : 400 });
   }
 }

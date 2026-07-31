@@ -1,6 +1,6 @@
 {
   "name": "card-vault",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "private": true,
   "description": "Local desktop app for managing and showcasing sports cards.",
   "author": "QL",
@@ -9,6 +9,8 @@
   "scripts": {
     "build": "next build",
     "check:encoding": "node scripts/check-encoding.js",
+    "test": "node --test",
+    "check:release": "npm run check:encoding && npm run typecheck && npm test && next build",
     "typecheck": "tsc --noEmit",
     "clean:cache": "node scripts/clean-cache.js",
     "prebuild": "npm run check:encoding && npm run typecheck",

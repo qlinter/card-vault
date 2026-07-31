@@ -10,6 +10,7 @@ const { createStorageManager } = require("./storage");
 const rootDir = path.resolve(__dirname, "..");
 const logsDir = path.join(rootDir, "logs");
 const nextBuildIdPath = path.join(rootDir, ".next", "BUILD_ID");
+const nextHealthRoutePath = path.join(rootDir, ".next", "server", "app", "api", "health", "route.js");
 const nextCliPath = path.join(rootDir, "node_modules", "next", "dist", "bin", "next");
 const initDbScriptPath = path.join(rootDir, "scripts", "init-db.js");
 const prepareLocalScriptPath = path.join(rootDir, "scripts", "prepare-local.js");
@@ -27,6 +28,45 @@ if (process.platform === "win32") {
 }
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
+
+const nextBuildSourcePaths = [
+  path.join(rootDir, "app"),
+  path.join(rootDir, "components"),
+  path.join(rootDir, "lib"),
+  path.join(rootDir, "next.config.mjs"),
+  path.join(rootDir, "package.json"),
+  path.join(rootDir, "postcss.config.mjs"),
+  path.join(rootDir, "prisma", "schema.prisma"),
+  path.join(rootDir, "tailwind.config.ts")
+];
+
+function getLatestModifiedTime(targetPath) {
+  if (!fs.existsSync(targetPath)) {
+    return 0;
+  }
+
+  const stats = fs.statSync(targetPath);
+  if (!stats.isDirectory()) {
+    return stats.mtimeMs;
+  }
+
+  return fs.readdirSync(targetPath, { withFileTypes: true }).reduce((latest, entry) => {
+    return Math.max(latest, getLatestModifiedTime(path.join(targetPath, entry.name)));
+  }, stats.mtimeMs);
+}
+
+function isPreparedBuildCurrent() {
+  if (!fs.existsSync(nextBuildIdPath) || !fs.existsSync(nextHealthRoutePath)) {
+    return false;
+  }
+
+  const buildTime = fs.statSync(nextBuildIdPath).mtimeMs;
+  const latestSourceTime = nextBuildSourcePaths.reduce((latest, sourcePath) => {
+    return Math.max(latest, getLatestModifiedTime(sourcePath));
+  }, 0);
+
+  return buildTime >= latestSourceTime;
+}
 
 function ensureLogsDir() {
   fs.mkdirSync(logsDir, { recursive: true });
@@ -162,12 +202,12 @@ async function selectServerTarget() {
 }
 
 async function ensurePreparedBuild() {
-  if (fs.existsSync(nextBuildIdPath)) {
+  if (isPreparedBuildCurrent()) {
     appendLog("desktop.log", "Existing build found.");
     return;
   }
 
-  appendLog("desktop.log", "Preparing local app build.");
+  appendLog("desktop.log", "Build missing or stale; preparing local app build.");
   await runNodeCommand(prepareLocalScriptPath, [], "prepare.log");
 }
 

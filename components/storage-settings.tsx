@@ -1,14 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type StorageSettingsProps = {
   currentPath: string;
 };
 
 export function StorageSettings({ currentPath }: StorageSettingsProps) {
+  const [displayedPath, setDisplayedPath] = useState(currentPath);
   const [isPending, setIsPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDisplayedPath(currentPath);
+  }, [currentPath]);
 
   async function handleChooseDirectory() {
     if (!window.cardVaultDesktop) {
@@ -21,6 +26,10 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
 
     try {
       const result = await window.cardVaultDesktop.chooseStorageDirectory();
+
+      if (!result.cancelled) {
+        setDisplayedPath(result.path);
+      }
 
       if (result.cancelled) {
         setMessage("已取消修改存储路径。");
@@ -55,7 +64,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
         </button>
       </div>
       <p className="muted" style={{ margin: "0.35rem 0 0" }}>
-        <strong>{"当前路径："}</strong>{currentPath}
+        <strong>{"当前路径："}</strong>{displayedPath}
       </p>
       {message ? (
         <p className="muted" style={{ margin: "0.5rem 0 0" }}>

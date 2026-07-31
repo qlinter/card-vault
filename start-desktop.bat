@@ -24,8 +24,6 @@ if not exist "node_modules\electron" (
   exit /b 1
 )
 
-taskkill /f /im node.exe >nul 2>nul
-
 call npm.cmd run electron
 if errorlevel 1 (
   echo Desktop app failed to start.

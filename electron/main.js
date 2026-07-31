@@ -60,6 +60,10 @@ function isPreparedBuildCurrent() {
     return false;
   }
 
+  if (app.isPackaged) {
+    return true;
+  }
+
   const buildTime = fs.statSync(nextBuildIdPath).mtimeMs;
   const latestSourceTime = nextBuildSourcePaths.reduce((latest, sourcePath) => {
     return Math.max(latest, getLatestModifiedTime(sourcePath));

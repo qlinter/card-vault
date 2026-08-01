@@ -64,6 +64,27 @@ function copyDirectoryFilesIfMissing(sourceDir, targetDir) {
   }
 }
 
+function directoryHasEntries(directoryPath) {
+  if (!fs.existsSync(directoryPath)) {
+    return false;
+  }
+
+  return fs.readdirSync(directoryPath).length > 0;
+}
+
+function hasExistingStorageData(dataDir) {
+  const databaseNames = ["dev.db", "dev.db-journal", "dev.db-shm", "dev.db-wal"];
+  if (databaseNames.some((name) => fs.existsSync(path.join(dataDir, name)))) {
+    return true;
+  }
+
+  return [
+    path.join(dataDir, "uploads"),
+    path.join(dataDir, "share-covers"),
+    path.join(dataDir, "share-backgrounds")
+  ].some(directoryHasEntries);
+}
+
 function sqliteStringLiteral(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
@@ -234,10 +255,6 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     }
   }
 
-  function saveCleanupConfig(pendingDeleteDir) {
-    saveJson(cleanupConfigPath, { pendingDeleteDir });
-  }
-
   function clearCleanupConfig() {
     clearFile(cleanupConfigPath);
   }
@@ -265,45 +282,6 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     }
   }
 
-  function cleanupOldDataContents(sourceDataDir, targetDir) {
-    const resolvedSourceDir = path.resolve(sourceDataDir);
-    const resolvedTargetDir = path.resolve(targetDir);
-    const resolvedProjectRoot = path.resolve(projectRoot);
-
-    if (pathsEqual(resolvedSourceDir, resolvedTargetDir) || !fs.existsSync(resolvedSourceDir)) {
-      return;
-    }
-
-    if (pathsEqual(resolvedSourceDir, resolvedProjectRoot)) {
-      throw new Error("旧存储路径异常，已阻止清理项目目录。");
-    }
-
-    if (isSubPath(resolvedSourceDir, resolvedTargetDir)) {
-      throw new Error("新路径位于旧路径内部，不能清理旧路径内容。");
-    }
-
-    const oldUploadsDir = path.join(resolvedSourceDir, "uploads");
-    const oldShareCoversDir = path.join(resolvedSourceDir, "share-covers");
-    const oldShareBackgroundsDir = path.join(resolvedSourceDir, "share-backgrounds");
-    const oldDbPath = path.join(resolvedSourceDir, "dev.db");
-
-    if (fs.existsSync(oldUploadsDir)) {
-      fs.rmSync(oldUploadsDir, { recursive: true, force: true });
-    }
-
-    if (fs.existsSync(oldShareCoversDir)) {
-      fs.rmSync(oldShareCoversDir, { recursive: true, force: true });
-    }
-
-    if (fs.existsSync(oldShareBackgroundsDir)) {
-      fs.rmSync(oldShareBackgroundsDir, { recursive: true, force: true });
-    }
-
-    if (fs.existsSync(oldDbPath)) {
-      fs.rmSync(oldDbPath, { force: true });
-    }
-  }
-
   function migrateTo(selectedPath) {
     const targetDir = resolveSelectedDataDir(selectedPath);
     const sourceDataDir = getDataDir();
@@ -315,6 +293,7 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     const targetUploadsDir = path.join(targetDir, "uploads");
     const targetShareCoversDir = path.join(targetDir, "share-covers");
     const targetShareBackgroundsDir = path.join(targetDir, "share-backgrounds");
+    const targetHasExistingData = hasExistingStorageData(targetDir);
 
     repairDataLayout(sourceDataDir);
 
@@ -331,17 +310,19 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     fs.mkdirSync(targetShareCoversDir, { recursive: true });
     fs.mkdirSync(targetShareBackgroundsDir, { recursive: true });
 
-    if (fs.existsSync(sourceDbPath) && !fs.existsSync(targetDbPath)) {
-      fs.copyFileSync(sourceDbPath, targetDbPath);
+    if (!targetHasExistingData) {
+      if (fs.existsSync(sourceDbPath)) {
+        fs.copyFileSync(sourceDbPath, targetDbPath);
+      }
+
+      copyDirectoryFilesIfMissing(sourceUploadsDir, targetUploadsDir);
+      copyDirectoryFilesIfMissing(sourceShareCoversDir, targetShareCoversDir);
+      copyDirectoryFilesIfMissing(sourceShareBackgroundsDir, targetShareBackgroundsDir);
     }
 
-    copyDirectoryFilesIfMissing(sourceUploadsDir, targetUploadsDir);
-    copyDirectoryFilesIfMissing(sourceShareCoversDir, targetShareCoversDir);
-    copyDirectoryFilesIfMissing(sourceShareBackgroundsDir, targetShareBackgroundsDir);
-
     saveStorageConfig(targetDir);
-    saveCleanupConfig(sourceDataDir);
-    return { changed: true, previousPath: sourceDataDir, currentPath: targetDir };
+    clearCleanupConfig();
+    return { changed: true, previousPath: sourceDataDir, currentPath: targetDir, usedExistingData: targetHasExistingData };
   }
 
   function chooseBackupDir(selectedPath) {
@@ -388,19 +369,12 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
       return;
     }
 
-    const currentDataDir = getDataDir();
-    if (pathsEqual(pendingDeleteDir, currentDataDir)) {
-      clearCleanupConfig();
-      return;
-    }
-
     try {
-      cleanupOldDataContents(pendingDeleteDir, currentDataDir);
-      log(`Old storage contents cleaned: ${pendingDeleteDir}`);
       clearCleanupConfig();
+      log(`Pending storage cleanup cancelled to preserve data: ${pendingDeleteDir}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown cleanup error.";
-      log(`Old storage cleanup failed: ${message}`);
+      log(`Failed to cancel pending storage cleanup: ${message}`);
     }
   }
 

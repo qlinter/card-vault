@@ -3,6 +3,8 @@ import { BackupSettings } from "@/components/backup-settings";
 import { StorageSettings } from "@/components/storage-settings";
 import { resolveConfiguredDataDir } from "@/lib/storage-resolver";
 
+export const dynamic = "force-dynamic";
+
 export default function SettingsPage() {
   const currentStoragePath = resolveConfiguredDataDir() ?? "\u672a\u8bbe\u7f6e";
 

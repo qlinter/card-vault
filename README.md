@@ -308,17 +308,19 @@ start-desktop.bat
 - 更适合长期在同一台电脑上使用。
 - 安装完成后可像普通 Windows 软件一样启动。
 
-### 便携发布目录
+### 便携版
 
-目录：
+文件：
 
-- `dist/win-unpacked/`
+- `dist/card-vault-1.0.9-portable.zip`
 
 使用方式：
 
-1. 进入 `dist/win-unpacked/`。
+1. 完整解压 `card-vault-1.0.9-portable.zip`。
 2. 运行 `Card Vault.exe`。
-3. 需要分发时，压缩整个 `win-unpacked` 目录；不要只发送其中的可执行文件。
+3. 不要单独移动或发送其中的可执行文件，需保留解压后的完整目录结构。
+
+打包过程同时保留 `dist/win-unpacked/`，用于本机直接检查便携版内容。
 
 特点：
 

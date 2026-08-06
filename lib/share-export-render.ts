@@ -2,6 +2,7 @@ import {
   ExportCard,
   ExportData
 } from "@/lib/share-export-types";
+import { normalizeShareTheme } from "@/lib/share-themes";
 
 function escapeHtml(value: string | null | undefined): string {
   return (value ?? "")
@@ -52,10 +53,17 @@ function cardMeta(card: ExportCard): Array<[string, string]> {
   return rows.filter((row): row is [string, string] => Boolean(row[1]));
 }
 
-function renderLayout(title: string, body: string, depth: "root" | "card" = "root", backgroundImage?: string | null): string {
+function renderLayout(
+  title: string,
+  body: string,
+  depth: "root" | "card" = "root",
+  backgroundImage?: string | null,
+  theme?: string | null
+): string {
   const prefix = depth === "root" ? "" : "../";
   const backgroundStyle = backgroundImage ? ` style="--share-bg-image: url('${prefix}${escapeHtml(backgroundImage)}')"` : "";
-  const bodyClass = backgroundImage ? ` class="has-custom-bg"` : "";
+  const themeClass = `theme-${normalizeShareTheme(theme)}`;
+  const bodyClass = ` class="${themeClass}${backgroundImage ? " has-custom-bg" : ""}"`;
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -85,32 +93,12 @@ export function renderIndex(data: ExportData): string {
     .join("");
 
   const cardsHtml = data.cards
-    .map((card) => {
+    .map((card, index) => {
       const image = card.images[0]
         ? `<img src="${escapeHtml(card.images[0])}" alt="${escapeHtml(card.displayTitle)}" />`
         : `<div class="placeholder"></div>`;
-      const badges = [
-        card.year,
-        card.brand,
-        card.productLine,
-        card.isRookie ? "Rookie" : null,
-        card.isAutograph ? "Auto" : null,
-        card.serialRange ? `/${escapeHtml(card.serialRange.replace(/^\//, ""))}` : null,
-        card.grade ? `${card.gradingCompany ?? ""} ${card.grade}`.trim() : null
-      ]
-        .filter(Boolean)
-        .map((item) => `<span>${escapeHtml(item)}</span>`)
-        .join("");
-
-      const index = data.cards.indexOf(card);
-      return `<article class="card carousel-card" data-index="${escapeHtml(String(index))}" style="--offset:${index};--abs-offset:${Math.abs(index)}">
-        <div class="card-image">${image}</div>
-        <div class="card-body">
-          <h2>${escapeHtml(card.playerName)}</h2>
-          <p>${escapeHtml(card.displayTitle)}</p>
-          <div class="badges">${badges}</div>
-          <a class="detail-link" href="${escapeHtml(card.href)}">查看单卡</a>
-        </div>
+      return `<article class="card carousel-card" data-index="${escapeHtml(String(index))}" aria-label="${escapeHtml(`${card.playerName} ${card.displayTitle}`)}" style="--offset:${index};--abs-offset:${Math.abs(index)}">
+        <a class="card-image" href="${escapeHtml(card.href)}" aria-label="查看 ${escapeHtml(card.displayTitle)}">${image}</a>
       </article>`;
     })
     .join("");
@@ -155,7 +143,7 @@ export function renderIndex(data: ExportData): string {
     </section>
   </main>`;
 
-  return renderLayout(data.title, body, "root", data.backgroundImage);
+  return renderLayout(data.title, body, "root", data.backgroundImage, data.theme);
 }
 
 export function renderCardPage(data: ExportData, card: ExportCard): string {
@@ -180,7 +168,7 @@ export function renderCardPage(data: ExportData, card: ExportCard): string {
     </section>
   </main>`;
 
-  return renderLayout(`${card.playerName} - ${data.title}`, body, "card", data.backgroundImage);
+  return renderLayout(`${card.playerName} - ${data.title}`, body, "card", data.backgroundImage, data.theme);
 }
 
 export function siteCss(): string {
@@ -210,13 +198,32 @@ body.has-custom-bg::before {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background:
-    linear-gradient(120deg, rgba(4, 7, 12, 0.88), rgba(7, 12, 20, 0.64)),
-    var(--share-bg-image) center / cover no-repeat;
+  background: var(--share-bg-image) center / cover no-repeat;
 }
 a { color: inherit; text-decoration: none; }
 img { display: block; max-width: 100%; }
 .shell { position: relative; z-index: 1; width: min(1160px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 48px; }
+body.has-custom-bg .back {
+  display: inline-flex;
+  padding: 9px 13px;
+}
+body.has-custom-bg .hero-copy {
+  padding: clamp(20px, 3vw, 32px);
+}
+body.has-custom-bg .carousel-toolbar {
+  width: fit-content;
+  margin-inline: auto;
+  padding: 9px 13px;
+}
+body.has-custom-bg .hero-copy h1,
+body.has-custom-bg .detail-copy h1,
+body.has-custom-bg .subtitle,
+body.has-custom-bg .hero-copy p:not(.kicker):not(.subtitle),
+body.has-custom-bg .story p,
+body.has-custom-bg .detail-copy p {
+  color: #f7f9fc;
+  text-shadow: 0 2px 18px rgba(0,0,0,0.62);
+}
 .hero {
   min-height: 72vh;
   display: grid;
@@ -228,15 +235,15 @@ img { display: block; max-width: 100%; }
 .kicker { color: var(--accent); text-transform: uppercase; font-size: 12px; letter-spacing: 0.14em; font-weight: 700; }
 .subtitle { color: var(--muted); font-size: clamp(18px, 2.2vw, 26px); line-height: 1.45; }
 .hero-copy p:not(.kicker):not(.subtitle), .story p, .detail-copy p { color: var(--muted); line-height: 1.85; }
-.hero-cover, .card, .story, .detail-images, .detail-copy {
+.hero-cover, .story, .detail-images, .detail-copy {
   border: 1px solid var(--line);
   background: var(--panel);
   backdrop-filter: blur(18px);
 }
 .hero-cover { padding: 14px; }
 .hero-cover img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; }
-.stats, .badges, .groups { display: flex; flex-wrap: wrap; gap: 10px; }
-.stats span, .badges span, .chip {
+.stats, .groups { display: flex; flex-wrap: wrap; gap: 10px; }
+.stats span, .chip {
   border: 1px solid var(--line);
   background: var(--panel-strong);
   color: var(--text);
@@ -254,7 +261,7 @@ img { display: block; max-width: 100%; }
   gap: 12px;
   margin-bottom: 18px;
 }
-.carousel-toolbar button, .detail-link {
+.carousel-toolbar button {
   border: 1px solid var(--line);
   background: var(--panel-strong);
   color: var(--text);
@@ -264,7 +271,7 @@ img { display: block; max-width: 100%; }
 }
 .card-stage {
   position: relative;
-  min-height: 560px;
+  min-height: 460px;
   perspective: 1500px;
   overflow: hidden;
   touch-action: pan-y;
@@ -274,24 +281,33 @@ img { display: block; max-width: 100%; }
   top: 0;
   left: 50%;
   width: min(330px, 76vw);
+  padding: 0;
+  border: 0;
+  --card-radius: 24px;
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  clip-path: inset(0 round var(--card-radius));
+  contain: paint;
+  isolation: isolate;
+  background: transparent;
+  background-clip: padding-box;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.24);
   transform:
     translateX(calc(-50% + (var(--offset) * 250px)))
     rotateY(calc(var(--offset) * -14deg))
     scale(calc(1 - (var(--abs-offset) * 0.08)));
   opacity: calc(1 - (var(--abs-offset) * 0.24));
   z-index: calc(10 - var(--abs-offset));
-  transition: transform 220ms ease, opacity 220ms ease, border-color 180ms ease;
+  transition: transform 220ms ease, opacity 220ms ease;
 }
 .carousel-card[aria-hidden="true"] { pointer-events: none; opacity: 0; }
-.carousel-card.active { border-color: rgba(215, 187, 122, 0.55); }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
-.card { overflow: hidden; transition: transform 160ms ease, border-color 160ms ease; }
-.card:not(.carousel-card):hover { transform: translateY(-3px); border-color: rgba(215, 187, 122, 0.45); }
 .card-image img, .placeholder { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; background: rgba(255,255,255,0.06); }
-.card-body { padding: 14px; }
-.card-body h2 { margin: 0 0 6px; font-size: 20px; }
-.card-body p { margin: 0 0 12px; color: var(--muted); line-height: 1.45; }
-.detail-link { display: inline-flex; margin-top: 12px; color: var(--accent); font-weight: 700; }
+.carousel-card .card-image img,
+.carousel-card .placeholder {
+  display: block;
+  border-radius: 24px;
+  box-shadow: none;
+}
 .detail-shell { padding-top: 20px; }
 .back { margin-bottom: 18px; color: var(--accent); font-weight: 700; }
 .detail { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(320px, 0.8fr); gap: 24px; align-items: start; }
@@ -303,13 +319,125 @@ img { display: block; max-width: 100%; }
 .meta strong { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 .meta span { overflow-wrap: anywhere; }
 .large { min-height: 420px; }
+body.theme-archive {
+  color-scheme: light;
+  --bg: #f4f0e8;
+  --panel: rgba(255, 255, 255, 0.72);
+  --panel-strong: rgba(255, 255, 255, 0.88);
+  --line: rgba(36, 57, 88, 0.18);
+  --text: #1b2d49;
+  --muted: #52627a;
+  --accent: #a36f24;
+  background:
+    radial-gradient(circle at top left, rgba(163, 111, 36, 0.14), transparent 28rem),
+    linear-gradient(145deg, #f7f4ee 0%, #e6edf4 56%, #f7f4ee 100%);
+}
+body.theme-archive .hero-cover,
+body.theme-archive .story,
+body.theme-archive .detail-images,
+body.theme-archive .detail-copy {
+  background: var(--panel);
+  border-color: var(--line);
+}
+body.theme-archive .card-image img,
+body.theme-archive .placeholder,
+body.theme-archive .detail-images img { background: #e6ebf0; }
+body.theme-football {
+  color: #f5fbf4;
+  --accent: #cde83d;
+  --muted: #b9d8c5;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px) 0 0 / 25% 100%,
+    linear-gradient(145deg, #08271e 0%, #0d5f40 55%, #062118 100%);
+}
+body.theme-football .hero { border-left: 6px solid #cde83d; padding-left: 20px; }
+body.theme-football .story,
+body.theme-football .hero-cover,
+body.theme-football .detail-images,
+body.theme-football .detail-copy { border-color: rgba(205,232,61,0.34); background: rgba(3,35,24,0.72); }
+body.theme-basketball {
+  color: #fff8ee;
+  --accent: #ffc46d;
+  --muted: #ead0b5;
+  background: radial-gradient(circle at 78% 18%, rgba(255,195,109,0.22), transparent 13rem), linear-gradient(145deg, #552516 0%, #b95c2a 50%, #102c4d 100%);
+}
+body.theme-basketball .story,
+body.theme-basketball .hero-cover,
+body.theme-basketball .detail-images,
+body.theme-basketball .detail-copy { border-color: rgba(255,196,109,0.38); background: rgba(47,24,19,0.68); }
+body.theme-tennis {
+  color: #f4fbff;
+  --accent: #d8ef44;
+  --muted: #b9d8e7;
+  background: linear-gradient(135deg, transparent 0 46%, rgba(216,239,68,0.18) 47% 52%, transparent 53%), linear-gradient(145deg, #071d31 0%, #0e5c8d 56%, #06243e 100%);
+}
+body.theme-tennis .hero { transform: skewY(-1deg); }
+body.theme-tennis .story,
+body.theme-tennis .hero-cover,
+body.theme-tennis .detail-images,
+body.theme-tennis .detail-copy { border-color: rgba(216,239,68,0.36); background: rgba(4,36,61,0.7); }
+body.theme-f1 {
+  color: #f7f8fa;
+  --accent: #f0524e;
+  --muted: #b9bec8;
+  background: repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 8px, transparent 8px 18px), linear-gradient(145deg, #090a0d 0%, #252931 60%, #120f13 100%);
+}
+body.theme-f1 .hero-copy h1 { text-transform: uppercase; letter-spacing: 0.03em; }
+body.theme-f1 .story,
+body.theme-f1 .hero-cover,
+body.theme-f1 .detail-images,
+body.theme-f1 .detail-copy { border-color: rgba(240,82,78,0.4); background: rgba(8,10,14,0.78); }
+body.theme-nerazzurri {
+  color: #10233c;
+  --accent: #004e9a;
+  --muted: #3f5875;
+  --panel: rgba(255,255,255,0.72);
+  --panel-strong: rgba(255,255,255,0.9);
+  --line: rgba(0,78,154,0.22);
+  background: radial-gradient(circle at 72% 18%, rgba(0,83,167,0.14), transparent 16rem), linear-gradient(145deg, #f7fbff 0%, #dceafa 56%, #f8fbff 100%);
+}
+body.theme-nerazzurri .hero { border-left: 6px solid #0067d8; padding-left: 20px; }
+body.theme-nerazzurri .hero-copy h1 { color: #07182e; text-shadow: 0 0 28px rgba(255,255,255,0.72); }
+body.theme-nerazzurri .story,
+body.theme-nerazzurri .hero-cover,
+body.theme-nerazzurri .detail-images,
+body.theme-nerazzurri .detail-copy { border-color: rgba(0,78,154,0.22); background: rgba(255,255,255,0.72); }
+body.theme-nerazzurri-2 {
+  color: #f2f7ff;
+  --accent: #d9ad54;
+  --muted: #b9c8dc;
+  background: repeating-linear-gradient(90deg, rgba(0,85,170,0.22) 0 7rem, rgba(3,11,24,0.22) 7rem 14rem), radial-gradient(circle at 72% 18%, rgba(218,170,76,0.22), transparent 16rem), linear-gradient(145deg, #020916 0%, #043b82 45%, #01050d 100%);
+}
+body.theme-nerazzurri-2 .hero { border-left: 6px solid #0067d8; padding-left: 20px; }
+body.theme-nerazzurri-2 .hero-copy h1 { text-shadow: 0 0 28px rgba(0,103,216,0.46); }
+body.theme-nerazzurri-2 .story,
+body.theme-nerazzurri-2 .hero-cover,
+body.theme-nerazzurri-2 .detail-images,
+body.theme-nerazzurri-2 .detail-copy { border-color: rgba(217,173,84,0.36); background: rgba(3,12,28,0.72); }
+body.has-custom-bg .back,
+body.has-custom-bg .hero-copy,
+body.has-custom-bg .carousel-toolbar,
+body.has-custom-bg .story,
+body.has-custom-bg .detail-copy {
+  border: 1px solid rgba(255,255,255,0.24);
+  border-radius: 24px;
+  background: rgba(8,14,24,0.14);
+  box-shadow: 0 14px 38px rgba(0,0,0,0.14), inset 0 0 0 1px rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px) saturate(125%);
+}
+body.has-custom-bg .stats span,
+body.has-custom-bg .chip {
+  border-color: rgba(255,255,255,0.22);
+  background: rgba(8,14,24,0.16);
+  backdrop-filter: blur(8px) saturate(125%);
+}
 @media (max-width: 820px) {
   .shell { width: min(100% - 22px, 680px); padding-top: 20px; }
   .hero, .story, .detail { grid-template-columns: 1fr; min-height: auto; }
   .hero-copy h1, .detail-copy h1 { font-size: clamp(34px, 14vw, 58px); }
   .detail-copy { position: static; }
   .meta { grid-template-columns: 1fr; }
-  .card-stage { min-height: 500px; }
+  .card-stage { min-height: 420px; }
   .carousel-card {
     width: min(300px, 78vw);
     transform:

@@ -9,6 +9,7 @@ import { prepareImageUpload } from "@/lib/image-upload";
 import { prisma } from "@/lib/prisma";
 import { exportShareCollection, ShareExportMode } from "@/lib/share-export";
 import { getShareBackgroundsDir, getShareCoversDir } from "@/lib/storage-paths";
+import { normalizeShareTheme } from "@/lib/share-themes";
 
 const shareCoverDir = getShareCoversDir();
 const shareBackgroundDir = getShareBackgroundsDir();
@@ -138,6 +139,7 @@ async function collectionData(formData: FormData) {
     return {
       data: {
         title,
+        theme: normalizeShareTheme(formData.get("theme")),
         subtitle: toOptionalString(formData.get("subtitle")),
         description: toOptionalString(formData.get("description")),
         themeNarrative: toOptionalString(formData.get("themeNarrative")),
@@ -245,7 +247,7 @@ export async function updateShareCollectionAction(shareId: string, formData: For
     revalidatePath(`/shares/${shareId}/edit`);
     revalidatePath(`/shares/${shareId}/preview`);
     revalidatePath(`/shares/${shareId}/export`);
-    redirectPath = `/shares/${shareId}/edit?success=updated`;
+    redirectPath = "/shares?success=updated";
   } catch (error) {
     await Promise.all(uploadedPaths.map((imagePath) => removeManagedShareImage(imagePath)));
     const message = error instanceof Error ? error.message : "更新分享集失败，请稍后重试。";

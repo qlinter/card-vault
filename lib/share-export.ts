@@ -19,6 +19,7 @@ import {
   ShareExportResult
 } from "@/lib/share-export-types";
 import { getShareBackgroundsDir, getShareCoversDir, getUploadsDir, resolveDataDir } from "@/lib/storage-paths";
+import { normalizeShareTheme, shareThemeBackgroundPath } from "@/lib/share-themes";
 import { createZipArchive } from "@/lib/zip-archive";
 
 export type { ShareExportMode } from "@/lib/share-export-types";
@@ -71,6 +72,7 @@ export async function exportShareCollection(
   let imageCount = 0;
   let coverImage: string | null = null;
   let backgroundImage: string | null = null;
+  const theme = normalizeShareTheme(collection.theme);
   const sortedItems = [...collection.items].sort((a, b) => a.sortOrder - b.sortOrder);
 
   for (const [cardIndex, item] of sortedItems.entries()) {
@@ -118,10 +120,20 @@ export async function exportShareCollection(
       await fs.promises.copyFile(source, path.join(imageDir, fileName));
       imageCount += 1;
     }
+  } else {
+    const themeBackground = shareThemeBackgroundPath(theme);
+    const source = path.join(process.cwd(), "public", themeBackground.replace(/^\/+/, ""));
+    if (fs.existsSync(source)) {
+      const fileName = `theme-background-${safeFileName(path.basename(themeBackground))}`;
+      backgroundImage = `assets/images/${fileName}`;
+      await fs.promises.copyFile(source, path.join(imageDir, fileName));
+      imageCount += 1;
+    }
   }
 
   const data: ExportData = {
     title: collection.title,
+    theme,
     subtitle: collection.subtitle,
     description: collection.description,
     themeNarrative: collection.themeNarrative,

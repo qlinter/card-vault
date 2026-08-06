@@ -10,12 +10,16 @@ import {
   ShareThemeValues,
   shareThemeFields
 } from "@/components/share-theme-generator";
+import { shareThemes, type ShareThemeId } from "@/lib/share-themes";
+
+const shareThemeCategories = [...new Set(shareThemes.map((theme) => theme.category))];
 
 type ShareCollectionWizardProps = {
   action: (formData: FormData) => void | Promise<void>;
   cards: SharePickerCard[];
   aiCards: ShareThemeCard[];
   initialValues: ShareThemeValues & {
+    theme: ShareThemeId;
     coverImagePath: string;
     backgroundImagePath: string;
   };
@@ -82,6 +86,7 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
     themeHighlights: initialValues.themeHighlights,
     groupNotes: initialValues.groupNotes
   });
+  const [theme, setTheme] = useState<ShareThemeId>(initialValues.theme);
   const [coverMode, setCoverMode] = useState<"auto" | "custom">(initialCoverImagePath ? "custom" : "auto");
   const [message, setMessage] = useState("");
 
@@ -262,6 +267,23 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
       <div className={activeStep === 2 ? "" : "share-step-hidden"}>
         <section className="panel share-section">
           <div className="form-grid">
+            <div className="field full">
+              <span>展馆主题</span>
+              <select name="theme" value={theme} onChange={(event) => setTheme(event.target.value as ShareThemeId)}>
+                {shareThemeCategories.map((category) => (
+                  <optgroup label={category} key={category}>
+                    {shareThemes
+                      .filter((option) => option.category === category)
+                      .map((option) => (
+                        <option value={option.id} key={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))}
+              </select>
+              <p className="muted">{shareThemes.find((option) => option.id === theme)?.description}</p>
+            </div>
             <label className="field">
               <span>分享集标题 *</span>
               <input name="title" value={themeValues.title} onChange={(event) => updateThemeField("title", event.target.value)} />

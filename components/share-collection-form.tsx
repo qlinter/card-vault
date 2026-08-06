@@ -2,6 +2,7 @@ import { Card, CardImage, ShareCollection, ShareCollectionItem } from "@prisma/c
 import { SharePickerCard } from "@/components/share-card-picker";
 import { ShareCollectionWizard } from "@/components/share-collection-wizard";
 import { ShareThemeCard } from "@/components/share-theme-generator";
+import { normalizeShareTheme } from "@/lib/share-themes";
 
 type CardOption = Card & { images: CardImage[] };
 type ShareWithItems =
@@ -106,6 +107,7 @@ export function ShareCollectionForm({ action, cards, share, error }: ShareCollec
       aiCards={cards.map(cardSummary)}
       initialValues={{
         title: value(share?.title, "我的球星卡展馆"),
+        theme: normalizeShareTheme(share?.theme),
         subtitle: value(share?.subtitle),
         description: value(share?.description),
         themeNarrative: value(share?.themeNarrative),

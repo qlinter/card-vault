@@ -47,6 +47,9 @@ export default async function ExportSharePage({ params, searchParams }: ExportSh
       </div>
 
       {privateCount > 0 ? <p className="note-error">当前分享集包含 {privateCount} 张私密卡。导出前请确认这是你主动选择的内容。</p> : null}
+      <p className="muted export-privacy-note">
+        导出仅包含球员、卡片和公开展示信息，不包含价格、成本、购买渠道、备注、AI Key 或本地数据库路径。
+      </p>
       {error ? <p className="note-error">{error}</p> : null}
       {success ? (
         <div className="panel export-result">

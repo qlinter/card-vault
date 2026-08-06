@@ -1,4 +1,5 @@
 import type { Card, CardImage, ShareCollection, ShareCollectionItem } from "@prisma/client";
+import type { ShareThemeId } from "@/lib/share-themes";
 
 export type ShareExportMode = "static" | "cloud";
 
@@ -45,6 +46,7 @@ export type ExportCardInput = {
 
 export type ExportData = {
   title: string;
+  theme: ShareThemeId;
   subtitle: string | null;
   description: string | null;
   themeNarrative: string | null;

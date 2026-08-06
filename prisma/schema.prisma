@@ -75,6 +75,7 @@ model ShareCollection {
   title          String
   subtitle       String?
   slug           String                @unique
+  theme          String                @default("spotlight")
   description    String?
   themeNarrative String?
   themeHighlights String?

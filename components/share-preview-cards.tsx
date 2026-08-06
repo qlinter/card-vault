@@ -72,9 +72,9 @@ export function SharePreviewCards({ items }: SharePreviewCardsProps) {
           </button>
         </div>
         <div className="share-card-stage">
-        {items.map((item) => {
+        {items.map((item, itemIndex) => {
           const image = item.images[0];
-          const offset = items.indexOf(item) - activeIndex;
+          const offset = itemIndex - activeIndex;
           const visible = Math.abs(offset) <= 2;
           return (
             <button
@@ -83,18 +83,14 @@ export function SharePreviewCards({ items }: SharePreviewCardsProps) {
               className={`share-preview-card${offset === 0 ? " active" : ""}`}
               style={{ "--offset": offset, "--abs-offset": Math.abs(offset) } as CSSProperties}
               aria-hidden={!visible}
-              onClick={() => goTo(items.indexOf(item))}
+              aria-label={`切换至 ${item.playerName} ${item.displayTitle}`}
+              onClick={() => goTo(itemIndex)}
             >
               {image ? (
                 <img src={normalizeImagePath(image.path)} alt={item.cardTitle} />
               ) : (
                 <div className="share-card-placeholder" />
               )}
-              <div>
-                <h2>{item.playerName}</h2>
-                <p>{item.displayTitle}</p>
-                {item.meta ? <p className="muted">{item.meta}</p> : null}
-              </div>
             </button>
           );
         })}

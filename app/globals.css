@@ -113,7 +113,7 @@ body:has(.home-page) .site-bg {
   background-image:
     linear-gradient(90deg, rgba(247, 250, 255, 0.9) 0%, rgba(247, 250, 255, 0.72) 46%, rgba(247, 250, 255, 0.46) 100%),
     linear-gradient(180deg, rgba(247, 250, 255, 0.24), rgba(247, 250, 255, 0.82)),
-    url("/home-bg.png");
+    url("/home-bg.webp");
   background-size: 100% 100%, 100% 100%, cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -151,14 +151,14 @@ body:has(.shares-page) .site-bg {
   background-image:
     linear-gradient(90deg, rgba(247, 250, 255, 0.9) 0%, rgba(247, 250, 255, 0.72) 46%, rgba(247, 250, 255, 0.46) 100%),
     linear-gradient(180deg, rgba(247, 250, 255, 0.24), rgba(247, 250, 255, 0.82)),
-    url("/shares-bg.png");
+    url("/shares-bg.webp");
 }
 
 body:has(.settings-page) .site-bg {
   background-image:
     linear-gradient(90deg, rgba(247, 250, 255, 0.9) 0%, rgba(247, 250, 255, 0.72) 46%, rgba(247, 250, 255, 0.46) 100%),
     linear-gradient(180deg, rgba(247, 250, 255, 0.24), rgba(247, 250, 255, 0.82)),
-    url("/settings-bg.png");
+    url("/settings-bg.webp");
 }
 
 body:has(.shares-page) .topbar,
@@ -1451,7 +1451,7 @@ body:has(.showcase-metalized) .site-bg {
   background-image:
     linear-gradient(180deg, rgba(3, 7, 14, 0.3), rgba(3, 7, 14, 0.58)),
     radial-gradient(circle at top, rgba(103, 145, 230, 0.12), transparent 30%),
-    url("/showcase-bg.png");
+    url("/showcase-bg.webp");
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -1492,7 +1492,7 @@ body:has(.showcase-backdrop) .site-bg {
   background-image:
     linear-gradient(90deg, rgba(247, 250, 255, 0.86) 0%, rgba(247, 250, 255, 0.68) 46%, rgba(247, 250, 255, 0.42) 100%),
     linear-gradient(180deg, rgba(247, 250, 255, 0.2), rgba(247, 250, 255, 0.78)),
-    url("/showcase-bg.png");
+    url("/showcase-bg.webp");
   background-size: 100% 100%, 100% 100%, cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -1698,6 +1698,26 @@ body:has(.showcase-backdrop) main.container {
   flex-wrap: wrap;
   gap: 0.6rem;
   align-items: center;
+}
+
+.share-list-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  flex-wrap: nowrap;
+  width: min(100%, 24rem);
+  flex: 0 0 auto;
+}
+
+.share-list-actions form {
+  min-width: 0;
+  margin: 0;
+}
+
+.share-list-actions .btn {
+  width: 100%;
+  min-width: 0;
+  padding-inline: 0.75rem;
+  white-space: nowrap;
 }
 
 .share-form-actions.is-top {
@@ -2048,9 +2068,7 @@ body:has(.showcase-backdrop) main.container {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background:
-    linear-gradient(120deg, rgba(4, 7, 12, 0.86), rgba(7, 12, 20, 0.62)),
-    var(--share-bg-image) center / cover no-repeat;
+  background: var(--share-bg-image) center / cover no-repeat;
 }
 
 .share-preview-shell {
@@ -2059,6 +2077,28 @@ body:has(.showcase-backdrop) main.container {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
   padding: 1.25rem 0 3rem;
+}
+
+.share-preview-page.has-custom-bg .share-preview-nav {
+  justify-self: end;
+  padding: 0.55rem 0.75rem;
+}
+
+.share-preview-page.has-custom-bg .share-preview-hero > div {
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.share-preview-page.has-custom-bg .share-carousel-toolbar {
+  justify-self: center;
+  padding: 0.55rem 0.75rem;
+}
+
+.share-preview-page.has-custom-bg .share-preview-hero h1,
+.share-preview-page.has-custom-bg .share-preview-subtitle,
+.share-preview-page.has-custom-bg .share-preview-copy,
+.share-preview-page.has-custom-bg .share-preview-story p {
+  color: #f7f9fc;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.62);
 }
 
 .share-preview-nav {
@@ -2159,7 +2199,7 @@ body:has(.showcase-backdrop) main.container {
 
 .share-card-stage {
   position: relative;
-  min-height: 540px;
+  min-height: 460px;
   perspective: 1500px;
   overflow: hidden;
   touch-action: pan-y;
@@ -2170,19 +2210,29 @@ body:has(.showcase-backdrop) main.container {
   top: 0;
   left: 50%;
   width: min(330px, 76vw);
+  appearance: none;
   color: inherit;
   text-align: left;
   font: inherit;
   cursor: pointer;
   padding: 0;
+  border: 0;
+  --share-card-radius: 24px;
+  border-radius: var(--share-card-radius);
   overflow: hidden;
+  clip-path: inset(0 round var(--share-card-radius));
+  contain: paint;
+  isolation: isolate;
+  background: transparent;
+  background-clip: padding-box;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.24);
   transform:
     translateX(calc(-50% + (var(--offset) * 250px)))
     rotateY(calc(var(--offset) * -14deg))
     scale(calc(1 - (var(--abs-offset) * 0.08)));
   opacity: calc(1 - (var(--abs-offset) * 0.24));
   z-index: calc(10 - var(--abs-offset));
-  transition: border-color 180ms ease, transform 220ms ease, background 180ms ease, opacity 220ms ease;
+  transition: transform 220ms ease, opacity 220ms ease;
 }
 
 .share-preview-card[aria-hidden="true"] {
@@ -2190,28 +2240,229 @@ body:has(.showcase-backdrop) main.container {
   pointer-events: none;
 }
 
-.share-preview-card:hover,
-.share-preview-card.active {
-  border-color: rgba(215, 187, 122, 0.62);
-  background: rgba(255, 255, 255, 0.11);
-}
-
-.share-preview-card img {
+.share-preview-card img,
+.share-card-placeholder {
   width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
-}
-
-.share-preview-card > div {
-  padding: 0.9rem;
-}
-
-.share-preview-card h2 {
-  margin: 0 0 0.35rem;
+  display: block;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
 }
 
 .share-preview-detail {
   grid-template-columns: minmax(0, 0.9fr) minmax(280px, 0.7fr);
+}
+
+.share-preview-page.theme-archive {
+  color: #1b2d49;
+  background:
+    radial-gradient(circle at top left, rgba(163, 111, 36, 0.14), transparent 32rem),
+    linear-gradient(145deg, #f7f4ee 0%, #e6edf4 56%, #f7f4ee 100%);
+}
+
+.share-preview-page.theme-archive .share-preview-nav a,
+.share-preview-page.theme-archive .showcase-kicker {
+  color: #a36f24;
+}
+
+.share-preview-page.theme-archive .share-preview-hero h1 {
+  color: #1b2d49;
+}
+
+.share-preview-page.theme-archive .share-preview-subtitle {
+  color: #405475;
+}
+
+.share-preview-page.theme-archive .share-preview-copy,
+.share-preview-page.theme-archive .share-preview-story p {
+  color: #52627a;
+}
+
+.share-preview-page.theme-archive .share-preview-stats span,
+.share-preview-page.theme-archive .share-preview-story article {
+  border-color: rgba(36, 57, 88, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.share-preview-page.theme-archive .share-preview-hero img {
+  border-color: rgba(36, 57, 88, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.share-preview-page.theme-football {
+  color: #f5fbf4;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 25% 100%,
+    linear-gradient(145deg, #08271e 0%, #0d5f40 55%, #062118 100%);
+}
+
+.share-preview-page.theme-football .share-preview-hero {
+  border-left: 6px solid #cde83d;
+  padding-left: 1.1rem;
+}
+
+.share-preview-page.theme-football .share-preview-nav a,
+.share-preview-page.theme-football .showcase-kicker {
+  color: #cde83d;
+}
+
+.share-preview-page.theme-football .share-preview-story article,
+.share-preview-page.theme-football .share-preview-stats span {
+  border-color: rgba(205, 232, 61, 0.34);
+  background: rgba(3, 35, 24, 0.72);
+}
+
+.share-preview-page.theme-basketball {
+  color: #fff8ee;
+  background:
+    radial-gradient(circle at 78% 18%, rgba(255, 195, 109, 0.22), transparent 13rem),
+    linear-gradient(145deg, #552516 0%, #b95c2a 50%, #102c4d 100%);
+}
+
+.share-preview-page.theme-basketball .share-preview-nav a,
+.share-preview-page.theme-basketball .showcase-kicker {
+  color: #ffc46d;
+}
+
+.share-preview-page.theme-basketball .share-preview-hero h1 {
+  text-shadow: 5px 5px 0 rgba(12, 36, 61, 0.6);
+}
+
+.share-preview-page.theme-basketball .share-preview-story article,
+.share-preview-page.theme-basketball .share-preview-stats span {
+  border-color: rgba(255, 196, 109, 0.38);
+  background: rgba(47, 24, 19, 0.68);
+}
+
+.share-preview-page.theme-tennis {
+  color: #f4fbff;
+  background:
+    linear-gradient(135deg, transparent 0 46%, rgba(216, 239, 68, 0.18) 47% 52%, transparent 53%),
+    linear-gradient(145deg, #071d31 0%, #0e5c8d 56%, #06243e 100%);
+}
+
+.share-preview-page.theme-tennis .share-preview-nav a,
+.share-preview-page.theme-tennis .showcase-kicker {
+  color: #d8ef44;
+}
+
+.share-preview-page.theme-tennis .share-preview-hero {
+  transform: skewY(-1deg);
+}
+
+.share-preview-page.theme-tennis .share-preview-story article,
+.share-preview-page.theme-tennis .share-preview-stats span {
+  border-color: rgba(216, 239, 68, 0.36);
+  background: rgba(4, 36, 61, 0.7);
+}
+
+.share-preview-page.theme-f1 {
+  color: #f7f8fa;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0 8px, transparent 8px 18px),
+    linear-gradient(145deg, #090a0d 0%, #252931 60%, #120f13 100%);
+}
+
+.share-preview-page.theme-f1 .share-preview-nav a,
+.share-preview-page.theme-f1 .showcase-kicker {
+  color: #f0524e;
+}
+
+.share-preview-page.theme-f1 .share-preview-hero h1 {
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.share-preview-page.theme-f1 .share-preview-story article,
+.share-preview-page.theme-f1 .share-preview-stats span {
+  border-color: rgba(240, 82, 78, 0.4);
+  background: rgba(8, 10, 14, 0.78);
+}
+
+.share-preview-page.theme-nerazzurri {
+  color: #10233c;
+  background:
+    radial-gradient(circle at 72% 18%, rgba(0, 83, 167, 0.14), transparent 16rem),
+    linear-gradient(145deg, #f7fbff 0%, #dceafa 56%, #f8fbff 100%);
+}
+
+.share-preview-page.theme-nerazzurri .share-preview-nav a,
+.share-preview-page.theme-nerazzurri .showcase-kicker {
+  color: #004e9a;
+}
+
+.share-preview-page.theme-nerazzurri .share-preview-hero {
+  border-left: 6px solid #0067d8;
+  padding-left: 1.1rem;
+}
+
+.share-preview-page.theme-nerazzurri .share-preview-hero h1 {
+  color: #07182e;
+  text-shadow: 0 0 28px rgba(255, 255, 255, 0.72);
+}
+
+.share-preview-page.theme-nerazzurri .share-preview-subtitle {
+  color: #28496f;
+}
+
+.share-preview-page.theme-nerazzurri .share-preview-copy,
+.share-preview-page.theme-nerazzurri .share-preview-story p {
+  color: #3f5875;
+}
+
+.share-preview-page.theme-nerazzurri .share-preview-story article,
+.share-preview-page.theme-nerazzurri .share-preview-stats span {
+  border-color: rgba(0, 78, 154, 0.22);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.share-preview-page.theme-nerazzurri-2 {
+  color: #f2f7ff;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 85, 170, 0.22) 0 7rem, rgba(3, 11, 24, 0.22) 7rem 14rem),
+    radial-gradient(circle at 72% 18%, rgba(218, 170, 76, 0.22), transparent 16rem),
+    linear-gradient(145deg, #020916 0%, #043b82 45%, #01050d 100%);
+}
+
+.share-preview-page.theme-nerazzurri-2 .share-preview-nav a,
+.share-preview-page.theme-nerazzurri-2 .showcase-kicker {
+  color: #d9ad54;
+}
+
+.share-preview-page.theme-nerazzurri-2 .share-preview-hero {
+  border-left: 6px solid #0067d8;
+  padding-left: 1.1rem;
+}
+
+.share-preview-page.theme-nerazzurri-2 .share-preview-hero h1 {
+  text-shadow: 0 0 28px rgba(0, 103, 216, 0.46);
+}
+
+.share-preview-page.theme-nerazzurri-2 .share-preview-story article,
+.share-preview-page.theme-nerazzurri-2 .share-preview-stats span {
+  border-color: rgba(217, 173, 84, 0.36);
+  background: rgba(3, 12, 28, 0.72);
+}
+
+/* Background-image themes keep the artwork visible and use only local glass surfaces for readability. */
+.share-preview-page.has-custom-bg .share-preview-nav,
+.share-preview-page.has-custom-bg .share-preview-hero > div,
+.share-preview-page.has-custom-bg .share-carousel-toolbar,
+.share-preview-page.has-custom-bg .share-preview-story article,
+.share-preview-page.has-custom-bg .share-preview-detail .panel {
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 24px;
+  background: rgba(8, 14, 24, 0.14);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px) saturate(125%);
+}
+
+.share-preview-page.has-custom-bg .share-preview-stats span {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(8, 14, 24, 0.16);
+  backdrop-filter: blur(8px) saturate(125%);
 }
 
 @media (max-width: 860px) {
@@ -2234,6 +2485,10 @@ body:has(.showcase-backdrop) main.container {
     flex-direction: column;
   }
 
+  .share-list-actions {
+    width: 100%;
+  }
+
   .share-export-grid,
   .share-preview-hero,
   .share-preview-story,
@@ -2250,7 +2505,7 @@ body:has(.showcase-backdrop) main.container {
   }
 
   .share-card-stage {
-    min-height: 500px;
+    min-height: 420px;
   }
 
   .share-preview-card {

@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { SharePreviewCards, SharePreviewItem } from "@/components/share-preview-cards";
 import { normalizeImagePath } from "@/lib/image-path";
 import { prisma } from "@/lib/prisma";
+import { normalizeShareTheme, shareThemeBackgroundPath } from "@/lib/share-themes";
 import { notFound } from "next/navigation";
 
 type PreviewSharePageProps = {
@@ -27,7 +28,11 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
 
   const fallbackCover = share.items.find((item) => item.card.images.length > 0)?.card.images[0]?.path ?? null;
   const coverImagePath = share.coverImagePath?.startsWith("/share-covers/") ? share.coverImagePath : fallbackCover;
-  const backgroundImagePath = share.backgroundImagePath?.startsWith("/share-backgrounds/") ? normalizeImagePath(share.backgroundImagePath) : null;
+  const theme = normalizeShareTheme(share.theme);
+  const customBackgroundImagePath = share.backgroundImagePath?.startsWith("/share-backgrounds/")
+    ? normalizeImagePath(share.backgroundImagePath)
+    : null;
+  const backgroundImagePath = customBackgroundImagePath ?? shareThemeBackgroundPath(theme);
   const backgroundStyle = backgroundImagePath ? ({ "--share-bg-image": `url("${backgroundImagePath}")` } as CSSProperties) : undefined;
   const previewItems: SharePreviewItem[] = share.items.map((item) => ({
     id: item.id,
@@ -40,7 +45,7 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
   }));
 
   return (
-    <div className={`share-preview-page${backgroundImagePath ? " has-custom-bg" : ""}`} style={backgroundStyle}>
+    <div className={`share-preview-page theme-${theme}${backgroundImagePath ? " has-custom-bg" : ""}`} style={backgroundStyle}>
       <main className="share-preview-shell">
         <nav className="share-preview-nav">
           <Link href={`/shares/${share.id}/edit`}>编辑</Link>

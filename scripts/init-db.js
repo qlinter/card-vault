@@ -28,7 +28,10 @@ const cardColumns = [
   ["totalCost", "REAL"],
   ["gradingLink", "TEXT"]
 ];
-const shareCollectionColumns = [["backgroundImagePath", "TEXT"]];
+const shareCollectionColumns = [
+  ["backgroundImagePath", "TEXT"],
+  ["theme", "TEXT NOT NULL DEFAULT 'spotlight'"]
+];
 
 function getCardColumnTypes() {
   try {
@@ -256,6 +259,7 @@ CREATE TABLE IF NOT EXISTS ShareCollection (
   title TEXT NOT NULL,
   subtitle TEXT,
   slug TEXT NOT NULL,
+  theme TEXT NOT NULL DEFAULT 'spotlight',
   description TEXT,
   themeNarrative TEXT,
   themeHighlights TEXT,

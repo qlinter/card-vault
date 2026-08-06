@@ -1,0 +1,31 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { normalizeShareTheme, shareThemeBackgroundPath, shareThemes } from "../lib/share-themes.ts";
+
+test("share themes expose general and sport gallery directions", () => {
+  assert.deepEqual(
+    shareThemes.map((theme) => theme.id),
+    ["spotlight", "archive", "football", "basketball", "tennis", "f1", "nerazzurri", "nerazzurri-2"]
+  );
+});
+
+test("unknown share themes fall back to spotlight", () => {
+  assert.equal(normalizeShareTheme("archive"), "archive");
+  assert.equal(normalizeShareTheme("football"), "football");
+  assert.equal(normalizeShareTheme("f1"), "f1");
+  assert.equal(normalizeShareTheme("nerazzurri"), "nerazzurri");
+  assert.equal(normalizeShareTheme("nerazzurri-2"), "nerazzurri-2");
+  assert.equal(normalizeShareTheme("unknown"), "spotlight");
+  assert.equal(normalizeShareTheme(null), "spotlight");
+});
+
+test("theme background paths are exposed for built-in visual themes", () => {
+  assert.equal(shareThemeBackgroundPath("spotlight"), "/share-themes/spotlight-gallery.webp");
+  assert.equal(shareThemeBackgroundPath("archive"), "/share-themes/archive-gallery.webp");
+  assert.equal(shareThemeBackgroundPath("football"), "/share-themes/football-pitch.webp");
+  assert.equal(shareThemeBackgroundPath("basketball"), "/share-themes/basketball-home-court.webp");
+  assert.equal(shareThemeBackgroundPath("tennis"), "/share-themes/tennis-center.webp");
+  assert.equal(shareThemeBackgroundPath("f1"), "/share-themes/f1-pit-lane.webp");
+  assert.equal(shareThemeBackgroundPath("nerazzurri"), "/share-themes/nerazzurri-1.webp");
+  assert.equal(shareThemeBackgroundPath("nerazzurri-2"), "/share-themes/nerazzurri-2.webp");
+});

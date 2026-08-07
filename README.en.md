@@ -180,6 +180,7 @@ It is built with `Next.js + React + Prisma + SQLite + Electron`. Card data and i
 - App preview, static export, and cloud export now use the same HTML, CSS, and interaction renderer.
 - Added versioned presentation settings and a persistent section data model with fallback support for existing shares.
 - Removed the legacy React share-preview component and centralized carousel, theme, and responsive behavior.
+- Excluded roughly 100 MB of Next.js build cache from Windows packages without removing runtime files.
 - Extended automated coverage for presentation parsing, theme tokens, section persistence, all three layouts, and unified preview rendering.
 - `1.0.10` automatically updates the local database schema. A full backup is recommended before upgrading.
 

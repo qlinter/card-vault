@@ -181,7 +181,13 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
           continue;
         }
         const index = next.findIndex((section) => section.id === generated.id);
-        const section: ShareSectionDraft = { ...generated, description };
+        const section: ShareSectionDraft = {
+          id: generated.id,
+          title: generated.title,
+          description,
+          layout: generated.layout,
+          cardIds: generated.cardIds
+        };
         if (index >= 0) {
           next[index] = section;
         } else {

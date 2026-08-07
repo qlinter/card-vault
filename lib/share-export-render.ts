@@ -1,8 +1,5 @@
-import {
-  ExportCard,
-  ExportData,
-  ExportSection
-} from "@/lib/share-export-types";
+import { ExportCard, ExportData } from "@/lib/share-export-types";
+import { fallbackShareSections } from "@/lib/share-sections";
 import { normalizeShareTheme, shareThemeCssVariables } from "@/lib/share-themes";
 
 function escapeHtml(value: string | null | undefined): string {
@@ -104,18 +101,13 @@ function renderGalleryCard(card: ExportCard, className: string): string {
   </a>`;
 }
 
-function legacySections(data: ExportData): ExportSection[] {
-  const sections: ExportSection[] = [];
-  if (data.themeNarrative) {
-    sections.push({ id: "narrative", title: "展馆叙事", description: data.themeNarrative, layout: "editorial", cardIds: [] });
-  }
-  if (data.themeHighlights) {
-    sections.push({ id: "highlights", title: "收藏亮点", description: data.themeHighlights, layout: "rail", cardIds: data.cards.map((card) => card.id) });
-  }
-  if (data.groupNotes) {
-    sections.push({ id: "groups", title: "主题分组", description: data.groupNotes, layout: "grid", cardIds: data.cards.map((card) => card.id) });
-  }
-  return sections;
+function legacySections(data: ExportData) {
+  return fallbackShareSections({
+    themeNarrative: data.themeNarrative,
+    themeHighlights: data.themeHighlights,
+    groupNotes: data.groupNotes,
+    cardIds: data.cards.map((card) => card.id)
+  });
 }
 
 function renderSections(data: ExportData): string {
@@ -172,7 +164,7 @@ function renderCarousel(data: ExportData): string {
   </section>`;
 }
 
-export function renderIndex(data: ExportData): string {
+export function renderIndex(data: ExportData, inlineAssets = false): string {
   const cover = data.cards.find((card) => card.images.length > 0);
   const coverImage = data.coverImage ?? cover?.images[0];
   const groups = new Map<string, number>();
@@ -193,13 +185,11 @@ export function renderIndex(data: ExportData): string {
       : `${hero}${sections}<div class="groups">${groupHtml}</div>${carousel}`;
   const body = `<main class="shell">${layoutContent}</main>`;
 
-  return renderLayout(data.title, body, data);
+  return renderLayout(data.title, body, data, "root", inlineAssets);
 }
 
 export function renderPreviewDocument(data: ExportData): string {
-  const html = renderIndex(data);
-  return html
-    .replace('<link rel="stylesheet" href="assets/site.css" />\n  <script src="assets/site.js" defer></script>', `<style>${siteCss()}</style>\n  <script>${siteJs()}</script>`);
+  return renderIndex(data, true);
 }
 
 export function renderCardPage(data: ExportData, card: ExportCard): string {

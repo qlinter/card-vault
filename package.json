@@ -62,6 +62,7 @@
         ]
       },
       ".next/**/*",
+      "!.next/cache/**/*",
       "app/**/*",
       "components/**/*",
       "electron/**/*",

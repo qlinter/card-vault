@@ -3,12 +3,15 @@
 import { randomUUID } from "crypto";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
+import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prepareImageUpload } from "@/lib/image-upload";
 import { prisma } from "@/lib/prisma";
 import { exportShareCollection, ShareExportMode } from "@/lib/share-export";
 import { getShareBackgroundsDir, getShareCoversDir } from "@/lib/storage-paths";
+import { createSharePresentation, serializeSharePresentation } from "@/lib/share-presentation";
+import { parseShareSectionDrafts } from "@/lib/share-sections";
 import { normalizeShareTheme } from "@/lib/share-themes";
 
 const shareCoverDir = getShareCoversDir();
@@ -140,6 +143,14 @@ async function collectionData(formData: FormData) {
       data: {
         title,
         theme: normalizeShareTheme(formData.get("theme")),
+        presentationConfig: serializeSharePresentation(
+          createSharePresentation({
+            layout: formData.get("layout"),
+            backgroundPositionX: formData.get("backgroundPositionX"),
+            backgroundPositionY: formData.get("backgroundPositionY"),
+            panelOpacity: formData.get("panelOpacity")
+          })
+        ),
         subtitle: toOptionalString(formData.get("subtitle")),
         description: toOptionalString(formData.get("description")),
         themeNarrative: toOptionalString(formData.get("themeNarrative")),
@@ -170,6 +181,37 @@ function itemData(cardIds: string[], formData: FormData) {
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
+async function createShareStructure(
+  transaction: Prisma.TransactionClient,
+  shareCollectionId: string,
+  cardIds: string[],
+  formData: FormData
+): Promise<void> {
+  await transaction.shareCollectionItem.createMany({
+    data: itemData(cardIds, formData).map((item) => ({ ...item, shareCollectionId }))
+  });
+
+  const sections = parseShareSectionDrafts(formData.get("sectionsJson"), cardIds);
+  for (const [index, section] of sections.entries()) {
+    const created = await transaction.shareSection.create({
+      data: {
+        id: randomUUID(),
+        shareCollectionId,
+        title: section.title,
+        description: section.description || null,
+        layout: section.layout,
+        sortOrder: index
+      }
+    });
+    if (section.cardIds.length > 0) {
+      await transaction.shareCollectionItem.updateMany({
+        where: { shareCollectionId, cardId: { in: section.cardIds } },
+        data: { sectionId: created.id }
+      });
+    }
+  }
+}
+
 export async function createShareCollectionAction(formData: FormData): Promise<void> {
   let redirectPath = "/shares/new?error=unknown";
   let uploadedPaths: string[] = [];
@@ -184,14 +226,9 @@ export async function createShareCollectionAction(formData: FormData): Promise<v
     const data = collection.data;
     uploadedPaths = collection.uploadedPaths;
     const slug = await uniqueSlug(data.title);
-    await prisma.shareCollection.create({
-      data: {
-        ...data,
-        slug,
-        items: {
-          create: itemData(cardIds, formData)
-        }
-      }
+    await prisma.$transaction(async (transaction) => {
+      const created = await transaction.shareCollection.create({ data: { ...data, slug } });
+      await createShareStructure(transaction, created.id, cardIds, formData);
     });
     uploadedPaths = [];
 
@@ -231,9 +268,8 @@ export async function updateShareCollectionAction(shareId: string, formData: For
         data: { ...data, slug }
       });
       await transaction.shareCollectionItem.deleteMany({ where: { shareCollectionId: shareId } });
-      await transaction.shareCollectionItem.createMany({
-        data: itemData(cardIds, formData).map((item) => ({ ...item, shareCollectionId: shareId }))
-      });
+      await transaction.shareSection.deleteMany({ where: { shareCollectionId: shareId } });
+      await createShareStructure(transaction, shareId, cardIds, formData);
     });
     uploadedPaths = [];
 
@@ -285,6 +321,7 @@ export async function exportShareCollectionAction(shareId: string, mode: ShareEx
     const collection = await prisma.shareCollection.findUnique({
       where: { id: shareId },
       include: {
+        sections: { orderBy: { sortOrder: "asc" } },
         items: {
           include: { card: { include: { images: { orderBy: { createdAt: "asc" } } } } },
           orderBy: { sortOrder: "asc" }

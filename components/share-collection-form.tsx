@@ -1,13 +1,16 @@
-import { Card, CardImage, ShareCollection, ShareCollectionItem } from "@prisma/client";
+import { Card, CardImage, ShareCollection, ShareCollectionItem, ShareSection } from "@prisma/client";
 import { SharePickerCard } from "@/components/share-card-picker";
 import { ShareCollectionWizard } from "@/components/share-collection-wizard";
 import { ShareThemeCard } from "@/components/share-theme-generator";
 import { normalizeShareTheme } from "@/lib/share-themes";
+import { parseSharePresentation } from "@/lib/share-presentation";
+import { fallbackShareSections, type ShareSectionDraft } from "@/lib/share-sections";
 
 type CardOption = Card & { images: CardImage[] };
 type ShareWithItems =
   | (ShareCollection & {
       items: Array<ShareCollectionItem & { card: CardOption }>;
+      sections: ShareSection[];
     })
   | null;
 
@@ -99,6 +102,28 @@ export function ShareCollectionForm({ action, cards, share, error }: ShareCollec
     return a.playerName.localeCompare(b.playerName);
   });
   const pickerCards = sortedCards.map((card) => toPickerCard(card, selected.get(card.id)));
+  const presentation = parseSharePresentation(share?.presentationConfig);
+  const sectionItems = new Map<string, string[]>();
+  for (const item of share?.items ?? []) {
+    if (item.sectionId) {
+      sectionItems.set(item.sectionId, [...(sectionItems.get(item.sectionId) ?? []), item.cardId]);
+    }
+  }
+  const storedSections: ShareSectionDraft[] = (share?.sections ?? []).map((section) => ({
+    id: section.id,
+    title: section.title,
+    description: value(section.description),
+    layout: section.layout === "rail" || section.layout === "grid" ? section.layout : "editorial",
+    cardIds: sectionItems.get(section.id) ?? []
+  }));
+  const initialSections = storedSections.length > 0
+    ? storedSections
+    : fallbackShareSections({
+        themeNarrative: share?.themeNarrative,
+        themeHighlights: share?.themeHighlights,
+        groupNotes: share?.groupNotes,
+        cardIds: share?.items.map((item) => item.cardId) ?? []
+      });
 
   return (
     <ShareCollectionWizard
@@ -114,7 +139,9 @@ export function ShareCollectionForm({ action, cards, share, error }: ShareCollec
         themeHighlights: value(share?.themeHighlights),
         groupNotes: value(share?.groupNotes),
         coverImagePath: value(share?.coverImagePath),
-        backgroundImagePath: value(share?.backgroundImagePath)
+        backgroundImagePath: value(share?.backgroundImagePath),
+        presentation,
+        sections: initialSections
       }}
       error={error}
     />

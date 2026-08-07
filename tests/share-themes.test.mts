@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeShareTheme, shareThemeBackgroundPath, shareThemes } from "../lib/share-themes.ts";
+import { normalizeShareTheme, shareThemeBackgroundPath, shareThemeCssVariables, shareThemes } from "../lib/share-themes.ts";
 
 test("share themes expose general and sport gallery directions", () => {
   assert.deepEqual(
@@ -28,4 +28,11 @@ test("theme background paths are exposed for built-in visual themes", () => {
   assert.equal(shareThemeBackgroundPath("f1"), "/share-themes/f1-pit-lane.webp");
   assert.equal(shareThemeBackgroundPath("nerazzurri"), "/share-themes/nerazzurri-1.webp");
   assert.equal(shareThemeBackgroundPath("nerazzurri-2"), "/share-themes/nerazzurri-2.webp");
+});
+
+test("themes expose shared gallery design tokens", () => {
+  const variables = shareThemeCssVariables("archive");
+  assert.equal(variables["--gallery-text"], "#1b2d49");
+  assert.equal(variables["--gallery-accent"], "#a36f24");
+  assert.ok(variables["--gallery-panel-rgb"]);
 });

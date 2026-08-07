@@ -1,9 +1,12 @@
-import type { Card, CardImage, ShareCollection, ShareCollectionItem } from "@prisma/client";
+import type { Card, CardImage, ShareCollection, ShareCollectionItem, ShareSection } from "@prisma/client";
+import type { SharePresentation } from "@/lib/share-presentation";
+import type { ShareSectionLayout } from "@/lib/share-sections";
 import type { ShareThemeId } from "@/lib/share-themes";
 
 export type ShareExportMode = "static" | "cloud";
 
 export type ShareCollectionWithItems = ShareCollection & {
+  sections: ShareSection[];
   items: Array<
     ShareCollectionItem & {
       card: Card & { images: CardImage[] };
@@ -12,6 +15,7 @@ export type ShareCollectionWithItems = ShareCollection & {
 };
 
 export type ExportCard = {
+  id: string;
   playerName: string;
   cardTitle: string;
   displayTitle: string;
@@ -38,6 +42,14 @@ export type ExportCard = {
   images: string[];
 };
 
+export type ExportSection = {
+  id: string;
+  title: string;
+  description: string;
+  layout: ShareSectionLayout;
+  cardIds: string[];
+};
+
 export type ExportCardInput = {
   item: ShareCollectionWithItems["items"][number];
   href: string;
@@ -47,6 +59,7 @@ export type ExportCardInput = {
 export type ExportData = {
   title: string;
   theme: ShareThemeId;
+  presentation: SharePresentation;
   subtitle: string | null;
   description: string | null;
   themeNarrative: string | null;
@@ -56,6 +69,7 @@ export type ExportData = {
   backgroundImage: string | null;
   generatedAt: string;
   mode: ShareExportMode;
+  sections: ExportSection[];
   cards: ExportCard[];
 };
 

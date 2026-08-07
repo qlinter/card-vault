@@ -29,6 +29,7 @@ export default async function EditSharePage({ params, searchParams }: EditShareP
     prisma.shareCollection.findUnique({
       where: { id },
       include: {
+        sections: { orderBy: { sortOrder: "asc" } },
         items: {
           include: { card: { include: { images: { take: 1, orderBy: { createdAt: "asc" } } } } },
           orderBy: { sortOrder: "asc" }

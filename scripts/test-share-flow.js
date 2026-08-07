@@ -92,24 +92,30 @@ function seedDatabase(dbPath, dataDir) {
       "/media/e2e-card.png"
     );
     db.prepare(`
-      INSERT INTO ShareCollection (id, title, subtitle, slug, theme, description, themeNarrative)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO ShareCollection (id, title, subtitle, slug, theme, presentationConfig, description, themeNarrative)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       "e2e-share-1",
       "E2E 分享展馆",
       "回归测试副标题",
       "e2e-share",
       "archive",
+      '{"version":1,"layout":"archive","backgroundPosition":{"x":45,"y":50},"panelOpacity":18}',
       "回归测试简介。",
       "回归测试叙事。"
     );
     db.prepare(`
-      INSERT INTO ShareCollectionItem (id, shareCollectionId, cardId, sortOrder, displayTitle, displayDescription)
+      INSERT INTO ShareSection (id, shareCollectionId, title, description, layout, sortOrder)
       VALUES (?, ?, ?, ?, ?, ?)
+    `).run("e2e-section-1", "e2e-share-1", "E2E 策展章节", "章节回归测试。", "rail", 0);
+    db.prepare(`
+      INSERT INTO ShareCollectionItem (id, shareCollectionId, cardId, sectionId, sortOrder, displayTitle, displayDescription)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
       "e2e-item-1",
       "e2e-share-1",
       "e2e-card-1",
+      "e2e-section-1",
       0,
       "E2E 展示标题",
       "E2E 展示描述。"
@@ -200,6 +206,9 @@ async function main() {
     assertIncludes(newSharePage, "新建分享集", "新建分享集页面");
     assertIncludes(newSharePage, "选择球星卡", "分享向导第一步");
     assertIncludes(newSharePage, "内容修改", "分享向导内容修改步骤");
+    assertIncludes(newSharePage, "沉浸舞台", "沉浸舞台版式");
+    assertIncludes(newSharePage, "典藏档案", "典藏档案版式");
+    assertIncludes(newSharePage, "竞技主场", "竞技主场版式");
     assertIncludes(newSharePage, "足球赛场", "运动主题选项");
     assertIncludes(newSharePage, "F1 维修区", "F1 主题选项");
     assertIncludes(newSharePage, "蓝黑军团-1", "球队主题选项");
@@ -213,7 +222,9 @@ async function main() {
     assertIncludes(previewPage, "E2E 分享展馆", "分享集预览页标题");
     assertIncludes(previewPage, "E2E 展示标题", "分享集预览页展示覆盖");
     assertIncludes(previewPage, "Card Vault 展馆", "分享集预览页品牌标识");
-    assertIncludes(previewPage, "share-preview-page theme-archive", "分享集预览页主题");
+    assertIncludes(previewPage, "theme-archive layout-archive", "分享集预览页主题与版式");
+    assertIncludes(previewPage, "E2E 策展章节", "分享集预览页结构化章节");
+    assertIncludes(previewPage, "share-preview-frame-shell", "统一渲染预览容器");
 
     const exportPage = await fetchPage(baseUrl, "/shares/e2e-share-1/export");
     assertIncludes(exportPage, "生成静态分享包", "静态导出入口");

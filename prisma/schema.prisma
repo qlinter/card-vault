@@ -71,36 +71,55 @@ model CardImage {
 }
 
 model ShareCollection {
-  id             String                @id @default(cuid())
-  title          String
-  subtitle       String?
-  slug           String                @unique
-  theme          String                @default("spotlight")
-  description    String?
-  themeNarrative String?
+  id                String                @id @default(cuid())
+  title             String
+  subtitle          String?
+  slug              String                @unique
+  theme             String                @default("spotlight")
+  presentationConfig String?
+  description       String?
+  themeNarrative    String?
   themeHighlights String?
-  groupNotes     String?
-  coverImagePath String?
+  groupNotes        String?
+  coverImagePath    String?
   backgroundImagePath String?
-  items          ShareCollectionItem[]
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  sections          ShareSection[]
+  items             ShareCollectionItem[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
 
   @@index([createdAt(sort: Desc)])
+}
+
+model ShareSection {
+  id                String                @id @default(cuid())
+  shareCollectionId String
+  title             String
+  description       String?
+  layout            String                @default("editorial")
+  sortOrder         Int                   @default(0)
+  shareCollection   ShareCollection       @relation(fields: [shareCollectionId], references: [id], onDelete: Cascade)
+  items             ShareCollectionItem[]
+
+  @@index([shareCollectionId])
+  @@index([sortOrder])
 }
 
 model ShareCollectionItem {
   id                String          @id @default(cuid())
   shareCollectionId String
   cardId            String
+  sectionId         String?
   sortOrder         Int             @default(0)
   displayTitle      String?
   displayDescription String?
   shareCollection   ShareCollection @relation(fields: [shareCollectionId], references: [id], onDelete: Cascade)
+  section           ShareSection?   @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   card              Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
   @@unique([shareCollectionId, cardId])
   @@index([shareCollectionId])
+  @@index([sectionId])
   @@index([cardId])
   @@index([sortOrder])
 }

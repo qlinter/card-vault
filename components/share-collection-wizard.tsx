@@ -3,6 +3,8 @@
 import type { FormEvent, MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { ShareCardDraft, ShareCardPicker, SharePickerCard } from "@/components/share-card-picker";
+import { ShareDesignPreview } from "@/components/share-design-preview";
+import { ShareSectionEditor } from "@/components/share-section-editor";
 import {
   ShareThemeCard,
   ShareThemeField,
@@ -11,6 +13,8 @@ import {
   shareThemeFields
 } from "@/components/share-theme-generator";
 import { shareThemes, type ShareThemeId } from "@/lib/share-themes";
+import { shareLayouts, type SharePresentation } from "@/lib/share-presentation";
+import type { ShareSectionDraft } from "@/lib/share-sections";
 
 const shareThemeCategories = [...new Set(shareThemes.map((theme) => theme.category))];
 
@@ -22,6 +26,8 @@ type ShareCollectionWizardProps = {
     theme: ShareThemeId;
     coverImagePath: string;
     backgroundImagePath: string;
+    presentation: SharePresentation;
+    sections: ShareSectionDraft[];
   };
   error?: string;
 };
@@ -87,6 +93,8 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
     groupNotes: initialValues.groupNotes
   });
   const [theme, setTheme] = useState<ShareThemeId>(initialValues.theme);
+  const [presentation, setPresentation] = useState<SharePresentation>(initialValues.presentation);
+  const [sections, setSections] = useState<ShareSectionDraft[]>(initialValues.sections);
   const [coverMode, setCoverMode] = useState<"auto" | "custom">(initialCoverImagePath ? "custom" : "auto");
   const [message, setMessage] = useState("");
 
@@ -116,6 +124,12 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
       }
       return current.filter((id) => id !== cardId);
     });
+    if (!selected) {
+      setSections((current) => current.map((section) => ({
+        ...section,
+        cardIds: section.cardIds.filter((id) => id !== cardId)
+      })));
+    }
   }
 
   function updateDraft(cardId: string, patch: Partial<ShareCardDraft>) {
@@ -154,7 +168,71 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
       return next;
     });
 
+    const generatedSections = [
+      { id: "ai-narrative", field: "themeNarrative" as const, title: "展馆叙事", layout: "editorial" as const, cardIds: [] as string[] },
+      { id: "ai-highlights", field: "themeHighlights" as const, title: "收藏亮点", layout: "rail" as const, cardIds: selectedIds },
+      { id: "ai-groups", field: "groupNotes" as const, title: "主题分组", layout: "grid" as const, cardIds: selectedIds }
+    ];
+    setSections((current) => {
+      const next = [...current];
+      for (const generated of generatedSections) {
+        const description = safeText(suggestion[generated.field]);
+        if (!description || (!overwrite && safeText(themeValues[generated.field]))) {
+          continue;
+        }
+        const index = next.findIndex((section) => section.id === generated.id);
+        const section: ShareSectionDraft = { ...generated, description };
+        if (index >= 0) {
+          next[index] = section;
+        } else {
+          next.push(section);
+        }
+      }
+      return next;
+    });
+
     return filledFields;
+  }
+
+  function addSection() {
+    setSections((current) => [
+      ...current,
+      { id: `section-${crypto.randomUUID()}`, title: `新章节 ${current.length + 1}`, description: "", layout: "editorial", cardIds: [] }
+    ]);
+  }
+
+  function updateSection(sectionId: string, patch: Partial<ShareSectionDraft>) {
+    setSections((current) => current.map((section) => section.id === sectionId ? { ...section, ...patch } : section));
+  }
+
+  function removeSection(sectionId: string) {
+    setSections((current) => current.filter((section) => section.id !== sectionId));
+  }
+
+  function moveSection(sectionId: string, direction: -1 | 1) {
+    setSections((current) => {
+      const index = current.findIndex((section) => section.id === sectionId);
+      const nextIndex = index + direction;
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) {
+        return current;
+      }
+      const next = [...current];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next;
+    });
+  }
+
+  function assignSectionCard(sectionId: string, cardId: string, assigned: boolean) {
+    setSections((current) => current.map((section) => ({
+      ...section,
+      cardIds: section.id === sectionId
+        ? assigned
+          ? [...new Set([...section.cardIds, cardId])]
+          : section.cardIds.filter((id) => id !== cardId)
+        : assigned
+          ? section.cardIds.filter((id) => id !== cardId)
+          : section.cardIds
+    })));
   }
 
   function goNext() {
@@ -203,6 +281,11 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
       {selectedIds.map((cardId) => (
         <input key={cardId} type="hidden" name="cardIds" value={cardId} />
       ))}
+      <input type="hidden" name="layout" value={presentation.layout} />
+      <input type="hidden" name="backgroundPositionX" value={presentation.backgroundPosition.x} />
+      <input type="hidden" name="backgroundPositionY" value={presentation.backgroundPosition.y} />
+      <input type="hidden" name="panelOpacity" value={presentation.panelOpacity} />
+      <input type="hidden" name="sectionsJson" value={JSON.stringify(sections)} />
       {error ? <p className="note-error">{error}</p> : null}
       {message ? <p className="note-error">{message}</p> : null}
 
@@ -265,8 +348,28 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
       </div>
 
       <div className={activeStep === 2 ? "" : "share-step-hidden"}>
+        <div className="share-design-workspace">
+          <div className="share-design-controls">
         <section className="panel share-section">
           <div className="form-grid">
+            <div className="field full">
+              <span>展馆版式</span>
+              <div className="share-layout-options" role="radiogroup" aria-label="展馆版式">
+                {shareLayouts.map((layout) => (
+                  <button
+                    key={layout.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={presentation.layout === layout.id}
+                    className={`share-layout-option${presentation.layout === layout.id ? " active" : ""}`}
+                    onClick={() => setPresentation((current) => ({ ...current, layout: layout.id }))}
+                  >
+                    <strong>{layout.label}</strong>
+                    <span>{layout.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="field full">
               <span>展馆主题</span>
               <select name="theme" value={theme} onChange={(event) => setTheme(event.target.value as ShareThemeId)}>
@@ -296,26 +399,48 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
               <span>封面介绍</span>
               <textarea name="description" value={themeValues.description} onChange={(event) => updateThemeField("description", event.target.value)} />
             </label>
-            <label className="field full">
-              <span>展馆叙事</span>
-              <textarea
-                name="themeNarrative"
-                value={themeValues.themeNarrative}
-                onChange={(event) => updateThemeField("themeNarrative", event.target.value)}
-              />
-            </label>
-            <label className="field full">
-              <span>收藏亮点</span>
-              <textarea
-                name="themeHighlights"
-                value={themeValues.themeHighlights}
-                onChange={(event) => updateThemeField("themeHighlights", event.target.value)}
-              />
-            </label>
-            <label className="field full">
-              <span>主题分组</span>
-              <textarea name="groupNotes" value={themeValues.groupNotes} onChange={(event) => updateThemeField("groupNotes", event.target.value)} />
-            </label>
+            <input type="hidden" name="themeNarrative" value={themeValues.themeNarrative} />
+            <input type="hidden" name="themeHighlights" value={themeValues.themeHighlights} />
+            <input type="hidden" name="groupNotes" value={themeValues.groupNotes} />
+            <div className="field full share-visual-controls">
+              <span>背景与文字面板</span>
+              <label>
+                <span>水平焦点 {presentation.backgroundPosition.x}%</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={presentation.backgroundPosition.x}
+                  onChange={(event) => setPresentation((current) => ({
+                    ...current,
+                    backgroundPosition: { ...current.backgroundPosition, x: Number(event.target.value) }
+                  }))}
+                />
+              </label>
+              <label>
+                <span>垂直焦点 {presentation.backgroundPosition.y}%</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={presentation.backgroundPosition.y}
+                  onChange={(event) => setPresentation((current) => ({
+                    ...current,
+                    backgroundPosition: { ...current.backgroundPosition, y: Number(event.target.value) }
+                  }))}
+                />
+              </label>
+              <label>
+                <span>文字面板透明度 {presentation.panelOpacity}%</span>
+                <input
+                  type="range"
+                  min="4"
+                  max="55"
+                  value={presentation.panelOpacity}
+                  onChange={(event) => setPresentation((current) => ({ ...current, panelOpacity: Number(event.target.value) }))}
+                />
+              </label>
+            </div>
             <label className="field full">
               <span>分享集背景图</span>
               <div className="share-background-upload">
@@ -356,6 +481,15 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
             </label>
           </div>
         </section>
+        <ShareSectionEditor
+          sections={sections}
+          cards={selectedCards}
+          onAdd={addSection}
+          onChange={updateSection}
+          onRemove={removeSection}
+          onMove={moveSection}
+          onCardAssignment={assignSectionCard}
+        />
         <section className="panel share-section">
           <div className="share-section-head">
             <div>
@@ -406,6 +540,17 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
             })}
           </div>
         </section>
+          </div>
+          <ShareDesignPreview
+            theme={theme}
+            presentation={presentation}
+            values={themeValues}
+            sections={sections}
+            cards={selectedCards}
+            drafts={drafts}
+            backgroundImagePath={initialBackgroundImagePath}
+          />
+        </div>
       </div>
 
       <div className={activeStep === 3 ? "" : "share-step-hidden"}>

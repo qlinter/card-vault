@@ -30,8 +30,10 @@ const cardColumns = [
 ];
 const shareCollectionColumns = [
   ["backgroundImagePath", "TEXT"],
-  ["theme", "TEXT NOT NULL DEFAULT 'spotlight'"]
+  ["theme", "TEXT NOT NULL DEFAULT 'spotlight'"],
+  ["presentationConfig", "TEXT"]
 ];
+const shareCollectionItemColumns = [["sectionId", "TEXT"]];
 
 function getCardColumnTypes() {
   try {
@@ -260,6 +262,7 @@ CREATE TABLE IF NOT EXISTS ShareCollection (
   subtitle TEXT,
   slug TEXT NOT NULL,
   theme TEXT NOT NULL DEFAULT 'spotlight',
+  presentationConfig TEXT,
   description TEXT,
   themeNarrative TEXT,
   themeHighlights TEXT,
@@ -269,14 +272,25 @@ CREATE TABLE IF NOT EXISTS ShareCollection (
   createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS ShareSection (
+  id TEXT PRIMARY KEY NOT NULL,
+  shareCollectionId TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  layout TEXT NOT NULL DEFAULT 'editorial',
+  sortOrder INTEGER NOT NULL DEFAULT 0,
+  CONSTRAINT ShareSection_shareCollectionId_fkey FOREIGN KEY (shareCollectionId) REFERENCES ShareCollection (id) ON DELETE CASCADE ON UPDATE CASCADE
+);
 CREATE TABLE IF NOT EXISTS ShareCollectionItem (
   id TEXT PRIMARY KEY NOT NULL,
   shareCollectionId TEXT NOT NULL,
   cardId TEXT NOT NULL,
+  sectionId TEXT,
   sortOrder INTEGER NOT NULL DEFAULT 0,
   displayTitle TEXT,
   displayDescription TEXT,
   CONSTRAINT ShareCollectionItem_shareCollectionId_fkey FOREIGN KEY (shareCollectionId) REFERENCES ShareCollection (id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT ShareCollectionItem_sectionId_fkey FOREIGN KEY (sectionId) REFERENCES ShareSection (id) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT ShareCollectionItem_cardId_fkey FOREIGN KEY (cardId) REFERENCES Card (id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 `);
@@ -287,6 +301,10 @@ for (const [columnName, definition] of cardColumns) {
 
 for (const [columnName, definition] of shareCollectionColumns) {
   addColumnIfMissing("ShareCollection", columnName, definition);
+}
+
+for (const [columnName, definition] of shareCollectionItemColumns) {
+  addColumnIfMissing("ShareCollectionItem", columnName, definition);
 }
 
 const cardColumnTypes = getCardColumnTypes();
@@ -313,8 +331,11 @@ CREATE INDEX IF NOT EXISTS Card_createdAt_idx ON Card(createdAt DESC);
 CREATE INDEX IF NOT EXISTS CardImage_cardId_idx ON CardImage(cardId);
 CREATE UNIQUE INDEX IF NOT EXISTS ShareCollection_slug_key ON ShareCollection(slug);
 CREATE INDEX IF NOT EXISTS ShareCollection_createdAt_idx ON ShareCollection(createdAt DESC);
+CREATE INDEX IF NOT EXISTS ShareSection_shareCollectionId_idx ON ShareSection(shareCollectionId);
+CREATE INDEX IF NOT EXISTS ShareSection_sortOrder_idx ON ShareSection(sortOrder);
 CREATE UNIQUE INDEX IF NOT EXISTS ShareCollectionItem_shareCollectionId_cardId_key ON ShareCollectionItem(shareCollectionId, cardId);
 CREATE INDEX IF NOT EXISTS ShareCollectionItem_shareCollectionId_idx ON ShareCollectionItem(shareCollectionId);
+CREATE INDEX IF NOT EXISTS ShareCollectionItem_sectionId_idx ON ShareCollectionItem(sectionId);
 CREATE INDEX IF NOT EXISTS ShareCollectionItem_cardId_idx ON ShareCollectionItem(cardId);
 CREATE INDEX IF NOT EXISTS ShareCollectionItem_sortOrder_idx ON ShareCollectionItem(sortOrder);
 `);

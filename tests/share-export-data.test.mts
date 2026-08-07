@@ -11,6 +11,7 @@ test("share export mapping keeps only public card fields", () => {
       displayTitle: null,
       displayDescription: null,
       card: {
+        id: "card-example",
         playerName: "Player",
         cardTitle: "Card",
         sport: "Basketball",
@@ -44,6 +45,7 @@ test("share export mapping keeps only public card fields", () => {
   const exportedRecord = exported as unknown as Record<string, unknown>;
 
   assert.equal(exported.description, "Public");
+  assert.equal(exported.id, "card-example");
   assert.equal("purchasePrice" in exportedRecord, false);
   assert.equal("currentValue" in exportedRecord, false);
   assert.equal("purchaseSource" in exportedRecord, false);

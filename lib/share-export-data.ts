@@ -4,6 +4,7 @@ export function toPublicExportCard({ item, href, images }: ExportCardInput): Exp
   const card = item.card;
 
   return {
+    id: card.id,
     playerName: card.playerName,
     cardTitle: card.cardTitle,
     displayTitle: item.displayTitle || card.cardTitle,

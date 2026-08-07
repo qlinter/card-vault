@@ -20,6 +20,8 @@ import {
 } from "@/lib/share-export-types";
 import { getShareBackgroundsDir, getShareCoversDir, getUploadsDir, resolveDataDir } from "@/lib/storage-paths";
 import { normalizeShareTheme, shareThemeBackgroundPath } from "@/lib/share-themes";
+import { parseSharePresentation } from "@/lib/share-presentation";
+import { normalizeShareSectionLayout } from "@/lib/share-sections";
 import { createZipArchive } from "@/lib/zip-archive";
 
 export type { ShareExportMode } from "@/lib/share-export-types";
@@ -134,6 +136,7 @@ export async function exportShareCollection(
   const data: ExportData = {
     title: collection.title,
     theme,
+    presentation: parseSharePresentation(collection.presentationConfig),
     subtitle: collection.subtitle,
     description: collection.description,
     themeNarrative: collection.themeNarrative,
@@ -143,6 +146,13 @@ export async function exportShareCollection(
     backgroundImage,
     generatedAt: new Date().toISOString(),
     mode,
+    sections: collection.sections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      description: section.description ?? "",
+      layout: normalizeShareSectionLayout(section.layout),
+      cardIds: sortedItems.filter((item) => item.sectionId === section.id).map((item) => item.cardId)
+    })),
     cards
   };
 

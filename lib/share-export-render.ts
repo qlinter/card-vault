@@ -1,8 +1,9 @@
 import {
   ExportCard,
-  ExportData
+  ExportData,
+  ExportSection
 } from "@/lib/share-export-types";
-import { normalizeShareTheme } from "@/lib/share-themes";
+import { normalizeShareTheme, shareThemeCssVariables } from "@/lib/share-themes";
 
 function escapeHtml(value: string | null | undefined): string {
   return (value ?? "")
@@ -56,28 +57,119 @@ function cardMeta(card: ExportCard): Array<[string, string]> {
 function renderLayout(
   title: string,
   body: string,
+  data: ExportData,
   depth: "root" | "card" = "root",
-  backgroundImage?: string | null,
-  theme?: string | null
+  inlineAssets = false
 ): string {
   const prefix = depth === "root" ? "" : "../";
-  const backgroundStyle = backgroundImage ? ` style="--share-bg-image: url('${prefix}${escapeHtml(backgroundImage)}')"` : "";
-  const themeClass = `theme-${normalizeShareTheme(theme)}`;
-  const bodyClass = ` class="${themeClass}${backgroundImage ? " has-custom-bg" : ""}"`;
+  const presentation = data.presentation;
+  const variables = {
+    ...shareThemeCssVariables(data.theme),
+    "--share-bg-position-x": `${presentation.backgroundPosition.x}%`,
+    "--share-bg-position-y": `${presentation.backgroundPosition.y}%`,
+    "--gallery-panel-alpha": (presentation.panelOpacity / 100).toFixed(2)
+  };
+  const backgroundVariable = data.backgroundImage
+    ? `--share-bg-image:url('${prefix}${escapeHtml(data.backgroundImage)}');`
+    : "";
+  const variableStyle = Object.entries(variables).map(([key, value]) => `${key}:${value};`).join("");
+  const backgroundStyle = ` style="${backgroundVariable}${variableStyle}"`;
+  const themeClass = `theme-${normalizeShareTheme(data.theme)}`;
+  const bodyClass = ` class="${themeClass} layout-${presentation.layout}${data.backgroundImage ? " has-custom-bg" : ""}"`;
+  const assets = inlineAssets
+    ? `<style>${siteCss()}</style>\n  <script>${siteJs()}</script>`
+    : `<link rel="stylesheet" href="${prefix}assets/site.css" />\n  <script src="${prefix}assets/site.js" defer></script>`;
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(title)}</title>
-  <link rel="stylesheet" href="${prefix}assets/site.css" />
-  <script src="${prefix}assets/site.js" defer></script>
+  ${assets}
 </head>
 <body${bodyClass}${backgroundStyle}>
 ${body}
 </body>
 </html>
 `;
+}
+
+function renderGalleryCard(card: ExportCard, className: string): string {
+  const image = card.images[0]
+    ? `<img src="${escapeHtml(card.images[0])}" alt="${escapeHtml(card.displayTitle)}" loading="lazy" />`
+    : `<div class="placeholder"></div>`;
+  return `<a class="${className}" href="${escapeHtml(card.href)}">
+    ${image}
+    <span><strong>${escapeHtml(card.playerName)}</strong><small>${escapeHtml(card.displayTitle)}</small></span>
+  </a>`;
+}
+
+function legacySections(data: ExportData): ExportSection[] {
+  const sections: ExportSection[] = [];
+  if (data.themeNarrative) {
+    sections.push({ id: "narrative", title: "展馆叙事", description: data.themeNarrative, layout: "editorial", cardIds: [] });
+  }
+  if (data.themeHighlights) {
+    sections.push({ id: "highlights", title: "收藏亮点", description: data.themeHighlights, layout: "rail", cardIds: data.cards.map((card) => card.id) });
+  }
+  if (data.groupNotes) {
+    sections.push({ id: "groups", title: "主题分组", description: data.groupNotes, layout: "grid", cardIds: data.cards.map((card) => card.id) });
+  }
+  return sections;
+}
+
+function renderSections(data: ExportData): string {
+  const sections = data.sections.length > 0 ? data.sections : legacySections(data);
+  if (sections.length === 0) {
+    return "";
+  }
+  const cards = new Map(data.cards.map((card) => [card.id, card]));
+  return `<section class="curated-sections">
+    ${sections.map((section, index) => {
+      const sectionCards = section.cardIds.map((cardId) => cards.get(cardId)).filter((card): card is ExportCard => Boolean(card));
+      const cardHtml = sectionCards.length > 0
+        ? `<div class="section-cards">${sectionCards.map((card) => renderGalleryCard(card, "section-card")).join("")}</div>`
+        : "";
+      return `<article class="curated-section section-${escapeHtml(section.layout)}">
+        <div class="section-number">${String(index + 1).padStart(2, "0")}</div>
+        <div class="section-copy"><p class="kicker">策展章节</p><h2>${escapeHtml(section.title)}</h2>${paragraphHtml(section.description)}</div>
+        ${cardHtml}
+      </article>`;
+    }).join("")}
+  </section>`;
+}
+
+function renderHero(data: ExportData, coverImage: string | undefined, coverTitle: string): string {
+  const playerCount = new Set(data.cards.map((card) => card.playerName)).size;
+  return `<section class="hero">
+    <div class="hero-copy">
+      <p class="kicker">Card Vault 展馆</p>
+      <h1>${escapeHtml(data.title)}</h1>
+      ${data.subtitle ? `<p class="subtitle">${escapeHtml(data.subtitle)}</p>` : ""}
+      ${paragraphHtml(data.description)}
+      <div class="stats"><span>${data.cards.length} 张卡片</span><span>${playerCount} 位球员或组合</span></div>
+    </div>
+    ${coverImage ? `<div class="hero-cover"><img src="${escapeHtml(coverImage)}" alt="${escapeHtml(coverTitle)}" /></div>` : ""}
+  </section>`;
+}
+
+function renderCarousel(data: ExportData): string {
+  const cardsHtml = data.cards.map((card, index) => {
+    const image = card.images[0]
+      ? `<img src="${escapeHtml(card.images[0])}" alt="${escapeHtml(card.displayTitle)}" />`
+      : `<div class="placeholder"></div>`;
+    return `<article class="card carousel-card" data-index="${index}" aria-label="${escapeHtml(`${card.playerName} ${card.displayTitle}`)}" style="--offset:${index};--abs-offset:${Math.abs(index)}">
+      <a class="card-image" href="${escapeHtml(card.href)}" aria-label="查看 ${escapeHtml(card.displayTitle)}">${image}</a>
+    </article>`;
+  }).join("");
+  return `<section class="carousel" aria-label="卡片立体切换">
+    <div class="carousel-toolbar">
+      <button type="button" data-carousel-prev aria-label="上一张">‹</button>
+      <span><strong data-carousel-current>1</strong> / ${data.cards.length}</span>
+      <button type="button" data-carousel-next aria-label="下一张">›</button>
+    </div>
+    <div class="card-stage">${cardsHtml}</div>
+  </section>`;
 }
 
 export function renderIndex(data: ExportData): string {
@@ -91,59 +183,23 @@ export function renderIndex(data: ExportData): string {
   const groupHtml = [...groups.entries()]
     .map(([name, count]) => `<span class="chip">${escapeHtml(name)} <strong>${count}</strong></span>`)
     .join("");
+  const hero = renderHero(data, coverImage, cover?.displayTitle ?? data.title);
+  const sections = renderSections(data);
+  const carousel = renderCarousel(data);
+  const layoutContent = data.presentation.layout === "archive"
+    ? `${hero}<div class="archive-catalog"><aside><p class="kicker">馆藏索引</p><div class="groups">${groupHtml}</div></aside>${sections}</div>${carousel}`
+    : data.presentation.layout === "arena"
+      ? `${hero}<section class="arena-board"><div><strong>${data.cards.length}</strong><span>CARDS</span></div><div><strong>${groups.size}</strong><span>PLAYERS</span></div><div class="groups">${groupHtml}</div></section>${carousel}${sections}`
+      : `${hero}${sections}<div class="groups">${groupHtml}</div>${carousel}`;
+  const body = `<main class="shell">${layoutContent}</main>`;
 
-  const cardsHtml = data.cards
-    .map((card, index) => {
-      const image = card.images[0]
-        ? `<img src="${escapeHtml(card.images[0])}" alt="${escapeHtml(card.displayTitle)}" />`
-        : `<div class="placeholder"></div>`;
-      return `<article class="card carousel-card" data-index="${escapeHtml(String(index))}" aria-label="${escapeHtml(`${card.playerName} ${card.displayTitle}`)}" style="--offset:${index};--abs-offset:${Math.abs(index)}">
-        <a class="card-image" href="${escapeHtml(card.href)}" aria-label="查看 ${escapeHtml(card.displayTitle)}">${image}</a>
-      </article>`;
-    })
-    .join("");
+  return renderLayout(data.title, body, data);
+}
 
-  const body = `<main class="shell">
-    <section class="hero">
-      <div class="hero-copy">
-        <p class="kicker">Card Vault 展馆</p>
-        <h1>${escapeHtml(data.title)}</h1>
-        ${data.subtitle ? `<p class="subtitle">${escapeHtml(data.subtitle)}</p>` : ""}
-        ${paragraphHtml(data.description)}
-        <div class="stats">
-          <span>${data.cards.length} 张卡片</span>
-          <span>${groups.size} 位球员或组合</span>
-        </div>
-      </div>
-      ${
-        coverImage
-          ? `<div class="hero-cover"><img src="${escapeHtml(coverImage)}" alt="${escapeHtml(cover?.displayTitle ?? data.title)}" /></div>`
-          : ""
-      }
-    </section>
-
-    ${
-      data.themeNarrative || data.themeHighlights || data.groupNotes
-        ? `<section class="story">
-            ${data.themeNarrative ? `<div><h2>展馆叙事</h2>${paragraphHtml(data.themeNarrative)}</div>` : ""}
-            ${data.themeHighlights ? `<div><h2>收藏亮点</h2>${paragraphHtml(data.themeHighlights)}</div>` : ""}
-            ${data.groupNotes ? `<div><h2>主题分组</h2>${paragraphHtml(data.groupNotes)}</div>` : ""}
-          </section>`
-        : ""
-    }
-
-    <section class="groups">${groupHtml}</section>
-    <section class="carousel" aria-label="卡片立体切换">
-      <div class="carousel-toolbar">
-        <button type="button" data-carousel-prev>上一张</button>
-        <span><strong data-carousel-current>1</strong> / ${data.cards.length}</span>
-        <button type="button" data-carousel-next>下一张</button>
-      </div>
-      <div class="card-stage">${cardsHtml}</div>
-    </section>
-  </main>`;
-
-  return renderLayout(data.title, body, "root", data.backgroundImage, data.theme);
+export function renderPreviewDocument(data: ExportData): string {
+  const html = renderIndex(data);
+  return html
+    .replace('<link rel="stylesheet" href="assets/site.css" />\n  <script src="assets/site.js" defer></script>', `<style>${siteCss()}</style>\n  <script>${siteJs()}</script>`);
 }
 
 export function renderCardPage(data: ExportData, card: ExportCard): string {
@@ -168,19 +224,19 @@ export function renderCardPage(data: ExportData, card: ExportCard): string {
     </section>
   </main>`;
 
-  return renderLayout(`${card.playerName} - ${data.title}`, body, "card", data.backgroundImage, data.theme);
+  return renderLayout(`${card.playerName} - ${data.title}`, body, data, "card");
 }
 
 export function siteCss(): string {
   return `:root {
   color-scheme: dark;
   --bg: #08090b;
-  --panel: rgba(255, 255, 255, 0.07);
-  --panel-strong: rgba(255, 255, 255, 0.12);
-  --line: rgba(255, 255, 255, 0.14);
-  --text: #f5f7fb;
-  --muted: #a8b0bd;
-  --accent: #d7bb7a;
+  --text: var(--gallery-text, #f5f7fb);
+  --muted: var(--gallery-muted, #a8b0bd);
+  --accent: var(--gallery-accent, #d7bb7a);
+  --line: var(--gallery-line, rgba(255, 255, 255, 0.14));
+  --panel: rgba(var(--gallery-panel-rgb, 8, 14, 24), var(--gallery-panel-alpha, 0.14));
+  --panel-strong: rgba(var(--gallery-panel-rgb, 8, 14, 24), calc(var(--gallery-panel-alpha, 0.14) + 0.14));
 }
 * { box-sizing: border-box; }
 body {
@@ -198,7 +254,7 @@ body.has-custom-bg::before {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background: var(--share-bg-image) center / cover no-repeat;
+  background: var(--share-bg-image) var(--share-bg-position-x, 50%) var(--share-bg-position-y, 50%) / cover no-repeat;
 }
 a { color: inherit; text-decoration: none; }
 img { display: block; max-width: 100%; }
@@ -219,9 +275,9 @@ body.has-custom-bg .hero-copy h1,
 body.has-custom-bg .detail-copy h1,
 body.has-custom-bg .subtitle,
 body.has-custom-bg .hero-copy p:not(.kicker):not(.subtitle),
-body.has-custom-bg .story p,
+body.has-custom-bg .curated-section p,
 body.has-custom-bg .detail-copy p {
-  color: #f7f9fc;
+  color: var(--text);
   text-shadow: 0 2px 18px rgba(0,0,0,0.62);
 }
 .hero {
@@ -232,10 +288,10 @@ body.has-custom-bg .detail-copy p {
   align-items: center;
 }
 .hero-copy h1, .detail-copy h1 { margin: 0; font-size: clamp(40px, 8vw, 92px); line-height: 0.96; letter-spacing: 0; }
-.kicker { color: var(--accent); text-transform: uppercase; font-size: 12px; letter-spacing: 0.14em; font-weight: 700; }
+.kicker { color: var(--accent); text-transform: uppercase; font-size: 12px; letter-spacing: 0; font-weight: 800; }
 .subtitle { color: var(--muted); font-size: clamp(18px, 2.2vw, 26px); line-height: 1.45; }
-.hero-copy p:not(.kicker):not(.subtitle), .story p, .detail-copy p { color: var(--muted); line-height: 1.85; }
-.hero-cover, .story, .detail-images, .detail-copy {
+.hero-copy p:not(.kicker):not(.subtitle), .curated-section p, .detail-copy p { color: var(--muted); line-height: 1.85; }
+.hero-cover, .curated-section, .detail-images, .detail-copy {
   border: 1px solid var(--line);
   background: var(--panel);
   backdrop-filter: blur(18px);
@@ -250,8 +306,29 @@ body.has-custom-bg .detail-copy p {
   padding: 8px 12px;
   font-size: 13px;
 }
-.story { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; padding: 24px; margin: 0 0 28px; }
-.story h2 { margin: 0 0 10px; font-size: 20px; }
+.curated-sections { display: grid; gap: 22px; margin: 0 0 30px; }
+.curated-section {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px minmax(220px, 0.75fr) minmax(0, 1.25fr);
+  gap: 22px;
+  align-items: start;
+  padding: clamp(20px, 3vw, 34px);
+  overflow: hidden;
+}
+.curated-section h2 { margin: 0 0 12px; font-size: clamp(24px, 4vw, 42px); line-height: 1.08; }
+.section-number { color: var(--accent); font-size: 13px; font-weight: 900; border-top: 2px solid currentColor; padding-top: 8px; }
+.section-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.section-card { min-width: 0; border-radius: 12px; overflow: hidden; background: var(--panel-strong); border: 1px solid var(--line); }
+.section-card img, .section-card .placeholder { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; }
+.section-card span { display: grid; gap: 2px; padding: 10px; }
+.section-card strong, .section-card small { overflow-wrap: anywhere; }
+.section-card small { color: var(--muted); }
+.section-editorial { grid-template-columns: 52px minmax(0, 1fr); }
+.section-editorial .section-cards { grid-column: 2; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.section-rail .section-cards { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; }
+.section-rail .section-card { flex: 0 0 min(190px, 48vw); scroll-snap-align: start; }
+.section-grid .section-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .groups { margin-bottom: 24px; }
 .carousel { margin-top: 20px; }
 .carousel-toolbar {
@@ -265,8 +342,14 @@ body.has-custom-bg .detail-copy p {
   border: 1px solid var(--line);
   background: var(--panel-strong);
   color: var(--text);
-  padding: 9px 13px;
+  width: 42px;
+  height: 42px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  padding: 0;
   font: inherit;
+  font-size: 25px;
   cursor: pointer;
 }
 .card-stage {
@@ -319,6 +402,25 @@ body.has-custom-bg .detail-copy p {
 .meta strong { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 .meta span { overflow-wrap: anywhere; }
 .large { min-height: 420px; }
+.archive-catalog { display: grid; grid-template-columns: minmax(190px, 0.3fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+.archive-catalog > aside { position: sticky; top: 20px; padding: 22px; border: 1px solid var(--line); background: var(--panel); backdrop-filter: blur(14px); }
+.archive-catalog > aside .groups { display: grid; margin: 0; }
+.layout-archive .shell { width: min(1320px, calc(100% - 32px)); }
+.layout-archive .hero { min-height: 54vh; grid-template-columns: minmax(0, 1.4fr) minmax(240px, 0.45fr); border-bottom: 1px solid var(--line); margin-bottom: 30px; }
+.layout-archive .hero-copy h1 { max-width: 13ch; font-family: Georgia, "Times New Roman", "Microsoft YaHei", serif; font-size: clamp(46px, 7vw, 88px); }
+.layout-archive .curated-section { grid-template-columns: 64px minmax(0, 0.72fr) minmax(0, 1.28fr); border-radius: 0; border-width: 0 0 1px; background: transparent; backdrop-filter: none; }
+.layout-archive .section-number { font-family: Georgia, "Times New Roman", serif; font-size: 20px; }
+.layout-archive .carousel { border-top: 1px solid var(--line); padding-top: 28px; }
+.arena-board { display: grid; grid-template-columns: 150px 150px minmax(0, 1fr); gap: 12px; align-items: stretch; margin: -40px 0 34px; position: relative; z-index: 2; }
+.arena-board > div { display: grid; align-content: center; padding: 18px; border: 1px solid var(--line); background: var(--panel-strong); backdrop-filter: blur(14px); }
+.arena-board strong { color: var(--accent); font-size: 34px; line-height: 1; }
+.arena-board span { color: var(--muted); font-size: 11px; font-weight: 800; }
+.arena-board .groups { display: flex; margin: 0; }
+.layout-arena .hero { min-height: 76vh; grid-template-columns: minmax(0, 0.92fr) minmax(320px, 0.72fr); }
+.layout-arena .hero-copy { border-left: 5px solid var(--accent); }
+.layout-arena .hero-cover { transform: perspective(1100px) rotateY(-8deg); box-shadow: 28px 30px 70px rgba(0,0,0,0.28); }
+.layout-arena .card-stage { min-height: 520px; }
+.layout-arena .curated-section { border-left: 4px solid var(--accent); }
 body.theme-archive {
   color-scheme: light;
   --bg: #f4f0e8;
@@ -333,7 +435,7 @@ body.theme-archive {
     linear-gradient(145deg, #f7f4ee 0%, #e6edf4 56%, #f7f4ee 100%);
 }
 body.theme-archive .hero-cover,
-body.theme-archive .story,
+body.theme-archive .curated-section,
 body.theme-archive .detail-images,
 body.theme-archive .detail-copy {
   background: var(--panel);
@@ -351,7 +453,7 @@ body.theme-football {
     linear-gradient(145deg, #08271e 0%, #0d5f40 55%, #062118 100%);
 }
 body.theme-football .hero { border-left: 6px solid #cde83d; padding-left: 20px; }
-body.theme-football .story,
+body.theme-football .curated-section,
 body.theme-football .hero-cover,
 body.theme-football .detail-images,
 body.theme-football .detail-copy { border-color: rgba(205,232,61,0.34); background: rgba(3,35,24,0.72); }
@@ -361,7 +463,7 @@ body.theme-basketball {
   --muted: #ead0b5;
   background: radial-gradient(circle at 78% 18%, rgba(255,195,109,0.22), transparent 13rem), linear-gradient(145deg, #552516 0%, #b95c2a 50%, #102c4d 100%);
 }
-body.theme-basketball .story,
+body.theme-basketball .curated-section,
 body.theme-basketball .hero-cover,
 body.theme-basketball .detail-images,
 body.theme-basketball .detail-copy { border-color: rgba(255,196,109,0.38); background: rgba(47,24,19,0.68); }
@@ -372,7 +474,7 @@ body.theme-tennis {
   background: linear-gradient(135deg, transparent 0 46%, rgba(216,239,68,0.18) 47% 52%, transparent 53%), linear-gradient(145deg, #071d31 0%, #0e5c8d 56%, #06243e 100%);
 }
 body.theme-tennis .hero { transform: skewY(-1deg); }
-body.theme-tennis .story,
+body.theme-tennis .curated-section,
 body.theme-tennis .hero-cover,
 body.theme-tennis .detail-images,
 body.theme-tennis .detail-copy { border-color: rgba(216,239,68,0.36); background: rgba(4,36,61,0.7); }
@@ -382,8 +484,8 @@ body.theme-f1 {
   --muted: #b9bec8;
   background: repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 8px, transparent 8px 18px), linear-gradient(145deg, #090a0d 0%, #252931 60%, #120f13 100%);
 }
-body.theme-f1 .hero-copy h1 { text-transform: uppercase; letter-spacing: 0.03em; }
-body.theme-f1 .story,
+body.theme-f1 .hero-copy h1 { text-transform: uppercase; letter-spacing: 0; }
+body.theme-f1 .curated-section,
 body.theme-f1 .hero-cover,
 body.theme-f1 .detail-images,
 body.theme-f1 .detail-copy { border-color: rgba(240,82,78,0.4); background: rgba(8,10,14,0.78); }
@@ -398,7 +500,7 @@ body.theme-nerazzurri {
 }
 body.theme-nerazzurri .hero { border-left: 6px solid #0067d8; padding-left: 20px; }
 body.theme-nerazzurri .hero-copy h1 { color: #07182e; text-shadow: 0 0 28px rgba(255,255,255,0.72); }
-body.theme-nerazzurri .story,
+body.theme-nerazzurri .curated-section,
 body.theme-nerazzurri .hero-cover,
 body.theme-nerazzurri .detail-images,
 body.theme-nerazzurri .detail-copy { border-color: rgba(0,78,154,0.22); background: rgba(255,255,255,0.72); }
@@ -410,30 +512,43 @@ body.theme-nerazzurri-2 {
 }
 body.theme-nerazzurri-2 .hero { border-left: 6px solid #0067d8; padding-left: 20px; }
 body.theme-nerazzurri-2 .hero-copy h1 { text-shadow: 0 0 28px rgba(0,103,216,0.46); }
-body.theme-nerazzurri-2 .story,
+body.theme-nerazzurri-2 .curated-section,
 body.theme-nerazzurri-2 .hero-cover,
 body.theme-nerazzurri-2 .detail-images,
 body.theme-nerazzurri-2 .detail-copy { border-color: rgba(217,173,84,0.36); background: rgba(3,12,28,0.72); }
 body.has-custom-bg .back,
 body.has-custom-bg .hero-copy,
 body.has-custom-bg .carousel-toolbar,
-body.has-custom-bg .story,
+body.has-custom-bg .curated-section,
 body.has-custom-bg .detail-copy {
   border: 1px solid rgba(255,255,255,0.24);
   border-radius: 24px;
-  background: rgba(8,14,24,0.14);
+  background: var(--panel);
   box-shadow: 0 14px 38px rgba(0,0,0,0.14), inset 0 0 0 1px rgba(255,255,255,0.05);
   backdrop-filter: blur(10px) saturate(125%);
 }
 body.has-custom-bg .stats span,
 body.has-custom-bg .chip {
   border-color: rgba(255,255,255,0.22);
-  background: rgba(8,14,24,0.16);
+  background: var(--panel-strong);
   backdrop-filter: blur(8px) saturate(125%);
 }
 @media (max-width: 820px) {
   .shell { width: min(100% - 22px, 680px); padding-top: 20px; }
-  .hero, .story, .detail { grid-template-columns: 1fr; min-height: auto; }
+  .hero,
+  .layout-arena .hero,
+  .layout-archive .hero,
+  .detail { grid-template-columns: minmax(0, 1fr); min-height: auto; }
+  .archive-catalog { grid-template-columns: 1fr; }
+  .archive-catalog > aside { position: static; }
+  .arena-board { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0; }
+  .arena-board .groups { grid-column: 1 / -1; }
+  .curated-section,
+  .layout-archive .curated-section { grid-template-columns: 42px minmax(0, 1fr); gap: 14px; }
+  .curated-section .section-cards { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .section-rail .section-cards { display: flex; }
+  .layout-arena .hero-cover { transform: none; }
+  .layout-arena .hero-copy { border-left-width: 3px; padding-left: 16px; }
   .hero-copy h1, .detail-copy h1 { font-size: clamp(34px, 14vw, 58px); }
   .detail-copy { position: static; }
   .meta { grid-template-columns: 1fr; }
@@ -445,11 +560,15 @@ body.has-custom-bg .chip {
       rotateY(calc(var(--offset) * -10deg))
       scale(calc(1 - (var(--abs-offset) * 0.09)));
   }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }`;
 }
 
 export function siteJs(): string {
   return `(() => {
+  function initGallery() {
   const cards = Array.from(document.querySelectorAll(".carousel-card"));
   const current = document.querySelector("[data-carousel-current]");
   const prev = document.querySelector("[data-carousel-prev]");
@@ -484,6 +603,10 @@ export function siteJs(): string {
   }));
   prev?.addEventListener("click", () => goTo(activeIndex - 1));
   next?.addEventListener("click", () => goTo(activeIndex + 1));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft") goTo(activeIndex - 1);
+    if (event.key === "ArrowRight") goTo(activeIndex + 1);
+  });
   stage.addEventListener("touchstart", (event) => {
     touchStartX = event.touches[0]?.clientX ?? null;
   }, { passive: true });
@@ -496,6 +619,13 @@ export function siteJs(): string {
   });
 
   render();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initGallery, { once: true });
+  } else {
+    initGallery();
+  }
 })();`;
 }
 

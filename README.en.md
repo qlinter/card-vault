@@ -267,13 +267,13 @@ Both Windows distributions are self-contained and do not require Node.js or `npm
 
 ### Installer
 
-- File: `dist/card-vault-1.0.9-setup.exe`
+- File: `dist/card-vault-1.0.10-setup.exe`
 - Uses an installation wizard and supports a user-selected installation directory.
 - Best suited to regular long-term use.
 
 ### Portable Build
 
-- File: `dist/card-vault-1.0.9-portable.zip`
+- File: `dist/card-vault-1.0.10-portable.zip`
 - Extract the complete archive and run `Card Vault.exe`.
 - Keep the extracted directory intact rather than moving the executable by itself.
 - Best suited to testing, temporary use, external drives, and quick distribution.

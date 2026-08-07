@@ -329,7 +329,7 @@ start-desktop.bat
 
 文件：
 
-- `dist/card-vault-1.0.9-setup.exe`
+- `dist/card-vault-1.0.10-setup.exe`
 
 特点：
 
@@ -342,11 +342,11 @@ start-desktop.bat
 
 文件：
 
-- `dist/card-vault-1.0.9-portable.zip`
+- `dist/card-vault-1.0.10-portable.zip`
 
 使用方式：
 
-1. 完整解压 `card-vault-1.0.9-portable.zip`。
+1. 完整解压 `card-vault-1.0.10-portable.zip`。
 2. 运行 `Card Vault.exe`。
 3. 不要单独移动或发送其中的可执行文件，需保留解压后的完整目录结构。
 

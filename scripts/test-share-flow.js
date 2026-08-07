@@ -59,6 +59,68 @@ async function fetchPage(baseUrl, route) {
   return html;
 }
 
+function decodeHtmlAttribute(value = "") {
+  return value.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
+}
+
+function shareActionFields(html) {
+  const shareForm = html.match(/<form class="share-form"[\s\S]*?<\/form>/)?.[0];
+  if (!shareForm) {
+    throw new Error("Share edit page does not contain the expected form.");
+  }
+
+  const fields = [...shareForm.matchAll(/<input type="hidden" name="(\$ACTION_[^"]+)"(?: value="([^"]*)")?\/>/g)]
+    .map((match) => [match[1], decodeHtmlAttribute(match[2])]);
+  if (fields.length === 0) {
+    throw new Error("Share edit form does not contain a Server Action reference.");
+  }
+  return fields;
+}
+
+async function submitShareEdit(baseUrl, editPage) {
+  const formData = new FormData();
+  for (const [name, value] of shareActionFields(editPage)) {
+    formData.append(name, value);
+  }
+
+  const fields = {
+    cardIds: "e2e-card-1",
+    title: "E2E 编辑后分享展馆",
+    theme: "archive",
+    layout: "archive",
+    backgroundPositionX: "45",
+    backgroundPositionY: "50",
+    panelOpacity: "18",
+    coverMode: "auto",
+    subtitle: "编辑后副标题",
+    description: "编辑后简介。",
+    themeNarrative: "编辑后叙事。",
+    themeHighlights: "",
+    groupNotes: "",
+    sectionsJson: JSON.stringify([
+      {
+        id: "e2e-section-1",
+        title: "编辑后章节",
+        description: "编辑后章节说明。",
+        layout: "grid",
+        cardIds: ["e2e-card-1"]
+      }
+    ]),
+    "sortOrder-e2e-card-1": "1",
+    "displayTitle-e2e-card-1": "编辑后展示标题",
+    "displayDescription-e2e-card-1": "编辑后展示描述。"
+  };
+  for (const [name, value] of Object.entries(fields)) {
+    formData.append(name, value);
+  }
+
+  return fetch(`${baseUrl}/shares/e2e-share-1/edit`, {
+    method: "POST",
+    body: formData,
+    redirect: "manual"
+  });
+}
+
 function seedDatabase(dbPath, dataDir) {
   const uploadsDir = path.join(dataDir, "uploads");
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -231,7 +293,44 @@ async function main() {
     assertIncludes(exportPage, "生成云端发布包", "云端发布入口");
     assertIncludes(exportPage, "不包含价格、成本", "导出隐私提示");
 
-    console.log("Share flow HTTP E2E passed: list, new, edit, preview, and export routes.");
+    const editResponse = await submitShareEdit(baseUrl, editPage);
+    if (editResponse.status !== 303 || editResponse.headers.get("location") !== "/shares?success=updated") {
+      const responseBody = await editResponse.text();
+      throw new Error(
+        `Share edit returned HTTP ${editResponse.status} (${editResponse.headers.get("location") ?? "no redirect"}).\n${responseBody.slice(0, 500)}`
+      );
+    }
+
+    const verifyDb = new DatabaseSync(dbPath);
+    try {
+      const collection = verifyDb
+        .prepare("SELECT title, subtitle FROM ShareCollection WHERE id = ?")
+        .get("e2e-share-1");
+      const section = verifyDb
+        .prepare("SELECT title, layout FROM ShareSection WHERE shareCollectionId = ?")
+        .get("e2e-share-1");
+      const item = verifyDb
+        .prepare("SELECT displayTitle, sectionId FROM ShareCollectionItem WHERE shareCollectionId = ?")
+        .get("e2e-share-1");
+      if (collection?.title !== "E2E 编辑后分享展馆" || collection?.subtitle !== "编辑后副标题") {
+        throw new Error("Share edit did not persist the collection fields.");
+      }
+      if (section?.title !== "编辑后章节" || section?.layout !== "grid") {
+        throw new Error("Share edit did not replace the section fields.");
+      }
+      if (item?.displayTitle !== "编辑后展示标题" || !item?.sectionId) {
+        throw new Error("Share edit did not persist the item fields and section assignment.");
+      }
+    } finally {
+      verifyDb.close();
+    }
+
+    const editedPreviewPage = await fetchPage(baseUrl, "/shares/e2e-share-1/preview");
+    assertIncludes(editedPreviewPage, "E2E 编辑后分享展馆", "编辑后的分享集预览标题");
+    assertIncludes(editedPreviewPage, "编辑后章节", "编辑后的分享集章节");
+    assertIncludes(editedPreviewPage, "编辑后展示标题", "编辑后的分享卡片标题");
+
+    console.log("Share flow HTTP E2E passed: list, new, edit save, preview, and export routes.");
   } finally {
     stopServer(serverProcess);
     removeTempRoot(tempRoot);

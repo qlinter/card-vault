@@ -6,6 +6,7 @@ type AiProvider = "azure" | "minimax";
 
 type PublicSettings = {
   provider: AiProvider;
+  keyRecoveryRequired?: boolean;
   azure: {
     endpoint: string;
     deployment: string;
@@ -21,6 +22,7 @@ type PublicSettings = {
 
 const emptySettings: PublicSettings = {
   provider: "azure",
+  keyRecoveryRequired: false,
   azure: {
     endpoint: "",
     deployment: "",
@@ -60,7 +62,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   const [minimaxApiKey, setMiniMaxApiKey] = useState("");
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [isDesktop, setIsDesktop] = useState(false);
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
@@ -79,15 +81,21 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
           : ((await fetch("/api/ai/settings").then((response) => response.json())) as PublicSettings);
 
         if (!cancelled) {
-          setSettings({
+          const loadedSettings: PublicSettings = {
             provider: nextSettings.provider ?? emptySettings.provider,
+            keyRecoveryRequired: Boolean(nextSettings.keyRecoveryRequired),
             azure: { ...emptySettings.azure, ...nextSettings.azure },
             minimax: { ...emptySettings.minimax, ...nextSettings.minimax }
-          });
+          };
+          setSettings(loadedSettings);
+          if (loadedSettings.keyRecoveryRequired) {
+            setMessage("检测到旧 API Key 无法由当前 Windows 环境解密，请重新输入 API Key 并保存；其他设置已保留。");
+          }
         }
-      } catch {
+      } catch (error) {
         if (!cancelled) {
-          setMessage("读取 AI 设置失败。");
+          const detail = error instanceof Error ? error.message : "请重新启动 Card Vault 后重试。";
+          setMessage("读取 AI 设置失败：" + detail);
         }
       }
     }
@@ -136,12 +144,13 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
 
       setSettings({
         provider: saved.provider,
+        keyRecoveryRequired: false,
         azure: { ...emptySettings.azure, ...saved.azure },
         minimax: { ...emptySettings.minimax, ...saved.minimax }
       });
       setAzureApiKey("");
       setMiniMaxApiKey("");
-      setMessage(providerName(saved.provider) + " 设置已保存。");
+      setMessage(providerName(saved.provider) + " 设置已加密保存，Card Vault 将重新启动。");
     } catch (error) {
       const detail = error instanceof Error ? error.message : "请稍后重试。";
       setMessage("保存失败：" + detail);
@@ -233,7 +242,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
     <section className="panel settings-section ai-settings-panel">
       <button type="button" className="ai-settings-toggle" onClick={() => setIsOpen((value) => !value)}>
         <span>
-          <strong>{"AI 识图设置"}</strong>
+          <strong>{"AI 设置"}</strong>
           <span className="muted">{configured ? "已配置 " + providerName(settings.provider) : "未配置"}</span>
         </span>
         <span>{isOpen ? "收起" : "展开"}</span>
@@ -242,7 +251,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
       {isOpen ? (
         <>
           <p className="muted" style={{ margin: "0.75rem 0" }}>
-            {"配置 AI 识图和分享文案生成所需的服务商、模型和连接信息。"}
+            {"配置 AI 识图、分享文案和组合分析共用的服务商、模型与连接信息。"}
           </p>
 
           <div className="form-grid">
@@ -372,7 +381,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
           </div>
 
           <div className="ai-actions">
-            <button type="button" className="btn btn-primary" onClick={handleSave} disabled={!isDesktop || isSaving}>
+            <button type="button" className="btn btn-primary" onClick={handleSave} disabled={isDesktop !== true || isSaving}>
               {isSaving ? "保存中..." : "保存设置"}
             </button>
             <button type="button" className="btn btn-secondary" onClick={handleTest} disabled={isTesting || !testable}>
@@ -383,7 +392,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
             </button>
           </div>
 
-          {!isDesktop ? (
+          {isDesktop === false ? (
             <p className="muted" style={{ margin: "0.65rem 0 0" }}>
               {"当前不是桌面端环境，界面内保存不可用；开发态可通过 .env.local 配置 AI 服务商。"}
             </p>

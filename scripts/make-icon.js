@@ -7,7 +7,6 @@ const pngToIco = pngToIcoModule.default || pngToIcoModule;
 
 const rootDir = path.resolve(__dirname, "..");
 const buildDir = path.join(rootDir, "build");
-const normalizedPath = path.join(buildDir, "icon.normalized.png");
 const targetPath = path.join(buildDir, "icon.ico");
 
 function findSourceIcon() {
@@ -30,18 +29,23 @@ function findSourceIcon() {
 
 async function main() {
   const sourcePath = findSourceIcon();
+  const normalizedPath = path.join(buildDir, `.icon-${process.pid}.normalized.png`);
 
-  await sharp(sourcePath)
-    .resize(1024, 1024, {
-      fit: "cover",
-      position: "centre"
-    })
-    .png()
-    .toFile(normalizedPath);
+  try {
+    await sharp(sourcePath)
+      .resize(1024, 1024, {
+        fit: "cover",
+        position: "centre"
+      })
+      .png()
+      .toFile(normalizedPath);
 
-  const buffer = await pngToIco(normalizedPath);
-  fs.writeFileSync(targetPath, buffer);
-  process.stdout.write(`Icon created: ${targetPath}\n`);
+    const buffer = await pngToIco(normalizedPath);
+    fs.writeFileSync(targetPath, buffer);
+    process.stdout.write(`Icon created: ${targetPath}\n`);
+  } finally {
+    fs.rmSync(normalizedPath, { force: true });
+  }
 }
 
 main().catch((error) => {

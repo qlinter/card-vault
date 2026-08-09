@@ -11,5 +11,6 @@ data
 tsconfig.tsbuildinfo
 prisma/dev.db
 prisma/dev.db-journal
+build/.icon-*.normalized.png
 public/uploads/*
 !public/uploads/.gitkeep

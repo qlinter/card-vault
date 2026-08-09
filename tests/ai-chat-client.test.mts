@@ -41,3 +41,22 @@ test("AI client retries with max_tokens when max_completion_tokens is unsupporte
   assert.equal(requestBodies[0].max_completion_tokens, 8);
   assert.equal(requestBodies[1].max_tokens, 8);
 });
+
+test("AI client translates an upstream network failure into an actionable message", async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = async () => {
+    throw new TypeError("Failed to fetch");
+  };
+
+  await assert.rejects(
+    requestAiChatText(settings, {
+      messages: [{ role: "user", content: "test" }],
+      maxTokens: 8,
+      operation: "主题生成"
+    }),
+    /检查网络、Endpoint 和代理设置/
+  );
+});

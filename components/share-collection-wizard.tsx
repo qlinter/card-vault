@@ -2,6 +2,7 @@
 
 import type { FormEvent, MouseEvent } from "react";
 import { useMemo, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { ShareCardDraft, ShareCardPicker, SharePickerCard } from "@/components/share-card-picker";
 import { ShareDesignPreview } from "@/components/share-design-preview";
 import { ShareSectionEditor } from "@/components/share-section-editor";
@@ -38,6 +39,15 @@ const steps = [
   { id: 2, title: "内容修改", helper: "调整标题、封面介绍、叙事和单卡展示覆盖。" },
   { id: 3, title: "确认保存", helper: "检查卡片数量和隐私提示，然后保存分享集。" }
 ] as const;
+
+function ShareSubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="btn btn-primary" disabled={pending}>
+      {pending ? "保存中..." : "确认保存"}
+    </button>
+  );
+}
 
 function safeText(value: unknown): string {
   if (typeof value === "string") {
@@ -279,11 +289,19 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
       event.preventDefault();
       setMessage("请至少选择一张卡片。");
       setActiveStep(0);
+      return;
     }
+    if (!themeValues.title.trim()) {
+      event.preventDefault();
+      setMessage("请填写分享集标题。");
+      setActiveStep(2);
+      return;
+    }
+    setMessage("正在保存分享集，请稍候...");
   }
 
   return (
-    <form action={action} className="share-form" onSubmit={handleSubmit} encType="multipart/form-data">
+    <form action={action} className="share-form" onSubmit={handleSubmit} noValidate>
       {selectedIds.map((cardId) => (
         <input key={cardId} type="hidden" name="cardIds" value={cardId} />
       ))}
@@ -322,9 +340,7 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
               下一步
             </button>
           ) : (
-            <button type="submit" className="btn btn-primary">
-              确认保存
-            </button>
+            <ShareSubmitButton />
           )}
           <a href="/shares" className="btn btn-secondary">
             返回分享
@@ -578,9 +594,7 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
             <p className="muted">还没有选择卡片。</p>
           )}
           <div className="share-form-actions">
-            <button type="submit" className="btn btn-primary">
-              确认保存
-            </button>
+            <ShareSubmitButton />
             <button type="button" className="btn btn-secondary" onClick={() => setActiveStep(0)}>
               返回选卡
             </button>

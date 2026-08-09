@@ -253,6 +253,19 @@ form.panel {
   color: var(--ink);
 }
 
+.valuation-summary-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.valuation-summary-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+}
+
 .filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -1651,6 +1664,138 @@ body:has(.showcase-backdrop) main.container {
 .settings-section h2 {
   margin: 0 0 0.75rem;
   font-size: 1.15rem;
+}
+
+.storage-actions,
+.backup-actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.storage-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 0 0 min(390px, 100%);
+  width: min(390px, 100%);
+}
+
+.backup-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: 0 0 min(520px, 100%);
+  width: min(520px, 100%);
+}
+
+.storage-actions .btn,
+.backup-actions .btn {
+  width: 100%;
+}
+
+.health-result {
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+}
+
+.health-result p {
+  margin: 0.35rem 0 0;
+}
+
+.orphan-cleanup-panel {
+  margin-top: 0.85rem;
+  padding: 0.8rem;
+  border: 1px solid rgba(208, 69, 58, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.orphan-cleanup-panel summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.orphan-cleanup-panel .btn {
+  margin-top: 0.75rem;
+}
+
+.orphan-file-list {
+  max-height: 260px;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.orphan-file-list li {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.48rem 0;
+  border-bottom: 1px solid rgba(16, 19, 26, 0.08);
+}
+
+.orphan-file-list li:last-child {
+  border-bottom: 0;
+}
+
+.orphan-file-list span {
+  color: var(--muted-ink);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.orphan-file-list code {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 0.82rem;
+}
+
+.orphan-reveal-button {
+  border: 1px solid rgba(16, 19, 26, 0.16);
+  border-radius: 8px;
+  padding: 0.35rem 0.58rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.orphan-reveal-button:hover:not(:disabled) {
+  border-color: rgba(16, 19, 26, 0.32);
+  background: #fff;
+}
+
+.orphan-reveal-button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.backup-message {
+  margin: 0.5rem 0 0;
+}
+
+@media (max-width: 760px) {
+  .settings-section > .title-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .storage-actions,
+  .backup-actions {
+    width: 100%;
+  }
+
+  .orphan-file-list li {
+    grid-template-columns: 80px minmax(0, 1fr);
+  }
+
+  .orphan-reveal-button {
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 
 .ai-recognition-panel {

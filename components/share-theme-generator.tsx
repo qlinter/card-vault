@@ -90,7 +90,12 @@ export function ShareThemeGenerator({ cards, currentValues, onApplySuggestion }:
           : "AI 已生成主题；当前字段已有内容，未覆盖。"
       );
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "AI 主题生成失败，请稍后重试。");
+      const detail = error instanceof Error ? error.message : "";
+      setStatus(
+        detail === "Failed to fetch"
+          ? "无法连接 Card Vault 本地服务，请重新启动程序后重试。"
+          : detail || "AI 主题生成失败，请稍后重试。"
+      );
     } finally {
       setLoading(false);
     }

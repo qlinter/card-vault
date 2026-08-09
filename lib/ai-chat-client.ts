@@ -79,7 +79,10 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
     }
 
     const message = error instanceof Error ? error.message : "未知网络错误";
-    throw new AiUpstreamError(`${aiProviderName(settings.provider)} ${request.operation}失败：${message}`);
+    const detail = message === "Failed to fetch"
+      ? "无法连接 AI 服务，请检查网络、Endpoint 和代理设置"
+      : message;
+    throw new AiUpstreamError(`${aiProviderName(settings.provider)} ${request.operation}失败：${detail}`);
   } finally {
     clearTimeout(timeout);
   }

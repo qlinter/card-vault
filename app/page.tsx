@@ -1,7 +1,9 @@
 import { FilterBar } from "@/components/filter-bar";
+import { PortfolioAnalysisButton } from "@/components/portfolio-analysis";
 import { splitTagString, buildCardFilters, buildCardSorting } from "@/lib/card-helpers";
 import { calculateOwnedCardsValue } from "@/lib/card-stats";
 import { normalizeImagePath } from "@/lib/image-path";
+import { buildPortfolioSnapshot } from "@/lib/portfolio-analysis";
 import { prisma } from "@/lib/prisma";
 
 type HomeProps = {
@@ -106,6 +108,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const successMessage = successText(toScalar(params.success));
   const errorMessage = toScalar(params.error);
   const totalValue = calculateOwnedCardsValue(cards);
+  const portfolioSnapshot = buildPortfolioSnapshot(cards);
 
   return (
     <div className="page home-page">
@@ -128,8 +131,11 @@ export default async function Home({ searchParams }: HomeProps) {
             {cards.length}
           </p>
         </div>
-        <div className="panel">
-          <strong>{"总估值"}</strong>
+        <div className="panel valuation-summary-card">
+          <div className="valuation-summary-head">
+            <strong>{"总估值"}</strong>
+            <PortfolioAnalysisButton snapshot={portfolioSnapshot} />
+          </div>
           <p className="h1" style={{ marginTop: "0.35rem" }}>
             {formatCurrency(totalValue)}
           </p>

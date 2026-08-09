@@ -2,44 +2,34 @@
 
 import { useEffect, useState } from "react";
 
-type BackupDesktopApi = NonNullable<Window["cardVaultDesktop"]> & {
-  getBackupSettings: () => Promise<{ path: string }>;
-  chooseBackupDirectory: () => Promise<{ path: string; cancelled: boolean }>;
-  backupDataFolder: () => Promise<{ backupRoot: string; datePath: string; backupPath: string }>;
-};
-
-function getBackupDesktopApi(): BackupDesktopApi | undefined {
-  return window.cardVaultDesktop as BackupDesktopApi | undefined;
+function desktopApi() {
+  return window.cardVaultDesktop;
 }
 
 export function BackupSettings() {
-  const [backupPath, setBackupPath] = useState("\u6b63\u5728\u8bfb\u53d6...");
-  const [isChoosing, setIsChoosing] = useState(false);
-  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [backupPath, setBackupPath] = useState("正在读取...");
+  const [busyAction, setBusyAction] = useState<"choose" | "backup" | "restore" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
-
     async function loadSettings() {
-      const desktopApi = getBackupDesktopApi();
-      if (!desktopApi) {
-        setBackupPath("\u5f53\u524d\u8fd0\u884c\u73af\u5883\u4e0d\u652f\u6301\u672c\u5730\u5907\u4efd\u3002");
+      const api = desktopApi();
+      if (!api) {
+        setBackupPath("当前运行环境不支持本地备份。");
         return;
       }
-
       try {
-        const settings = await desktopApi.getBackupSettings();
+        const settings = await api.getBackupSettings();
         if (mounted) {
           setBackupPath(settings.path);
         }
       } catch {
         if (mounted) {
-          setBackupPath("\u8bfb\u53d6\u5907\u4efd\u8def\u5f84\u5931\u8d25\u3002");
+          setBackupPath("读取备份路径失败。");
         }
       }
     }
-
     loadSettings();
     return () => {
       mounted = false;
@@ -47,75 +37,92 @@ export function BackupSettings() {
   }, []);
 
   async function handleChooseDirectory() {
-    const desktopApi = getBackupDesktopApi();
-    if (!desktopApi) {
-      setMessage("\u5f53\u524d\u8fd0\u884c\u73af\u5883\u4e0d\u652f\u6301\u4fee\u6539\u5907\u4efd\u8def\u5f84\u3002");
+    const api = desktopApi();
+    if (!api) {
+      setMessage("当前运行环境不支持修改备份路径。");
       return;
     }
-
-    setIsChoosing(true);
+    setBusyAction("choose");
     setMessage(null);
-
     try {
-      const result = await desktopApi.chooseBackupDirectory();
+      const result = await api.chooseBackupDirectory();
       setBackupPath(result.path);
-      setMessage(result.cancelled ? "\u5df2\u53d6\u6d88\u4fee\u6539\u5907\u4efd\u8def\u5f84\u3002" : "\u5907\u4efd\u8def\u5f84\u5df2\u66f4\u65b0\u3002");
+      setMessage(result.cancelled ? "已取消修改备份路径。" : "备份路径已更新。");
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002";
-      setMessage("\u4fee\u6539\u5907\u4efd\u8def\u5f84\u5931\u8d25\uff1a" + detail);
+      setMessage(`修改备份路径失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
     } finally {
-      setIsChoosing(false);
+      setBusyAction(null);
     }
   }
 
   async function handleBackup() {
-    const desktopApi = getBackupDesktopApi();
-    if (!desktopApi) {
-      setMessage("\u5f53\u524d\u8fd0\u884c\u73af\u5883\u4e0d\u652f\u6301\u672c\u5730\u5907\u4efd\u3002");
+    const api = desktopApi();
+    if (!api) {
+      setMessage("当前运行环境不支持本地备份。");
       return;
     }
-
-    setIsBackingUp(true);
+    setBusyAction("backup");
     setMessage(null);
-
     try {
-      const result = await desktopApi.backupDataFolder();
+      const result = await api.backupDataFolder();
       setBackupPath(result.backupRoot);
-      setMessage("\u5907\u4efd\u5b8c\u6210\uff1a" + result.backupPath);
+      setMessage(`备份完成：${result.backupPath}`);
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002";
-      setMessage("\u5907\u4efd\u5931\u8d25\uff1a" + detail);
+      setMessage(`备份失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
     } finally {
-      setIsBackingUp(false);
+      setBusyAction(null);
     }
   }
+
+  async function handleRestore() {
+    const api = desktopApi();
+    if (!api) {
+      setMessage("当前运行环境不支持备份恢复。");
+      return;
+    }
+    setBusyAction("restore");
+    setMessage(null);
+    try {
+      const result = await api.restoreDataFolder();
+      if (result.cancelled) {
+        setMessage("已取消恢复。");
+        setBusyAction(null);
+      } else {
+        setMessage("恢复完成，Card Vault 正在重新启动。");
+      }
+    } catch (error) {
+      setMessage(`恢复失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
+      setBusyAction(null);
+    }
+  }
+
+  const busy = busyAction !== null;
 
   return (
     <section className="panel settings-section">
       <div className="title-row" style={{ marginBottom: "0.4rem" }}>
         <div>
-          <h2>{"\u5907\u4efd"}</h2>
+          <h2>备份与恢复</h2>
           <p className="muted" style={{ margin: "0.35rem 0 0" }}>
-            {"\u5c06\u5f53\u524d data \u6587\u4ef6\u5939\u5168\u91cf\u5907\u4efd\u5230\u6307\u5b9a\u76ee\u5f55\u4e0b\u7684 \u5e74-\u6708-\u65e5 \u6587\u4ef6\u5939\u3002"}
+            备份会生成 SQLite 一致性快照；恢复前会再次备份当前数据。
           </p>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          <button type="button" className="btn btn-secondary" onClick={handleChooseDirectory} disabled={isChoosing || isBackingUp}>
-            {isChoosing ? "\u9009\u62e9\u4e2d..." : "\u8bbe\u7f6e\u5907\u4efd\u8def\u5f84"}
+        <div className="backup-actions">
+          <button type="button" className="btn btn-secondary" onClick={handleChooseDirectory} disabled={busy}>
+            {busyAction === "choose" ? "选择中..." : "设置备份路径"}
           </button>
-          <button type="button" className="btn btn-primary" onClick={handleBackup} disabled={isChoosing || isBackingUp}>
-            {isBackingUp ? "\u5907\u4efd\u4e2d..." : "\u4e00\u952e\u5907\u4efd"}
+          <button type="button" className="btn btn-primary" onClick={handleBackup} disabled={busy}>
+            {busyAction === "backup" ? "备份中..." : "一键备份"}
+          </button>
+          <button type="button" className="btn btn-danger" onClick={handleRestore} disabled={busy}>
+            {busyAction === "restore" ? "恢复中..." : "备份恢复"}
           </button>
         </div>
       </div>
       <p className="muted" style={{ margin: "0.35rem 0 0" }}>
-        <strong>{"\u5907\u4efd\u8def\u5f84\uff1a"}</strong>{backupPath}
+        <strong>备份路径：</strong>{backupPath}
       </p>
-      {message ? (
-        <p className="muted" style={{ margin: "0.5rem 0 0" }}>
-          {message}
-        </p>
-      ) : null}
+      {message ? <p className="muted backup-message">{message}</p> : null}
     </section>
   );
 }

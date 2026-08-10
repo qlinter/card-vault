@@ -19,10 +19,49 @@ export type PortfolioBreakdown = {
   value: number;
 };
 
+const portfolioFilterDefinitions = {
+  q: "搜索关键词",
+  sport: "运动类型",
+  team: "球队",
+  year: "年份",
+  brand: "品牌",
+  productLine: "产品线",
+  subsetName: "子系列",
+  parallel: "平行版本",
+  cardNumber: "卡号",
+  serialNumber: "编号",
+  serialRange: "编号范围",
+  isRookie: "Rookie",
+  isAutograph: "签名卡",
+  autoType: "签字类型",
+  isPatch: "Patch/Jersey",
+  patchType: "Patch 类型",
+  isGraded: "已评级",
+  gradingCompany: "评级机构",
+  grade: "评级",
+  certNumber: "证书号",
+  visibility: "公开状态",
+  collectionStatus: "收藏状态"
+} as const;
+
+export type PortfolioFilterField = keyof typeof portfolioFilterDefinitions;
+
+export type PortfolioFilterCriterion = {
+  field: PortfolioFilterField;
+  label: string;
+  value: string;
+};
+
+export type PortfolioScope = {
+  isFiltered: boolean;
+  criteria: PortfolioFilterCriterion[];
+};
+
 export type PortfolioSnapshot = {
   cardCount: number;
   ownedCount: number;
   playerCount: number;
+  scope: PortfolioScope;
   financials: {
     totalCost: number;
     totalValue: number;
@@ -64,6 +103,46 @@ function money(value: number): number {
   return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
 }
 
+function displayFilterValue(field: PortfolioFilterField, value: string): string {
+  if (["isRookie", "isAutograph", "isPatch", "isGraded"].includes(field)) {
+    return value === "true" ? "是" : value === "false" ? "否" : value;
+  }
+  if (field === "visibility") {
+    return { private: "私密", public: "公开", linkOnly: "仅链接可见" }[value] ?? value;
+  }
+  if (field === "collectionStatus") {
+    return { holding: "持有中", listed: "在售", grading: "送评中", sold: "已售出", target: "目标卡" }[value] ?? value;
+  }
+  return value;
+}
+
+export function buildPortfolioScope(input: Record<string, string | undefined>): PortfolioScope {
+  const criteria: PortfolioFilterCriterion[] = [];
+  for (const field of Object.keys(portfolioFilterDefinitions) as PortfolioFilterField[]) {
+    const value = input[field]?.trim();
+    if (value) {
+      criteria.push({ field, label: portfolioFilterDefinitions[field], value: displayFilterValue(field, value) });
+    }
+  }
+
+  return { isFiltered: criteria.length > 0, criteria };
+}
+
+export function portfolioScopeInstructions(scope: PortfolioScope): string[] {
+  if (!scope.isFiltered || scope.criteria.length === 0) {
+    return ["本次没有应用筛选条件，可以把输入数据视为当前完整收藏范围。"];
+  }
+
+  const criteria = scope.criteria.map((item) => `${item.label}=${item.value}`).join("；");
+  return [
+    `本次分析对象是筛选结果，不是完整收藏。筛选条件：${criteria}。`,
+    "必须把上述筛选条件视为用户主动设定的研究范围。不得因为被筛选字段在结果中高度集中，就将其判断为集中度风险、结构缺陷或扣分项。",
+    "例如筛选条件为“运动类型=足球”时，不得提出“足球卡占比过高”；筛选球队、球员关键词、年份、评级或签名属性时同理。",
+    "组合结构只评价筛选范围内部仍可比较的维度，并明确结论仅适用于当前筛选结果，不得外推到用户的完整收藏。",
+    "summary 或 structure 中应明确说明分析基于当前筛选范围。"
+  ];
+}
+
 function groupCards(cards: PortfolioCardRecord[], key: (card: PortfolioCardRecord) => string): PortfolioBreakdown[] {
   const groups = new Map<string, PortfolioBreakdown>();
   for (const card of cards) {
@@ -81,7 +160,10 @@ function groupCards(cards: PortfolioCardRecord[], key: (card: PortfolioCardRecor
     .sort((left, right) => right.value - left.value || right.count - left.count || left.name.localeCompare(right.name));
 }
 
-export function buildPortfolioSnapshot(cards: PortfolioCardRecord[]): PortfolioSnapshot {
+export function buildPortfolioSnapshot(
+  cards: PortfolioCardRecord[],
+  scope: PortfolioScope = { isFiltered: false, criteria: [] }
+): PortfolioSnapshot {
   const ownedCards = cards.filter((card) => isOwnedCollectionStatus(card.collectionStatus));
   const comparableCards = ownedCards.filter((card) => card.totalCost !== null && card.currentValue !== null);
   const totalCost = ownedCards.reduce((sum, card) => sum + (card.totalCost ?? 0), 0);
@@ -94,6 +176,7 @@ export function buildPortfolioSnapshot(cards: PortfolioCardRecord[]): PortfolioS
     cardCount: cards.length,
     ownedCount: ownedCards.length,
     playerCount: new Set(cards.map((card) => card.playerName.trim()).filter(Boolean)).size,
+    scope,
     financials: {
       totalCost: money(totalCost),
       totalValue: money(totalValue),
@@ -106,10 +189,10 @@ export function buildPortfolioSnapshot(cards: PortfolioCardRecord[]): PortfolioS
       comparableReturnRate: comparableCost > 0 ? money((comparableDifference / comparableCost) * 100) : null
     },
     quality: {
-      gradedCount: cards.filter((card) => Boolean(card.gradingCompany?.trim() || card.grade?.trim())).length,
-      rookieCount: cards.filter((card) => card.isRookie).length,
-      autographCount: cards.filter((card) => card.isAutograph).length,
-      patchCount: cards.filter((card) => card.isPatch).length
+      gradedCount: ownedCards.filter((card) => Boolean(card.gradingCompany?.trim() || card.grade?.trim())).length,
+      rookieCount: ownedCards.filter((card) => card.isRookie).length,
+      autographCount: ownedCards.filter((card) => card.isAutograph).length,
+      patchCount: ownedCards.filter((card) => card.isPatch).length
     },
     sports: groupCards(cards, (card) => card.sport).slice(0, 10),
     players: groupCards(cards, (card) => card.playerName).slice(0, 12),
@@ -167,6 +250,29 @@ function normalizeBreakdowns(value: unknown, maxItems: number, maxCount: number)
     .filter((item) => item.name && item.count > 0);
 }
 
+function normalizePortfolioScope(value: unknown): PortfolioScope {
+  const scope = objectRecord(value);
+  const source = Array.isArray(scope.criteria) ? scope.criteria : [];
+  const criteria: PortfolioFilterCriterion[] = [];
+  for (const item of source.slice(0, Object.keys(portfolioFilterDefinitions).length)) {
+    const record = objectRecord(item);
+    const field = safeText(record.field, 40) as PortfolioFilterField;
+    if (!(field in portfolioFilterDefinitions)) {
+      continue;
+    }
+    const criterionValue = safeText(record.value, 120);
+    if (criterionValue) {
+      criteria.push({
+        field,
+        label: portfolioFilterDefinitions[field],
+        value: displayFilterValue(field, criterionValue)
+      });
+    }
+  }
+
+  return { isFiltered: criteria.length > 0, criteria };
+}
+
 export function normalizePortfolioSnapshot(value: unknown): PortfolioSnapshot {
   const snapshot = objectRecord(value);
   const cardCountValue = snapshot.cardCount;
@@ -183,6 +289,7 @@ export function normalizePortfolioSnapshot(value: unknown): PortfolioSnapshot {
     cardCount,
     ownedCount,
     playerCount: boundedCount(snapshot.playerCount, cardCount),
+    scope: normalizePortfolioScope(snapshot.scope),
     financials: {
       totalCost: money(boundedNumber(financials.totalCost, 0, 1_000_000_000_000)),
       totalValue: money(boundedNumber(financials.totalValue, 0, 1_000_000_000_000)),

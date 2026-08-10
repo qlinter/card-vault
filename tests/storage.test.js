@@ -55,6 +55,9 @@ function seedCardVaultData(manager, playerName = "Card Vault Player") {
 test("storage migration includes share backgrounds", (t) => {
   const { root, manager } = createTestManager(t);
   seedData(manager);
+  const schemaBackupsDir = path.join(manager.getDataDir(), "schema-backups");
+  fs.mkdirSync(schemaBackupsDir, { recursive: true });
+  fs.writeFileSync(path.join(schemaBackupsDir, "before-migration.db"), "snapshot");
 
   const sourceUploadsDir = manager.getUploadsDir();
   const targetDir = path.join(root, "migrated-data");
@@ -63,8 +66,49 @@ test("storage migration includes share backgrounds", (t) => {
   assert.equal(fs.readFileSync(path.join(targetDir, "uploads", "card.jpg"), "utf8"), "card");
   assert.equal(fs.readFileSync(path.join(targetDir, "share-covers", "cover.jpg"), "utf8"), "cover");
   assert.equal(fs.readFileSync(path.join(targetDir, "share-backgrounds", "background.jpg"), "utf8"), "background");
+  assert.equal(fs.readFileSync(path.join(targetDir, "schema-backups", "before-migration.db"), "utf8"), "snapshot");
   assert.equal(fs.existsSync(path.join(targetDir, "dev.db")), true);
   assert.equal(fs.existsSync(path.join(sourceUploadsDir, "card.jpg")), true);
+});
+
+test("storage migration snapshots committed WAL data while the source database is open", (t) => {
+  const { root, manager } = createTestManager(t);
+  seedCardVaultData(manager, "Original Player");
+  const sourceDbPath = manager.getDbPath();
+  const sourceDb = new DatabaseSync(sourceDbPath);
+  sourceDb.exec("PRAGMA journal_mode = WAL;");
+  sourceDb.exec("PRAGMA wal_autocheckpoint = 0;");
+  sourceDb.prepare("INSERT INTO Card (id, playerName, cardTitle, sport) VALUES (?, ?, ?, ?)")
+    .run("card-wal", "WAL Player", "Committed in WAL", "Basketball");
+  assert.equal(fs.existsSync(`${sourceDbPath}-wal`), true);
+
+  const targetDir = path.join(root, "wal-migrated-data");
+  let result;
+  try {
+    result = manager.migrateTo(targetDir);
+  } finally {
+    sourceDb.close();
+  }
+  const migratedDb = new DatabaseSync(path.join(targetDir, "dev.db"), { readOnly: true });
+  const migrated = migratedDb.prepare("SELECT playerName FROM Card WHERE id = ?").get("card-wal");
+  migratedDb.close();
+
+  assert.equal(result.health.integrity, "ok");
+  assert.equal(migrated.playerName, "WAL Player");
+  assert.equal(fs.existsSync(sourceDbPath), true);
+});
+
+test("storage migration rejects a non-empty unrelated destination", (t) => {
+  const { root, manager } = createTestManager(t);
+  seedData(manager);
+  const originalPath = manager.getDataDir();
+  const targetDir = path.join(root, "unrelated-files");
+  fs.mkdirSync(targetDir, { recursive: true });
+  fs.writeFileSync(path.join(targetDir, "keep.txt"), "keep");
+
+  assert.throws(() => manager.migrateTo(targetDir), /不是空文件夹/);
+  assert.equal(manager.getDataDir(), originalPath);
+  assert.equal(fs.readFileSync(path.join(targetDir, "keep.txt"), "utf8"), "keep");
 });
 
 test("switching to existing storage preserves its database and media", (t) => {
@@ -142,6 +186,24 @@ test("data health reports missing references and unreferenced media", (t) => {
   const unhealthy = manager.inspectDataFolder();
   assert.equal(unhealthy.ok, false);
   assert.equal(unhealthy.missingFiles.length, 1);
+});
+
+test("legacy uploads paths remain referenced during health checks and cleanup", (t) => {
+  const { manager } = createTestManager(t);
+  seedCardVaultData(manager);
+
+  const db = new DatabaseSync(manager.getDbPath());
+  db.prepare("UPDATE CardImage SET path = ? WHERE id = ?").run("/uploads/card.jpg", "image-1");
+  db.close();
+
+  const health = manager.inspectDataFolder();
+  assert.equal(health.ok, true);
+  assert.equal(health.missingFiles.length, 0);
+  assert.equal(health.orphanFiles.some((file) => file.path === path.join("uploads", "card.jpg")), false);
+
+  const cleanup = manager.cleanOrphanFiles();
+  assert.equal(cleanup.deletedFiles.length, 0);
+  assert.equal(fs.existsSync(path.join(manager.getUploadsDir(), "card.jpg")), true);
 });
 
 test("orphan cleanup removes only media that is not referenced by the database", (t) => {

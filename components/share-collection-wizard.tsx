@@ -4,8 +4,7 @@ import type { FormEvent, MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { ShareCardDraft, ShareCardPicker, SharePickerCard } from "@/components/share-card-picker";
-import { ShareDesignPreview } from "@/components/share-design-preview";
-import { ShareSectionEditor } from "@/components/share-section-editor";
+import { ShareGalleryEditor } from "@/components/share-gallery-editor";
 import {
   ShareThemeCard,
   ShareThemeField,
@@ -13,11 +12,9 @@ import {
   ShareThemeValues,
   shareThemeFields
 } from "@/components/share-theme-generator";
-import { shareThemes, type ShareThemeId } from "@/lib/share-themes";
-import { shareLayouts, type SharePresentation } from "@/lib/share-presentation";
+import type { ShareThemeId } from "@/lib/share-themes";
+import type { SharePresentation } from "@/lib/share-presentation";
 import type { ShareSectionDraft } from "@/lib/share-sections";
-
-const shareThemeCategories = [...new Set(shareThemes.map((theme) => theme.category))];
 
 type ShareCollectionWizardProps = {
   action: (formData: FormData) => void | Promise<void>;
@@ -72,22 +69,6 @@ function initialDrafts(cards: SharePickerCard[]): Record<string, ShareCardDraft>
   );
 }
 
-function selectedLabels(cards: SharePickerCard[], selectedIds: string[], drafts: Record<string, ShareCardDraft>): string[] {
-  const selectedSet = new Set(selectedIds);
-  const selectedOrder = new Map(selectedIds.map((id, index) => [id, index]));
-
-  return cards
-    .filter((card) => selectedSet.has(card.id))
-    .sort((a, b) => {
-      const aOrder = Number.parseInt(drafts[a.id]?.sortOrder ?? `${a.sortOrder}`, 10);
-      const bOrder = Number.parseInt(drafts[b.id]?.sortOrder ?? `${b.sortOrder}`, 10);
-      const aRank = Number.isFinite(aOrder) && aOrder > 0 ? aOrder : selectedOrder.get(a.id) ?? 0;
-      const bRank = Number.isFinite(bOrder) && bOrder > 0 ? bOrder : selectedOrder.get(b.id) ?? 0;
-      return aRank - bRank;
-    })
-    .map((card) => `${card.playerName} - ${card.cardTitle}`);
-}
-
 export function ShareCollectionWizard({ action, cards, aiCards, initialValues, error }: ShareCollectionWizardProps) {
   const initialCoverImagePath = initialValues.coverImagePath.startsWith("/share-covers/") ? initialValues.coverImagePath : "";
   const initialBackgroundImagePath = initialValues.backgroundImagePath.startsWith("/share-backgrounds/") ? initialValues.backgroundImagePath : "";
@@ -112,7 +93,6 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
     const selectedSet = new Set(selectedIds);
     return aiCards.filter((card) => selectedSet.has(card.id));
   }, [aiCards, selectedIds]);
-  const selectedCardLabels = useMemo(() => selectedLabels(cards, selectedIds, drafts), [cards, selectedIds, drafts]);
   const selectedCards = useMemo(() => {
     const selectedSet = new Set(selectedIds);
     const selectedOrder = new Map(selectedIds.map((id, index) => [id, index]));
@@ -126,6 +106,10 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
         return aRank - bRank;
       });
   }, [cards, drafts, selectedIds]);
+  const selectedCardLabels = useMemo(
+    () => selectedCards.map((card) => `${card.playerName} - ${card.cardTitle}`),
+    [selectedCards]
+  );
 
   function updateSelection(cardId: string, selected: boolean) {
     setSelectedIds((current) => {
@@ -370,211 +354,28 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
       </div>
 
       <div className={activeStep === 2 ? "" : "share-step-hidden"}>
-        <div className="share-design-workspace">
-          <div className="share-design-controls">
-        <section className="panel share-section">
-          <div className="form-grid">
-            <div className="field full">
-              <span>展馆版式</span>
-              <div className="share-layout-options" role="radiogroup" aria-label="展馆版式">
-                {shareLayouts.map((layout) => (
-                  <button
-                    key={layout.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={presentation.layout === layout.id}
-                    className={`share-layout-option${presentation.layout === layout.id ? " active" : ""}`}
-                    onClick={() => setPresentation((current) => ({ ...current, layout: layout.id }))}
-                  >
-                    <strong>{layout.label}</strong>
-                    <span>{layout.description}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="field full">
-              <span>展馆主题</span>
-              <select name="theme" value={theme} onChange={(event) => setTheme(event.target.value as ShareThemeId)}>
-                {shareThemeCategories.map((category) => (
-                  <optgroup label={category} key={category}>
-                    {shareThemes
-                      .filter((option) => option.category === category)
-                      .map((option) => (
-                        <option value={option.id} key={option.id}>
-                          {option.label}
-                        </option>
-                      ))}
-                  </optgroup>
-                ))}
-              </select>
-              <p className="muted">{shareThemes.find((option) => option.id === theme)?.description}</p>
-            </div>
-            <label className="field">
-              <span>分享集标题 *</span>
-              <input name="title" value={themeValues.title} onChange={(event) => updateThemeField("title", event.target.value)} />
-            </label>
-            <label className="field">
-              <span>副标题</span>
-              <input name="subtitle" value={themeValues.subtitle} onChange={(event) => updateThemeField("subtitle", event.target.value)} />
-            </label>
-            <label className="field full">
-              <span>封面介绍</span>
-              <textarea name="description" value={themeValues.description} onChange={(event) => updateThemeField("description", event.target.value)} />
-            </label>
-            <input type="hidden" name="themeNarrative" value={themeValues.themeNarrative} />
-            <input type="hidden" name="themeHighlights" value={themeValues.themeHighlights} />
-            <input type="hidden" name="groupNotes" value={themeValues.groupNotes} />
-            <div className="field full share-visual-controls">
-              <span>背景与文字面板</span>
-              <label>
-                <span>水平焦点 {presentation.backgroundPosition.x}%</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={presentation.backgroundPosition.x}
-                  onChange={(event) => setPresentation((current) => ({
-                    ...current,
-                    backgroundPosition: { ...current.backgroundPosition, x: Number(event.target.value) }
-                  }))}
-                />
-              </label>
-              <label>
-                <span>垂直焦点 {presentation.backgroundPosition.y}%</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={presentation.backgroundPosition.y}
-                  onChange={(event) => setPresentation((current) => ({
-                    ...current,
-                    backgroundPosition: { ...current.backgroundPosition, y: Number(event.target.value) }
-                  }))}
-                />
-              </label>
-              <label>
-                <span>文字面板透明度 {presentation.panelOpacity}%</span>
-                <input
-                  type="range"
-                  min="4"
-                  max="55"
-                  value={presentation.panelOpacity}
-                  onChange={(event) => setPresentation((current) => ({ ...current, panelOpacity: Number(event.target.value) }))}
-                />
-              </label>
-            </div>
-            <label className="field full">
-              <span>分享集背景图</span>
-              <div className="share-background-upload">
-                <input type="hidden" name="existingBackgroundImagePath" value={initialBackgroundImagePath} />
-                <input name="backgroundImage" type="file" accept="image/jpeg,image/png,image/webp" />
-                {initialBackgroundImagePath ? (
-                  <>
-                    <p className="muted">未重新上传时，将继续使用当前背景图。</p>
-                    <label className="inline-check">
-                      <input type="checkbox" name="clearBackgroundImage" />
-                      清除当前背景图
-                    </label>
-                  </>
-                ) : (
-                  <p className="muted">可上传一张横版图片作为分享展馆背景。未上传时使用默认背景。</p>
-                )}
-              </div>
-            </label>
-            <label className="field full">
-              <span>封面图</span>
-              <div className="share-cover-options">
-                <label className="inline-check">
-                  <input type="radio" name="coverMode" value="auto" checked={coverMode === "auto"} onChange={() => setCoverMode("auto")} />
-                  自动使用第一张有图卡片
-                </label>
-                <label className="inline-check">
-                  <input type="radio" name="coverMode" value="custom" checked={coverMode === "custom"} onChange={() => setCoverMode("custom")} />
-                  自定义上传
-                </label>
-                <input type="hidden" name="existingCoverImagePath" value={initialCoverImagePath} />
-                {coverMode === "custom" ? (
-                  <div className="share-cover-upload">
-                    <input name="coverImage" type="file" accept="image/jpeg,image/png,image/webp" />
-                    {initialCoverImagePath ? <p className="muted">未重新上传时，将继续使用当前自定义封面。</p> : null}
-                  </div>
-                ) : null}
-              </div>
-            </label>
-          </div>
-        </section>
-        <ShareSectionEditor
+        <ShareGalleryEditor
+          theme={theme}
+          presentation={presentation}
+          values={themeValues}
           sections={sections}
           cards={selectedCards}
-          onAdd={addSection}
-          onChange={updateSection}
-          onRemove={removeSection}
-          onMove={moveSection}
-          onCardAssignment={assignSectionCard}
+          drafts={drafts}
+          coverMode={coverMode}
+          initialCoverImagePath={initialCoverImagePath}
+          initialBackgroundImagePath={initialBackgroundImagePath}
+          onThemeChange={setTheme}
+          onPresentationChange={setPresentation}
+          onThemeFieldChange={updateThemeField}
+          onCoverModeChange={setCoverMode}
+          onAddSection={addSection}
+          onUpdateSection={updateSection}
+          onRemoveSection={removeSection}
+          onMoveSection={moveSection}
+          onAssignSectionCard={assignSectionCard}
+          onDraftChange={updateDraft}
         />
-        <section className="panel share-section">
-          <div className="share-section-head">
-            <div>
-              <h2>单卡展示编辑</h2>
-              <p className="muted">为每张已选卡片设置对外展示标题、描述和顺序。留空时使用卡片原始信息。</p>
-            </div>
-            <span className="muted">{selectedCards.length} 张卡片</span>
-          </div>
-          <div className="share-item-editor">
-            {selectedCards.map((card) => {
-              const draft = drafts[card.id] ?? {
-                sortOrder: String(card.sortOrder),
-                displayTitle: card.displayTitle,
-                displayDescription: card.displayDescription
-              };
-
-              return (
-                <article key={card.id} className="share-item-edit-card">
-                  <input type="hidden" name={`sortOrder-${card.id}`} value={draft.sortOrder || "0"} />
-                  <input type="hidden" name={`displayTitle-${card.id}`} value={draft.displayTitle} />
-                  <input type="hidden" name={`displayDescription-${card.id}`} value={draft.displayDescription} />
-                  <div>
-                    <strong>{card.playerName}</strong>
-                    <p className="muted">{card.cardTitle}</p>
-                  </div>
-                  <label className="field share-sort-field">
-                    <span>排序</span>
-                    <input
-                      type="number"
-                      value={draft.sortOrder}
-                      onChange={(event) => updateDraft(card.id, { sortOrder: event.target.value })}
-                    />
-                  </label>
-                  <label className="field">
-                    <span>展示标题</span>
-                    <input value={draft.displayTitle} placeholder={card.cardTitle} onChange={(event) => updateDraft(card.id, { displayTitle: event.target.value })} />
-                  </label>
-                  <label className="field full">
-                    <span>展示描述</span>
-                    <textarea
-                      value={draft.displayDescription}
-                      placeholder={card.publicDescription || "留空时使用卡片公开描述"}
-                      onChange={(event) => updateDraft(card.id, { displayDescription: event.target.value })}
-                    />
-                  </label>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-          </div>
-          <ShareDesignPreview
-            theme={theme}
-            presentation={presentation}
-            values={themeValues}
-            sections={sections}
-            cards={selectedCards}
-            drafts={drafts}
-            backgroundImagePath={initialBackgroundImagePath}
-          />
-        </div>
       </div>
-
       <div className={activeStep === 3 ? "" : "share-step-hidden"}>
         <section className="panel share-section">
           <div className="share-section-head">

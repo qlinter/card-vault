@@ -2,7 +2,13 @@ const fs = require("fs");
 const path = require("path");
 
 const root = path.resolve(__dirname, "..");
-const targets = [".next/cache", "logs", "tsconfig.tsbuildinfo"];
+const targets = [
+  ".next/cache",
+  "logs",
+  "tsconfig.tsbuildinfo",
+  "e2e-server.log",
+  "e2e-server-error.log"
+];
 
 function removeTarget(relativePath) {
   const absolutePath = path.resolve(root, relativePath);

@@ -215,8 +215,31 @@ async function main() {
     }
 
     const detailPage = await fetchPage(baseUrl, `/cards/${cardId}`);
-    if (!detailPage.includes("E2E Updated Player") || !detailPage.includes("E2E Updated Card") || !detailPage.includes("Authentic")) {
+    if (
+      !detailPage.includes("E2E Updated Player") ||
+      !detailPage.includes("E2E Updated Card") ||
+      !detailPage.includes("Authentic") ||
+      !detailPage.includes("返回上一页")
+    ) {
       throw new Error("Updated card detail page does not show the saved values.");
+    }
+    const showcaseDetailPage = await fetchPage(baseUrl, `/showcase/cards/${cardId}?group=E2E%20Updated%20Player&q=Updated`);
+    if (
+      !showcaseDetailPage.includes("返回上一页") ||
+      !showcaseDetailPage.includes("E2E Updated Card") ||
+      !showcaseDetailPage.includes('href="/showcase?group=E2E+Updated+Player&amp;q=Updated"')
+    ) {
+      throw new Error("Showcase card detail page does not provide filtered-context navigation.");
+    }
+
+    const filteredHomePage = await fetchPage(baseUrl, "/?sport=Basketball&sort=valueDesc");
+    const filteredCardHref = `/cards/${cardId}?returnTo=%2F%3Fsport%3DBasketball%26sort%3DvalueDesc`;
+    if (!filteredHomePage.includes(filteredCardHref)) {
+      throw new Error("Filtered home page does not preserve its query in card detail links.");
+    }
+    const filteredDetailPage = await fetchPage(baseUrl, filteredCardHref);
+    if (!filteredDetailPage.includes('href="/?sport=Basketball&amp;sort=valueDesc"')) {
+      throw new Error("Card detail page does not return to the preserved home filter query.");
     }
     console.log("Card flow HTTP E2E passed: create, upload, edit, and detail routes.");
   } finally {

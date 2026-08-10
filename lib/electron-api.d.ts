@@ -14,6 +14,13 @@ type DesktopDataHealth = {
   issues: string[];
 };
 
+type DesktopStorageProgress = {
+  operation: "backup" | "restore" | "migrate" | "health" | "cleanup" | "reveal";
+  percent: number;
+  message: string;
+  done: boolean;
+};
+
 declare global {
   interface Window {
     cardVaultDesktop?: {
@@ -35,6 +42,7 @@ declare global {
         restoredTo?: string;
         safetyBackupPath?: string | null;
       }>;
+      onStorageProgress: (callback: (progress: DesktopStorageProgress) => void) => () => void;
       getAiSettings: () => Promise<{
         provider: "azure" | "minimax";
         keyRecoveryRequired?: boolean;

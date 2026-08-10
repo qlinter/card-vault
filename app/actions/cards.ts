@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseTags } from "@/lib/card-helpers";
 import { CardFormValues } from "@/lib/card-form-values";
+import { normalizeHttpUrl } from "@/lib/http-url";
 import { prepareImageUpload } from "@/lib/image-upload";
 import { prisma } from "@/lib/prisma";
 import { getUploadsDir } from "@/lib/storage-paths";
@@ -128,6 +129,11 @@ function buildCardData(formData: FormData, isSerialNumbered: boolean) {
   const purchasePrice = toOptionalFloat(formData.get("purchasePrice"));
   const gradingFee = toOptionalFloat(formData.get("gradingFee"));
   const tagsRaw = toOptionalString(formData.get("tags"));
+  const gradingLinkRaw = toOptionalString(formData.get("gradingLink"));
+  const gradingLink = normalizeHttpUrl(gradingLinkRaw);
+  if (gradingLinkRaw && !gradingLink) {
+    throw new Error("评级链接必须是有效的 http 或 https 地址。");
+  }
 
   return {
     playerName,
@@ -151,7 +157,7 @@ function buildCardData(formData: FormData, isSerialNumbered: boolean) {
     gradingCompany: toOptionalString(formData.get("gradingCompany")),
     grade: toOptionalString(formData.get("grade")),
     certNumber: toOptionalString(formData.get("certNumber")),
-    gradingLink: toOptionalString(formData.get("gradingLink")),
+    gradingLink,
     visibility: toOptionalString(formData.get("visibility")) ?? "private",
     collectionStatus: toOptionalString(formData.get("collectionStatus")) ?? "holding",
     purchaseDate: toOptionalDate(formData.get("purchaseDate")),

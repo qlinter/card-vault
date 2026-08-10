@@ -1,4 +1,5 @@
 ﻿import Link from "next/link";
+import { BackButton } from "@/components/back-button";
 import { ShowcaseGallery } from "@/components/showcase-gallery";
 import { prisma } from "@/lib/prisma";
 import { buildShowcaseCardHref, toShowcaseWhere } from "@/lib/showcase";
@@ -44,10 +45,16 @@ export default async function ShowcaseCardPage({ params, searchParams }: Showcas
   const currentIndex = contextCards.findIndex((item) => item.id === id);
   const previousCard = currentIndex > 0 ? contextCards[currentIndex - 1] : null;
   const nextCard = currentIndex >= 0 && currentIndex < contextCards.length - 1 ? contextCards[currentIndex + 1] : null;
+  const returnParams = new URLSearchParams();
+  if (query.group) returnParams.set("group", query.group);
+  if (query.q) returnParams.set("q", query.q);
+  const returnSuffix = returnParams.toString();
+  const returnHref = returnSuffix ? `/showcase?${returnSuffix}` : "/showcase";
 
   return (
     <div className="page showcase-page showcase-backdrop">
       <div className="showcase-detail-top">
+        <BackButton href={returnHref} />
         <div className="showcase-switches">
           {previousCard ? (
             <Link href={buildShowcaseCardHref(previousCard.id, query)} className="btn btn-secondary">

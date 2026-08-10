@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ShareCardDraft, SharePickerCard } from "@/components/share-card-picker";
 import type { ShareThemeValues } from "@/components/share-theme-generator";
 import { normalizeImagePath } from "@/lib/image-path";
@@ -29,6 +29,7 @@ export function ShareDesignPreview({
   drafts,
   backgroundImagePath
 }: ShareDesignPreviewProps) {
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const document = useMemo(() => {
     const exportCards = cards.map((card) => {
       const draft = drafts[card.id];
@@ -80,11 +81,29 @@ export function ShareDesignPreview({
   }, [backgroundImagePath, cards, drafts, presentation, sections, theme, values]);
 
   return (
-    <aside className="share-live-preview">
+    <aside className={`share-live-preview is-${previewMode}`}>
       <div className="share-live-preview-head">
         <div>
           <strong>实时预览</strong>
           <span className="muted">与静态导出共用渲染器</span>
+        </div>
+        <div className="share-preview-modes" role="group" aria-label="预览设备">
+          <button
+            type="button"
+            className={previewMode === "desktop" ? "active" : ""}
+            aria-pressed={previewMode === "desktop"}
+            onClick={() => setPreviewMode("desktop")}
+          >
+            桌面
+          </button>
+          <button
+            type="button"
+            className={previewMode === "mobile" ? "active" : ""}
+            aria-pressed={previewMode === "mobile"}
+            onClick={() => setPreviewMode("mobile")}
+          >
+            手机
+          </button>
         </div>
       </div>
       <iframe title="分享展馆实时预览" srcDoc={document} sandbox="allow-scripts" />

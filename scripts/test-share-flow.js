@@ -275,6 +275,11 @@ async function main() {
     assertIncludes(newSharePage, "F1 维修区", "F1 主题选项");
     assertIncludes(newSharePage, "蓝黑军团-1", "球队主题选项");
     assertIncludes(newSharePage, "蓝黑军团-2", "球队主题选项");
+    assertIncludes(newSharePage, "分享展馆编辑工作台", "编辑器 2.0 工作台");
+    assertIncludes(newSharePage, "基本内容", "编辑器 2.0 内容分区");
+    assertIncludes(newSharePage, "视觉设计", "编辑器 2.0 视觉分区");
+    assertIncludes(newSharePage, "桌面", "编辑器 2.0 桌面预览");
+    assertIncludes(newSharePage, "手机", "编辑器 2.0 手机预览");
 
     const editPage = await fetchPage(baseUrl, "/shares/e2e-share-1/edit");
     assertIncludes(editPage, "编辑分享集", "分享集编辑页");

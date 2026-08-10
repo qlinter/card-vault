@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { ensureAiSettings } from "@/lib/ai-settings";
 import { AiUpstreamError, aiProviderName, requestAiChatText } from "@/lib/ai-chat-client";
 import { extractJsonRecord } from "@/lib/ai-response-parsing";
-import { normalizePortfolioAnalysis, normalizePortfolioSnapshot, type PortfolioSnapshot } from "@/lib/portfolio-analysis";
+import {
+  normalizePortfolioAnalysis,
+  normalizePortfolioSnapshot,
+  portfolioScopeInstructions,
+  type PortfolioSnapshot
+} from "@/lib/portfolio-analysis";
 
 export const runtime = "nodejs";
 
@@ -25,6 +30,8 @@ function analysisPrompt(snapshot: PortfolioSnapshot): string {
     "collectionStatus 含义：holding=持有中，listed=在售，grading=送评中，sold=已售出，target=目标卡。",
     "financials 中的 comparable 数据只包含同时填写总投入和当前估值的持有卡片，应优先用于盈亏判断。",
     "sports、players 和 statuses 已按当前首页筛选结果汇总；value 仅包含持有中、在售和送评中卡片。",
+    "quality 中的评级、新秀、签名和 Patch 数量也只包含持有中、在售和送评中卡片。",
+    ...portfolioScopeInstructions(snapshot.scope),
     "评分 score 为 0-100 的组合管理成熟度，不是投资等级。",
     "只输出严格 JSON，不要 Markdown、解释或思考过程。JSON 格式必须为：",
     JSON.stringify({

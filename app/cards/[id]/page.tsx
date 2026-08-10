@@ -1,5 +1,7 @@
+import { BackButton } from "@/components/back-button";
 import { splitTagString } from "@/lib/card-helpers";
 import { normalizeImagePath } from "@/lib/image-path";
+import { normalizeHttpUrl } from "@/lib/http-url";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 
@@ -84,6 +86,8 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
   const { id } = await params;
   const query = await searchParams;
   const success = successText(toScalar(query.success));
+  const returnTo = toScalar(query.returnTo);
+  const returnHref = returnTo === "/" || returnTo?.startsWith("/?") ? returnTo : "/";
 
   const card = await prisma.card.findUnique({
     where: { id },
@@ -95,6 +99,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
   }
 
   const tags = splitTagString(card.tags);
+  const gradingLink = normalizeHttpUrl(card.gradingLink);
 
   return (
     <div className="page">
@@ -104,6 +109,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
           <p className="muted">{card.cardTitle}</p>
         </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
+          <BackButton href={returnHref} />
           <a href={`/cards/${card.id}/edit`} className="btn btn-secondary">
             编辑
           </a>
@@ -207,8 +213,8 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
             <div className="info-item">
               <strong>评级链接</strong>
               <span>
-                {card.gradingLink ? (
-                  <a href={card.gradingLink} target="_blank" rel="noreferrer">
+                {gradingLink ? (
+                  <a href={gradingLink} target="_blank" rel="noreferrer">
                     查看评级页面
                   </a>
                 ) : (

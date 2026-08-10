@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { PortfolioAnalysis, PortfolioSnapshot } from "@/lib/portfolio-analysis";
 import styles from "./portfolio-analysis.module.css";
@@ -24,6 +24,8 @@ function coverage(count: number, total: number) {
 }
 
 export function PortfolioAnalysisButton({ snapshot }: PortfolioAnalysisProps) {
+  const snapshotFingerprint = JSON.stringify(snapshot);
+  const requestId = useRef(0);
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -34,6 +36,15 @@ export function PortfolioAnalysisButton({ snapshot }: PortfolioAnalysisProps) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    requestId.current += 1;
+    setOpen(false);
+    setLoading(false);
+    setAnalysis(null);
+    setProvider("");
+    setError(null);
+  }, [snapshotFingerprint]);
 
   useEffect(() => {
     if (!open) {
@@ -51,6 +62,7 @@ export function PortfolioAnalysisButton({ snapshot }: PortfolioAnalysisProps) {
   }, [open]);
 
   async function generateAnalysis() {
+    const activeRequestId = ++requestId.current;
     setLoading(true);
     setError(null);
     try {
@@ -64,12 +76,16 @@ export function PortfolioAnalysisButton({ snapshot }: PortfolioAnalysisProps) {
         throw new Error(data.error || "AI 没有返回可用的组合分析结果。");
       }
 
+      if (activeRequestId !== requestId.current) return;
       setAnalysis(data.analysis);
       setProvider(data.provider || "统一 AI");
     } catch (requestError) {
+      if (activeRequestId !== requestId.current) return;
       setError(requestError instanceof Error ? requestError.message : "组合分析失败，请稍后重试。");
     } finally {
-      setLoading(false);
+      if (activeRequestId === requestId.current) {
+        setLoading(false);
+      }
     }
   }
 
@@ -88,6 +104,9 @@ export function PortfolioAnalysisButton({ snapshot }: PortfolioAnalysisProps) {
         ["流动性与数据", analysis.dimensions.liquidityAndData]
       ]
     : [];
+  const scopeText = snapshot.scope.isFiltered
+    ? snapshot.scope.criteria.map((criterion) => `${criterion.label}：${criterion.value}`).join(" · ")
+    : "全部卡片（未应用筛选）";
 
   return (
     <>
@@ -120,6 +139,11 @@ export function PortfolioAnalysisButton({ snapshot }: PortfolioAnalysisProps) {
               <span><small>总投入</small><strong>{formatCurrency(snapshot.financials.totalCost)}</strong></span>
               <span><small>当前估值</small><strong>{formatCurrency(snapshot.financials.totalValue)}</strong></span>
               <span><small>估值覆盖</small><strong>{coverage(snapshot.financials.valueCoverageCount, snapshot.ownedCount)}</strong></span>
+            </div>
+
+            <div className={styles.scope}>
+              <strong>本次分析范围</strong>
+              <span>{scopeText}</span>
             </div>
 
             {loading ? (

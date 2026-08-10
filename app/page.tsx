@@ -3,7 +3,7 @@ import { PortfolioAnalysisButton } from "@/components/portfolio-analysis";
 import { splitTagString, buildCardFilters, buildCardSorting } from "@/lib/card-helpers";
 import { calculateOwnedCardsValue } from "@/lib/card-stats";
 import { normalizeImagePath } from "@/lib/image-path";
-import { buildPortfolioSnapshot } from "@/lib/portfolio-analysis";
+import { buildPortfolioScope, buildPortfolioSnapshot } from "@/lib/portfolio-analysis";
 import { prisma } from "@/lib/prisma";
 
 type HomeProps = {
@@ -108,7 +108,13 @@ export default async function Home({ searchParams }: HomeProps) {
   const successMessage = successText(toScalar(params.success));
   const errorMessage = toScalar(params.error);
   const totalValue = calculateOwnedCardsValue(cards);
-  const portfolioSnapshot = buildPortfolioSnapshot(cards);
+  const portfolioSnapshot = buildPortfolioSnapshot(cards, buildPortfolioScope(query));
+  const returnParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value) returnParams.set(key, value);
+  }
+  const returnSuffix = returnParams.toString();
+  const cardListReturnHref = returnSuffix ? `/?${returnSuffix}` : "/";
 
   return (
     <div className="page home-page">
@@ -165,7 +171,7 @@ export default async function Home({ searchParams }: HomeProps) {
           const tags = splitTagString(card.tags);
           return (
             <article key={card.id} className="card-item">
-              <a href={`/cards/${card.id}`}>
+              <a href={`/cards/${card.id}?returnTo=${encodeURIComponent(cardListReturnHref)}`}>
                 {card.images[0] ? (
                   <img className="card-thumb" src={normalizeImagePath(card.images[0].path)} alt={card.cardTitle} />
                 ) : (

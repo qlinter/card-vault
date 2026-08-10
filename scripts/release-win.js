@@ -58,9 +58,10 @@ function verifyPackagedFiles() {
   const appRoot = path.join(unpackedDir, "resources", "app");
   const packagedPackagePath = path.join(appRoot, "package.json");
   const prismaSchemaPath = path.join(appRoot, "node_modules", ".prisma", "client", "schema.prisma");
+  const swcHelpersPath = path.join(appRoot, "node_modules", "@swc", "helpers", "package.json");
   const buildIdPath = path.join(appRoot, ".next", "BUILD_ID");
   const executablePath = path.join(unpackedDir, "Card Vault.exe");
-  for (const requiredPath of [packagedPackagePath, prismaSchemaPath, buildIdPath, executablePath, setupPath]) {
+  for (const requiredPath of [packagedPackagePath, prismaSchemaPath, swcHelpersPath, buildIdPath, executablePath, setupPath]) {
     if (!fs.existsSync(requiredPath)) {
       throw new Error(`Packaged release is missing: ${requiredPath}`);
     }

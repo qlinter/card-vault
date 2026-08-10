@@ -96,6 +96,24 @@
   font-size: 1.05rem;
 }
 
+.scope {
+  display: flex;
+  gap: 0.45rem 0.8rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin: 0.75rem 1.4rem 0;
+  padding: 0.65rem 0.8rem;
+  border-left: 3px solid var(--cyan);
+  color: #405064;
+  background: rgba(62, 168, 168, 0.08);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.scope strong {
+  color: var(--teal);
+}
+
 .loading,
 .error {
   display: grid;

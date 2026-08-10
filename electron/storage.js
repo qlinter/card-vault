@@ -8,6 +8,23 @@ const {
   resolveUploadsDir
 } = require("../scripts/storage-paths");
 
+function reportProgress(callback, percent, message) {
+  if (typeof callback !== "function") {
+    return;
+  }
+  try {
+    callback({ percent: Math.max(0, Math.min(100, Math.round(percent))), message });
+  } catch {
+    // Progress reporting must never interrupt a storage operation.
+  }
+}
+
+function mapProgress(callback, start, end) {
+  return ({ percent, message }) => {
+    reportProgress(callback, start + ((end - start) * percent) / 100, message);
+  };
+}
+
 function loadJson(filePath) {
   try {
     return JSON.parse(fs.readFileSync(filePath, "utf8"));
@@ -49,21 +66,6 @@ function copyFileIfMissing(sourcePath, targetPath) {
   }
 }
 
-function copyDirectoryFilesIfMissing(sourceDir, targetDir) {
-  if (!fs.existsSync(sourceDir)) {
-    return;
-  }
-
-  fs.mkdirSync(targetDir, { recursive: true });
-  for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
-    if (!entry.isFile()) {
-      continue;
-    }
-
-    copyFileIfMissing(path.join(sourceDir, entry.name), path.join(targetDir, entry.name));
-  }
-}
-
 function directoryHasEntries(directoryPath) {
   if (!fs.existsSync(directoryPath)) {
     return false;
@@ -85,19 +87,24 @@ function tableExists(db, tableName) {
   return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(tableName));
 }
 
-function publicFileName(value, prefix) {
-  return typeof value === "string" && value.startsWith(prefix) ? path.basename(value) : null;
+function publicFileName(value, prefixes) {
+  const allowedPrefixes = Array.isArray(prefixes) ? prefixes : [prefixes];
+  return typeof value === "string" && allowedPrefixes.some((prefix) => value.startsWith(prefix))
+    ? path.basename(value)
+    : null;
 }
 
-function inspectDataFolder(dataDir) {
+function inspectDataFolder(dataDir, onProgress) {
   const resolvedDataDir = path.resolve(dataDir);
   const dbPath = path.join(resolvedDataDir, "dev.db");
   const issues = [];
   const missingFiles = [];
   const orphanFiles = [];
   const counts = { cards: 0, images: 0, shares: 0, shareCovers: 0, shareBackgrounds: 0 };
+  reportProgress(onProgress, 5, "正在定位数据库和媒体目录...");
 
   if (!fs.existsSync(dbPath)) {
+    reportProgress(onProgress, 100, "健康检查完成：未找到数据库。");
     return {
       ok: false,
       checkedAt: new Date().toISOString(),
@@ -118,6 +125,7 @@ function inspectDataFolder(dataDir) {
   };
   let integrity = "error";
   try {
+    reportProgress(onProgress, 20, "正在检查 SQLite 数据库完整性...");
     const db = new DatabaseSync(dbPath, { readOnly: true });
     try {
       const integrityRows = db.prepare("PRAGMA integrity_check;").all();
@@ -134,7 +142,7 @@ function inspectDataFolder(dataDir) {
         const images = db.prepare("SELECT path FROM CardImage").all();
         counts.images = images.length;
         for (const image of images) {
-          const fileName = publicFileName(image.path, "/media/");
+          const fileName = publicFileName(image.path, ["/media/", "/uploads/"]);
           if (fileName) {
             referenced.uploads.add(fileName.toLowerCase());
             if (!fs.existsSync(path.join(resolvedDataDir, "uploads", fileName))) {
@@ -164,6 +172,7 @@ function inspectDataFolder(dataDir) {
           }
         }
       }
+      reportProgress(onProgress, 62, "数据库引用检查完成，正在核对媒体文件...");
     } finally {
       db.close();
     }
@@ -176,12 +185,13 @@ function inspectDataFolder(dataDir) {
     { type: "shareCover", directory: "share-covers", references: referenced.covers },
     { type: "shareBackground", directory: "share-backgrounds", references: referenced.backgrounds }
   ];
-  for (const group of fileGroups) {
+  for (const [groupIndex, group] of fileGroups.entries()) {
     for (const fileName of directoryFiles(path.join(resolvedDataDir, group.directory))) {
       if (!group.references.has(fileName.toLowerCase())) {
         orphanFiles.push({ type: group.type, path: path.join(group.directory, fileName) });
       }
     }
+    reportProgress(onProgress, 70 + ((groupIndex + 1) / fileGroups.length) * 25, `正在检查 ${group.directory} 目录...`);
   }
 
   counts.shareCovers = referenced.covers.size;
@@ -190,7 +200,7 @@ function inspectDataFolder(dataDir) {
     issues.push(`发现 ${missingFiles.length} 个数据库引用的文件缺失。`);
   }
 
-  return {
+  const result = {
     ok: integrity === "ok" && issues.length === 0,
     checkedAt: new Date().toISOString(),
     dataPath: resolvedDataDir,
@@ -201,6 +211,8 @@ function inspectDataFolder(dataDir) {
     orphanFiles,
     issues
   };
+  reportProgress(onProgress, 100, result.ok ? "数据健康检查通过。" : "数据健康检查发现问题。");
+  return result;
 }
 
 const orphanDirectoryByType = {
@@ -220,28 +232,29 @@ function resolveSafeOrphanPath(dataDir, orphanFile) {
   return path.dirname(candidate) === expectedDirectory ? candidate : null;
 }
 
-function resolveCurrentOrphanFilePath(dataDir, orphanFile) {
+function resolveCurrentOrphanFilePath(dataDir, orphanFile, onProgress) {
   if (!orphanFile || typeof orphanFile.type !== "string" || typeof orphanFile.path !== "string") {
     return null;
   }
 
   const resolvedDataDir = path.resolve(dataDir);
-  const currentOrphan = inspectDataFolder(resolvedDataDir).orphanFiles.find(
+  const currentOrphan = inspectDataFolder(resolvedDataDir, onProgress).orphanFiles.find(
     (file) => file.type === orphanFile.type && file.path === orphanFile.path
   );
   return currentOrphan ? resolveSafeOrphanPath(resolvedDataDir, currentOrphan) : null;
 }
 
-function cleanOrphanFiles(dataDir) {
+function cleanOrphanFiles(dataDir, onProgress) {
   const resolvedDataDir = path.resolve(dataDir);
-  const healthBeforeCleanup = inspectDataFolder(resolvedDataDir);
+  const healthBeforeCleanup = inspectDataFolder(resolvedDataDir, mapProgress(onProgress, 0, 30));
   if (!healthBeforeCleanup.ok) {
     throw new Error("数据健康检查未通过，已取消清理。请先处理数据库或缺失文件问题。");
   }
 
   const deletedFiles = [];
   const failedFiles = [];
-  for (const orphanFile of healthBeforeCleanup.orphanFiles) {
+  const orphanCount = healthBeforeCleanup.orphanFiles.length;
+  for (const [orphanIndex, orphanFile] of healthBeforeCleanup.orphanFiles.entries()) {
     const filePath = resolveSafeOrphanPath(resolvedDataDir, orphanFile);
     if (!filePath) {
       failedFiles.push({ ...orphanFile, reason: "文件路径不在允许清理的媒体目录中。" });
@@ -259,12 +272,17 @@ function cleanOrphanFiles(dataDir) {
         reason: error instanceof Error ? error.message : "删除文件失败。"
       });
     }
+    reportProgress(
+      onProgress,
+      30 + ((orphanIndex + 1) / Math.max(orphanCount, 1)) * 45,
+      `正在清理未引用文件（${orphanIndex + 1}/${orphanCount}）...`
+    );
   }
 
   return {
     deletedFiles,
     failedFiles,
-    health: inspectDataFolder(resolvedDataDir)
+    health: inspectDataFolder(resolvedDataDir, mapProgress(onProgress, 78, 100))
   };
 }
 
@@ -277,7 +295,8 @@ function hasExistingStorageData(dataDir) {
   return [
     path.join(dataDir, "uploads"),
     path.join(dataDir, "share-covers"),
-    path.join(dataDir, "share-backgrounds")
+    path.join(dataDir, "share-backgrounds"),
+    path.join(dataDir, "schema-backups")
   ].some(directoryHasEntries);
 }
 
@@ -285,12 +304,13 @@ function sqliteStringLiteral(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
 
-function createDatabaseSnapshot(sourceDbPath, targetDbPath) {
+function createDatabaseSnapshot(sourceDbPath, targetDbPath, onProgress) {
   if (!fs.existsSync(sourceDbPath)) {
     throw new Error("Database file does not exist.");
   }
 
   fs.mkdirSync(path.dirname(targetDbPath), { recursive: true });
+  reportProgress(onProgress, 10, "正在创建 SQLite 一致性快照...");
   const sourceDb = new DatabaseSync(sourceDbPath);
   try {
     sourceDb.exec(`VACUUM INTO ${sqliteStringLiteral(targetDbPath)};`);
@@ -298,6 +318,7 @@ function createDatabaseSnapshot(sourceDbPath, targetDbPath) {
     sourceDb.close();
   }
 
+  reportProgress(onProgress, 72, "正在验证备份数据库完整性...");
   const backupDb = new DatabaseSync(targetDbPath, { readOnly: true });
   try {
     const integrityRows = backupDb.prepare("PRAGMA integrity_check;").all();
@@ -310,10 +331,10 @@ function createDatabaseSnapshot(sourceDbPath, targetDbPath) {
   } finally {
     backupDb.close();
   }
+  reportProgress(onProgress, 100, "数据库快照已通过完整性检查。");
 }
 
-function copyDataFilesForBackup(sourceDataDir, targetDataDir, sourceDbPath) {
-  const sourceDbDir = path.dirname(path.resolve(sourceDbPath));
+function copyDataFilesForBackup(sourceDataDir, targetDataDir, sourceDbPath, onProgress) {
   const sourceDbName = path.basename(sourceDbPath);
   const skippedDatabaseNames = new Set([
     sourceDbName,
@@ -323,14 +344,17 @@ function copyDataFilesForBackup(sourceDataDir, targetDataDir, sourceDbPath) {
   ]);
 
   fs.mkdirSync(targetDataDir, { recursive: true });
-  for (const entry of fs.readdirSync(sourceDataDir, { withFileTypes: true })) {
-    if (pathsEqual(sourceDataDir, sourceDbDir) && skippedDatabaseNames.has(entry.name)) {
-      continue;
-    }
-
+  const entries = fs.readdirSync(sourceDataDir, { withFileTypes: true })
+    .filter((entry) => !skippedDatabaseNames.has(entry.name));
+  for (const [entryIndex, entry] of entries.entries()) {
     const sourcePath = path.join(sourceDataDir, entry.name);
     const targetPath = path.join(targetDataDir, entry.name);
     fs.cpSync(sourcePath, targetPath, { recursive: entry.isDirectory() });
+    reportProgress(
+      onProgress,
+      ((entryIndex + 1) / Math.max(entries.length, 1)) * 100,
+      `正在复制数据文件（${entryIndex + 1}/${entries.length}）...`
+    );
   }
 }
 
@@ -508,47 +532,100 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     }
   }
 
-  function migrateTo(selectedPath) {
+  function migrateTo(selectedPath, onProgress) {
+    reportProgress(onProgress, 2, "正在检查新旧存储路径...");
     const targetDir = resolveSelectedDataDir(selectedPath);
     const sourceDataDir = getDataDir();
     const sourceDbPath = getDbPath();
-    const sourceUploadsDir = getUploadsDir();
-    const sourceShareCoversDir = getShareCoversDir();
-    const sourceShareBackgroundsDir = getShareBackgroundsDir();
-    const targetDbPath = path.join(targetDir, "dev.db");
-    const targetUploadsDir = path.join(targetDir, "uploads");
-    const targetShareCoversDir = path.join(targetDir, "share-covers");
-    const targetShareBackgroundsDir = path.join(targetDir, "share-backgrounds");
-    const targetHasExistingData = hasExistingStorageData(targetDir);
 
     repairDataLayout(sourceDataDir);
+    reportProgress(onProgress, 8, "当前数据目录已准备完成。");
 
     if (pathsEqual(sourceDataDir, targetDir)) {
+      reportProgress(onProgress, 100, "所选路径与当前存储路径相同。");
       return { changed: false, currentPath: sourceDataDir };
     }
 
-    if (isSubPath(sourceDataDir, targetDir)) {
-      throw new Error("新路径不能位于当前存储路径内部，请选择其他文件夹。");
+    if (isSubPath(sourceDataDir, targetDir) || isSubPath(targetDir, sourceDataDir)) {
+      throw new Error("新路径和当前存储路径不能互相包含，请选择其他文件夹。");
     }
 
-    fs.mkdirSync(targetDir, { recursive: true });
-    fs.mkdirSync(targetUploadsDir, { recursive: true });
-    fs.mkdirSync(targetShareCoversDir, { recursive: true });
-    fs.mkdirSync(targetShareBackgroundsDir, { recursive: true });
+    const targetHasExistingData = hasExistingStorageData(targetDir);
+    if (targetHasExistingData) {
+      const health = inspectDataFolder(targetDir, mapProgress(onProgress, 15, 85));
+      if (health.integrity !== "ok") {
+        throw new Error("所选路径中的数据库未通过完整性检查，未切换存储路径。");
+      }
+      saveStorageConfig(targetDir);
+      clearCleanupConfig();
+      reportProgress(onProgress, 100, "已切换到现有 Card Vault 数据目录。");
+      return {
+        changed: true,
+        previousPath: sourceDataDir,
+        currentPath: targetDir,
+        usedExistingData: true,
+        health
+      };
+    }
 
-    if (!targetHasExistingData) {
+    if (directoryHasEntries(targetDir)) {
+      throw new Error("所选文件夹不是空文件夹，也不是可识别的 Card Vault 数据目录。请改选一个空文件夹。");
+    }
+
+    const targetExisted = fs.existsSync(targetDir);
+    const parentDir = path.dirname(targetDir);
+    fs.mkdirSync(parentDir, { recursive: true });
+    const stagingDir = fs.mkdtempSync(path.join(parentDir, `.${path.basename(targetDir)}-migration-staging-`));
+
+    let movedIntoPlace = false;
+    try {
+      reportProgress(onProgress, 12, "正在创建迁移暂存目录...");
+      copyDataFilesForBackup(sourceDataDir, stagingDir, sourceDbPath, mapProgress(onProgress, 14, 52));
+
+      const stagedDbPath = path.join(stagingDir, "dev.db");
       if (fs.existsSync(sourceDbPath)) {
-        fs.copyFileSync(sourceDbPath, targetDbPath);
+        createDatabaseSnapshot(sourceDbPath, stagedDbPath, mapProgress(onProgress, 55, 78));
       }
 
-      copyDirectoryFilesIfMissing(sourceUploadsDir, targetUploadsDir);
-      copyDirectoryFilesIfMissing(sourceShareCoversDir, targetShareCoversDir);
-      copyDirectoryFilesIfMissing(sourceShareBackgroundsDir, targetShareBackgroundsDir);
-    }
+      const health = fs.existsSync(stagedDbPath)
+        ? inspectDataFolder(stagingDir, mapProgress(onProgress, 80, 92))
+        : null;
+      if (health && health.integrity !== "ok") {
+        throw new Error("迁移暂存数据库未通过完整性检查，未切换存储路径。");
+      }
 
-    saveStorageConfig(targetDir);
-    clearCleanupConfig();
-    return { changed: true, previousPath: sourceDataDir, currentPath: targetDir, usedExistingData: targetHasExistingData };
+      reportProgress(onProgress, 94, "正在原子切换到新存储目录...");
+      if (targetExisted) {
+        fs.rmdirSync(targetDir);
+      }
+      fs.renameSync(stagingDir, targetDir);
+      movedIntoPlace = true;
+
+      try {
+        saveStorageConfig(targetDir);
+        clearCleanupConfig();
+      } catch (error) {
+        fs.renameSync(targetDir, stagingDir);
+        movedIntoPlace = false;
+        if (targetExisted) {
+          fs.mkdirSync(targetDir, { recursive: true });
+        }
+        throw error;
+      }
+
+      reportProgress(onProgress, 100, "存储数据迁移完成。");
+      return {
+        changed: true,
+        previousPath: sourceDataDir,
+        currentPath: targetDir,
+        usedExistingData: false,
+        health
+      };
+    } finally {
+      if (!movedIntoPlace && fs.existsSync(stagingDir)) {
+        fs.rmSync(stagingDir, { recursive: true, force: true });
+      }
+    }
   }
 
   function chooseBackupDir(selectedPath) {
@@ -559,7 +636,8 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     return { path: backupDir };
   }
 
-  function backupDataFolder() {
+  function backupDataFolder(onProgress) {
+    reportProgress(onProgress, 2, "正在准备备份目录...");
     const sourceDataDir = getDataDir();
     const sourceDbPath = getDbPath();
     const backupDir = getBackupDir();
@@ -574,18 +652,20 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     fs.mkdirSync(dateDir, { recursive: true });
     const targetDataDir = uniqueBackupTarget(dateDir);
     try {
-      copyDataFilesForBackup(sourceDataDir, targetDataDir, sourceDbPath);
+      copyDataFilesForBackup(sourceDataDir, targetDataDir, sourceDbPath, mapProgress(onProgress, 12, 58));
       const targetDbPath = path.join(targetDataDir, "dev.db");
       fs.rmSync(targetDbPath, { force: true });
-      createDatabaseSnapshot(sourceDbPath, targetDbPath);
+      createDatabaseSnapshot(sourceDbPath, targetDbPath, mapProgress(onProgress, 62, 96));
     } catch (error) {
       fs.rmSync(targetDataDir, { recursive: true, force: true });
       throw error;
     }
+    reportProgress(onProgress, 100, "备份完成。");
     return { backupRoot: backupDir, datePath: dateDir, backupPath: targetDataDir };
   }
 
-  function restoreDataFolder(selectedPath) {
+  function restoreDataFolder(selectedPath, onProgress) {
+    reportProgress(onProgress, 2, "正在验证恢复来源...");
     const sourceDataDir = resolveRestoreSourcePath(selectedPath);
     if (!sourceDataDir) {
       throw new Error("所选文件夹中未找到可恢复的 dev.db。请选择一键备份生成的日期文件夹或其中的 data 文件夹。");
@@ -599,7 +679,7 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
       throw new Error("恢复来源和当前数据目录不能互相包含。");
     }
 
-    const sourceHealth = inspectDataFolder(sourceDataDir);
+    const sourceHealth = inspectDataFolder(sourceDataDir, mapProgress(onProgress, 4, 18));
     if (sourceHealth.integrity !== "ok") {
       throw new Error("所选备份的 SQLite 数据库完整性检查未通过，已取消恢复。");
     }
@@ -607,12 +687,14 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     let safetyBackupPath = null;
     if (fs.existsSync(getDbPath())) {
       try {
-        safetyBackupPath = backupDataFolder().backupPath;
+        safetyBackupPath = backupDataFolder(mapProgress(onProgress, 20, 48)).backupPath;
       } catch {
+        reportProgress(onProgress, 34, "标准安全备份失败，正在保留原始数据副本...");
         const dateDir = path.join(getBackupDir(), dateFolderName());
         fs.mkdirSync(dateDir, { recursive: true });
         safetyBackupPath = uniqueBackupTarget(dateDir);
         fs.cpSync(targetDataDir, safetyBackupPath, { recursive: true });
+        reportProgress(onProgress, 48, "当前数据原始副本已保留。");
       }
     }
 
@@ -627,16 +709,19 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
 
     fs.mkdirSync(parentDir, { recursive: true });
     try {
+      reportProgress(onProgress, 54, "正在复制备份到恢复暂存目录...");
       fs.cpSync(sourceDataDir, stagingDir, { recursive: true });
-      const stagedHealth = inspectDataFolder(stagingDir);
+      const stagedHealth = inspectDataFolder(stagingDir, mapProgress(onProgress, 64, 80));
       if (stagedHealth.integrity !== "ok") {
         throw new Error("备份复制到临时目录后完整性检查失败。");
       }
 
       if (fs.existsSync(targetDataDir)) {
+        reportProgress(onProgress, 84, "正在保留当前数据以便回滚...");
         fs.renameSync(targetDataDir, rollbackDir);
       }
       try {
+        reportProgress(onProgress, 88, "正在切换到恢复后的数据目录...");
         fs.renameSync(stagingDir, targetDataDir);
       } catch (error) {
         if (fs.existsSync(rollbackDir) && !fs.existsSync(targetDataDir)) {
@@ -655,12 +740,14 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     }
 
     repairDataLayout(targetDataDir);
-    return {
+    const result = {
       restoredFrom: sourceDataDir,
       restoredTo: targetDataDir,
       safetyBackupPath,
-      health: inspectDataFolder(targetDataDir)
+      health: inspectDataFolder(targetDataDir, mapProgress(onProgress, 92, 100))
     };
+    reportProgress(onProgress, 100, "数据恢复完成。");
+    return result;
   }
 
   function getBackupSettings() {
@@ -694,9 +781,9 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     chooseBackupDir,
     backupDataFolder,
     resolveRestoreSourcePath,
-    inspectDataFolder: (dataDir = getDataDir()) => inspectDataFolder(dataDir),
-    resolveOrphanFilePath: (orphanFile) => resolveCurrentOrphanFilePath(getDataDir(), orphanFile),
-    cleanOrphanFiles: () => cleanOrphanFiles(getDataDir()),
+    inspectDataFolder: (dataDir = getDataDir(), onProgress) => inspectDataFolder(dataDir, onProgress),
+    resolveOrphanFilePath: (orphanFile, onProgress) => resolveCurrentOrphanFilePath(getDataDir(), orphanFile, onProgress),
+    cleanOrphanFiles: (onProgress) => cleanOrphanFiles(getDataDir(), onProgress),
     restoreDataFolder,
     getBackupSettings,
     migrateTo,

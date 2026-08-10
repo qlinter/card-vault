@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { OperationProgress, type OperationProgressValue } from "@/components/operation-progress";
 
 type StorageSettingsProps = {
   currentPath: string;
@@ -30,10 +31,23 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [health, setHealth] = useState<DataHealth | null>(null);
   const [revealingPath, setRevealingPath] = useState<string | null>(null);
+  const [progress, setProgress] = useState<OperationProgressValue | null>(null);
+  const [activeStorageOperation, setActiveStorageOperation] = useState<string | null>(null);
 
   useEffect(() => {
     setDisplayedPath(currentPath);
   }, [currentPath]);
+
+  useEffect(() => {
+    const api = desktopApi();
+    if (!api) return;
+    return api.onStorageProgress((nextProgress) => {
+      setActiveStorageOperation(nextProgress.done ? null : nextProgress.operation);
+      if (["migrate", "health", "cleanup"].includes(nextProgress.operation)) {
+        setProgress(nextProgress.done ? null : { percent: nextProgress.percent, message: nextProgress.message });
+      }
+    });
+  }, []);
 
   async function handleChooseDirectory() {
     const api = desktopApi();
@@ -43,6 +57,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
     }
 
     setBusyAction("storage");
+    setProgress({ percent: 0, message: "正在准备存储路径迁移..." });
     setMessage(null);
     try {
       const result = await api.chooseStorageDirectory();
@@ -61,6 +76,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
       setMessage(`修改存储路径失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
     } finally {
       setBusyAction(null);
+      setProgress(null);
     }
   }
 
@@ -72,6 +88,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
     }
 
     setBusyAction("health");
+    setProgress({ percent: 0, message: "正在准备健康检查..." });
     setMessage(null);
     try {
       const result = await api.checkDataHealth();
@@ -81,6 +98,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
       setMessage(`数据健康检查失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
     } finally {
       setBusyAction(null);
+      setProgress(null);
     }
   }
 
@@ -92,6 +110,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
     }
 
     setBusyAction("cleanup");
+    setProgress({ percent: 0, message: "正在准备清理前复核..." });
     setMessage(null);
     try {
       const result = await api.cleanOrphanFiles();
@@ -107,6 +126,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
       setMessage(`清理失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
     } finally {
       setBusyAction(null);
+      setProgress(null);
     }
   }
 
@@ -128,7 +148,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
     }
   }
 
-  const busy = busyAction !== null || revealingPath !== null;
+  const busy = busyAction !== null || revealingPath !== null || activeStorageOperation !== null;
 
   return (
     <section className="panel settings-section">
@@ -151,6 +171,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
       <p className="muted" style={{ margin: "0.35rem 0 0" }}>
         <strong>当前路径：</strong>{displayedPath}
       </p>
+      <OperationProgress progress={progress} />
       {health ? (
         <div className={health.ok ? "note-ok health-result" : "note-error health-result"}>
           <strong>{health.ok ? "数据状态正常" : "数据需要处理"}</strong>

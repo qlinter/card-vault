@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { OperationProgress, type OperationProgressValue } from "@/components/operation-progress";
 
 function desktopApi() {
   return window.cardVaultDesktop;
@@ -10,6 +11,8 @@ export function BackupSettings() {
   const [backupPath, setBackupPath] = useState("正在读取...");
   const [busyAction, setBusyAction] = useState<"choose" | "backup" | "restore" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [progress, setProgress] = useState<OperationProgressValue | null>(null);
+  const [activeStorageOperation, setActiveStorageOperation] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -34,6 +37,17 @@ export function BackupSettings() {
     return () => {
       mounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const api = desktopApi();
+    if (!api) return;
+    return api.onStorageProgress((nextProgress) => {
+      setActiveStorageOperation(nextProgress.done ? null : nextProgress.operation);
+      if (nextProgress.operation === "backup" || nextProgress.operation === "restore") {
+        setProgress(nextProgress.done ? null : { percent: nextProgress.percent, message: nextProgress.message });
+      }
+    });
   }, []);
 
   async function handleChooseDirectory() {
@@ -62,6 +76,7 @@ export function BackupSettings() {
       return;
     }
     setBusyAction("backup");
+    setProgress({ percent: 0, message: "正在准备备份..." });
     setMessage(null);
     try {
       const result = await api.backupDataFolder();
@@ -71,6 +86,7 @@ export function BackupSettings() {
       setMessage(`备份失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
     } finally {
       setBusyAction(null);
+      setProgress(null);
     }
   }
 
@@ -81,22 +97,25 @@ export function BackupSettings() {
       return;
     }
     setBusyAction("restore");
+    setProgress({ percent: 0, message: "正在准备恢复..." });
     setMessage(null);
     try {
       const result = await api.restoreDataFolder();
       if (result.cancelled) {
         setMessage("已取消恢复。");
         setBusyAction(null);
+        setProgress(null);
       } else {
         setMessage("恢复完成，Card Vault 正在重新启动。");
       }
     } catch (error) {
       setMessage(`恢复失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
       setBusyAction(null);
+      setProgress(null);
     }
   }
 
-  const busy = busyAction !== null;
+  const busy = busyAction !== null || activeStorageOperation !== null;
 
   return (
     <section className="panel settings-section">
@@ -122,6 +141,7 @@ export function BackupSettings() {
       <p className="muted" style={{ margin: "0.35rem 0 0" }}>
         <strong>备份路径：</strong>{backupPath}
       </p>
+      <OperationProgress progress={progress} />
       {message ? <p className="muted backup-message">{message}</p> : null}
     </section>
   );

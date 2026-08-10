@@ -6,18 +6,17 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 
 ## Current Version
 
-`1.0.11`
+`1.0.12`
 
-### 1.0.11 Highlights
+### 1.0.12 Highlights
 
-- Database upgrades now use ordered migrations and create a snapshot before adopting a legacy database.
-- Settings adds data health checks, unreferenced-file review and location in Explorer, confirmed cleanup, complete backup, and in-app restore.
-- AI API keys are encrypted with Windows `safeStorage`; an unreadable legacy key no longer blocks startup and can be replaced from Settings.
-- Home adds AI portfolio analysis using allowlisted aggregate data only, without images or private notes.
-- Fixed development builds reusing a stale local service; each desktop session now owns its server and terminates the full process tree on exit.
-- Fixed preload bridge failures, incorrect non-desktop AI messages, and unhelpful `Failed to fetch` theme errors.
-- Fixed missing feedback when saving edited share collections while retaining the native Server Action path.
-- The release pipeline now requires encoding, type, unit, production-build, card/share E2E, packaged-runtime, and SHA-256 verification.
+- External links now use a guarded desktop navigation path, and legacy `/uploads/` image paths remain readable.
+- AI portfolio analysis understands active filters; owned-quality statistics include only Held, For Sale, and Grading cards.
+- Saving AI settings refreshes the local service immediately, while card details can return to the filtered Home or Showcase view.
+- Storage-path migration, backup, restore, health checks, and unreferenced-file cleanup now run in a separate storage process with staged progress reporting.
+- Storage migration stops the local data service, writes a consistent SQLite snapshot into staging, validates it, and atomically switches directories; existing data directories must also pass integrity checks.
+- Core dependencies are upgraded to Next.js 16.3, Electron 41.10, electron-builder 26.15, and Prisma 6.19, with a clean full npm security audit.
+- Share Gallery Editor 2.0 phase one is integrated with Content, Visual, Sections, and Cards workspaces plus desktop/mobile live preview.
 
 ## Core Features
 
@@ -47,12 +46,13 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 | `1.0.9` | Added General, Sport, and Team themes with consistent preview and export assets. |
 | `1.0.10` | Added three gallery layouts, sortable sections, live preview, and a shared renderer. |
 | `1.0.11` | Established migration, recovery, credential, data-health, portfolio-analysis, and release foundations. |
+| `1.0.12` | Upgraded core dependencies and hardened storage migration, safe navigation, filtered context, and Share Gallery Editor 2.0. |
 
 ## Install and Run
 
 ### Installer
 
-File: `dist/card-vault-1.0.11-setup.exe`
+File: `dist/card-vault-1.0.12-setup.exe`
 
 - Uses an installation wizard and supports a user-selected installation directory.
 - Installing a newer build of the same application normally replaces program files without deleting collection data.
@@ -60,7 +60,7 @@ File: `dist/card-vault-1.0.11-setup.exe`
 
 ### Portable Build
 
-File: `dist/card-vault-1.0.11-portable.zip`
+File: `dist/card-vault-1.0.12-portable.zip`
 
 1. Extract the complete ZIP.
 2. Run `Card Vault.exe` from the extracted directory.
@@ -109,6 +109,7 @@ Settings supports:
 - Reviewing unreferenced files, locating them in Explorer, and cleaning them after confirmation.
 - Selecting a separate backup destination and creating a complete backup.
 - Restoring from a dated backup folder or a specific data folder after automatically creating a safety copy of current data.
+- Backup, restore, health checks, and cleanup run in a separate storage process; Settings reports the current stage and progress while the desktop shell remains responsive.
 
 Use the in-app backup workflow when moving to another computer. Copying only the database or only the images produces an incomplete collection. See the [Chinese Data Backup Guide](./数据备份说明.md) for the detailed workflow.
 
@@ -125,10 +126,14 @@ Use the in-app backup workflow when moving to another computer. Copying only the
 ## Share Galleries
 
 - Share collections are independent from the local Showcase and contain only explicitly selected cards.
+- Editor 2.0 separates Content, Visual, Sections, and per-card presentation into focused workspaces while retaining a continuously updated preview.
+- Live preview switches between desktop and mobile widths; preview, static export, and cloud packages continue to share one renderer.
 - Titles, introductions, narratives, sections, themes, layouts, covers, backgrounds, and per-card overrides remain editable.
 - General, Sport, and Team themes use the same renderer in preview, static exports, and cloud packages.
 - Static export uses a strict public-field allowlist and excludes prices, costs, purchase sources, private notes, AI keys, and local paths.
 - Cloud packages include static-server deployment guidance; in-app publish, update, revoke, and URL management are not implemented yet.
+
+See [Share Gallery Editor 2.0](./docs/share-editor-2.0.md) for its boundaries, delivered phase, and planned iterations.
 
 ## Common Commands
 
@@ -168,6 +173,7 @@ Whether to track `dist` is a repository policy choice. Publishing the installer 
 
 ## Roadmap
 
+- Continue Share Gallery Editor 2.0 with drag ordering, undo/redo, draft recovery, immediate uploaded-image preview, and mobile visual QA.
 - Complete managed cloud publishing, update, revoke, URL, and visibility workflows.
 - Add recognition confidence, batch ingestion, and duplicate-card warnings.
 - Introduce separate transaction, expense, and valuation-history models.
@@ -175,4 +181,4 @@ Whether to track `dist` is a repository policy choice. Publishing the installer 
 
 ## Technology
 
-`Next.js 15`, `React 19`, `TypeScript`, `Prisma`, `SQLite`, `Electron`, and `Tailwind CSS`
+`Next.js 16`, `React 19`, `TypeScript`, `Prisma`, `SQLite`, `Electron`, and `Tailwind CSS`

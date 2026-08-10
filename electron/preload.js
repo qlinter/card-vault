@@ -9,6 +9,11 @@ contextBridge.exposeInMainWorld("cardVaultDesktop", {
   showOrphanFileInFolder: (file) => ipcRenderer.invoke("card-vault:show-orphan-file-in-folder", file),
   cleanOrphanFiles: () => ipcRenderer.invoke("card-vault:clean-orphan-files"),
   restoreDataFolder: () => ipcRenderer.invoke("card-vault:restore-data-folder"),
+  onStorageProgress: (callback) => {
+    const listener = (_event, progress) => callback(progress);
+    ipcRenderer.on("card-vault:storage-progress", listener);
+    return () => ipcRenderer.removeListener("card-vault:storage-progress", listener);
+  },
   getAiSettings: () => ipcRenderer.invoke("card-vault:get-ai-settings"),
   saveAiSettings: (settings) => ipcRenderer.invoke("card-vault:save-ai-settings", settings)
 });

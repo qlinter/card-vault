@@ -150,7 +150,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
       });
       setAzureApiKey("");
       setMiniMaxApiKey("");
-      setMessage(providerName(saved.provider) + " 设置已加密保存，Card Vault 将重新启动。");
+      setMessage(providerName(saved.provider) + " 设置已加密保存并立即生效，无需重启 Card Vault。");
     } catch (error) {
       const detail = error instanceof Error ? error.message : "请稍后重试。";
       setMessage("保存失败：" + detail);

@@ -11,15 +11,30 @@ if errorlevel 1 (
   exit /b 1
 )
 
-if not exist "node_modules" (
-  echo node_modules was not found. Run npm install first.
+echo Checking project dependencies...
+if not exist "node_modules" goto install_dependencies
+if not exist "node_modules\.package-lock.json" goto install_dependencies
+
+call npm.cmd ls --depth=0 >nul 2>nul
+if errorlevel 1 goto install_dependencies
+
+node -e "const fs=require('fs');const installed=fs.statSync('node_modules/.package-lock.json').mtimeMs;process.exit(['package.json','package-lock.json'].some((file)=>fs.statSync(file).mtimeMs>installed)?1:0)"
+if errorlevel 1 goto install_dependencies
+goto dependencies_ready
+
+:install_dependencies
+echo Dependencies are missing or out of date. Updating them now...
+call npm.cmd install
+if errorlevel 1 (
+  echo.
+  echo Dependency update failed. Check the network or run npm install manually.
   pause
   exit /b 1
 )
 
+:dependencies_ready
 if not exist "node_modules\electron" (
-  echo Electron is not installed yet.
-  echo After dependencies are installed, run this file again.
+  echo Electron is still unavailable after the dependency check.
   pause
   exit /b 1
 )

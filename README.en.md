@@ -6,17 +6,14 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 
 ## Current Version
 
-`1.0.12`
+`1.0.13`
 
-### 1.0.12 Highlights
+### 1.0.13 Highlights
 
-- External links now use a guarded desktop navigation path, and legacy `/uploads/` image paths remain readable.
-- AI portfolio analysis understands active filters; owned-quality statistics include only Held, For Sale, and Grading cards.
-- Saving AI settings refreshes the local service immediately, while card details can return to the filtered Home or Showcase view.
-- Storage-path migration, backup, restore, health checks, and unreferenced-file cleanup now run in a separate storage process with staged progress reporting.
-- Storage migration stops the local data service, writes a consistent SQLite snapshot into staging, validates it, and atomically switches directories; existing data directories must also pass integrity checks.
-- Core dependencies are upgraded to Next.js 16.3, Electron 41.10, electron-builder 26.15, and Prisma 6.19, with a clean full npm security audit.
-- Share Gallery Editor 2.0 phase one is integrated with Content, Visual, Sections, and Cards workspaces plus desktop/mobile live preview.
+- Azure OpenAI configuration now uses only the `v1` API, with the dated `api-version` setting and UI field removed.
+- Azure endpoints accept both `.openai.azure.com` and unified `.services.ai.azure.com` resource roots and consistently use `/openai/v1` routes.
+- Deployments for the GPT-5.4, GPT-5.5, and GPT-5.6 families are supported; GPT-5 reasoning requests automatically omit the unsupported `temperature` parameter.
+- Legacy AI settings migrate safely to the v3 format while preserving the endpoint, deployment, and encrypted API key and dropping the obsolete API version.
 
 ## Core Features
 
@@ -47,12 +44,13 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 | `1.0.10` | Added three gallery layouts, sortable sections, live preview, and a shared renderer. |
 | `1.0.11` | Established migration, recovery, credential, data-health, portfolio-analysis, and release foundations. |
 | `1.0.12` | Upgraded core dependencies and hardened storage migration, safe navigation, filtered context, and Share Gallery Editor 2.0. |
+| `1.0.13` | Unified Azure OpenAI on the v1 API with unified-resource endpoints and GPT-5.4 / 5.5 / 5.6 support. |
 
 ## Install and Run
 
 ### Installer
 
-File: `dist/card-vault-1.0.12-setup.exe`
+File: `dist/card-vault-1.0.13-setup.exe`
 
 - Uses an installation wizard and supports a user-selected installation directory.
 - Installing a newer build of the same application normally replaces program files without deleting collection data.
@@ -60,7 +58,7 @@ File: `dist/card-vault-1.0.12-setup.exe`
 
 ### Portable Build
 
-File: `dist/card-vault-1.0.12-portable.zip`
+File: `dist/card-vault-1.0.13-portable.zip`
 
 1. Extract the complete ZIP.
 2. Run `Card Vault.exe` from the extracted directory.
@@ -122,6 +120,8 @@ Use the in-app backup workflow when moving to another computer. Copying only the
 - Recognition accepts one or two front/back `jpg/png/webp` images and fills empty fields by default.
 - Portfolio analysis sends only aggregate statistics for the current result set and is not investment or trading advice.
 - Connection errors distinguish the local service from upstream network, endpoint, proxy, and provider failures.
+- Azure OpenAI uses only the `v1` API. Enter the resource root endpoint (`.openai.azure.com` or `.services.ai.azure.com`) and the deployment name created in Azure.
+- GPT-5.4 / GPT-5.5 / GPT-5.6 requests use `/openai/v1/chat/completions`; dated `api-version` configuration is no longer retained, and GPT-5 reasoning requests omit the unsupported `temperature` parameter.
 
 ## Share Galleries
 

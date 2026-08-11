@@ -6,17 +6,14 @@ Card Vault 是一款本地优先的球星卡收藏管理工具，用于录入、
 
 ## 当前版本
 
-`1.0.12`
+`1.0.13`
 
-### 1.0.12 重点更新
+### 1.0.13 重点更新
 
-- 外部链接统一通过安全桌面导航打开，并兼容旧版 `/uploads/` 图片路径。
-- AI 组合分析会理解当前筛选条件，持有质量统计只计算“持有中 / 在售 / 送评中”，避免对主题筛选结果作笼统判断。
-- AI 设置保存后立即刷新本地服务，不再要求重启应用；首页与展示页进入单卡后可返回原筛选结果。
-- 存储路径迁移、备份、恢复、健康检查和未引用文件清理已迁移到独立存储进程，界面显示阶段与进度，避免阻塞 Electron 主线程。
-- 存储路径迁移会先停止本地数据服务，通过 SQLite 一致性快照写入暂存目录，校验后再原子切换；现有数据目录也必须先通过完整性检查。
-- 基础依赖升级到 Next.js 16.3、Electron 41.10、electron-builder 26.15 和 Prisma 6.19，完整 npm 安全审计已清零。
-- 分享展馆编辑器 2.0 第一阶段已接入：内容、视觉、章节、单卡分区编辑，并支持桌面 / 手机实时预览。
+- Azure OpenAI 配置统一为 `v1` API，移除旧的日期式 `api-version` 设置和界面字段。
+- Azure 资源 Endpoint 同时支持 `.openai.azure.com` 与统一资源 `.services.ai.azure.com` 根地址，并统一调用 `/openai/v1` 路由。
+- 支持以部署名称调用 GPT-5.4、GPT-5.5 与 GPT-5.6 系列；GPT-5 reasoning 模型会自动省略不支持的 `temperature` 参数。
+- 旧版 AI 配置会安全迁移到 v3 格式，保留 Endpoint、Deployment 和加密 API Key，同时清理废弃的 API Version。
 
 ## 核心功能
 
@@ -47,12 +44,13 @@ Card Vault 是一款本地优先的球星卡收藏管理工具，用于录入、
 | `1.0.10` | 增加三套展馆布局、可排序章节、实时预览和统一渲染器。 |
 | `1.0.11` | 完成迁移、恢复、密钥安全、数据健康、组合分析和发布验证基础。 |
 | `1.0.12` | 升级核心依赖，加固存储迁移，完善安全导航、筛选上下文与分享展馆编辑器 2.0。 |
+| `1.0.13` | Azure OpenAI 统一迁移到 v1 API，支持统一资源 Endpoint 与 GPT-5.4 / 5.5 / 5.6 系列。 |
 
 ## 安装与运行
 
 ### 安装版
 
-文件：`dist/card-vault-1.0.12-setup.exe`
+文件：`dist/card-vault-1.0.13-setup.exe`
 
 - 使用安装向导，可选择安装目录，适合长期使用。
 - 安装较早版本后可直接安装同一应用的新版本，通常会覆盖程序文件，不会主动删除收藏数据。
@@ -60,7 +58,7 @@ Card Vault 是一款本地优先的球星卡收藏管理工具，用于录入、
 
 ### 便携版
 
-文件：`dist/card-vault-1.0.12-portable.zip`
+文件：`dist/card-vault-1.0.13-portable.zip`
 
 1. 完整解压 ZIP。
 2. 运行解压目录中的 `Card Vault.exe`。
@@ -122,6 +120,8 @@ Card Vault 的数据由 SQLite 数据库和媒体目录共同组成：
 - AI 识图支持 1 至 2 张正反面 `jpg/png/webp` 图片，默认只填充空字段。
 - 组合分析仅发送当前筛选结果的统计摘要，结果用于收藏整理参考，不构成投资或交易建议。
 - AI 服务无法连接时会区分本地服务问题和上游网络、Endpoint、代理或服务商错误。
+- Azure OpenAI 统一使用 `v1` API；Endpoint 可填写资源根地址（`.openai.azure.com` 或 `.services.ai.azure.com`），Deployment 填写 Azure 中实际创建的部署名称。
+- GPT-5.4 / GPT-5.5 / GPT-5.6 请求统一使用 `/openai/v1/chat/completions`，不再保留日期式 `api-version` 配置；GPT-5 reasoning 模型请求不会发送不受支持的 `temperature` 参数。
 
 ## 分享展馆
 

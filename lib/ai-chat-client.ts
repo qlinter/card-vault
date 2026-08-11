@@ -2,7 +2,8 @@ import type { ActiveAiSettings } from "./ai-settings.ts";
 import {
   getChatCompletionsHeaders,
   getChatCompletionsModel,
-  getChatCompletionsUrl
+  getChatCompletionsUrl,
+  isAzureReasoningDeployment
 } from "./ai-settings.ts";
 import { responseToText, safeText } from "./ai-response-parsing.ts";
 
@@ -30,9 +31,13 @@ export function aiProviderName(provider: string): string {
   return provider === "minimax" ? "MiniMax" : "Azure OpenAI";
 }
 
-function isUnsupportedTokenParameter(detail: string, tokenField: string): boolean {
-  const text = safeText(detail);
-  return text.includes("Unsupported parameter") && text.includes(tokenField);
+function isUnsupportedParameter(detail: string, parameter: string): boolean {
+  const text = safeText(detail).toLowerCase();
+  const parameterName = parameter.toLowerCase();
+  return (
+    text.includes(parameterName) &&
+    (text.includes("unsupported parameter") || text.includes("not supported") || text.includes("does not support"))
+  );
 }
 
 export async function requestAiChat(settings: ActiveAiSettings, request: AiChatRequest): Promise<unknown> {
@@ -42,7 +47,10 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), request.timeoutMs ?? 60000);
 
-  const requestInit = (tokenField: "max_completion_tokens" | "max_tokens") => ({
+  const requestInit = (
+    tokenField: "max_completion_tokens" | "max_tokens",
+    includeTemperature: boolean
+  ) => ({
     method: "POST",
     headers,
     signal: controller.signal,
@@ -50,22 +58,36 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
       ...(model ? { model } : {}),
       messages: request.messages,
       [tokenField]: request.maxTokens,
-      ...(request.temperature === undefined ? {} : { temperature: request.temperature })
+      ...(!includeTemperature || request.temperature === undefined ? {} : { temperature: request.temperature })
     })
   });
 
   try {
-    let response = await fetch(url, requestInit("max_completion_tokens"));
-    let detail = response.ok ? "" : await response.text();
+    let tokenField: "max_completion_tokens" | "max_tokens" = "max_completion_tokens";
+    let includeTemperature = request.temperature !== undefined && !isAzureReasoningDeployment(settings);
+    let response: Response | null = null;
+    let detail = "";
 
-    if (!response.ok && isUnsupportedTokenParameter(detail, "max_completion_tokens")) {
-      response = await fetch(url, requestInit("max_tokens"));
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      response = await fetch(url, requestInit(tokenField, includeTemperature));
       detail = response.ok ? "" : await response.text();
+      if (response.ok) {
+        break;
+      }
+      if (includeTemperature && isUnsupportedParameter(detail, "temperature")) {
+        includeTemperature = false;
+        continue;
+      }
+      if (tokenField === "max_completion_tokens" && isUnsupportedParameter(detail, "max_completion_tokens")) {
+        tokenField = "max_tokens";
+        continue;
+      }
+      break;
     }
 
-    if (!response.ok) {
+    if (!response?.ok) {
       throw new AiUpstreamError(
-        `${aiProviderName(settings.provider)} ${request.operation}失败：${response.status} ${detail.slice(0, 320)}`
+        `${aiProviderName(settings.provider)} ${request.operation}失败：${response?.status ?? "未知状态"} ${detail.slice(0, 320)}`
       );
     }
 

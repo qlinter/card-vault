@@ -10,7 +10,6 @@ type PublicSettings = {
   azure: {
     endpoint: string;
     deployment: string;
-    apiVersion: string;
     hasApiKey: boolean;
   };
   minimax: {
@@ -26,7 +25,6 @@ const emptySettings: PublicSettings = {
   azure: {
     endpoint: "",
     deployment: "",
-    apiVersion: "2024-02-15-preview",
     hasApiKey: false
   },
   minimax: {
@@ -113,8 +111,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
       azure: {
         endpoint: settings.azure.endpoint,
         apiKey: azureApiKey || undefined,
-        deployment: settings.azure.deployment,
-        apiVersion: settings.azure.apiVersion
+        deployment: settings.azure.deployment
       },
       minimax: {
         endpoint: settings.minimax.endpoint,
@@ -182,7 +179,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
           ? error.message
           : settings.provider === "minimax"
             ? "请检查 MiniMax Endpoint、API Key 和 Model。"
-            : "请检查 Azure Endpoint、API Key、Deployment 和 API Version。";
+            : "请检查 Azure Endpoint、API Key 和 Deployment。";
       setMessage(detail);
     } finally {
       setIsTesting(false);
@@ -275,7 +272,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
                         azure: { ...current.azure, endpoint: event.target.value }
                       }))
                     }
-                    placeholder="https://your-resource.openai.azure.com"
+                    placeholder="https://your-resource.openai.azure.com 或 https://your-resource.services.ai.azure.com"
                     disabled={!isDesktop}
                   />
                 </label>
@@ -290,21 +287,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
                         azure: { ...current.azure, deployment: event.target.value }
                       }))
                     }
-                    placeholder="gpt-4o 或你的部署名称"
-                    disabled={!isDesktop}
-                  />
-                </label>
-
-                <label className="field">
-                  <span>API Version</span>
-                  <input
-                    value={settings.azure.apiVersion}
-                    onChange={(event) =>
-                      setSettings((current) => ({
-                        ...current,
-                        azure: { ...current.azure, apiVersion: event.target.value }
-                      }))
-                    }
+                    placeholder="gpt-5.6-sol、gpt-5.5、gpt-5.4 或你的部署名称"
                     disabled={!isDesktop}
                   />
                 </label>

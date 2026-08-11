@@ -1,7 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const defaultApiVersion = "2024-02-15-preview";
 const defaultMiniMaxEndpoint = "https://api.minimax.io/v1/chat/completions";
 const defaultMiniMaxModel = "MiniMax-VL-01";
 
@@ -13,8 +12,7 @@ function normalizeAzure(value = {}) {
   return {
     endpoint: typeof value.endpoint === "string" ? value.endpoint.trim() : "",
     apiKey: typeof value.apiKey === "string" ? value.apiKey.trim() : "",
-    deployment: typeof value.deployment === "string" ? value.deployment.trim() : "",
-    apiVersion: typeof value.apiVersion === "string" && value.apiVersion.trim() ? value.apiVersion.trim() : defaultApiVersion
+    deployment: typeof value.deployment === "string" ? value.deployment.trim() : ""
   };
 }
 
@@ -42,7 +40,6 @@ function publicSettings(settings, keyRecoveryRequired = false) {
     azure: {
       endpoint: settings.azure.endpoint,
       deployment: settings.azure.deployment,
-      apiVersion: settings.azure.apiVersion,
       hasApiKey: Boolean(settings.azure.apiKey)
     },
     minimax: {
@@ -104,8 +101,7 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
       azure: {
         endpoint: azureRaw.endpoint ?? (provider === "azure" ? raw.endpoint : undefined),
         apiKey: azureRaw.apiKeyEncrypted ? decryptKey(azureRaw.apiKeyEncrypted) : (azureRaw.apiKey ?? (provider === "azure" ? raw.apiKey : "")),
-        deployment: azureRaw.deployment ?? raw.deployment,
-        apiVersion: azureRaw.apiVersion ?? raw.apiVersion
+        deployment: azureRaw.deployment ?? raw.deployment
       },
       minimax: {
         endpoint: minimaxRaw.endpoint ?? (provider === "minimax" ? raw.endpoint : undefined),
@@ -117,13 +113,12 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
 
   function writeEncrypted(settings) {
     const stored = {
-      version: 2,
+      version: 3,
       provider: settings.provider,
       azure: {
         endpoint: settings.azure.endpoint,
         apiKeyEncrypted: encryptKey(settings.azure.apiKey),
-        deployment: settings.azure.deployment,
-        apiVersion: settings.azure.apiVersion
+        deployment: settings.azure.deployment
       },
       minimax: {
         endpoint: settings.minimax.endpoint,
@@ -142,8 +137,7 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
       azure: {
         endpoint: value.azure?.endpoint,
         apiKey: value.azure?.apiKey === undefined ? current.azure.apiKey : value.azure.apiKey,
-        deployment: value.azure?.deployment,
-        apiVersion: value.azure?.apiVersion
+        deployment: value.azure?.deployment
       },
       minimax: {
         endpoint: value.minimax?.endpoint,
@@ -157,7 +151,7 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
 
   function migrateLegacyConfig() {
     const raw = readRaw();
-    if (!fs.existsSync(configPath) || raw.version === 2) {
+    if (!fs.existsSync(configPath) || raw.version === 3) {
       return false;
     }
     writeEncrypted(load());
@@ -171,7 +165,6 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
       AZURE_OPENAI_ENDPOINT: settings.azure.endpoint,
       AZURE_OPENAI_API_KEY: settings.azure.apiKey,
       AZURE_OPENAI_DEPLOYMENT: settings.azure.deployment,
-      AZURE_OPENAI_API_VERSION: settings.azure.apiVersion,
       MINIMAX_API_ENDPOINT: settings.minimax.endpoint,
       MINIMAX_API_KEY: settings.minimax.apiKey,
       MINIMAX_MODEL: settings.minimax.model
@@ -193,6 +186,5 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
 }
 
 module.exports = {
-  createAiConfigManager,
-  defaultApiVersion
+  createAiConfigManager
 };

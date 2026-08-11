@@ -17,11 +17,34 @@ function testConfig(t) {
   return { configPath, manager: createAiConfigManager(configPath, cryptoAdapter) };
 }
 
+test("version 2 AI settings migrate to v3 without the legacy API version", (t) => {
+  const { configPath, manager } = testConfig(t);
+  fs.writeFileSync(configPath, JSON.stringify({
+    version: 2,
+    provider: "azure",
+    azure: {
+      endpoint: "https://example.openai.azure.com",
+      apiKeyEncrypted: Buffer.from("encrypted:azure-secret").toString("base64"),
+      deployment: "gpt-5.4",
+      apiVersion: "2024-02-15-preview"
+    },
+    minimax: { endpoint: "https://minimax.test", apiKeyEncrypted: "", model: "model-a" }
+  }));
+
+  assert.equal(manager.migrateLegacyConfig(), true);
+  const stored = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  const runtime = manager.getRuntimeEnv();
+  assert.equal(stored.version, 3);
+  assert.equal("apiVersion" in stored.azure, false);
+  assert.equal(runtime.AZURE_OPENAI_API_VERSION, undefined);
+  assert.equal(runtime.AZURE_OPENAI_API_KEY, "azure-secret");
+});
+
 test("AI settings encrypt API keys at rest and expose them only to the runtime environment", (t) => {
   const { configPath, manager } = testConfig(t);
   const saved = manager.save({
     provider: "azure",
-    azure: { endpoint: "https://example.test", apiKey: "azure-secret", deployment: "vision", apiVersion: "2024-01-01" },
+    azure: { endpoint: "https://example.test", apiKey: "azure-secret", deployment: "vision" },
     minimax: { endpoint: "https://minimax.test", apiKey: "minimax-secret", model: "vision-model" }
   });
 
@@ -31,7 +54,7 @@ test("AI settings encrypt API keys at rest and expose them only to the runtime e
   assert.equal(saved.minimax.hasApiKey, true);
   assert.equal(raw.includes("azure-secret"), false);
   assert.equal(raw.includes("minimax-secret"), false);
-  assert.equal(JSON.parse(raw).version, 2);
+  assert.equal(JSON.parse(raw).version, 3);
   assert.equal(runtime.AZURE_OPENAI_API_KEY, "azure-secret");
   assert.equal(runtime.MINIMAX_API_KEY, "minimax-secret");
 });
@@ -59,13 +82,12 @@ test("undecryptable API keys do not prevent desktop startup or settings recovery
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const configPath = path.join(root, "ai-config.json");
   fs.writeFileSync(configPath, JSON.stringify({
-    version: 2,
+    version: 3,
     provider: "azure",
     azure: {
       endpoint: "https://example.test",
       apiKeyEncrypted: "invalid-encrypted-value",
-      deployment: "vision",
-      apiVersion: "2024-01-01"
+      deployment: "vision"
     },
     minimax: { endpoint: "https://minimax.test", apiKeyEncrypted: "", model: "model-a" }
   }));

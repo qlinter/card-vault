@@ -49,7 +49,6 @@ declare global {
         azure: {
           endpoint: string;
           deployment: string;
-          apiVersion: string;
           hasApiKey: boolean;
         };
         minimax: {
@@ -64,7 +63,6 @@ declare global {
           endpoint: string;
           apiKey?: string;
           deployment: string;
-          apiVersion: string;
         };
         minimax: {
           endpoint: string;
@@ -77,7 +75,6 @@ declare global {
         azure: {
           endpoint: string;
           deployment: string;
-          apiVersion: string;
           hasApiKey: boolean;
         };
         minimax: {

@@ -6,7 +6,6 @@ export type AzureProviderSettings = {
   endpoint: string;
   apiKey: string;
   deployment: string;
-  apiVersion: string;
 };
 
 export type MiniMaxProviderSettings = {
@@ -31,7 +30,6 @@ export type PublicAiSettings = {
   minimax: Omit<MiniMaxProviderSettings, "apiKey"> & { hasApiKey: boolean };
 };
 
-const defaultApiVersion = "2024-02-15-preview";
 const defaultMiniMaxEndpoint = "https://api.minimax.io/v1/chat/completions";
 const defaultMiniMaxModel = "MiniMax-VL-01";
 
@@ -47,8 +45,7 @@ function normalizeAzure(value: Partial<AzureProviderSettings> = {}): AzureProvid
   return {
     endpoint: normalizeEndpoint(value.endpoint ?? ""),
     apiKey: (value.apiKey ?? "").trim(),
-    deployment: (value.deployment ?? "").trim(),
-    apiVersion: (value.apiVersion ?? "").trim() || defaultApiVersion
+    deployment: (value.deployment ?? "").trim()
   };
 }
 
@@ -69,8 +66,7 @@ function normalizeSettings(value: Partial<AiSettingsFile & ActiveAiSettings> = {
       ...(value.azure || {}),
       endpoint: value.azure?.endpoint ?? (provider === "azure" ? value.endpoint : undefined),
       apiKey: value.azure?.apiKey ?? (provider === "azure" ? value.apiKey : undefined),
-      deployment: value.azure?.deployment ?? ("deployment" in value ? value.deployment : undefined),
-      apiVersion: value.azure?.apiVersion ?? ("apiVersion" in value ? value.apiVersion : undefined)
+      deployment: value.azure?.deployment ?? ("deployment" in value ? value.deployment : undefined)
     }),
     minimax: normalizeMiniMax({
       ...(value.minimax || {}),
@@ -103,8 +99,7 @@ export function getAiSettingsFile(): AiSettingsFile {
     azure: {
       endpoint: process.env.AZURE_OPENAI_ENDPOINT || fileSettings.azure.endpoint,
       apiKey: process.env.AZURE_OPENAI_API_KEY || fileSettings.azure.apiKey,
-      deployment: process.env.AZURE_OPENAI_DEPLOYMENT || fileSettings.azure.deployment,
-      apiVersion: process.env.AZURE_OPENAI_API_VERSION || fileSettings.azure.apiVersion
+      deployment: process.env.AZURE_OPENAI_DEPLOYMENT || fileSettings.azure.deployment
     },
     minimax: {
       endpoint: process.env.MINIMAX_API_ENDPOINT || fileSettings.minimax.endpoint,
@@ -132,7 +127,6 @@ export function getPublicAiSettings(): PublicAiSettings {
     azure: {
       endpoint: settings.azure.endpoint,
       deployment: settings.azure.deployment,
-      apiVersion: settings.azure.apiVersion,
       hasApiKey: Boolean(settings.azure.apiKey)
     },
     minimax: {
@@ -172,7 +166,7 @@ export function getChatCompletionsUrl(settings: ActiveAiSettings): string {
     return settings.endpoint;
   }
 
-  return `${settings.endpoint}/openai/deployments/${encodeURIComponent(settings.deployment)}/chat/completions?api-version=${encodeURIComponent(settings.apiVersion)}`;
+  return `${getAzureV1BaseUrl(settings.endpoint)}/chat/completions`;
 }
 
 export function getChatCompletionsHeaders(settings: ActiveAiSettings): Record<string, string> {
@@ -190,7 +184,11 @@ export function getChatCompletionsHeaders(settings: ActiveAiSettings): Record<st
 }
 
 export function getChatCompletionsModel(settings: ActiveAiSettings): string | undefined {
-  return settings.provider === "minimax" ? settings.model : undefined;
+  if (settings.provider === "minimax") {
+    return settings.model;
+  }
+
+  return settings.deployment;
 }
 
 export function getModelsUrl(settings: ActiveAiSettings): string {
@@ -198,5 +196,15 @@ export function getModelsUrl(settings: ActiveAiSettings): string {
     return settings.endpoint.replace(/\/chat\/completions\/?$/i, "/models");
   }
 
-  return `${settings.endpoint}/openai/deployments?api-version=${encodeURIComponent(settings.apiVersion)}`;
+  return `${getAzureV1BaseUrl(settings.endpoint)}/models`;
+}
+
+export function isAzureReasoningDeployment(settings: ActiveAiSettings): boolean {
+  return settings.provider === "azure" && /^gpt-5(?:$|[-.])/i.test(settings.deployment.trim());
+}
+
+function getAzureV1BaseUrl(endpoint: string): string {
+  const normalized = normalizeEndpoint(endpoint);
+  const existingV1Base = normalized.match(/^(.*\/openai\/v1)(?:\/(?:chat\/completions|responses|models))?$/i)?.[1];
+  return existingV1Base || `${normalized}/openai/v1`;
 }

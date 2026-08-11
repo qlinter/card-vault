@@ -15,7 +15,6 @@ type ModelsPayload = {
     endpoint?: string;
     apiKey?: string;
     deployment?: string;
-    apiVersion?: string;
   };
   minimax?: {
     endpoint?: string;
@@ -46,8 +45,7 @@ function activeSettingsFromPayload(payload: ModelsPayload): ActiveAiSettings {
     provider,
     endpoint: trimOrFallback(payload.azure?.endpoint, saved.azure.endpoint),
     apiKey: trimOrFallback(payload.azure?.apiKey, saved.azure.apiKey),
-    deployment: trimOrFallback(payload.azure?.deployment, saved.azure.deployment),
-    apiVersion: trimOrFallback(payload.azure?.apiVersion, saved.azure.apiVersion)
+    deployment: trimOrFallback(payload.azure?.deployment, saved.azure.deployment)
   };
 }
 

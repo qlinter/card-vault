@@ -1,57 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import type { ShareCardDraft, SharePickerCard } from "@/components/share-card-picker";
+import { ShareGalleryCardsPanel } from "@/components/share-gallery-cards-panel";
+import { ShareGalleryContentPanel } from "@/components/share-gallery-content-panel";
+import type { ShareGalleryEditorProps } from "@/components/share-gallery-editor-types";
+import { ShareGallerySectionsPanel } from "@/components/share-gallery-sections-panel";
+import { ShareGalleryVisualPanel } from "@/components/share-gallery-visual-panel";
 import { ShareDesignPreview } from "@/components/share-design-preview";
-import { ShareSectionEditor } from "@/components/share-section-editor";
-import type { ShareThemeField, ShareThemeValues } from "@/components/share-theme-generator";
-import {
-  shareDensityOptions,
-  shareImageFitOptions,
-  shareLayouts,
-  shareTextScaleOptions,
-  shareTypographyOptions,
-  type SharePresentation
-} from "@/lib/share-presentation";
-import type { ShareSectionDraft } from "@/lib/share-sections";
-import { shareThemes, type ShareThemeId } from "@/lib/share-themes";
+import { useShareGalleryEditorState, type ShareGalleryEditorPanel } from "@/components/use-share-gallery-editor-state";
+import { shareLayouts } from "@/lib/share-presentation";
+import { shareThemes } from "@/lib/share-themes";
 
-type EditorPanel = "content" | "visual" | "sections" | "cards";
-
-type ShareGalleryEditorProps = {
-  theme: ShareThemeId;
-  presentation: SharePresentation;
-  values: ShareThemeValues;
-  sections: ShareSectionDraft[];
-  cards: SharePickerCard[];
-  drafts: Record<string, ShareCardDraft>;
-  coverMode: "auto" | "custom";
-  initialCoverImagePath: string;
-  initialBackgroundImagePath: string;
-  canUndo: boolean;
-  canRedo: boolean;
-  historyVersion: number;
-  draftStatus: string;
-  onUndo: () => void;
-  onRedo: () => void;
-  onThemeChange: (theme: ShareThemeId) => void;
-  onPresentationChange: (updater: (current: SharePresentation) => SharePresentation) => void;
-  onThemeFieldChange: (field: ShareThemeField, value: string) => void;
-  onCoverModeChange: (mode: "auto" | "custom") => void;
-  onAddSection: () => void;
-  onUpdateSection: (sectionId: string, patch: Partial<ShareSectionDraft>) => void;
-  onRemoveSection: (sectionId: string) => void;
-  onMoveSection: (sectionId: string, direction: -1 | 1) => void;
-  onReorderSection: (activeId: string, targetId: string) => void;
-  onAssignSectionCard: (sectionId: string, cardId: string, assigned: boolean) => void;
-  onDraftChange: (cardId: string, patch: Partial<ShareCardDraft>) => void;
-  onMoveCard: (cardId: string, direction: -1 | 1) => void;
-  onReorderCard: (activeId: string, targetId: string) => void;
-};
-
-const themeCategories = [...new Set(shareThemes.map((theme) => theme.category))];
-const editorPanels: Array<{ id: EditorPanel; label: string; description: string }> = [
-  { id: "content", label: "基本内容", description: "标题与展馆介绍" },
+const editorPanels: Array<{ id: ShareGalleryEditorPanel; label: string; description: string }> = [
+  { id: "content", label: "基础内容", description: "标题与展馆介绍" },
   { id: "visual", label: "视觉设计", description: "版式、主题与图片" },
   { id: "sections", label: "展馆章节", description: "叙事结构与分组" },
   { id: "cards", label: "单卡展示", description: "顺序与展示覆盖" }
@@ -69,7 +29,6 @@ export function ShareGalleryEditor({
   initialBackgroundImagePath,
   canUndo,
   canRedo,
-  historyVersion: _historyVersion,
   draftStatus,
   onUndo,
   onRedo,
@@ -87,22 +46,19 @@ export function ShareGalleryEditor({
   onMoveCard,
   onReorderCard
 }: ShareGalleryEditorProps) {
-  const [activePanel, setActivePanel] = useState<EditorPanel>("content");
-  const [coverPreviewUrl, setCoverPreviewUrl] = useState("");
-  const [backgroundPreviewUrl, setBackgroundPreviewUrl] = useState("");
-  const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
+  const {
+    activePanel,
+    setActivePanel,
+    coverPreviewUrl,
+    backgroundPreviewUrl,
+    setCoverPreviewUrl,
+    setBackgroundPreviewUrl,
+    draggedCardId,
+    setDraggedCardId,
+    previewFile
+  } = useShareGalleryEditorState();
   const activeTheme = shareThemes.find((option) => option.id === theme);
   const activeLayout = shareLayouts.find((option) => option.id === presentation.layout);
-
-  function previewFile(file: File | undefined, setUrl: (value: string) => void) {
-    if (!file) {
-      setUrl("");
-      return;
-    }
-    const reader = new FileReader();
-    reader.addEventListener("load", () => setUrl(typeof reader.result === "string" ? reader.result : ""), { once: true });
-    reader.readAsDataURL(file);
-  }
 
   return (
     <div className="share-editor-v2">
@@ -146,261 +102,47 @@ export function ShareGalleryEditor({
 
       <div className="share-design-workspace">
         <div className="share-design-controls">
-          <section className="panel share-section share-editor-v2-panel" hidden={activePanel !== "content"}>
-            <div className="share-section-head">
-              <div>
-                <h2>基本内容</h2>
-                <p className="muted">建立访客首先看到的标题、定位和封面介绍。</p>
-              </div>
-            </div>
-            <div className="form-grid">
-              <label className="field">
-                <span>分享集标题 *</span>
-                <input name="title" value={values.title} onChange={(event) => onThemeFieldChange("title", event.target.value)} />
-              </label>
-              <label className="field">
-                <span>副标题</span>
-                <input name="subtitle" value={values.subtitle} onChange={(event) => onThemeFieldChange("subtitle", event.target.value)} />
-              </label>
-              <label className="field full">
-                <span>封面介绍</span>
-                <textarea name="description" value={values.description} onChange={(event) => onThemeFieldChange("description", event.target.value)} />
-              </label>
-            </div>
-          </section>
-
-          <section className="panel share-section share-editor-v2-panel" hidden={activePanel !== "visual"}>
-            <div className="share-section-head">
-              <div>
-                <h2>视觉设计</h2>
-                <p className="muted">调整展馆结构、视觉主题、背景焦点和内容面板。</p>
-              </div>
-            </div>
-            <div className="form-grid">
-              <div className="field full">
-                <span>展馆版式</span>
-                <div className="share-layout-options" role="radiogroup" aria-label="展馆版式">
-                  {shareLayouts.map((layout) => (
-                    <button
-                      key={layout.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={presentation.layout === layout.id}
-                      className={`share-layout-option${presentation.layout === layout.id ? " active" : ""}`}
-                      onClick={() => onPresentationChange((current) => ({ ...current, layout: layout.id }))}
-                    >
-                      <strong>{layout.label}</strong>
-                      <span>{layout.description}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <label className="field full">
-                <span>展馆主题</span>
-                <select name="theme" value={theme} onChange={(event) => onThemeChange(event.target.value as ShareThemeId)}>
-                  {themeCategories.map((category) => (
-                    <optgroup label={category} key={category}>
-                      {shareThemes.filter((option) => option.category === category).map((option) => (
-                        <option value={option.id} key={option.id}>{option.label}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-                <p className="muted">{activeTheme?.description}</p>
-              </label>
-              <div className="field full share-visual-controls">
-                <span>背景与文字面板</span>
-                <label>
-                  <span>水平焦点 {presentation.backgroundPosition.x}%</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={presentation.backgroundPosition.x}
-                    onChange={(event) => onPresentationChange((current) => ({
-                      ...current,
-                      backgroundPosition: { ...current.backgroundPosition, x: Number(event.target.value) }
-                    }))}
-                  />
-                </label>
-                <label>
-                  <span>垂直焦点 {presentation.backgroundPosition.y}%</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={presentation.backgroundPosition.y}
-                    onChange={(event) => onPresentationChange((current) => ({
-                      ...current,
-                      backgroundPosition: { ...current.backgroundPosition, y: Number(event.target.value) }
-                    }))}
-                  />
-                </label>
-                <label>
-                  <span>文字面板透明度 {presentation.panelOpacity}%</span>
-                  <input
-                    type="range"
-                    min="4"
-                    max="55"
-                    value={presentation.panelOpacity}
-                    onChange={(event) => onPresentationChange((current) => ({ ...current, panelOpacity: Number(event.target.value) }))}
-                  />
-                </label>
-              </div>
-              <div className="field full share-composition-controls">
-                <span>排版与构图</span>
-                <label>
-                  <span>字体风格</span>
-                  <select value={presentation.typography} onChange={(event) => onPresentationChange((current) => ({ ...current, typography: event.target.value as SharePresentation["typography"] }))}>
-                    {shareTypographyOptions.map((option) => <option value={option.id} key={option.id}>{option.label}</option>)}
-                  </select>
-                </label>
-                <label>
-                  <span>文字大小</span>
-                  <select value={presentation.textScale} onChange={(event) => onPresentationChange((current) => ({ ...current, textScale: event.target.value as SharePresentation["textScale"] }))}>
-                    {shareTextScaleOptions.map((option) => <option value={option.id} key={option.id}>{option.label}</option>)}
-                  </select>
-                </label>
-                <label>
-                  <span>内容密度</span>
-                  <select value={presentation.density} onChange={(event) => onPresentationChange((current) => ({ ...current, density: event.target.value as SharePresentation["density"] }))}>
-                    {shareDensityOptions.map((option) => <option value={option.id} key={option.id}>{option.label}</option>)}
-                  </select>
-                </label>
-                <label>
-                  <span>图片构图</span>
-                  <select value={presentation.imageFit} onChange={(event) => onPresentationChange((current) => ({ ...current, imageFit: event.target.value as SharePresentation["imageFit"] }))}>
-                    {shareImageFitOptions.map((option) => <option value={option.id} key={option.id}>{option.label}</option>)}
-                  </select>
-                </label>
-              </div>
-              <label className="field full">
-                <span>分享集背景图</span>
-                <div className="share-background-upload">
-                  <input type="hidden" name="existingBackgroundImagePath" value={initialBackgroundImagePath} />
-                  <input
-                    name="backgroundImage"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(event) => previewFile(event.target.files?.[0], setBackgroundPreviewUrl)}
-                  />
-                  {initialBackgroundImagePath ? (
-                    <>
-                      <p className="muted">未重新上传时，将继续使用当前背景图。</p>
-                      <label className="inline-check">
-                        <input type="checkbox" name="clearBackgroundImage" />
-                        清除当前背景图
-                      </label>
-                    </>
-                  ) : <p className="muted">可上传一张横版图片作为分享展馆背景。未上传时使用主题背景。</p>}
-                </div>
-              </label>
-              <label className="field full">
-                <span>封面图</span>
-                <div className="share-cover-options">
-                  <label className="inline-check">
-                    <input type="radio" name="coverMode" value="auto" checked={coverMode === "auto"} onChange={() => onCoverModeChange("auto")} />
-                    自动使用第一张有图卡片
-                  </label>
-                  <label className="inline-check">
-                    <input type="radio" name="coverMode" value="custom" checked={coverMode === "custom"} onChange={() => onCoverModeChange("custom")} />
-                    自定义上传
-                  </label>
-                  <input type="hidden" name="existingCoverImagePath" value={initialCoverImagePath} />
-                  {coverMode === "custom" ? (
-                    <div className="share-cover-upload">
-                      <input
-                        name="coverImage"
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        onChange={(event) => previewFile(event.target.files?.[0], setCoverPreviewUrl)}
-                      />
-                      {initialCoverImagePath ? <p className="muted">未重新上传时，将继续使用当前自定义封面。</p> : null}
-                    </div>
-                  ) : null}
-                </div>
-              </label>
-            </div>
-          </section>
-
-          <div className="share-editor-v2-panel" hidden={activePanel !== "sections"}>
-            <ShareSectionEditor
-              sections={sections}
-              cards={cards}
-              onAdd={onAddSection}
-              onChange={onUpdateSection}
-              onRemove={onRemoveSection}
-              onMove={onMoveSection}
-              onReorder={onReorderSection}
-              onCardAssignment={onAssignSectionCard}
+          <div hidden={activePanel !== "content"}>
+            <ShareGalleryContentPanel values={values} onThemeFieldChange={onThemeFieldChange} />
+          </div>
+          <div hidden={activePanel !== "visual"}>
+            <ShareGalleryVisualPanel
+              theme={theme}
+              presentation={presentation}
+              coverMode={coverMode}
+              initialCoverImagePath={initialCoverImagePath}
+              initialBackgroundImagePath={initialBackgroundImagePath}
+              onThemeChange={onThemeChange}
+              onPresentationChange={onPresentationChange}
+              onCoverModeChange={onCoverModeChange}
+              setCoverPreviewUrl={setCoverPreviewUrl}
+              setBackgroundPreviewUrl={setBackgroundPreviewUrl}
+              previewFile={previewFile}
             />
           </div>
-
-          <section className="panel share-section share-editor-v2-panel" hidden={activePanel !== "cards"}>
-            <div className="share-section-head">
-              <div>
-                <h2>单卡展示编辑</h2>
-                <p className="muted">设置对外展示标题、描述和顺序；留空时使用卡片原始公开信息。</p>
-              </div>
-              <span className="muted">{cards.length} 张卡片</span>
-            </div>
-            <div className="share-item-editor">
-              {cards.map((card) => {
-                const draft = drafts[card.id] ?? {
-                  sortOrder: String(card.sortOrder),
-                  displayTitle: card.displayTitle,
-                  displayDescription: card.displayDescription
-                };
-                return (
-                  <article
-                    key={card.id}
-                    className={`share-item-edit-card${draggedCardId === card.id ? " is-dragging" : ""}`}
-                    onDragEnd={() => setDraggedCardId(null)}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={() => {
-                      if (draggedCardId) onReorderCard(draggedCardId, card.id);
-                      setDraggedCardId(null);
-                    }}
-                  >
-                    <input type="hidden" name={`sortOrder-${card.id}`} value={draft.sortOrder || "0"} />
-                    <input type="hidden" name={`displayTitle-${card.id}`} value={draft.displayTitle} />
-                    <input type="hidden" name={`displayDescription-${card.id}`} value={draft.displayDescription} />
-                    <div className="share-item-card-heading">
-                      <span
-                        className="share-drag-handle"
-                        draggable
-                        title="拖拽调整卡片顺序"
-                        aria-hidden="true"
-                        onDragStart={() => setDraggedCardId(card.id)}
-                      >⠿</span>
-                      <strong>{card.playerName}</strong>
-                      <p className="muted">{card.cardTitle}</p>
-                      <div className="share-keyboard-order" aria-label={`${card.playerName} 排序`}>
-                        <button type="button" className="icon-btn" title="上移卡片" onClick={() => onMoveCard(card.id, -1)} disabled={cards[0]?.id === card.id}>↑</button>
-                        <button type="button" className="icon-btn" title="下移卡片" onClick={() => onMoveCard(card.id, 1)} disabled={cards.at(-1)?.id === card.id}>↓</button>
-                      </div>
-                    </div>
-                    <label className="field share-sort-field">
-                      <span>排序</span>
-                      <input type="number" value={draft.sortOrder} onChange={(event) => onDraftChange(card.id, { sortOrder: event.target.value })} />
-                    </label>
-                    <label className="field">
-                      <span>展示标题</span>
-                      <input value={draft.displayTitle} placeholder={card.cardTitle} onChange={(event) => onDraftChange(card.id, { displayTitle: event.target.value })} />
-                    </label>
-                    <label className="field full">
-                      <span>展示描述</span>
-                      <textarea
-                        value={draft.displayDescription}
-                        placeholder={card.publicDescription || "留空时使用卡片公开描述"}
-                        onChange={(event) => onDraftChange(card.id, { displayDescription: event.target.value })}
-                      />
-                    </label>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
+          <div hidden={activePanel !== "sections"}>
+            <ShareGallerySectionsPanel
+              sections={sections}
+              cards={cards}
+              onAddSection={onAddSection}
+              onUpdateSection={onUpdateSection}
+              onRemoveSection={onRemoveSection}
+              onMoveSection={onMoveSection}
+              onReorderSection={onReorderSection}
+              onAssignSectionCard={onAssignSectionCard}
+            />
+          </div>
+          <div hidden={activePanel !== "cards"}>
+            <ShareGalleryCardsPanel
+              cards={cards}
+              drafts={drafts}
+              onDraftChange={onDraftChange}
+              onMoveCard={onMoveCard}
+              onReorderCard={onReorderCard}
+              draggedCardId={draggedCardId}
+              setDraggedCardId={setDraggedCardId}
+            />
+          </div>
         </div>
 
         <ShareDesignPreview

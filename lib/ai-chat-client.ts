@@ -6,6 +6,7 @@ import {
   isAzureReasoningDeployment
 } from "./ai-settings.ts";
 import { responseToText, safeText } from "./ai-response-parsing.ts";
+import { errorMessage } from "./feedback-messages.ts";
 
 export type AiChatMessage = {
   role: "system" | "user" | "assistant";
@@ -100,7 +101,7 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
       throw new AiUpstreamError(`${aiProviderName(settings.provider)} ${request.operation}超时，请稍后重试。`);
     }
 
-    const message = error instanceof Error ? error.message : "未知网络错误";
+    const message = errorMessage(error, "未知网络错误");
     const detail = message === "Failed to fetch"
       ? "无法连接 AI 服务，请检查网络、Endpoint 和代理设置"
       : message;

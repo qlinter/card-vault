@@ -2,19 +2,12 @@
 import { CardForm } from "@/components/card-form";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { toScalar } from "@/lib/query-params";
 
 type EditProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
-
-function toScalar(value: string | string[] | undefined): string | undefined {
-  if (Array.isArray(value)) {
-    return value[0];
-  }
-
-  return value;
-}
 
 export default async function EditCardPage({ params, searchParams }: EditProps) {
   const { id } = await params;

@@ -2,15 +2,12 @@ import { exportShareCollectionAction } from "@/app/actions/shares";
 import { prisma } from "@/lib/prisma";
 import { formatBytes } from "@/lib/share-export-validation";
 import { notFound } from "next/navigation";
+import { toScalar } from "@/lib/query-params";
 
 type ExportSharePageProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
-
-function toScalar(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
 
 export default async function ExportSharePage({ params, searchParams }: ExportSharePageProps) {
   const { id } = await params;

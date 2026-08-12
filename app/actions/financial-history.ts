@@ -15,6 +15,7 @@ import {
   updateCardValuation
 } from "@/lib/financial-history-store";
 import { prisma } from "@/lib/prisma";
+import { errorMessage } from "@/lib/feedback-messages";
 
 type FinancialRecordType = "transaction" | "expense" | "valuation";
 
@@ -61,7 +62,7 @@ function finishHistoryMutation(cardId: string, success: string, error?: unknown)
   revalidatePath("/showcase");
   revalidatePath(`/showcase/cards/${cardId}`);
   if (error) {
-    const message = error instanceof Error ? error.message : "财务记录操作失败，请稍后重试。";
+    const message = errorMessage(error, "财务记录操作失败，请稍后重试。");
     redirect(`/cards/${cardId}?error=${encodeURIComponent(message)}#financial-history`);
   }
   redirect(`/cards/${cardId}?success=${success}#financial-history`);

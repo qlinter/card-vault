@@ -5,6 +5,7 @@ import {
 } from "@/lib/ai-settings";
 import { AiUpstreamError, requestAiChatText } from "@/lib/ai-chat-client";
 import { extractJsonRecord, safeText } from "@/lib/ai-response-parsing";
+import { errorMessage } from "@/lib/feedback-messages";
 
 export const runtime = "nodejs";
 
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ suggestion: await repairJsonFromText(settings, content) });
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "AI 识别失败，请稍后重试。";
+    const message = errorMessage(error, "AI 识别失败，请稍后重试。");
     return NextResponse.json({ error: message }, { status: error instanceof AiUpstreamError ? 502 : 400 });
   }
 }

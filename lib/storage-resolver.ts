@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { resolveDataDir as resolveCoreDataDir, resolveDbPath as resolveCoreDbPath, resolveShareBackgroundsDir as resolveCoreShareBackgroundsDir, resolveShareCoversDir as resolveCoreShareCoversDir, resolveUploadsDir as resolveCoreUploadsDir } from "./storage-paths-core.js";
 
 type StorageEnv = Record<string, string | undefined>;
 
@@ -36,31 +37,21 @@ export function resolveConfiguredDataDir(env: StorageEnv = process.env): string 
 }
 
 export function resolveDataDir(env: StorageEnv = process.env): string {
-  return getEnvValue(env, "CARD_VAULT_DATA_DIR") || path.join(process.cwd(), "data");
+  return resolveCoreDataDir(process.cwd(), env);
 }
 
 export function resolveDatabasePath(env: StorageEnv = process.env): string {
-  const customDbPath = getEnvValue(env, "CARD_VAULT_DB_PATH");
-  if (customDbPath) {
-    return customDbPath;
-  }
-
-  const dataDir = getEnvValue(env, "CARD_VAULT_DATA_DIR");
-  if (dataDir) {
-    return path.join(dataDir, "dev.db");
-  }
-
-  return path.join(process.cwd(), "prisma", "dev.db");
+  return resolveCoreDbPath(process.cwd(), env);
 }
 
 export function resolveUploadsDir(env: StorageEnv = process.env): string {
-  return path.join(resolveDataDir(env), "uploads");
+  return resolveCoreUploadsDir(process.cwd(), env);
 }
 
 export function resolveShareCoversDir(env: StorageEnv = process.env): string {
-  return path.join(resolveDataDir(env), "share-covers");
+  return resolveCoreShareCoversDir(process.cwd(), env);
 }
 
 export function resolveShareBackgroundsDir(env: StorageEnv = process.env): string {
-  return path.join(resolveDataDir(env), "share-backgrounds");
+  return resolveCoreShareBackgroundsDir(process.cwd(), env);
 }

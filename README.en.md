@@ -6,9 +6,16 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 
 ## Current Version
 
-`1.0.14`
+`1.0.15`
 
-### 1.0.14 Highlights
+### 1.0.15 Highlights
+
+- Upgraded homepage AI portfolio analysis to the complete v2 protocol with broader data dimensions, unified snapshots and normalization, stronger JSON parsing and repair, and richer frontend reporting.
+- Split the Electron main process, storage manager, IPC, backup/restore, and local-server runtime, while unifying storage-path resolution rules.
+- Further modularized the Share Gallery Editor by extracting wizard state, history, draft recovery, navigation, and content, visual, section, and card settings panels.
+- Centralized success-code mappings and error-message normalization across pages, Server Actions, and AI API routes.
+- Removed the unused Tailwind CSS configuration and dependency; the project now uses its existing custom CSS exclusively.
+- Added automated coverage for storage paths, feedback messages, and the v2 portfolio-analysis protocol while keeping production builds and release checks green.
 
 - Completed Share Gallery Editor 2.0 with four workspaces, drag and keyboard ordering, undo/redo, local draft recovery, pre-save cover/background preview, and typography, density, and image-fit controls.
 - Fixed application share previews loading the complete Card Vault UI after a card click; previews now use an inline card detail.
@@ -52,12 +59,13 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 | `1.0.12` | Upgraded core dependencies and hardened storage migration, safe navigation, filtered context, and Share Gallery Editor 2.0. |
 | `1.0.13` | Unified Azure OpenAI on the v1 API with unified-resource endpoints and GPT-5.4 / 5.5 / 5.6 support. |
 | `1.0.14` | Completed Editor 2.0 and Drop export, reliable financial history, history-backed portfolio analysis, staged backup migration, and optional Windows release signing. |
+| `1.0.15` | Completed the v2 AI analysis protocol, further Electron/storage/share-editor modularization, feedback-message consolidation, storage-rule unification, and Tailwind removal. |
 
 ## Install and Run
 
 ### Installer
 
-Planned file: `dist/card-vault-1.0.14-setup.exe` (generated after confirmation)
+Release file: `dist/card-vault-1.0.15-setup.exe`
 
 - Uses an installation wizard and supports a user-selected installation directory.
 - Installing a newer build of the same application normally replaces program files without deleting collection data.
@@ -66,7 +74,7 @@ Planned file: `dist/card-vault-1.0.14-setup.exe` (generated after confirmation)
 
 ### Portable Build
 
-Planned file: `dist/card-vault-1.0.14-portable.zip` (generated after confirmation)
+Release file: `dist/card-vault-1.0.15-portable.zip`
 
 1. Extract the complete ZIP.
 2. Run `Card Vault.exe` from the extracted directory.
@@ -204,4 +212,4 @@ Windows code signing is an optional enhancement and no longer blocks routine pac
 
 ## Technology
 
-`Next.js 16`, `React 19`, `TypeScript`, `Prisma`, `SQLite`, `Electron`, and `Tailwind CSS`
+`Next.js 16`, `React 19`, `TypeScript`, `Prisma`, `SQLite`, `Electron`, and custom CSS

@@ -1,21 +1,12 @@
 import Link from "next/link";
 import { deleteShareCollectionAction } from "@/app/actions/shares";
 import { prisma } from "@/lib/prisma";
+import { toScalar } from "@/lib/query-params";
+import { resolveSuccessMessage, shareListSuccessMessages } from "@/lib/feedback-messages";
 
 type SharesPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
-
-function toScalar(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function successText(value: string | undefined): string | null {
-  if (value === "deleted") {
-    return "分享集已删除。";
-  }
-  return null;
-}
 
 export default async function SharesPage({ searchParams }: SharesPageProps) {
   const params = await searchParams;
@@ -23,7 +14,7 @@ export default async function SharesPage({ searchParams }: SharesPageProps) {
     include: { items: true },
     orderBy: { updatedAt: "desc" }
   });
-  const success = successText(toScalar(params.success));
+  const success = resolveSuccessMessage(toScalar(params.success), shareListSuccessMessages);
   const error = toScalar(params.error);
 
   return (

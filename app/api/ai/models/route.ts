@@ -6,6 +6,7 @@ import {
   getChatCompletionsHeaders,
   getModelsUrl
 } from "@/lib/ai-settings";
+import { errorMessage } from "@/lib/feedback-messages";
 
 export const runtime = "nodejs";
 
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json({ models: extractModelIds(data) });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "读取模型失败。";
+    const message = errorMessage(error, "读取模型失败。");
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { errorMessage } from "@/lib/feedback-messages";
 
 export type ShareThemeCard = {
   id: string;
@@ -90,7 +91,7 @@ export function ShareThemeGenerator({ cards, currentValues, onApplySuggestion }:
           : "AI 已生成主题；当前字段已有内容，未覆盖。"
       );
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "";
+      const detail = errorMessage(error, "");
       setStatus(
         detail === "Failed to fetch"
           ? "无法连接 Card Vault 本地服务，请重新启动程序后重试。"

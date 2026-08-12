@@ -5,19 +5,13 @@ import { normalizeImagePath } from "@/lib/image-path";
 import { normalizeHttpUrl } from "@/lib/http-url";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { toScalar } from "@/lib/query-params";
+import { cardSuccessMessages, resolveSuccessMessage } from "@/lib/feedback-messages";
 
 type DetailProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
-
-function toScalar(value: string | string[] | undefined): string | undefined {
-  if (Array.isArray(value)) {
-    return value[0];
-  }
-
-  return value;
-}
 
 function valueOrDash(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === "") {
@@ -61,30 +55,10 @@ function collectionStatusText(value: string): string {
   }
 }
 
-function successText(value: string | undefined): string | null {
-  switch (value) {
-    case "created":
-    case "added":
-      return "添加成功";
-    case "updated":
-      return "修改成功";
-    case "deleted":
-      return "删除成功";
-    case "history-added":
-      return "财务记录已添加";
-    case "history-updated":
-      return "财务记录已纠错";
-    case "history-deleted":
-      return "财务记录已删除";
-    default:
-      return value ?? null;
-  }
-}
-
 export default async function CardDetailPage({ params, searchParams }: DetailProps) {
   const { id } = await params;
   const query = await searchParams;
-  const success = successText(toScalar(query.success));
+  const success = resolveSuccessMessage(toScalar(query.success), cardSuccessMessages, { passthroughUnknown: true });
   const error = toScalar(query.error);
   const returnTo = toScalar(query.returnTo);
   const returnHref = returnTo === "/" || returnTo?.startsWith("/?") ? returnTo : "/";
@@ -258,6 +232,4 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
     </div>
   );
 }
-
-
 

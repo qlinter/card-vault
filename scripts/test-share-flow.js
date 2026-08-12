@@ -308,7 +308,7 @@ async function main() {
     assertIncludes(newSharePage, "蓝黑军团-1", "球队主题选项");
     assertIncludes(newSharePage, "蓝黑军团-2", "球队主题选项");
     assertIncludes(newSharePage, "分享展馆编辑工作台", "编辑器 2.0 工作台");
-    assertIncludes(newSharePage, "基本内容", "编辑器 2.0 内容分区");
+    assertIncludes(newSharePage, "基础内容", "编辑器 2.0 内容分区");
     assertIncludes(newSharePage, "视觉设计", "编辑器 2.0 视觉分区");
     assertIncludes(newSharePage, "桌面", "编辑器 2.0 桌面预览");
     assertIncludes(newSharePage, "手机", "编辑器 2.0 手机预览");

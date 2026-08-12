@@ -1,14 +1,11 @@
 import { createShareCollectionAction } from "@/app/actions/shares";
 import { ShareCollectionForm } from "@/components/share-collection-form";
 import { prisma } from "@/lib/prisma";
+import { toScalar } from "@/lib/query-params";
 
 type NewSharePageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
-
-function toScalar(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
 
 export default async function NewSharePage({ searchParams }: NewSharePageProps) {
   const params = await searchParams;

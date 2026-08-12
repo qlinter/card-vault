@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { OperationProgress, type OperationProgressValue } from "@/components/operation-progress";
+import { OperationProgress } from "@/components/operation-progress";
+import { useDesktopStorageProgress } from "@/components/use-desktop-storage-progress";
+import { errorMessage } from "@/lib/feedback-messages";
 
 function desktopApi() {
   return window.cardVaultDesktop;
@@ -11,8 +13,7 @@ export function BackupSettings() {
   const [backupPath, setBackupPath] = useState("正在读取...");
   const [busyAction, setBusyAction] = useState<"choose" | "backup" | "restore" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [progress, setProgress] = useState<OperationProgressValue | null>(null);
-  const [activeStorageOperation, setActiveStorageOperation] = useState<string | null>(null);
+  const { progress, setProgress, activeStorageOperation } = useDesktopStorageProgress(["backup", "restore"]);
 
   useEffect(() => {
     let mounted = true;
@@ -39,17 +40,6 @@ export function BackupSettings() {
     };
   }, []);
 
-  useEffect(() => {
-    const api = desktopApi();
-    if (!api) return;
-    return api.onStorageProgress((nextProgress) => {
-      setActiveStorageOperation(nextProgress.done ? null : nextProgress.operation);
-      if (nextProgress.operation === "backup" || nextProgress.operation === "restore") {
-        setProgress(nextProgress.done ? null : { percent: nextProgress.percent, message: nextProgress.message });
-      }
-    });
-  }, []);
-
   async function handleChooseDirectory() {
     const api = desktopApi();
     if (!api) {
@@ -63,7 +53,7 @@ export function BackupSettings() {
       setBackupPath(result.path);
       setMessage(result.cancelled ? "已取消修改备份路径。" : "备份路径已更新。");
     } catch (error) {
-      setMessage(`修改备份路径失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
+      setMessage(`修改备份路径失败：${errorMessage(error, "请稍后重试。")}`);
     } finally {
       setBusyAction(null);
     }
@@ -83,7 +73,7 @@ export function BackupSettings() {
       setBackupPath(result.backupRoot);
       setMessage(`备份完成：${result.backupPath}`);
     } catch (error) {
-      setMessage(`备份失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
+      setMessage(`备份失败：${errorMessage(error, "请稍后重试。")}`);
     } finally {
       setBusyAction(null);
       setProgress(null);
@@ -112,7 +102,7 @@ export function BackupSettings() {
         setMessage(`恢复完成${migrationText}。Card Vault 正在重新启动。`);
       }
     } catch (error) {
-      setMessage(`恢复失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
+      setMessage(`恢复失败：${errorMessage(error, "请稍后重试。")}`);
       setBusyAction(null);
       setProgress(null);
     }

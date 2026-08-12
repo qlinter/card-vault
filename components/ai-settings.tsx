@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { errorMessage } from "@/lib/feedback-messages";
 
 type AiProvider = "azure" | "minimax";
 
@@ -92,7 +93,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
         }
       } catch (error) {
         if (!cancelled) {
-          const detail = error instanceof Error ? error.message : "请重新启动 Card Vault 后重试。";
+          const detail = errorMessage(error, "请重新启动 Card Vault 后重试。");
           setMessage("读取 AI 设置失败：" + detail);
         }
       }
@@ -149,7 +150,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
       setMiniMaxApiKey("");
       setMessage(providerName(saved.provider) + " 设置已加密保存并立即生效，无需重启 Card Vault。");
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "请稍后重试。";
+      const detail = errorMessage(error, "请稍后重试。");
       setMessage("保存失败：" + detail);
     } finally {
       setIsSaving(false);
@@ -174,12 +175,12 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
 
       setMessage(providerName(settings.provider) + " 连接测试通过。");
     } catch (error) {
-      const detail =
-        error instanceof Error
-          ? error.message
-          : settings.provider === "minimax"
-            ? "请检查 MiniMax Endpoint、API Key 和 Model。"
-            : "请检查 Azure Endpoint、API Key 和 Deployment。";
+      const detail = errorMessage(
+        error,
+        settings.provider === "minimax"
+          ? "请检查 MiniMax Endpoint、API Key 和 Model。"
+          : "请检查 Azure Endpoint、API Key 和 Deployment。"
+      );
       setMessage(detail);
     } finally {
       setIsTesting(false);
@@ -206,7 +207,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
       setModelOptions(models);
       setMessage(models.length > 0 ? "已读取 " + models.length + " 个模型。" : "没有读取到可用模型。");
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "请检查当前服务商的 Endpoint 和 API Key。";
+      const detail = errorMessage(error, "请检查当前服务商的 Endpoint 和 API Key。");
       setMessage(detail);
     } finally {
       setIsLoadingModels(false);

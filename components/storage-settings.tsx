@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { OperationProgress, type OperationProgressValue } from "@/components/operation-progress";
+import { OperationProgress } from "@/components/operation-progress";
+import { useDesktopStorageProgress } from "@/components/use-desktop-storage-progress";
+import { errorMessage } from "@/lib/feedback-messages";
 
 type StorageSettingsProps = {
   currentPath: string;
@@ -31,23 +33,11 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [health, setHealth] = useState<DataHealth | null>(null);
   const [revealingPath, setRevealingPath] = useState<string | null>(null);
-  const [progress, setProgress] = useState<OperationProgressValue | null>(null);
-  const [activeStorageOperation, setActiveStorageOperation] = useState<string | null>(null);
+  const { progress, setProgress, activeStorageOperation } = useDesktopStorageProgress(["migrate", "health", "cleanup"]);
 
   useEffect(() => {
     setDisplayedPath(currentPath);
   }, [currentPath]);
-
-  useEffect(() => {
-    const api = desktopApi();
-    if (!api) return;
-    return api.onStorageProgress((nextProgress) => {
-      setActiveStorageOperation(nextProgress.done ? null : nextProgress.operation);
-      if (["migrate", "health", "cleanup"].includes(nextProgress.operation)) {
-        setProgress(nextProgress.done ? null : { percent: nextProgress.percent, message: nextProgress.message });
-      }
-    });
-  }, []);
 
   async function handleChooseDirectory() {
     const api = desktopApi();
@@ -73,7 +63,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
         setMessage(`新路径已保存到 ${result.path}，应用正在重启。`);
       }
     } catch (error) {
-      setMessage(`修改存储路径失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
+      setMessage(`修改存储路径失败：${errorMessage(error, "请稍后重试。")}`);
     } finally {
       setBusyAction(null);
       setProgress(null);
@@ -95,7 +85,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
       setHealth(result);
       setMessage(result.ok ? "数据健康检查通过。" : "数据健康检查发现问题，请查看下方结果。");
     } catch (error) {
-      setMessage(`数据健康检查失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
+      setMessage(`数据健康检查失败：${errorMessage(error, "请稍后重试。")}`);
     } finally {
       setBusyAction(null);
       setProgress(null);
@@ -123,7 +113,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
         setMessage(`清理完成，共删除 ${result.deletedFiles.length} 个未引用文件。`);
       }
     } catch (error) {
-      setMessage(`清理失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
+      setMessage(`清理失败：${errorMessage(error, "请稍后重试。")}`);
     } finally {
       setBusyAction(null);
       setProgress(null);
@@ -142,7 +132,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
     try {
       await api.showOrphanFileInFolder(file);
     } catch (error) {
-      setMessage(`无法在文件夹中定位该文件：${error instanceof Error ? error.message : "请重新检查数据健康。"}`);
+      setMessage(`无法在文件夹中定位该文件：${errorMessage(error, "请重新检查数据健康。")}`);
     } finally {
       setRevealingPath(null);
     }

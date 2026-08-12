@@ -5,6 +5,7 @@ import {
   getAiSettingsFile
 } from "@/lib/ai-settings";
 import { AiUpstreamError, aiProviderName, requestAiChat } from "@/lib/ai-chat-client";
+import { errorMessage } from "@/lib/feedback-messages";
 
 export const runtime = "nodejs";
 
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "AI 设置测试失败。";
+    const message = errorMessage(error, "AI 设置测试失败。");
     return NextResponse.json({ error: message }, { status: error instanceof AiUpstreamError ? 502 : 400 });
   }
 }

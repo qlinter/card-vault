@@ -6,37 +6,17 @@ import { formatMinorMoneyGrouped } from "@/lib/financial-history";
 import { normalizeImagePath } from "@/lib/image-path";
 import { buildPortfolioScope, buildPortfolioSnapshot } from "@/lib/portfolio-analysis";
 import { prisma } from "@/lib/prisma";
+import { toScalar } from "@/lib/query-params";
+import { commonSuccessMessages, resolveSuccessMessage } from "@/lib/feedback-messages";
 
 type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-function toScalar(value: string | string[] | undefined): string | undefined {
-  if (Array.isArray(value)) {
-    return value[0];
-  }
-
-  return value;
-}
-
 function uniqueStrings(values: Array<string | null>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value && value.trim())))].sort((a, b) =>
     a.localeCompare(b)
   );
-}
-
-function successText(value: string | undefined): string | null {
-  switch (value) {
-    case "created":
-    case "added":
-      return "添加成功";
-    case "updated":
-      return "修改成功";
-    case "deleted":
-      return "删除成功";
-    default:
-      return value ?? null;
-  }
 }
 
 export default async function Home({ searchParams }: HomeProps) {
@@ -71,13 +51,14 @@ export default async function Home({ searchParams }: HomeProps) {
     prisma.card.findMany({
       where: buildCardFilters(query),
       include: {
+        _count: { select: { images: true } },
         images: { take: 1, orderBy: { createdAt: "asc" } },
         transactions: {
-          select: { kind: true, amountMinor: true, currency: true },
+          select: { kind: true, amountMinor: true, currency: true, occurredAt: true, createdAt: true },
           orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }]
         },
         expenses: {
-          select: { amountMinor: true, currency: true },
+          select: { amountMinor: true, currency: true, occurredAt: true, createdAt: true },
           orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }]
         },
         valuations: {
@@ -116,7 +97,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const autoTypes = uniqueStrings(optionRows.map((row) => row.autoType));
   const patchTypes = uniqueStrings(optionRows.map((row) => row.patchType));
 
-  const successMessage = successText(toScalar(params.success));
+  const successMessage = resolveSuccessMessage(toScalar(params.success), commonSuccessMessages, { passthroughUnknown: true });
   const errorMessage = toScalar(params.error);
   const valuationTotals = calculateLatestValuationTotals(cards);
   const valuationCurrencies = Object.keys(valuationTotals.totals).sort((left, right) => {
@@ -124,7 +105,10 @@ export default async function Home({ searchParams }: HomeProps) {
     if (right === "CNY") return 1;
     return left.localeCompare(right);
   });
-  const portfolioSnapshot = buildPortfolioSnapshot(cards, buildPortfolioScope(query));
+  const portfolioSnapshot = buildPortfolioSnapshot(
+    cards.map((card) => ({ ...card, imageCount: card._count.images })),
+    buildPortfolioScope(query)
+  );
   const returnParams = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
     if (value) returnParams.set(key, value);

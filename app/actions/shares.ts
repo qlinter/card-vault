@@ -13,6 +13,7 @@ import { getShareBackgroundsDir, getShareCoversDir } from "@/lib/storage-paths";
 import { createSharePresentation, serializeSharePresentation } from "@/lib/share-presentation";
 import { parseShareSectionDrafts } from "@/lib/share-sections";
 import { normalizeShareTheme } from "@/lib/share-themes";
+import { errorMessage } from "@/lib/feedback-messages";
 
 const shareCoverDir = getShareCoversDir();
 const shareBackgroundDir = getShareBackgroundsDir();
@@ -240,7 +241,7 @@ export async function createShareCollectionAction(formData: FormData): Promise<v
     redirectPath = "/shares?success=created";
   } catch (error) {
     await Promise.all(uploadedPaths.map((imagePath) => removeManagedShareImage(imagePath)));
-    const message = error instanceof Error ? error.message : "创建分享集失败，请稍后重试。";
+    const message = errorMessage(error, "创建分享集失败，请稍后重试。");
     redirectPath = `/shares/new?error=${encodeURIComponent(message)}`;
   }
 
@@ -290,7 +291,7 @@ export async function updateShareCollectionAction(shareId: string, formData: For
     redirectPath = "/shares?success=updated";
   } catch (error) {
     await Promise.all(uploadedPaths.map((imagePath) => removeManagedShareImage(imagePath)));
-    const message = error instanceof Error ? error.message : "更新分享集失败，请稍后重试。";
+    const message = errorMessage(error, "更新分享集失败，请稍后重试。");
     redirectPath = `/shares/${shareId}/edit?error=${encodeURIComponent(message)}`;
   }
 
@@ -311,7 +312,7 @@ export async function deleteShareCollectionAction(shareId: string): Promise<void
     );
     revalidatePath("/shares");
   } catch (error) {
-    const message = error instanceof Error ? error.message : "删除分享集失败，请稍后重试。";
+    const message = errorMessage(error, "删除分享集失败，请稍后重试。");
     redirectPath = `/shares?error=${encodeURIComponent(message)}`;
   }
 
@@ -345,7 +346,7 @@ export async function exportShareCollectionAction(shareId: string, formData: For
     const result = await exportShareCollection(collection, mode);
     redirectPath = `/shares/${shareId}/export?success=${mode}&path=${encodeURIComponent(result.folderPath)}&zip=${encodeURIComponent(result.zipPath)}&report=${encodeURIComponent(result.reportPath)}&cards=${result.cardCount}&images=${result.imageCount}&files=${result.fileCount}&bytes=${result.totalBytes}&warnings=${result.warningCount}`;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "导出失败，请稍后重试。";
+    const message = errorMessage(error, "导出失败，请稍后重试。");
     redirectPath = `/shares/${shareId}/export?error=${encodeURIComponent(message)}`;
   }
 

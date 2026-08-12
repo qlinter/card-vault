@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { errorMessage } from "@/lib/feedback-messages";
 
 type SuggestionValue = string | boolean;
 type Suggestion = Record<string, SuggestionValue>;
@@ -222,7 +223,7 @@ export function AiRecognitionPanel({ mode = "create", defaultImageUrls = [] }: A
       const applied = button ? applySuggestion(button, data.suggestion, overwrite) : [];
       setMessage(applied.length > 0 ? `已填入 ${applied.join("、")}。备注已保持为空。` : "AI 返回了建议，但当前表单没有可填入的空字段；备注已保持为空。");
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "请稍后重试。";
+      const detail = errorMessage(error, "请稍后重试。");
       setMessage(detail);
     } finally {
       setIsPending(false);

@@ -2,25 +2,13 @@ import { updateShareCollectionAction } from "@/app/actions/shares";
 import { ShareCollectionForm } from "@/components/share-collection-form";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { toScalar } from "@/lib/query-params";
+import { resolveSuccessMessage, shareEditSuccessMessages } from "@/lib/feedback-messages";
 
 type EditSharePageProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
-
-function toScalar(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function successText(value: string | undefined): string | null {
-  if (value === "created") {
-    return "分享集已创建。";
-  }
-  if (value === "updated") {
-    return "分享集已保存。";
-  }
-  return null;
-}
 
 export default async function EditSharePage({ params, searchParams }: EditSharePageProps) {
   const { id } = await params;
@@ -46,7 +34,7 @@ export default async function EditSharePage({ params, searchParams }: EditShareP
     notFound();
   }
 
-  const success = successText(toScalar(query.success));
+  const success = resolveSuccessMessage(toScalar(query.success), shareEditSuccessMessages);
   const error = toScalar(query.error);
 
   return (

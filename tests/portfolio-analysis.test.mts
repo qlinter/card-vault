@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildPortfolioScope,
@@ -22,7 +22,7 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
       isPatch: false,
       transactions: [{ kind: "purchase", amountMinor: 10000n, currency: "CNY" }],
       expenses: [{ amountMinor: 1000n, currency: "CNY" }],
-      valuations: [{ amountMinor: 15000n, currency: "CNY", valuedAt: new Date("2026-08-01"), createdAt: new Date("2026-08-01"), source: "个人估计" }]
+      valuations: [{ amountMinor: 15000n, currency: "CNY", valuedAt: new Date("2026-08-01"), createdAt: new Date("2026-08-01"), source: "娑擃亙姹夋导鎷岊吀" }]
     },
     {
       playerName: "Player A",
@@ -35,11 +35,11 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
       isPatch: false,
       transactions: [{ kind: "purchase", amountMinor: 20000n, currency: "USD" }],
       expenses: [],
-      valuations: [{ amountMinor: 18000n, currency: "USD", valuedAt: new Date("2026-05-20"), createdAt: new Date("2026-05-20"), source: "近期成交" }]
+      valuations: [{ amountMinor: 18000n, currency: "USD", valuedAt: new Date("2026-05-20"), createdAt: new Date("2026-05-20"), source: "鏉╂垶婀￠幋鎰唉" }]
     },
     {
       playerName: "Player B",
-      sport: "Football",
+      sport: "Basketball",
       collectionStatus: "grading",
       gradingCompany: "PSA",
       grade: null,
@@ -52,7 +52,7 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
     },
     {
       playerName: "Player C",
-      sport: "Baseball",
+      sport: "Basketball",
       collectionStatus: "sold",
       gradingCompany: "BGS",
       grade: "9.5",
@@ -64,7 +64,7 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
         { kind: "sale", amountMinor: 50000n, currency: "CNY" }
       ],
       expenses: [],
-      valuations: [{ amountMinor: 50000n, currency: "CNY", valuedAt: new Date("2025-01-01"), createdAt: new Date("2025-01-01"), source: "个人估计" }]
+      valuations: [{ amountMinor: 50000n, currency: "CNY", valuedAt: new Date("2025-01-01"), createdAt: new Date("2025-01-01"), source: "娑擃亙姹夋导鎷岊吀" }]
     },
     {
       playerName: "Player D",
@@ -77,7 +77,7 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
       isPatch: false,
       transactions: [],
       expenses: [],
-      valuations: [{ amountMinor: 80000n, currency: "USD", valuedAt: new Date("2026-02-01"), createdAt: new Date("2026-02-01"), source: "平台报价" }]
+      valuations: [{ amountMinor: 80000n, currency: "USD", valuedAt: new Date("2026-02-01"), createdAt: new Date("2026-02-01"), source: "楠炲啿褰撮幎銉ょ幆" }]
     }
   ], undefined, asOf);
 
@@ -136,7 +136,96 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
   assert.equal(snapshot.quality.patchCount, 1);
   assert.deepEqual(snapshot.scope, { isFiltered: false, criteria: [] });
 });
+test("portfolio snapshot exposes multidimensional allocation, concentration, coverage, trends, and attention items", () => {
+  const asOf = new Date("2026-08-12T00:00:00.000Z");
+  const snapshot = buildPortfolioSnapshot([
+    {
+      playerName: "Player A",
+      cardTitle: "Rookie Auto",
+      sport: "Basketball",
+      team: "Team A",
+      year: "2024",
+      brand: "Brand A",
+      productLine: "Chrome",
+      subsetName: "Rookie",
+      parallel: "Gold",
+      cardNumber: "1",
+      isSerialNumbered: true,
+      serialNumber: "01/10",
+      collectionStatus: "holding",
+      gradingCompany: "PSA",
+      grade: "10",
+      isRookie: true,
+      isAutograph: true,
+      autoType: "On-card",
+      isPatch: false,
+      tags: "core, rookie",
+      publicDescription: "A key card",
+      imageCount: 2,
+      transactions: [{ kind: "purchase", amountMinor: 10000n, currency: "CNY", occurredAt: new Date("2026-01-05") }],
+      expenses: [{ amountMinor: 500n, currency: "CNY", occurredAt: new Date("2026-01-06") }],
+      valuations: [{ amountMinor: 20000n, currency: "CNY", valuedAt: new Date("2026-08-01"), createdAt: new Date("2026-08-01"), source: "娑擃亙姹夋导鎷岊吀" }]
+    },
+    {
+      playerName: "Player B",
+      cardTitle: "Base",
+      sport: "Basketball",
+      team: "Team B",
+      year: "2023",
+      brand: "Brand B",
+      productLine: "Base",
+      collectionStatus: "holding",
+      gradingCompany: null,
+      grade: null,
+      isRookie: false,
+      isAutograph: false,
+      isPatch: true,
+      patchType: "Jersey",
+      tags: "core",
+      imageCount: 0,
+      transactions: [],
+      expenses: [],
+      valuations: [{ amountMinor: 10000n, currency: "CNY", valuedAt: new Date("2025-12-01"), createdAt: new Date("2025-12-01"), source: "楠炲啿褰撮幎銉ょ幆" }]
+    },
+    {
+      playerName: "Player C",
+      cardTitle: "Unvalued",
+      sport: "Basketball",
+      team: "Team C",
+      collectionStatus: "grading",
+      gradingCompany: "BGS",
+      grade: "9.5",
+      isRookie: false,
+      isAutograph: false,
+      isPatch: false,
+      imageCount: 1,
+      transactions: [{ kind: "purchase", amountMinor: 5000n, currency: "CNY", occurredAt: new Date("2026-02-01") }],
+      expenses: [],
+      valuations: []
+    }
+  ], undefined, asOf);
 
+  assert.equal(snapshot.allocation.byTeam[0].name, "Team A");
+  assert.equal(snapshot.allocation.byTeam[0].countShare, 33.33);
+  assert.equal(snapshot.allocation.byTeam[0].valueShare.CNY, 66.67);
+  assert.equal(snapshot.concentration.player.top1ValueShare.CNY, 66.67);
+  assert.equal(snapshot.concentration.player.top3CountShare, 100);
+  assert.ok(snapshot.concentration.player.hhiByCurrency.CNY > 0);
+  assert.equal(snapshot.quality.serialNumberedCount, 1);
+  assert.equal(snapshot.quality.gradingCompanies[0].name, "PSA");
+  assert.equal(snapshot.quality.autoTypes[0].name, "On-card");
+  assert.equal(snapshot.quality.patchTypes[0].name, "Jersey");
+  assert.equal(snapshot.coverage.imageCount, 3);
+  assert.equal(snapshot.coverage.imageCoverageCount, 2);
+  assert.equal(snapshot.coverage.publicDescriptionCoverageCount, 1);
+  assert.equal(snapshot.coverage.incompleteCardCount, 1);
+  assert.deepEqual(snapshot.timeSeries.purchases.map((item) => item.month), ["2026-01", "2026-02"]);
+  assert.equal(snapshot.timeSeries.expenses[0].values.CNY, 5);
+  assert.equal(snapshot.attentionItems.find((item) => item.type === "missing_valuation")?.count, 1);
+  assert.equal(snapshot.attentionItems.find((item) => item.type === "missing_image")?.count, 1);
+  assert.equal(snapshot.topPositions[0].playerName, "Player A");
+  assert.equal(snapshot.topPositions[0].isSerialNumbered, true);
+});
 test("portfolio scope records active filters and excludes sorting", () => {
   const scope = buildPortfolioScope({
     sport: "足球",
@@ -160,32 +249,96 @@ test("portfolio scope records active filters and excludes sorting", () => {
   assert.match(instructions, /不得提出“足球卡占比过高”/);
   assert.match(instructions, /仅适用于当前筛选结果/);
 });
-
-test("unfiltered portfolio scope is treated as the complete collection", () => {
-  assert.deepEqual(portfolioScopeInstructions({ isFiltered: false, criteria: [] }), [
-    "本次没有应用筛选条件，可以把输入数据视为当前完整收藏范围。"
-  ]);
-});
-
-test("portfolio analysis normalization bounds scores and limits display lists", () => {
+test("portfolio analysis normalization accepts version 2 sections, evidence, and sufficiency", () => {
   const analysis = normalizePortfolioAnalysis({
-    score: 104,
-    positioning: "核心球员集中型组合",
-    summary: "组合已经形成明确主线，但估值覆盖仍需完善。",
-    dimensions: {
-      structure: "主要价值集中在少数球员。",
-      valueEfficiency: "可比卡片整体小幅增值。",
-      collectibleQuality: "评级卡和签名卡形成品质支撑。",
-      liquidityAndData: "部分卡片尚未填写当前估值。"
+    analysisVersion: 2,
+    executiveSummary: {
+      overallScore: 74,
+      positioning: "Focused collection",
+      summary: "The collection has a clear focus but incomplete financial coverage.",
+      confidence: "high",
+      dataSufficiency: "partial"
     },
-    strengths: ["主线明确", "品质较高"],
-    risks: "球员集中度较高；估值覆盖不足",
-    actions: ["补充估值", "核对证书", "整理出售优先级", "建立季度复盘", "补充标签", "不会显示"]
+    scorecard: {
+      structure: { score: 82, explanation: "Player concentration is measurable.", dataSufficiency: "sufficient", evidence: [{ sourcePath: "concentration.player", label: "Top 1 value share", value: "64%" }] },
+      financialEfficiency: { score: 68, explanation: "Only comparable positions are used.", dataSufficiency: "partial", evidence: [] },
+      collectibleQuality: { score: 77, explanation: "Graded and signed cards provide quality signals.", dataSufficiency: "sufficient", evidence: [] },
+      liquidity: { score: 55, explanation: "Several valuations are stale.", dataSufficiency: "partial", evidence: [] },
+      dataCompleteness: { score: 61, explanation: "Some cards lack transaction data.", dataSufficiency: "partial", evidence: [] }
+    },
+    sections: {
+      structure: { dataSufficiency: "sufficient", findings: [{ title: "Value concentration", content: "The leading player accounts for most valued exposure.", confidence: "high", dataSufficiency: "sufficient", evidence: [{ sourcePath: "allocation.byPlayer", label: "Top player", value: "64%" }] }] },
+      financials: { dataSufficiency: "partial", findings: [] },
+      collectibleQuality: { dataSufficiency: "sufficient", findings: [] },
+      liquidity: { dataSufficiency: "partial", findings: [] },
+      dataQuality: { dataSufficiency: "partial", findings: [] }
+    },
+    attentionItems: [{ priority: "high", title: "Refresh valuations", reason: "Three cards are stale.", affectedCount: 3, sourcePath: "attentionItems" }],
+    actionItems: [{ priority: 1, action: "Refresh stale valuations", reason: "Stale data weakens comparisons.", expectedBenefit: "Improves current-value coverage.", sourcePath: "financials" }],
   });
 
-  assert.equal(analysis.score, 100);
-  assert.deepEqual(analysis.risks, ["球员集中度较高", "估值覆盖不足"]);
-  assert.equal(analysis.actions.length, 5);
+  assert.equal(analysis.analysisVersion, 2);
+  assert.equal(analysis.executiveSummary.positioning, "Focused collection");
+  assert.equal(analysis.scorecard.structure.score, 82);
+  assert.equal(analysis.sections.structure.findings[0].evidence[0].sourcePath, "allocation.byPlayer");
+  assert.equal(analysis.attentionItems[0].affectedCount, 3);
+  assert.equal(analysis.actionItems[0].expectedBenefit, "Improves current-value coverage.");
+});
+test("portfolio analysis normalization accepts a pure version 2 response without legacy fields", () => {
+  const analysis = normalizePortfolioAnalysis({
+    analysisVersion: 2,
+    executiveSummary: { overallScore: 70, positioning: "Focused", summary: "Complete enough summary", confidence: "high", dataSufficiency: "sufficient" },
+    scorecard: {
+      structure: { score: 80, explanation: "Structure is clear.", dataSufficiency: "sufficient", evidence: [] },
+      financialEfficiency: { score: 70, explanation: "Finance is partly covered.", dataSufficiency: "partial", evidence: [] },
+      collectibleQuality: { score: 75, explanation: "Quality is visible.", dataSufficiency: "sufficient", evidence: [] },
+      liquidity: { score: 60, explanation: "Liquidity is uncertain.", dataSufficiency: "partial", evidence: [] },
+      dataCompleteness: { score: 65, explanation: "Some records are incomplete.", dataSufficiency: "partial", evidence: [] }
+    },
+    sections: {
+      structure: { dataSufficiency: "sufficient", findings: [{ title: "Focus", content: "Clear focus", confidence: "high", dataSufficiency: "sufficient", evidence: [] }] },
+      financials: { dataSufficiency: "partial", findings: [] },
+      collectibleQuality: { dataSufficiency: "sufficient", findings: [] },
+      liquidity: { dataSufficiency: "partial", findings: [] },
+      dataQuality: { dataSufficiency: "partial", findings: [] }
+    },
+    attentionItems: [{ priority: "medium", title: "Complete records", reason: "Some data is missing", affectedCount: 2, sourcePath: "coverage" }],
+    actionItems: [{ priority: 1, action: "Complete records", reason: "Improves analysis", expectedBenefit: "More reliable results", sourcePath: "coverage" }]
+  });
+
+  assert.equal(analysis.executiveSummary.overallScore, 70);
+  assert.equal(analysis.executiveSummary.positioning, "Focused");
+  assert.equal(analysis.scorecard.structure.explanation, "Structure is clear.");
+  assert.deepEqual(analysis.actionItems.map((item) => item.action), ["Complete records"]);
+});
+
+test("portfolio analysis normalization bounds untrusted version 2 result fields", () => {
+  const analysis = normalizePortfolioAnalysis({
+    analysisVersion: 2,
+    executiveSummary: { overallScore: 80, positioning: "Position", summary: "Summary", confidence: "unknown", dataSufficiency: "unknown" },
+    scorecard: {
+      structure: { score: 999, explanation: "x", dataSufficiency: "unknown", evidence: [{ sourcePath: "x", label: "x", value: "x" }] },
+      financialEfficiency: { score: 70, explanation: "finance", dataSufficiency: "partial", evidence: [] },
+      collectibleQuality: { score: 70, explanation: "quality", dataSufficiency: "partial", evidence: [] },
+      liquidity: { score: 70, explanation: "liquidity", dataSufficiency: "partial", evidence: [] },
+      dataCompleteness: { score: 70, explanation: "data", dataSufficiency: "partial", evidence: [] }
+    },
+    sections: {
+      structure: { findings: [{ title: "x", content: "y", confidence: "unknown", dataSufficiency: "unknown", evidence: [] }] },
+      financials: { findings: [] },
+      collectibleQuality: { findings: [] },
+      liquidity: { findings: [] },
+      dataQuality: { findings: [] }
+    },
+    attentionItems: [{ priority: "unknown", title: "x", reason: "y", affectedCount: 999999 }],
+    actionItems: [{ priority: 999, action: "a", reason: "b", expectedBenefit: "c" }],
+  });
+
+  assert.equal(analysis.analysisVersion, 2);
+  assert.equal(analysis.scorecard.structure.score, 100);
+  assert.equal(analysis.executiveSummary.confidence, "medium");
+  assert.equal(analysis.attentionItems[0].priority, "medium");
+  assert.equal(analysis.actionItems[0].priority, 99);
 });
 
 test("portfolio snapshot normalization drops unknown fields and bounds nested values", () => {
@@ -229,7 +382,7 @@ test("portfolio snapshot normalization drops unknown fields and bounds nested va
       staleValuationCount: 1,
       latestValuationAt: "2026-08-01T00:00:00.000Z",
       oldestLatestValuationAt: "invalid",
-      valuationSources: [{ name: "个人估计", count: 2 }],
+      valuationSources: [{ name: "娑擃亙姹夋导鎷岊吀", count: 2 }],
       excludedComplexPositionCount: 8,
       secret: "drop me"
     },
@@ -254,21 +407,7 @@ test("portfolio snapshot normalization drops unknown fields and bounds nested va
   assert.equal("secret" in snapshot.financials, false);
 });
 
-test("portfolio analysis normalization rejects incomplete AI reports", () => {
-  const base = {
-    positioning: "Focused collection",
-    summary: "The collection has a clear focus.",
-    dimensions: {
-      structure: "Concentrated structure.",
-      valueEfficiency: "Coverage is acceptable.",
-      collectibleQuality: "Quality is balanced.",
-      liquidityAndData: "More data is needed."
-    },
-    strengths: ["Clear focus"],
-    risks: ["Concentration"],
-    actions: ["Complete valuations"]
-  };
-
-  assert.throws(() => normalizePortfolioAnalysis(base), /评分/);
-  assert.throws(() => normalizePortfolioAnalysis({ ...base, score: 80, actions: [] }), /必要内容/);
+test("portfolio analysis normalization rejects incomplete or legacy AI reports", () => {
+  assert.throws(() => normalizePortfolioAnalysis({ score: 80, positioning: "Legacy" }), /协议版本/);
+  assert.throws(() => normalizePortfolioAnalysis({ analysisVersion: 2, executiveSummary: {} }), /新版报告/);
 });

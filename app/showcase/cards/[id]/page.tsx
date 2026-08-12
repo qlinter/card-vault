@@ -4,19 +4,12 @@ import { ShowcaseGallery } from "@/components/showcase-gallery";
 import { prisma } from "@/lib/prisma";
 import { buildShowcaseCardHref, toShowcaseWhere } from "@/lib/showcase";
 import { notFound } from "next/navigation";
+import { toScalar } from "@/lib/query-params";
 
 type ShowcaseCardPageProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
-
-function toScalar(value: string | string[] | undefined): string | undefined {
-  if (Array.isArray(value)) {
-    return value[0];
-  }
-
-  return value;
-}
 
 export default async function ShowcaseCardPage({ params, searchParams }: ShowcaseCardPageProps) {
   const { id } = await params;

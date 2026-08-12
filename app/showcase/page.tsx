@@ -3,18 +3,11 @@ import { ShowcaseGroupFilter } from "@/components/showcase-group-filter";
 import { normalizeImagePath } from "@/lib/image-path";
 import { prisma } from "@/lib/prisma";
 import { buildShowcaseCardHref, normalizeGroupName, toShowcaseWhere } from "@/lib/showcase";
+import { toScalar } from "@/lib/query-params";
 
 type ShowcasePageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
-
-function toScalar(value: string | string[] | undefined): string | undefined {
-  if (Array.isArray(value)) {
-    return value[0];
-  }
-
-  return value;
-}
 
 function activeGroupLabel(group: string | undefined): string {
   return group ?? "全部卡片";

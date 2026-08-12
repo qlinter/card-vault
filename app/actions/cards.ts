@@ -19,6 +19,7 @@ import { normalizeHttpUrl } from "@/lib/http-url";
 import { prepareImageUpload } from "@/lib/image-upload";
 import { prisma } from "@/lib/prisma";
 import { getUploadsDir } from "@/lib/storage-paths";
+import { errorMessage } from "@/lib/feedback-messages";
 
 const uploadDir = getUploadsDir();
 const maxImagesPerCard = 5;
@@ -281,7 +282,7 @@ export async function createCardFormAction(
   } catch (error) {
     await Promise.all(imagePaths.map((imagePath) => removeImageIfExists(imagePath)));
     return {
-      error: error instanceof Error ? error.message : "创建失败，请稍后重试。",
+      error: errorMessage(error, "创建失败，请稍后重试。"),
       values: getCreateCardValues(formData)
     };
   }
@@ -349,7 +350,7 @@ export async function updateCardAction(cardId: string, formData: FormData): Prom
     revalidatePath(`/showcase/cards/${cardId}`);
     redirectPath = `/cards/${cardId}?success=updated`;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "更新失败，请稍后重试。";
+    const message = errorMessage(error, "更新失败，请稍后重试。");
     redirectPath = `/cards/${cardId}/edit?error=${encodeURIComponent(message)}`;
   }
 
@@ -376,11 +377,10 @@ export async function deleteCardAction(cardId: string): Promise<void> {
     revalidatePath("/showcase");
     redirectPath = "/?success=deleted";
   } catch (error) {
-    const message = error instanceof Error ? error.message : "删除失败，请稍后重试。";
+    const message = errorMessage(error, "删除失败，请稍后重试。");
     redirectPath = `/?error=${encodeURIComponent(message)}`;
   }
 
   redirect(redirectPath);
 }
-
 

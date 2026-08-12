@@ -1,7 +1,8 @@
 import { FilterBar } from "@/components/filter-bar";
 import { PortfolioAnalysisButton } from "@/components/portfolio-analysis";
 import { splitTagString, buildCardFilters, buildCardSorting } from "@/lib/card-helpers";
-import { calculateOwnedCardsValue } from "@/lib/card-stats";
+import { calculateLatestValuationTotals } from "@/lib/card-stats";
+import { formatMinorMoneyGrouped } from "@/lib/financial-history";
 import { normalizeImagePath } from "@/lib/image-path";
 import { buildPortfolioScope, buildPortfolioSnapshot } from "@/lib/portfolio-analysis";
 import { prisma } from "@/lib/prisma";
@@ -22,10 +23,6 @@ function uniqueStrings(values: Array<string | null>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value && value.trim())))].sort((a, b) =>
     a.localeCompare(b)
   );
-}
-
-function formatCurrency(value: number): string {
-  return `¥${value.toFixed(2)}`;
 }
 
 function successText(value: string | undefined): string | null {
@@ -73,7 +70,21 @@ export default async function Home({ searchParams }: HomeProps) {
   const [cards, optionRows] = await Promise.all([
     prisma.card.findMany({
       where: buildCardFilters(query),
-      include: { images: { take: 1, orderBy: { createdAt: "asc" } } },
+      include: {
+        images: { take: 1, orderBy: { createdAt: "asc" } },
+        transactions: {
+          select: { kind: true, amountMinor: true, currency: true },
+          orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }]
+        },
+        expenses: {
+          select: { amountMinor: true, currency: true },
+          orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }]
+        },
+        valuations: {
+          select: { amountMinor: true, currency: true, valuedAt: true, createdAt: true, source: true },
+          orderBy: [{ valuedAt: "desc" }, { createdAt: "desc" }]
+        }
+      },
       orderBy: buildCardSorting(query.sort)
     }),
     prisma.card.findMany({
@@ -107,7 +118,12 @@ export default async function Home({ searchParams }: HomeProps) {
 
   const successMessage = successText(toScalar(params.success));
   const errorMessage = toScalar(params.error);
-  const totalValue = calculateOwnedCardsValue(cards);
+  const valuationTotals = calculateLatestValuationTotals(cards);
+  const valuationCurrencies = Object.keys(valuationTotals.totals).sort((left, right) => {
+    if (left === "CNY") return -1;
+    if (right === "CNY") return 1;
+    return left.localeCompare(right);
+  });
   const portfolioSnapshot = buildPortfolioSnapshot(cards, buildPortfolioScope(query));
   const returnParams = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
@@ -142,9 +158,16 @@ export default async function Home({ searchParams }: HomeProps) {
             <strong>{"总估值"}</strong>
             <PortfolioAnalysisButton snapshot={portfolioSnapshot} />
           </div>
-          <p className="h1" style={{ marginTop: "0.35rem" }}>
-            {formatCurrency(totalValue)}
-          </p>
+          <div className="valuation-total-list">
+            {valuationCurrencies.length > 0 ? valuationCurrencies.map((currency) => (
+              <p className="h1 valuation-total-item" key={currency}>
+                {formatMinorMoneyGrouped(valuationTotals.totals[currency], currency)}
+              </p>
+            )) : <p className="h1 valuation-total-item">CNY 0.00</p>}
+          </div>
+          <small className="muted valuation-coverage">
+            估值覆盖 {valuationTotals.valuedCardCount}/{cards.length}
+          </small>
         </div>
       </div>
 

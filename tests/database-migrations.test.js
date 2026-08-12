@@ -50,9 +50,9 @@ function seedLegacyDatabase(dbPath) {
   `);
   db.prepare(`
     INSERT INTO Card (
-      id, playerName, cardTitle, sport, year, setName, grade, purchasePrice
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run("legacy-card", "Legacy Player", "Legacy Card", "Basketball", 2016, "Legacy Set", 9.5, 100);
+      id, playerName, cardTitle, sport, year, setName, grade, purchaseDate, purchasePrice, purchaseSource
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run("legacy-card", "Legacy Player", "Legacy Card", "Basketball", 2016, "Legacy Set", 9.5, "2025-01-02", 100.25, "Legacy Source");
   db.prepare("INSERT INTO CardImage (id, cardId, path) VALUES (?, ?, ?)")
     .run("legacy-image", "legacy-card", "/media/legacy.jpg");
   db.close();
@@ -75,6 +75,9 @@ test("ordered migrations preserve legacy cards and create a pre-migration snapsh
   const image = db.prepare("SELECT path FROM CardImage WHERE cardId = ?").get("legacy-card");
   const applied = db.prepare("SELECT id FROM SchemaMigration ORDER BY id").all().map((row) => row.id);
   const shareColumns = db.prepare("PRAGMA table_info(ShareCollection)").all().map((column) => column.name);
+  const transaction = db.prepare("SELECT * FROM CardTransaction WHERE cardId = ?").get("legacy-card");
+  const expenseCount = db.prepare("SELECT COUNT(*) AS count FROM CardExpense WHERE cardId = ?").get("legacy-card").count;
+  const valuationCount = db.prepare("SELECT COUNT(*) AS count FROM CardValuation WHERE cardId = ?").get("legacy-card").count;
   db.close();
 
   assert.equal(card.playerName, "Legacy Player");
@@ -86,6 +89,108 @@ test("ordered migrations preserve legacy cards and create a pre-migration snapsh
   assert.equal(image.path, "/media/legacy.jpg");
   assert.deepEqual(applied, migrationIds);
   assert.ok(shareColumns.includes("presentationConfig"));
+  assert.equal(transaction.kind, "purchase");
+  assert.equal(transaction.amountMinor, 10025);
+  assert.equal(transaction.currency, "CNY");
+  assert.equal(transaction.source, "Legacy Source");
+  assert.equal(transaction.provenance, "legacy_card_snapshot");
+  assert.equal(expenseCount, 0);
+  assert.equal(valuationCount, 0);
+});
+
+test("financial history migration backfills exact baseline records and enforces constraints", (t) => {
+  const dbPath = temporaryDatabase(t);
+  initializeDatabase(dbPath);
+  const db = new DatabaseSync(dbPath);
+  db.prepare(`
+    INSERT INTO Card (
+      id, playerName, cardTitle, sport, gradingFee, currentValue, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run("history-card", "History Player", "History Card", "Basketball", 12.34, 456.78, "2025-01-01", "2025-02-01");
+  db.prepare("DELETE FROM SchemaMigration WHERE id = ?").run("006_card_financial_history_v1_1_0");
+  db.close();
+
+  const rerun = initializeDatabase(dbPath);
+  assert.deepEqual(rerun.appliedMigrations, ["006_card_financial_history_v1_1_0"]);
+
+  const verify = new DatabaseSync(dbPath);
+  verify.exec("PRAGMA foreign_keys = ON;");
+  const expense = verify.prepare("SELECT * FROM CardExpense WHERE cardId = ?").get("history-card");
+  const valuation = verify.prepare("SELECT * FROM CardValuation WHERE cardId = ?").get("history-card");
+  assert.equal(expense.amountMinor, 1234);
+  assert.equal(expense.kind, "grading");
+  assert.equal(valuation.amountMinor, 45678);
+  assert.equal(valuation.valuedAt, "2025-02-01");
+  assert.equal(valuation.source, "个人估计");
+  assert.throws(
+    () => verify.prepare(`
+      INSERT INTO CardExpense (id, cardId, kind, amountMinor, currency, occurredAt, provenance)
+      VALUES ('bad-expense', 'history-card', 'grading', -1, 'CNY', CURRENT_TIMESTAMP, 'test')
+    `).run(),
+    /CHECK constraint failed/
+  );
+  verify.prepare("DELETE FROM Card WHERE id = ?").run("history-card");
+  assert.equal(verify.prepare("SELECT COUNT(*) AS count FROM CardExpense WHERE cardId = ?").get("history-card").count, 0);
+  assert.equal(verify.prepare("SELECT COUNT(*) AS count FROM CardValuation WHERE cardId = ?").get("history-card").count, 0);
+  verify.close();
+});
+
+test("valuation source migration normalizes every existing record to personal estimate", (t) => {
+  const dbPath = temporaryDatabase(t);
+  initializeDatabase(dbPath);
+  const db = new DatabaseSync(dbPath);
+  db.prepare("DELETE FROM SchemaMigration WHERE id = ?").run("007_normalize_valuation_sources_v1_1_0");
+  db.prepare("INSERT INTO Card (id, playerName, cardTitle, sport) VALUES (?, ?, ?, ?)")
+    .run("source-card", "Source Player", "Source Card", "Basketball");
+  db.exec("PRAGMA ignore_check_constraints = ON;");
+  db.prepare(`
+    INSERT INTO CardValuation (id, cardId, amountMinor, currency, valuedAt, source, provenance)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run("source-valuation", "source-card", 10000, "CNY", "2025-01-01", "旧自由文本来源", "manual");
+  db.exec("PRAGMA ignore_check_constraints = OFF;");
+  db.close();
+
+  const rerun = initializeDatabase(dbPath);
+  assert.deepEqual(rerun.appliedMigrations, ["007_normalize_valuation_sources_v1_1_0"]);
+  const verify = new DatabaseSync(dbPath);
+  const valuation = verify.prepare("SELECT source FROM CardValuation WHERE id = ?").get("source-valuation");
+  assert.throws(
+    () => verify.prepare(`
+      INSERT INTO CardValuation (id, cardId, amountMinor, currency, valuedAt, source, provenance)
+      VALUES ('invalid-source', 'source-card', 100, 'CNY', '2025-01-02', '自由文本', 'manual')
+    `).run(),
+    /CHECK constraint failed/
+  );
+  verify.close();
+  assert.equal(valuation.source, "个人估计");
+});
+
+test("currency migration deletes unsupported history and rejects future currencies", (t) => {
+  const dbPath = temporaryDatabase(t);
+  initializeDatabase(dbPath);
+  const db = new DatabaseSync(dbPath);
+  db.prepare("DELETE FROM SchemaMigration WHERE id = ?").run("008_limit_financial_currencies_v1_1_0");
+  db.prepare("INSERT INTO Card (id, playerName, cardTitle, sport) VALUES (?, ?, ?, ?)")
+    .run("currency-card", "Currency Player", "Currency Card", "Basketball");
+  db.exec("DROP TRIGGER IF EXISTS CardValuation_currency_insert_check;");
+  db.prepare(`
+    INSERT INTO CardValuation (id, cardId, amountMinor, currency, valuedAt, source, provenance)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run("eur-valuation", "currency-card", 10000, "EUR", "2025-01-01", "个人估计", "manual");
+  db.close();
+
+  const rerun = initializeDatabase(dbPath);
+  assert.deepEqual(rerun.appliedMigrations, ["008_limit_financial_currencies_v1_1_0"]);
+  const verify = new DatabaseSync(dbPath);
+  assert.equal(verify.prepare("SELECT COUNT(*) AS count FROM CardValuation WHERE id = ?").get("eur-valuation").count, 0);
+  assert.throws(
+    () => verify.prepare(`
+      INSERT INTO CardValuation (id, cardId, amountMinor, currency, valuedAt, source, provenance)
+      VALUES ('gbp-valuation', 'currency-card', 100, 'GBP', '2025-01-02', '个人估计', 'manual')
+    `).run(),
+    /currency must be CNY or USD/
+  );
+  verify.close();
 });
 
 test("database initialization is idempotent after all migrations are recorded", (t) => {

@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent, MouseEvent } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { ShareCardDraft, ShareCardPicker, SharePickerCard } from "@/components/share-card-picker";
 import { ShareGalleryEditor } from "@/components/share-gallery-editor";
@@ -15,9 +15,20 @@ import {
 import type { ShareThemeId } from "@/lib/share-themes";
 import type { SharePresentation } from "@/lib/share-presentation";
 import type { ShareSectionDraft } from "@/lib/share-sections";
+import {
+  moveId,
+  normalizeCardOrder,
+  parseShareEditorDraft,
+  reorderIds,
+  shareEditorDraftVersion,
+  snapshotsEqual,
+  type ShareEditorDraft,
+  type ShareEditorSnapshot
+} from "@/lib/share-editor-state";
 
 type ShareCollectionWizardProps = {
   action: (formData: FormData) => void | Promise<void>;
+  draftId: string;
   cards: SharePickerCard[];
   aiCards: ShareThemeCard[];
   initialValues: ShareThemeValues & {
@@ -69,7 +80,11 @@ function initialDrafts(cards: SharePickerCard[]): Record<string, ShareCardDraft>
   );
 }
 
-export function ShareCollectionWizard({ action, cards, aiCards, initialValues, error }: ShareCollectionWizardProps) {
+function cloneSnapshot(snapshot: ShareEditorSnapshot): ShareEditorSnapshot {
+  return JSON.parse(JSON.stringify(snapshot)) as ShareEditorSnapshot;
+}
+
+export function ShareCollectionWizard({ action, draftId, cards, aiCards, initialValues, error }: ShareCollectionWizardProps) {
   const initialCoverImagePath = initialValues.coverImagePath.startsWith("/share-covers/") ? initialValues.coverImagePath : "";
   const initialBackgroundImagePath = initialValues.backgroundImagePath.startsWith("/share-backgrounds/") ? initialValues.backgroundImagePath : "";
   const [activeStep, setActiveStep] = useState(0);
@@ -88,6 +103,138 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
   const [sections, setSections] = useState<ShareSectionDraft[]>(initialValues.sections);
   const [coverMode, setCoverMode] = useState<"auto" | "custom">(initialCoverImagePath ? "custom" : "auto");
   const [message, setMessage] = useState("");
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const [recoverableDraft, setRecoverableDraft] = useState<ShareEditorDraft | null>(null);
+  const [draftPersistenceEnabled, setDraftPersistenceEnabled] = useState(false);
+  const [draftStatus, setDraftStatus] = useState("正在检查本机草稿...");
+  const historyRef = useRef<{ past: ShareEditorSnapshot[]; future: ShareEditorSnapshot[] }>({ past: [], future: [] });
+  const draftStorageKey = `card-vault:share-editor:${shareEditorDraftVersion}:${draftId}`;
+  const submittedStorageKey = `${draftStorageKey}:submitted`;
+
+  const currentSnapshot = useMemo<ShareEditorSnapshot>(() => ({
+    selectedIds,
+    drafts,
+    themeValues,
+    theme,
+    presentation,
+    sections,
+    coverMode
+  }), [coverMode, drafts, presentation, sections, selectedIds, theme, themeValues]);
+
+  const initialSnapshot = useMemo<ShareEditorSnapshot>(() => ({
+    selectedIds: cards.filter((card) => card.selected).map((card) => card.id),
+    drafts: initialDrafts(cards),
+    themeValues: {
+      title: initialValues.title,
+      subtitle: initialValues.subtitle,
+      description: initialValues.description,
+      themeNarrative: initialValues.themeNarrative,
+      themeHighlights: initialValues.themeHighlights,
+      groupNotes: initialValues.groupNotes
+    },
+    theme: initialValues.theme,
+    presentation: initialValues.presentation,
+    sections: initialValues.sections,
+    coverMode: initialCoverImagePath ? "custom" : "auto"
+  }), [cards, initialCoverImagePath, initialValues]);
+
+  useEffect(() => {
+    const wasSubmitted = localStorage.getItem(submittedStorageKey) === "true";
+    if (wasSubmitted && !error) {
+      localStorage.removeItem(draftStorageKey);
+      localStorage.removeItem(submittedStorageKey);
+      setDraftPersistenceEnabled(true);
+      setDraftStatus("本机草稿已启用");
+      return;
+    }
+    if (wasSubmitted) {
+      localStorage.removeItem(submittedStorageKey);
+    }
+    const stored = localStorage.getItem(draftStorageKey);
+    const parsed = stored ? parseShareEditorDraft(stored, cards.map((card) => card.id)) : null;
+    if (parsed && !snapshotsEqual(parsed.snapshot, initialSnapshot)) {
+      setRecoverableDraft(parsed);
+      setDraftStatus(`发现 ${new Date(parsed.savedAt).toLocaleString()} 的本机草稿。`);
+      return;
+    }
+    if (stored) {
+      localStorage.removeItem(draftStorageKey);
+    }
+    setDraftPersistenceEnabled(true);
+    setDraftStatus("本机草稿已启用");
+  }, [cards, draftStorageKey, error, initialSnapshot, submittedStorageKey]);
+
+  useEffect(() => {
+    if (!draftPersistenceEnabled || recoverableDraft) {
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      localStorage.setItem(draftStorageKey, JSON.stringify({
+        version: shareEditorDraftVersion,
+        savedAt: new Date().toISOString(),
+        snapshot: currentSnapshot
+      } satisfies ShareEditorDraft));
+      setDraftStatus("草稿已自动保存到本机");
+    }, 500);
+    return () => window.clearTimeout(timeout);
+  }, [currentSnapshot, draftPersistenceEnabled, draftStorageKey, recoverableDraft]);
+
+  function applySnapshot(snapshot: ShareEditorSnapshot) {
+    const next = cloneSnapshot(snapshot);
+    setSelectedIds(next.selectedIds);
+    setDrafts(next.drafts);
+    setThemeValues(next.themeValues);
+    setTheme(next.theme);
+    setPresentation(next.presentation);
+    setSections(next.sections);
+    setCoverMode(next.coverMode);
+  }
+
+  function recordHistory() {
+    const history = historyRef.current;
+    if (!history.past.length || !snapshotsEqual(history.past[history.past.length - 1], currentSnapshot)) {
+      history.past = [...history.past.slice(-79), cloneSnapshot(currentSnapshot)];
+    }
+    history.future = [];
+    setHistoryVersion((value) => value + 1);
+  }
+
+  function undo() {
+    const history = historyRef.current;
+    const previous = history.past.at(-1);
+    if (!previous) return;
+    history.past = history.past.slice(0, -1);
+    history.future = [cloneSnapshot(currentSnapshot), ...history.future].slice(0, 80);
+    applySnapshot(previous);
+    setHistoryVersion((value) => value + 1);
+  }
+
+  function redo() {
+    const history = historyRef.current;
+    const next = history.future[0];
+    if (!next) return;
+    history.future = history.future.slice(1);
+    history.past = [...history.past.slice(-79), cloneSnapshot(currentSnapshot)];
+    applySnapshot(next);
+    setHistoryVersion((value) => value + 1);
+  }
+
+  function restoreDraft() {
+    if (!recoverableDraft) return;
+    applySnapshot(recoverableDraft.snapshot);
+    historyRef.current = { past: [cloneSnapshot(initialSnapshot)], future: [] };
+    setRecoverableDraft(null);
+    setDraftPersistenceEnabled(true);
+    setDraftStatus("已恢复本机草稿");
+    setHistoryVersion((value) => value + 1);
+  }
+
+  function discardDraft() {
+    localStorage.removeItem(draftStorageKey);
+    setRecoverableDraft(null);
+    setDraftPersistenceEnabled(true);
+    setDraftStatus("已放弃旧草稿；新的修改会自动保存");
+  }
 
   const selectedAiCards = useMemo(() => {
     const selectedSet = new Set(selectedIds);
@@ -112,12 +259,12 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
   );
 
   function updateSelection(cardId: string, selected: boolean) {
-    setSelectedIds((current) => {
-      if (selected) {
-        return current.includes(cardId) ? current : [...current, cardId];
-      }
-      return current.filter((id) => id !== cardId);
-    });
+    recordHistory();
+    const nextIds = selected
+      ? selectedIds.includes(cardId) ? selectedIds : [...selectedIds, cardId]
+      : selectedIds.filter((id) => id !== cardId);
+    setSelectedIds(nextIds);
+    setDrafts((current) => normalizeCardOrder(nextIds, current));
     if (!selected) {
       setSections((current) => current.map((section) => ({
         ...section,
@@ -127,6 +274,7 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
   }
 
   function updateDraft(cardId: string, patch: Partial<ShareCardDraft>) {
+    recordHistory();
     setDrafts((current) => ({
       ...current,
       [cardId]: {
@@ -140,10 +288,12 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
   }
 
   function updateThemeField(field: ShareThemeField, value: string) {
+    recordHistory();
     setThemeValues((current) => ({ ...current, [field]: value }));
   }
 
   function applySuggestion(suggestion: Partial<Record<ShareThemeField, unknown>>, overwrite: boolean): ShareThemeField[] {
+    recordHistory();
     const filledFields: ShareThemeField[] = [];
 
     setThemeValues((current) => {
@@ -195,6 +345,7 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
   }
 
   function addSection() {
+    recordHistory();
     setSections((current) => [
       ...current,
       { id: `section-${crypto.randomUUID()}`, title: `新章节 ${current.length + 1}`, description: "", layout: "editorial", cardIds: [] }
@@ -202,14 +353,17 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
   }
 
   function updateSection(sectionId: string, patch: Partial<ShareSectionDraft>) {
+    recordHistory();
     setSections((current) => current.map((section) => section.id === sectionId ? { ...section, ...patch } : section));
   }
 
   function removeSection(sectionId: string) {
+    recordHistory();
     setSections((current) => current.filter((section) => section.id !== sectionId));
   }
 
   function moveSection(sectionId: string, direction: -1 | 1) {
+    recordHistory();
     setSections((current) => {
       const index = current.findIndex((section) => section.id === sectionId);
       const nextIndex = index + direction;
@@ -222,7 +376,31 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
     });
   }
 
+  function reorderSection(activeId: string, targetId: string) {
+    recordHistory();
+    setSections((current) => {
+      const order = reorderIds(current.map((section) => section.id), activeId, targetId);
+      const byId = new Map(current.map((section) => [section.id, section]));
+      return order.map((id) => byId.get(id)).filter((section): section is ShareSectionDraft => Boolean(section));
+    });
+  }
+
+  function reorderCard(activeId: string, targetId: string) {
+    recordHistory();
+    const nextIds = reorderIds(selectedIds, activeId, targetId);
+    setSelectedIds(nextIds);
+    setDrafts((current) => normalizeCardOrder(nextIds, current));
+  }
+
+  function moveCard(cardId: string, direction: -1 | 1) {
+    recordHistory();
+    const nextIds = moveId(selectedIds, cardId, direction);
+    setSelectedIds(nextIds);
+    setDrafts((current) => normalizeCardOrder(nextIds, current));
+  }
+
   function assignSectionCard(sectionId: string, cardId: string, assigned: boolean) {
+    recordHistory();
     setSections((current) => current.map((section) => ({
       ...section,
       cardIds: section.id === sectionId
@@ -281,6 +459,7 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
       setActiveStep(2);
       return;
     }
+    localStorage.setItem(submittedStorageKey, "true");
     setMessage("正在保存分享集，请稍候...");
   }
 
@@ -293,9 +472,25 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
       <input type="hidden" name="backgroundPositionX" value={presentation.backgroundPosition.x} />
       <input type="hidden" name="backgroundPositionY" value={presentation.backgroundPosition.y} />
       <input type="hidden" name="panelOpacity" value={presentation.panelOpacity} />
+      <input type="hidden" name="typography" value={presentation.typography} />
+      <input type="hidden" name="density" value={presentation.density} />
+      <input type="hidden" name="imageFit" value={presentation.imageFit} />
+      <input type="hidden" name="textScale" value={presentation.textScale} />
       <input type="hidden" name="sectionsJson" value={JSON.stringify(sections)} />
       {error ? <p className="note-error">{error}</p> : null}
       {message ? <p className="note-error">{message}</p> : null}
+      {recoverableDraft ? (
+        <section className="panel share-draft-recovery" role="status">
+          <div>
+            <strong>检测到未完成的本机草稿</strong>
+            <p className="muted">{draftStatus} 恢复后仍可使用撤销返回当前已保存内容。</p>
+          </div>
+          <div>
+            <button type="button" className="btn btn-primary" onClick={restoreDraft}>恢复草稿</button>
+            <button type="button" className="btn btn-secondary" onClick={discardDraft}>放弃草稿</button>
+          </div>
+        </section>
+      ) : null}
 
       <div className="share-wizard-header panel">
         <div className="share-wizard-steps" aria-label="分享集创建步骤">
@@ -364,16 +559,25 @@ export function ShareCollectionWizard({ action, cards, aiCards, initialValues, e
           coverMode={coverMode}
           initialCoverImagePath={initialCoverImagePath}
           initialBackgroundImagePath={initialBackgroundImagePath}
-          onThemeChange={setTheme}
-          onPresentationChange={setPresentation}
+          canUndo={historyRef.current.past.length > 0}
+          canRedo={historyRef.current.future.length > 0}
+          historyVersion={historyVersion}
+          draftStatus={draftStatus}
+          onUndo={undo}
+          onRedo={redo}
+          onThemeChange={(nextTheme) => { recordHistory(); setTheme(nextTheme); }}
+          onPresentationChange={(updater) => { recordHistory(); setPresentation(updater); }}
           onThemeFieldChange={updateThemeField}
-          onCoverModeChange={setCoverMode}
+          onCoverModeChange={(mode) => { recordHistory(); setCoverMode(mode); }}
           onAddSection={addSection}
           onUpdateSection={updateSection}
           onRemoveSection={removeSection}
           onMoveSection={moveSection}
+          onReorderSection={reorderSection}
           onAssignSectionCard={assignSectionCard}
           onDraftChange={updateDraft}
+          onMoveCard={moveCard}
+          onReorderCard={reorderCard}
         />
       </div>
       <div className={activeStep === 3 ? "" : "share-step-hidden"}>

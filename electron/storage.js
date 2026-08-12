@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
+const { initializeDatabase } = require("../scripts/database-migrations");
 const {
   resolveDbPath,
   resolveShareBackgroundsDir,
@@ -703,6 +704,7 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     const suffix = `${Date.now()}-${process.pid}`;
     const stagingDir = path.join(parentDir, `.${baseName}-restore-staging-${suffix}`);
     const rollbackDir = path.join(parentDir, `.${baseName}-restore-rollback-${suffix}`);
+    let migration = { appliedMigrations: [], schemaVersion: null };
     if (pathsEqual(targetDataDir, path.parse(targetDataDir).root)) {
       throw new Error("不能将文件系统根目录作为恢复目标。");
     }
@@ -714,6 +716,14 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
       const stagedHealth = inspectDataFolder(stagingDir, mapProgress(onProgress, 64, 80));
       if (stagedHealth.integrity !== "ok") {
         throw new Error("备份复制到临时目录后完整性检查失败。");
+      }
+
+      reportProgress(onProgress, 81, "正在升级恢复数据的数据库结构...");
+      const stagedDbPath = path.join(stagingDir, "dev.db");
+      migration = initializeDatabase(stagedDbPath);
+      const migratedHealth = inspectDataFolder(stagingDir, mapProgress(onProgress, 82, 86));
+      if (migratedHealth.integrity !== "ok") {
+        throw new Error("备份完成数据库迁移后完整性检查失败。");
       }
 
       if (fs.existsSync(targetDataDir)) {
@@ -744,6 +754,8 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
       restoredFrom: sourceDataDir,
       restoredTo: targetDataDir,
       safetyBackupPath,
+      appliedMigrations: migration.appliedMigrations,
+      schemaVersion: migration.schemaVersion,
       health: inspectDataFolder(targetDataDir, mapProgress(onProgress, 92, 100))
     };
     reportProgress(onProgress, 100, "数据恢复完成。");

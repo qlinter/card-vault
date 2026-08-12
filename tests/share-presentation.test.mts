@@ -13,12 +13,20 @@ test("share presentation normalizes layout and bounded visual controls", () => {
     layout: "arena",
     backgroundPositionX: "125",
     backgroundPositionY: "-10",
-    panelOpacity: "28"
+    panelOpacity: "28",
+    typography: "editorial",
+    density: "compact",
+    imageFit: "contain",
+    textScale: "large"
   });
 
   assert.equal(presentation.layout, "arena");
   assert.deepEqual(presentation.backgroundPosition, { x: 100, y: 0 });
   assert.equal(presentation.panelOpacity, 28);
+  assert.equal(presentation.typography, "editorial");
+  assert.equal(presentation.density, "compact");
+  assert.equal(presentation.imageFit, "contain");
+  assert.equal(presentation.textScale, "large");
   assert.deepEqual(parseSharePresentation(serializeSharePresentation(presentation)), presentation);
 });
 

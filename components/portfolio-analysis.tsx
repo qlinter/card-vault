@@ -15,12 +15,22 @@ type PortfolioAnalysisProps = {
   snapshot: PortfolioSnapshot;
 };
 
-function formatCurrency(value: number) {
-  return `¥${value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function formatCurrency(value: number, currency: string) {
+  return `${currency} ${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function coverage(count: number, total: number) {
   return total > 0 ? `${Math.round((count / total) * 100)}%` : "--";
+}
+
+function formatReturn(value: number | null) {
+  if (value === null) return "--";
+  return `${value > 0 ? "+" : ""}${value.toLocaleString("zh-CN", { maximumFractionDigits: 2 })}%`;
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "暂无";
+  return new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
 }
 
 export function PortfolioAnalysisButton({ snapshot }: PortfolioAnalysisProps) {
@@ -135,10 +145,41 @@ export function PortfolioAnalysisButton({ snapshot }: PortfolioAnalysisProps) {
             </header>
 
             <div className={styles.snapshotStrip}>
-              <span><small>持有组合</small><strong>{snapshot.ownedCount} 张</strong></span>
-              <span><small>总投入</small><strong>{formatCurrency(snapshot.financials.totalCost)}</strong></span>
-              <span><small>当前估值</small><strong>{formatCurrency(snapshot.financials.totalValue)}</strong></span>
-              <span><small>估值覆盖</small><strong>{coverage(snapshot.financials.valueCoverageCount, snapshot.ownedCount)}</strong></span>
+              <span><small>活跃收藏</small><strong>{snapshot.activeCount} 张</strong></span>
+              <span><small>已售 / 目标</small><strong>{snapshot.soldCount} / {snapshot.targetCount} 张</strong></span>
+              <span><small>估值覆盖</small><strong>{coverage(snapshot.financials.valuationCoverageCount, snapshot.cardCount)}</strong></span>
+              <span><small>90 天内估值</small><strong>{snapshot.financials.freshValuationCount} 张</strong></span>
+            </div>
+
+            <section className={styles.financialOverview} aria-label="按币种的财务历史摘要">
+              {snapshot.financials.currencies.length > 0 ? snapshot.financials.currencies.map((item) => (
+                <article key={item.currency}>
+                  <header>
+                    <strong>{item.currency}</strong>
+                    <span>{item.valuedCardCount} 张有最新估值</span>
+                  </header>
+                  <dl>
+                    <div><dt>全部最新估值</dt><dd>{formatCurrency(item.latestValue, item.currency)}</dd></div>
+                    <div><dt>活跃成本基础</dt><dd>{formatCurrency(item.activeCostBasis, item.currency)}</dd></div>
+                    <div><dt>可比未实现盈亏</dt><dd>{formatCurrency(item.unrealizedDifference, item.currency)}</dd></div>
+                    <div><dt>可比收益率</dt><dd>{formatReturn(item.unrealizedReturnRate)}</dd></div>
+                    <div><dt>净现金占用</dt><dd>{formatCurrency(item.netCashInvested, item.currency)}</dd></div>
+                    <div><dt>可比卡片</dt><dd>{item.comparableCardCount} 张</dd></div>
+                  </dl>
+                </article>
+              )) : <p>当前范围尚无可汇总的财务历史。</p>}
+            </section>
+
+            <div className={styles.dataFreshness}>
+              <span>最新估值日期：<strong>{formatDate(snapshot.financials.latestValuationAt)}</strong></span>
+              <span>超过 180 天：<strong>{snapshot.financials.staleValuationCount} 张</strong></span>
+              <span>交易记录覆盖：<strong>{snapshot.financials.transactionCoverageCount}/{snapshot.cardCount}</strong></span>
+              {snapshot.financials.valuationSources.length > 0 ? (
+                <span>估值来源：<strong>{snapshot.financials.valuationSources.map((item) => `${item.name} ${item.count}`).join(" · ")}</strong></span>
+              ) : null}
+              {snapshot.financials.excludedComplexPositionCount > 0 ? (
+                <span>复杂仓位未计收益：<strong>{snapshot.financials.excludedComplexPositionCount} 张</strong></span>
+              ) : null}
             </div>
 
             <div className={styles.scope}>
@@ -150,7 +191,7 @@ export function PortfolioAnalysisButton({ snapshot }: PortfolioAnalysisProps) {
               <div className={styles.loading}>
                 <span />
                 <strong>正在分析组合结构</strong>
-                <p>AI 正在比较集中度、价值覆盖、收藏品质和整理优先级。</p>
+                <p>AI 正在比较组合结构、分币种财务历史、估值时效和整理优先级。</p>
               </div>
             ) : null}
 

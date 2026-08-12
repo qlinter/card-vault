@@ -7,7 +7,10 @@ const migrations = [
   { id: "002_card_fields_v1_0_3", run: migrateCardFields, transaction: false },
   { id: "003_share_fields_v1_0_9", run: migrateShareFields },
   { id: "004_share_sections_v1_0_10", run: migrateShareSections },
-  { id: "005_indexes_v1_0_10", run: createIndexes }
+  { id: "005_indexes_v1_0_10", run: createIndexes },
+  { id: "006_card_financial_history_v1_1_0", run: migrateCardFinancialHistory },
+  { id: "007_normalize_valuation_sources_v1_1_0", run: normalizeValuationSources },
+  { id: "008_limit_financial_currencies_v1_1_0", run: limitFinancialCurrencies }
 ];
 
 const cardColumns = [
@@ -99,6 +102,7 @@ function createLatestTables(db) {
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT CardImage_cardId_fkey FOREIGN KEY (cardId) REFERENCES Card (id) ON DELETE CASCADE ON UPDATE CASCADE
     );
+    ${financialHistoryTablesSql()}
     CREATE TABLE IF NOT EXISTS ShareCollection (
       id TEXT PRIMARY KEY NOT NULL,
       title TEXT NOT NULL,
@@ -137,6 +141,56 @@ function createLatestTables(db) {
       CONSTRAINT ShareCollectionItem_cardId_fkey FOREIGN KEY (cardId) REFERENCES Card (id) ON DELETE CASCADE ON UPDATE CASCADE
     );
   `);
+}
+
+function financialHistoryTablesSql() {
+  return `
+    CREATE TABLE IF NOT EXISTS CardTransaction (
+      id TEXT PRIMARY KEY NOT NULL,
+      cardId TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('purchase', 'sale', 'refund')),
+      amountMinor INTEGER NOT NULL CHECK (typeof(amountMinor) = 'integer' AND amountMinor >= 0),
+      currency TEXT NOT NULL DEFAULT 'CNY' CHECK (length(currency) = 3 AND currency = upper(currency)),
+      quantity INTEGER NOT NULL DEFAULT 1 CHECK (typeof(quantity) = 'integer' AND quantity > 0),
+      occurredAt DATETIME NOT NULL,
+      source TEXT,
+      notes TEXT,
+      provenance TEXT NOT NULL CHECK (length(trim(provenance)) > 0),
+      externalKey TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT CardTransaction_cardId_fkey FOREIGN KEY (cardId) REFERENCES Card (id) ON DELETE CASCADE ON UPDATE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS CardExpense (
+      id TEXT PRIMARY KEY NOT NULL,
+      cardId TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('grading', 'shipping', 'tax', 'insurance', 'storage', 'marketplace_fee', 'other')),
+      amountMinor INTEGER NOT NULL CHECK (typeof(amountMinor) = 'integer' AND amountMinor >= 0),
+      currency TEXT NOT NULL DEFAULT 'CNY' CHECK (length(currency) = 3 AND currency = upper(currency)),
+      occurredAt DATETIME NOT NULL,
+      vendor TEXT,
+      notes TEXT,
+      provenance TEXT NOT NULL CHECK (length(trim(provenance)) > 0),
+      externalKey TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT CardExpense_cardId_fkey FOREIGN KEY (cardId) REFERENCES Card (id) ON DELETE CASCADE ON UPDATE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS CardValuation (
+      id TEXT PRIMARY KEY NOT NULL,
+      cardId TEXT NOT NULL,
+      amountMinor INTEGER NOT NULL CHECK (typeof(amountMinor) = 'integer' AND amountMinor >= 0),
+      currency TEXT NOT NULL DEFAULT 'CNY' CHECK (length(currency) = 3 AND currency = upper(currency)),
+      valuedAt DATETIME NOT NULL,
+      source TEXT NOT NULL DEFAULT '个人估计' CHECK (source IN ('个人估计', '近期成交', '平台报价')),
+      notes TEXT,
+      provenance TEXT NOT NULL CHECK (length(trim(provenance)) > 0),
+      externalKey TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT CardValuation_cardId_fkey FOREIGN KEY (cardId) REFERENCES Card (id) ON DELETE CASCADE ON UPDATE CASCADE
+    );
+  `;
 }
 
 function selectableColumn(db, columnName, fallbackSql = "NULL") {
@@ -308,6 +362,144 @@ function createIndexes(db) {
     CREATE INDEX IF NOT EXISTS ShareCollectionItem_cardId_idx ON ShareCollectionItem(cardId);
     CREATE INDEX IF NOT EXISTS ShareCollectionItem_sortOrder_idx ON ShareCollectionItem(sortOrder);
   `);
+}
+
+function legacyMoneyToMinor(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+  return Math.round((parsed + Number.EPSILON) * 100);
+}
+
+function legacyHistoryTimestamp(card) {
+  return card.purchaseDate || card.updatedAt || card.createdAt || new Date(0).toISOString();
+}
+
+function migrateCardFinancialHistory(db) {
+  db.exec(financialHistoryTablesSql());
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS CardTransaction_externalKey_key ON CardTransaction(externalKey);
+    CREATE UNIQUE INDEX IF NOT EXISTS CardExpense_externalKey_key ON CardExpense(externalKey);
+    CREATE UNIQUE INDEX IF NOT EXISTS CardValuation_externalKey_key ON CardValuation(externalKey);
+    CREATE INDEX IF NOT EXISTS CardTransaction_cardId_occurredAt_idx ON CardTransaction(cardId, occurredAt DESC);
+    CREATE INDEX IF NOT EXISTS CardTransaction_kind_idx ON CardTransaction(kind);
+    CREATE INDEX IF NOT EXISTS CardTransaction_occurredAt_idx ON CardTransaction(occurredAt DESC);
+    CREATE INDEX IF NOT EXISTS CardExpense_cardId_occurredAt_idx ON CardExpense(cardId, occurredAt DESC);
+    CREATE INDEX IF NOT EXISTS CardExpense_kind_idx ON CardExpense(kind);
+    CREATE INDEX IF NOT EXISTS CardExpense_occurredAt_idx ON CardExpense(occurredAt DESC);
+    CREATE INDEX IF NOT EXISTS CardValuation_cardId_valuedAt_idx ON CardValuation(cardId, valuedAt DESC);
+    CREATE INDEX IF NOT EXISTS CardValuation_valuedAt_idx ON CardValuation(valuedAt DESC);
+  `);
+
+  const cards = db.prepare(`
+    SELECT id, purchaseDate, purchasePrice, gradingFee, currentValue, purchaseSource, createdAt, updatedAt
+    FROM Card
+  `).all();
+  const insertTransaction = db.prepare(`
+    INSERT OR IGNORE INTO CardTransaction (
+      id, cardId, kind, amountMinor, currency, quantity, occurredAt, source, provenance, externalKey
+    ) VALUES (?, ?, 'purchase', ?, 'CNY', 1, ?, ?, 'legacy_card_snapshot', ?)
+  `);
+  const insertExpense = db.prepare(`
+    INSERT OR IGNORE INTO CardExpense (
+      id, cardId, kind, amountMinor, currency, occurredAt, vendor, provenance, externalKey
+    ) VALUES (?, ?, 'grading', ?, 'CNY', ?, NULL, 'legacy_card_snapshot', ?)
+  `);
+  const insertValuation = db.prepare(`
+    INSERT OR IGNORE INTO CardValuation (
+      id, cardId, amountMinor, currency, valuedAt, source, provenance, externalKey
+    ) VALUES (?, ?, ?, 'CNY', ?, '个人估计', 'legacy_card_snapshot', ?)
+  `);
+
+  for (const card of cards) {
+    const timestamp = legacyHistoryTimestamp(card);
+    const purchaseMinor = legacyMoneyToMinor(card.purchasePrice);
+    const gradingMinor = legacyMoneyToMinor(card.gradingFee);
+    const valuationMinor = legacyMoneyToMinor(card.currentValue);
+    if (purchaseMinor !== null) {
+      insertTransaction.run(
+        `legacy-purchase-${card.id}`,
+        card.id,
+        purchaseMinor,
+        timestamp,
+        card.purchaseSource || null,
+        `legacy:purchase:${card.id}`
+      );
+    }
+    if (gradingMinor !== null) {
+      insertExpense.run(
+        `legacy-grading-${card.id}`,
+        card.id,
+        gradingMinor,
+        timestamp,
+        `legacy:grading:${card.id}`
+      );
+    }
+    if (valuationMinor !== null) {
+      insertValuation.run(
+        `legacy-valuation-${card.id}`,
+        card.id,
+        valuationMinor,
+        card.updatedAt || timestamp,
+        `legacy:valuation:${card.id}`
+      );
+    }
+  }
+}
+
+function normalizeValuationSources(db) {
+  if (!tableExists(db, "CardValuation")) return;
+  db.exec(`
+    DROP TABLE IF EXISTS CardValuation_normalized;
+    CREATE TABLE CardValuation_normalized (
+      id TEXT PRIMARY KEY NOT NULL,
+      cardId TEXT NOT NULL,
+      amountMinor INTEGER NOT NULL CHECK (typeof(amountMinor) = 'integer' AND amountMinor >= 0),
+      currency TEXT NOT NULL DEFAULT 'CNY' CHECK (length(currency) = 3 AND currency = upper(currency)),
+      valuedAt DATETIME NOT NULL,
+      source TEXT NOT NULL DEFAULT '个人估计' CHECK (source IN ('个人估计', '近期成交', '平台报价')),
+      notes TEXT,
+      provenance TEXT NOT NULL CHECK (length(trim(provenance)) > 0),
+      externalKey TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT CardValuation_cardId_fkey FOREIGN KEY (cardId) REFERENCES Card (id) ON DELETE CASCADE ON UPDATE CASCADE
+    );
+    INSERT INTO CardValuation_normalized (
+      id, cardId, amountMinor, currency, valuedAt, source, notes, provenance, externalKey, createdAt, updatedAt
+    )
+    SELECT
+      id, cardId, amountMinor, currency, valuedAt, '个人估计', notes, provenance, externalKey, createdAt, updatedAt
+    FROM CardValuation;
+    DROP TABLE CardValuation;
+    ALTER TABLE CardValuation_normalized RENAME TO CardValuation;
+    CREATE UNIQUE INDEX CardValuation_externalKey_key ON CardValuation(externalKey);
+    CREATE INDEX CardValuation_cardId_valuedAt_idx ON CardValuation(cardId, valuedAt DESC);
+    CREATE INDEX CardValuation_valuedAt_idx ON CardValuation(valuedAt DESC);
+  `);
+}
+
+function limitFinancialCurrencies(db) {
+  const tableNames = ["CardTransaction", "CardExpense", "CardValuation"];
+  for (const tableName of tableNames) {
+    if (tableExists(db, tableName)) {
+      db.exec(`DELETE FROM ${tableName} WHERE currency NOT IN ('CNY', 'USD');`);
+    }
+  }
+  for (const tableName of tableNames) {
+    for (const operation of ["INSERT", "UPDATE OF currency"]) {
+      const suffix = operation === "INSERT" ? "insert" : "update";
+      db.exec(`
+        CREATE TRIGGER IF NOT EXISTS ${tableName}_currency_${suffix}_check
+        BEFORE ${operation} ON ${tableName} WHEN NEW.currency NOT IN ('CNY', 'USD')
+        BEGIN SELECT RAISE(ABORT, 'currency must be CNY or USD'); END;
+      `);
+    }
+  }
 }
 
 function createMigrationTable(db) {

@@ -3,7 +3,7 @@ import type { SharePresentation } from "@/lib/share-presentation";
 import type { ShareSectionLayout } from "@/lib/share-sections";
 import type { ShareThemeId } from "@/lib/share-themes";
 
-export type ShareExportMode = "static" | "cloud";
+export type ShareExportMode = "static" | "drop";
 
 export type ShareCollectionWithItems = ShareCollection & {
   sections: ShareSection[];
@@ -76,6 +76,10 @@ export type ExportData = {
 export type ShareExportResult = {
   folderPath: string;
   zipPath: string;
+  reportPath: string;
   cardCount: number;
   imageCount: number;
+  fileCount: number;
+  totalBytes: number;
+  warningCount: number;
 };

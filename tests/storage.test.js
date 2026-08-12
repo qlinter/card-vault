@@ -315,6 +315,30 @@ test("restore accepts a dated backup folder and selects its latest backup", (t) 
   assert.equal(card.playerName, "Latest Backup");
 });
 
+test("restore migrates an older backup before replacing current data", (t) => {
+  const { root, manager } = createTestManager(t);
+  seedCardVaultData(manager, "Current Player");
+  manager.chooseBackupDir(path.join(root, "backups"));
+  const oldBackup = manager.backupDataFolder();
+
+  const backupDb = new DatabaseSync(path.join(oldBackup.backupPath, "dev.db"));
+  backupDb.prepare("INSERT INTO CardValuation (id, cardId, amountMinor, currency, valuedAt, source, provenance) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .run("old-valuation", "card-1", 12345, "CNY", "2025-01-01", "平台报价", "manual");
+  backupDb.prepare("DELETE FROM SchemaMigration WHERE id = ?").run("007_normalize_valuation_sources_v1_1_0");
+  backupDb.close();
+
+  const restored = manager.restoreDataFolder(oldBackup.backupPath);
+  const restoredDb = new DatabaseSync(manager.getDbPath(), { readOnly: true });
+  const valuation = restoredDb.prepare("SELECT source FROM CardValuation WHERE id = ?").get("old-valuation");
+  const latestMigration = restoredDb.prepare("SELECT id FROM SchemaMigration ORDER BY appliedAt DESC, rowid DESC LIMIT 1").get();
+  restoredDb.close();
+
+  assert.deepEqual(restored.appliedMigrations, ["007_normalize_valuation_sources_v1_1_0"]);
+  assert.equal(restored.schemaVersion, "008_limit_financial_currencies_v1_1_0");
+  assert.equal(valuation.source, "个人估计");
+  assert.equal(latestMigration.id, "007_normalize_valuation_sources_v1_1_0");
+});
+
 test("restore rejects folders that do not contain a generated backup", (t) => {
   const { root, manager } = createTestManager(t);
   seedCardVaultData(manager);

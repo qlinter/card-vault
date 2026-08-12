@@ -1,4 +1,5 @@
 import { BackButton } from "@/components/back-button";
+import { CardFinancialHistory } from "@/components/card-financial-history";
 import { splitTagString } from "@/lib/card-helpers";
 import { normalizeImagePath } from "@/lib/image-path";
 import { normalizeHttpUrl } from "@/lib/http-url";
@@ -24,14 +25,6 @@ function valueOrDash(value: string | number | null | undefined): string {
   }
 
   return String(value);
-}
-
-function currencyOrDash(value: number | null | undefined): string {
-  if (value === null || value === undefined || Number.isNaN(value)) {
-    return "-";
-  }
-
-  return `¥${value.toFixed(2)}`;
 }
 
 function yesNo(value: boolean): string {
@@ -77,6 +70,12 @@ function successText(value: string | undefined): string | null {
       return "修改成功";
     case "deleted":
       return "删除成功";
+    case "history-added":
+      return "财务记录已添加";
+    case "history-updated":
+      return "财务记录已纠错";
+    case "history-deleted":
+      return "财务记录已删除";
     default:
       return value ?? null;
   }
@@ -86,12 +85,18 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
   const { id } = await params;
   const query = await searchParams;
   const success = successText(toScalar(query.success));
+  const error = toScalar(query.error);
   const returnTo = toScalar(query.returnTo);
   const returnHref = returnTo === "/" || returnTo?.startsWith("/?") ? returnTo : "/";
 
   const card = await prisma.card.findUnique({
     where: { id },
-    include: { images: { orderBy: { createdAt: "asc" } } }
+    include: {
+      images: { orderBy: { createdAt: "asc" } },
+      transactions: { orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }] },
+      expenses: { orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }] },
+      valuations: { orderBy: [{ valuedAt: "desc" }, { createdAt: "desc" }] }
+    }
   });
 
   if (!card) {
@@ -120,6 +125,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
       </div>
 
       {success ? <p className="note-ok">{success}</p> : null}
+      {error ? <p className="note-error">{error}</p> : null}
 
       <div className="details">
         <section className="panel">
@@ -231,30 +237,6 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
               <span>{collectionStatusText(card.collectionStatus)}</span>
             </div>
             <div className="info-item">
-              <strong>购买日期</strong>
-              <span>{card.purchaseDate ? new Date(card.purchaseDate).toLocaleDateString() : "-"}</span>
-            </div>
-            <div className="info-item">
-              <strong>购买价格</strong>
-              <span>{currencyOrDash(card.purchasePrice)}</span>
-            </div>
-            <div className="info-item">
-              <strong>评级费用</strong>
-              <span>{currencyOrDash(card.gradingFee)}</span>
-            </div>
-            <div className="info-item">
-              <strong>总投入</strong>
-              <span>{currencyOrDash(card.totalCost)}</span>
-            </div>
-            <div className="info-item">
-              <strong>当前估值</strong>
-              <span>{currencyOrDash(card.currentValue)}</span>
-            </div>
-            <div className="info-item">
-              <strong>购买渠道</strong>
-              <span>{valueOrDash(card.purchaseSource)}</span>
-            </div>
-            <div className="info-item">
               <strong>标签</strong>
               <span>{tags.length > 0 ? tags.join(", ") : "-"}</span>
             </div>
@@ -266,6 +248,13 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
           </div>
         </section>
       </div>
+
+      <CardFinancialHistory
+        cardId={card.id}
+        transactions={card.transactions}
+        expenses={card.expenses}
+        valuations={card.valuations}
+      />
     </div>
   );
 }

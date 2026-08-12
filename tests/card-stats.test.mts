@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateOwnedCardsValue, isOwnedCollectionStatus } from "../lib/card-stats.ts";
+import { calculateLatestValuationTotals, isOwnedCollectionStatus } from "../lib/card-stats.ts";
 
-test("owned collection statuses match the homepage value rule", () => {
+test("owned collection statuses remain available for portfolio analysis", () => {
   assert.equal(isOwnedCollectionStatus("holding"), true);
   assert.equal(isOwnedCollectionStatus("listed"), true);
   assert.equal(isOwnedCollectionStatus("grading"), true);
@@ -10,15 +10,21 @@ test("owned collection statuses match the homepage value rule", () => {
   assert.equal(isOwnedCollectionStatus("target"), false);
 });
 
-test("homepage value excludes sold and target cards", () => {
-  const total = calculateOwnedCardsValue([
-    { collectionStatus: "holding", currentValue: 100 },
-    { collectionStatus: "listed", currentValue: 200 },
-    { collectionStatus: "grading", currentValue: 300 },
-    { collectionStatus: "sold", currentValue: 400 },
-    { collectionStatus: "target", currentValue: 500 },
-    { collectionStatus: "holding", currentValue: null }
+test("homepage totals use exactly one latest valuation from every selected card", () => {
+  const result = calculateLatestValuationTotals([
+    {
+      valuations: [
+        { amountMinor: 10000n, currency: "CNY", valuedAt: new Date("2025-01-01"), createdAt: new Date("2025-01-01") },
+        { amountMinor: 15000n, currency: "CNY", valuedAt: new Date("2025-02-01"), createdAt: new Date("2025-02-01") }
+      ]
+    },
+    { valuations: [{ amountMinor: 22000n, currency: "CNY", valuedAt: new Date("2025-01-05"), createdAt: new Date("2025-01-05") }] },
+    { valuations: [{ amountMinor: 9950n, currency: "USD", valuedAt: new Date("2025-01-06"), createdAt: new Date("2025-01-06") }] },
+    { valuations: [] }
   ]);
 
-  assert.equal(total, 600);
+  assert.deepEqual(result, {
+    totals: { CNY: 37000n, USD: 9950n },
+    valuedCardCount: 3
+  });
 });

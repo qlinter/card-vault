@@ -11,6 +11,9 @@ data
 tsconfig.tsbuildinfo
 prisma/dev.db
 prisma/dev.db-journal
+prisma/schema-backups/
 build/.icon-*.normalized.png
+*.pfx
+*.p12
 public/uploads/*
 !public/uploads/.gitkeep

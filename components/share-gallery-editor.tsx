@@ -5,7 +5,14 @@ import type { ShareCardDraft, SharePickerCard } from "@/components/share-card-pi
 import { ShareDesignPreview } from "@/components/share-design-preview";
 import { ShareSectionEditor } from "@/components/share-section-editor";
 import type { ShareThemeField, ShareThemeValues } from "@/components/share-theme-generator";
-import { shareLayouts, type SharePresentation } from "@/lib/share-presentation";
+import {
+  shareDensityOptions,
+  shareImageFitOptions,
+  shareLayouts,
+  shareTextScaleOptions,
+  shareTypographyOptions,
+  type SharePresentation
+} from "@/lib/share-presentation";
 import type { ShareSectionDraft } from "@/lib/share-sections";
 import { shareThemes, type ShareThemeId } from "@/lib/share-themes";
 
@@ -21,6 +28,12 @@ type ShareGalleryEditorProps = {
   coverMode: "auto" | "custom";
   initialCoverImagePath: string;
   initialBackgroundImagePath: string;
+  canUndo: boolean;
+  canRedo: boolean;
+  historyVersion: number;
+  draftStatus: string;
+  onUndo: () => void;
+  onRedo: () => void;
   onThemeChange: (theme: ShareThemeId) => void;
   onPresentationChange: (updater: (current: SharePresentation) => SharePresentation) => void;
   onThemeFieldChange: (field: ShareThemeField, value: string) => void;
@@ -29,8 +42,11 @@ type ShareGalleryEditorProps = {
   onUpdateSection: (sectionId: string, patch: Partial<ShareSectionDraft>) => void;
   onRemoveSection: (sectionId: string) => void;
   onMoveSection: (sectionId: string, direction: -1 | 1) => void;
+  onReorderSection: (activeId: string, targetId: string) => void;
   onAssignSectionCard: (sectionId: string, cardId: string, assigned: boolean) => void;
   onDraftChange: (cardId: string, patch: Partial<ShareCardDraft>) => void;
+  onMoveCard: (cardId: string, direction: -1 | 1) => void;
+  onReorderCard: (activeId: string, targetId: string) => void;
 };
 
 const themeCategories = [...new Set(shareThemes.map((theme) => theme.category))];
@@ -51,6 +67,12 @@ export function ShareGalleryEditor({
   coverMode,
   initialCoverImagePath,
   initialBackgroundImagePath,
+  canUndo,
+  canRedo,
+  historyVersion: _historyVersion,
+  draftStatus,
+  onUndo,
+  onRedo,
   onThemeChange,
   onPresentationChange,
   onThemeFieldChange,
@@ -59,12 +81,28 @@ export function ShareGalleryEditor({
   onUpdateSection,
   onRemoveSection,
   onMoveSection,
+  onReorderSection,
   onAssignSectionCard,
-  onDraftChange
+  onDraftChange,
+  onMoveCard,
+  onReorderCard
 }: ShareGalleryEditorProps) {
   const [activePanel, setActivePanel] = useState<EditorPanel>("content");
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState("");
+  const [backgroundPreviewUrl, setBackgroundPreviewUrl] = useState("");
+  const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
   const activeTheme = shareThemes.find((option) => option.id === theme);
   const activeLayout = shareLayouts.find((option) => option.id === presentation.layout);
+
+  function previewFile(file: File | undefined, setUrl: (value: string) => void) {
+    if (!file) {
+      setUrl("");
+      return;
+    }
+    const reader = new FileReader();
+    reader.addEventListener("load", () => setUrl(typeof reader.result === "string" ? reader.result : ""), { once: true });
+    reader.readAsDataURL(file);
+  }
 
   return (
     <div className="share-editor-v2">
@@ -79,6 +117,11 @@ export function ShareGalleryEditor({
           <span><small>主题</small><strong>{activeTheme?.label ?? theme}</strong></span>
           <span><small>章节</small><strong>{sections.length}</strong></span>
           <span><small>卡片</small><strong>{cards.length}</strong></span>
+        </div>
+        <div className="share-editor-history" aria-label="编辑历史">
+          <button type="button" className="btn btn-secondary" onClick={onUndo} disabled={!canUndo}>撤销</button>
+          <button type="button" className="btn btn-secondary" onClick={onRedo} disabled={!canRedo}>重做</button>
+          <small className="muted">{draftStatus}</small>
         </div>
       </header>
 
@@ -204,11 +247,43 @@ export function ShareGalleryEditor({
                   />
                 </label>
               </div>
+              <div className="field full share-composition-controls">
+                <span>排版与构图</span>
+                <label>
+                  <span>字体风格</span>
+                  <select value={presentation.typography} onChange={(event) => onPresentationChange((current) => ({ ...current, typography: event.target.value as SharePresentation["typography"] }))}>
+                    {shareTypographyOptions.map((option) => <option value={option.id} key={option.id}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>文字大小</span>
+                  <select value={presentation.textScale} onChange={(event) => onPresentationChange((current) => ({ ...current, textScale: event.target.value as SharePresentation["textScale"] }))}>
+                    {shareTextScaleOptions.map((option) => <option value={option.id} key={option.id}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>内容密度</span>
+                  <select value={presentation.density} onChange={(event) => onPresentationChange((current) => ({ ...current, density: event.target.value as SharePresentation["density"] }))}>
+                    {shareDensityOptions.map((option) => <option value={option.id} key={option.id}>{option.label}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>图片构图</span>
+                  <select value={presentation.imageFit} onChange={(event) => onPresentationChange((current) => ({ ...current, imageFit: event.target.value as SharePresentation["imageFit"] }))}>
+                    {shareImageFitOptions.map((option) => <option value={option.id} key={option.id}>{option.label}</option>)}
+                  </select>
+                </label>
+              </div>
               <label className="field full">
                 <span>分享集背景图</span>
                 <div className="share-background-upload">
                   <input type="hidden" name="existingBackgroundImagePath" value={initialBackgroundImagePath} />
-                  <input name="backgroundImage" type="file" accept="image/jpeg,image/png,image/webp" />
+                  <input
+                    name="backgroundImage"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => previewFile(event.target.files?.[0], setBackgroundPreviewUrl)}
+                  />
                   {initialBackgroundImagePath ? (
                     <>
                       <p className="muted">未重新上传时，将继续使用当前背景图。</p>
@@ -234,7 +309,12 @@ export function ShareGalleryEditor({
                   <input type="hidden" name="existingCoverImagePath" value={initialCoverImagePath} />
                   {coverMode === "custom" ? (
                     <div className="share-cover-upload">
-                      <input name="coverImage" type="file" accept="image/jpeg,image/png,image/webp" />
+                      <input
+                        name="coverImage"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(event) => previewFile(event.target.files?.[0], setCoverPreviewUrl)}
+                      />
                       {initialCoverImagePath ? <p className="muted">未重新上传时，将继续使用当前自定义封面。</p> : null}
                     </div>
                   ) : null}
@@ -251,6 +331,7 @@ export function ShareGalleryEditor({
               onChange={onUpdateSection}
               onRemove={onRemoveSection}
               onMove={onMoveSection}
+              onReorder={onReorderSection}
               onCardAssignment={onAssignSectionCard}
             />
           </div>
@@ -271,13 +352,33 @@ export function ShareGalleryEditor({
                   displayDescription: card.displayDescription
                 };
                 return (
-                  <article key={card.id} className="share-item-edit-card">
+                  <article
+                    key={card.id}
+                    className={`share-item-edit-card${draggedCardId === card.id ? " is-dragging" : ""}`}
+                    onDragEnd={() => setDraggedCardId(null)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => {
+                      if (draggedCardId) onReorderCard(draggedCardId, card.id);
+                      setDraggedCardId(null);
+                    }}
+                  >
                     <input type="hidden" name={`sortOrder-${card.id}`} value={draft.sortOrder || "0"} />
                     <input type="hidden" name={`displayTitle-${card.id}`} value={draft.displayTitle} />
                     <input type="hidden" name={`displayDescription-${card.id}`} value={draft.displayDescription} />
-                    <div>
+                    <div className="share-item-card-heading">
+                      <span
+                        className="share-drag-handle"
+                        draggable
+                        title="拖拽调整卡片顺序"
+                        aria-hidden="true"
+                        onDragStart={() => setDraggedCardId(card.id)}
+                      >⠿</span>
                       <strong>{card.playerName}</strong>
                       <p className="muted">{card.cardTitle}</p>
+                      <div className="share-keyboard-order" aria-label={`${card.playerName} 排序`}>
+                        <button type="button" className="icon-btn" title="上移卡片" onClick={() => onMoveCard(card.id, -1)} disabled={cards[0]?.id === card.id}>↑</button>
+                        <button type="button" className="icon-btn" title="下移卡片" onClick={() => onMoveCard(card.id, 1)} disabled={cards.at(-1)?.id === card.id}>↓</button>
+                      </div>
                     </div>
                     <label className="field share-sort-field">
                       <span>排序</span>
@@ -309,7 +410,8 @@ export function ShareGalleryEditor({
           sections={sections}
           cards={cards}
           drafts={drafts}
-          backgroundImagePath={initialBackgroundImagePath}
+          coverImagePath={coverMode === "custom" ? coverPreviewUrl || initialCoverImagePath : ""}
+          backgroundImagePath={backgroundPreviewUrl || initialBackgroundImagePath}
         />
       </div>
     </div>

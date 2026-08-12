@@ -7,6 +7,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { parseTags } from "@/lib/card-helpers";
 import { CardFormValues } from "@/lib/card-form-values";
+import { normalizeCurrency } from "@/lib/financial-history";
+import { deriveLegacyFinancialSnapshot } from "@/lib/financial-history-snapshot";
+import {
+  createCardExpense,
+  createCardTransaction,
+  createCardValuation,
+  getCardFinancialHistory
+} from "@/lib/financial-history-store";
 import { normalizeHttpUrl } from "@/lib/http-url";
 import { prepareImageUpload } from "@/lib/image-upload";
 import { prisma } from "@/lib/prisma";
@@ -31,29 +39,6 @@ function toOptionalString(value: FormDataEntryValue | null): string | null {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
-}
-
-function toOptionalFloat(value: FormDataEntryValue | null): number | null {
-  const raw = toOptionalString(value);
-  if (!raw) {
-    return null;
-  }
-
-  const normalized = raw.replace(/[¥￥\s]/g, "");
-  if (!normalized) {
-    return null;
-  }
-
-  const numberValue = Number.parseFloat(normalized);
-  return Number.isFinite(numberValue) ? numberValue : null;
-}
-
-function calculateTotalCost(purchasePrice: number | null, gradingFee: number | null): number | null {
-  if (purchasePrice === null && gradingFee === null) {
-    return null;
-  }
-
-  return (purchasePrice ?? 0) + (gradingFee ?? 0);
 }
 
 function toOptionalDate(value: FormDataEntryValue | null): Date | null {
@@ -101,6 +86,9 @@ function getCreateCardValues(formData: FormData): CardFormValues {
     totalCost: getString("totalCost"),
     currentValue: getString("currentValue"),
     purchaseSource: getString("purchaseSource"),
+    historyCurrency: getString("historyCurrency") || "CNY",
+    valuationDate: getString("valuationDate"),
+    valuationSource: getString("valuationSource"),
     tags: getString("tags"),
     publicDescription: getString("publicDescription"),
     notes: getString("notes"),
@@ -126,8 +114,6 @@ function ensureBaseFields(formData: FormData): { playerName: string; cardTitle: 
 
 function buildCardData(formData: FormData, isSerialNumbered: boolean) {
   const { playerName, cardTitle, sport } = ensureBaseFields(formData);
-  const purchasePrice = toOptionalFloat(formData.get("purchasePrice"));
-  const gradingFee = toOptionalFloat(formData.get("gradingFee"));
   const tagsRaw = toOptionalString(formData.get("tags"));
   const gradingLinkRaw = toOptionalString(formData.get("gradingLink"));
   const gradingLink = normalizeHttpUrl(gradingLinkRaw);
@@ -160,16 +146,71 @@ function buildCardData(formData: FormData, isSerialNumbered: boolean) {
     gradingLink,
     visibility: toOptionalString(formData.get("visibility")) ?? "private",
     collectionStatus: toOptionalString(formData.get("collectionStatus")) ?? "holding",
-    purchaseDate: toOptionalDate(formData.get("purchaseDate")),
-    purchasePrice,
-    gradingFee,
-    totalCost: calculateTotalCost(purchasePrice, gradingFee),
-    currentValue: toOptionalFloat(formData.get("currentValue")),
-    purchaseSource: toOptionalString(formData.get("purchaseSource")),
     tags: tagsRaw ? parseTags(tagsRaw).join(",") : null,
     publicDescription: toOptionalString(formData.get("publicDescription")),
     notes: toOptionalString(formData.get("notes"))
   };
+}
+
+async function createInitialFinancialHistory(
+  transaction: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  cardId: string,
+  formData: FormData,
+  gradingCompany: string | null
+) {
+  const purchaseAmount = toOptionalString(formData.get("purchasePrice"));
+  const gradingAmount = toOptionalString(formData.get("gradingFee"));
+  const valuationAmount = toOptionalString(formData.get("currentValue"));
+  const purchaseDate = toOptionalDate(formData.get("purchaseDate"));
+  const valuationDate = toOptionalDate(formData.get("valuationDate"));
+  const currency = normalizeCurrency(toOptionalString(formData.get("historyCurrency")));
+  const valuationSource = toOptionalString(formData.get("valuationSource"));
+
+  if ((purchaseAmount || gradingAmount) && !purchaseDate) {
+    throw new Error("填写购买价格或评级费用时，必须填写购买日期。");
+  }
+  if (valuationAmount && !valuationDate) {
+    throw new Error("填写初始估值时，必须填写估值日期。");
+  }
+  if (valuationAmount && !valuationSource) {
+    throw new Error("填写初始估值时，必须注明估值来源。");
+  }
+
+  if (purchaseAmount && purchaseDate) {
+    await createCardTransaction(transaction, {
+      cardId,
+      kind: "purchase",
+      amount: purchaseAmount,
+      currency,
+      occurredAt: purchaseDate,
+      source: toOptionalString(formData.get("purchaseSource")),
+      provenance: "initial_card_entry"
+    });
+  }
+  if (gradingAmount && purchaseDate) {
+    await createCardExpense(transaction, {
+      cardId,
+      kind: "grading",
+      amount: gradingAmount,
+      currency,
+      occurredAt: purchaseDate,
+      vendor: gradingCompany,
+      provenance: "initial_card_entry"
+    });
+  }
+  if (valuationAmount && valuationDate && valuationSource) {
+    await createCardValuation(transaction, {
+      cardId,
+      amount: valuationAmount,
+      currency,
+      valuedAt: valuationDate,
+      source: valuationSource,
+      provenance: "initial_card_entry"
+    });
+  }
+
+  const history = await getCardFinancialHistory(transaction, cardId);
+  await transaction.card.update({ where: { id: cardId }, data: deriveLegacyFinancialSnapshot(history) });
 }
 
 async function saveUploads(files: File[]): Promise<string[]> {
@@ -220,13 +261,17 @@ export async function createCardFormAction(
     }
 
     imagePaths = await saveUploads(files);
-    const card = await prisma.card.create({
-      data: {
-        ...cardData,
-        images: {
-          create: imagePaths.map((pathValue) => ({ path: pathValue }))
+    const card = await prisma.$transaction(async (transaction) => {
+      const createdCard = await transaction.card.create({
+        data: {
+          ...cardData,
+          images: {
+            create: imagePaths.map((pathValue) => ({ path: pathValue }))
+          }
         }
-      }
+      });
+      await createInitialFinancialHistory(transaction, createdCard.id, formData, cardData.gradingCompany);
+      return createdCard;
     });
     imagePaths = [];
 

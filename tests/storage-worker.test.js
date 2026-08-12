@@ -5,6 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { DatabaseSync } = require("node:sqlite");
+const { initializeDatabase } = require("../scripts/database-migrations");
 
 const projectRoot = path.resolve(__dirname, "..");
 const workerPath = path.join(projectRoot, "electron", "storage-worker.js");
@@ -53,14 +54,13 @@ test("storage worker performs health checks, backups, restores, and migrations o
     JSON.stringify({ dataDir, backupDir })
   );
 
-  const db = new DatabaseSync(path.join(dataDir, "dev.db"));
-  db.exec(`
-    CREATE TABLE Card (id TEXT PRIMARY KEY);
-    CREATE TABLE CardImage (id TEXT PRIMARY KEY, path TEXT NOT NULL);
-    CREATE TABLE ShareCollection (id TEXT PRIMARY KEY, coverImagePath TEXT, backgroundImagePath TEXT);
-    INSERT INTO Card (id) VALUES ('card-1');
-    INSERT INTO CardImage (id, path) VALUES ('image-1', '/media/card.jpg');
-  `);
+  const dbPath = path.join(dataDir, "dev.db");
+  initializeDatabase(dbPath);
+  const db = new DatabaseSync(dbPath);
+  db.prepare("INSERT INTO Card (id, playerName, cardTitle, sport) VALUES (?, ?, ?, ?)")
+    .run("card-1", "Worker Player", "Worker Card", "Basketball");
+  db.prepare("INSERT INTO CardImage (id, cardId, path) VALUES (?, ?, ?)")
+    .run("image-1", "card-1", "/media/card.jpg");
   db.close();
 
   const config = { appDataRoot, projectRoot };
@@ -78,7 +78,8 @@ test("storage worker performs health checks, backups, restores, and migrations o
   assert.equal(backup.progress.at(-1).percent, 100);
 
   const changedDb = new DatabaseSync(path.join(dataDir, "dev.db"));
-  changedDb.exec("INSERT INTO Card (id) VALUES ('card-2');");
+  changedDb.prepare("INSERT INTO Card (id, playerName, cardTitle, sport) VALUES (?, ?, ?, ?)")
+    .run("card-2", "Second Player", "Second Card", "Basketball");
   changedDb.close();
 
   const preflight = await runWorker({

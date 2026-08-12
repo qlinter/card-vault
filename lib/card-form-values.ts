@@ -23,6 +23,9 @@
   totalCost: string;
   currentValue: string;
   purchaseSource: string;
+  historyCurrency: string;
+  valuationDate: string;
+  valuationSource: string;
   tags: string;
   publicDescription: string;
   notes: string;
@@ -58,6 +61,9 @@ export const emptyCardFormValues: CardFormValues = {
   totalCost: "",
   currentValue: "",
   purchaseSource: "",
+  historyCurrency: "CNY",
+  valuationDate: "",
+  valuationSource: "个人估计",
   tags: "",
   publicDescription: "",
   notes: "",

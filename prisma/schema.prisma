@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Card {
-  id                String      @id @default(cuid())
+  id                String                @id @default(cuid())
   playerName        String
   cardTitle         String
   sport             String
@@ -19,20 +19,20 @@ model Card {
   subsetName        String?
   parallel          String?
   cardNumber        String?
-  isSerialNumbered  Boolean     @default(false)
+  isSerialNumbered  Boolean               @default(false)
   serialNumber      String?
   serialRange       String?
-  isRookie          Boolean     @default(false)
-  isAutograph       Boolean     @default(false)
+  isRookie          Boolean               @default(false)
+  isAutograph       Boolean               @default(false)
   autoType          String?
-  isPatch           Boolean     @default(false)
+  isPatch           Boolean               @default(false)
   patchType         String?
   gradingCompany    String?
   grade             String?
   certNumber        String?
   gradingLink       String?
-  visibility        String      @default("private")
-  collectionStatus  String      @default("holding")
+  visibility        String                @default("private")
+  collectionStatus  String                @default("holding")
   purchaseDate      DateTime?
   purchasePrice     Float?
   gradingFee        Float?
@@ -43,9 +43,12 @@ model Card {
   publicDescription String?
   notes             String?
   images            CardImage[]
+  transactions      CardTransaction[]
+  expenses          CardExpense[]
+  valuations        CardValuation[]
   shareItems        ShareCollectionItem[]
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
 
   @@index([playerName])
   @@index([cardTitle])
@@ -60,6 +63,65 @@ model Card {
   @@index([createdAt(sort: Desc)])
 }
 
+model CardTransaction {
+  id          String   @id @default(cuid())
+  cardId      String
+  kind        String
+  amountMinor BigInt
+  currency    String   @default("CNY")
+  quantity    Int      @default(1)
+  occurredAt  DateTime
+  source      String?
+  notes       String?
+  provenance  String
+  externalKey String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, occurredAt(sort: Desc)])
+  @@index([kind])
+  @@index([occurredAt(sort: Desc)])
+}
+
+model CardExpense {
+  id          String   @id @default(cuid())
+  cardId      String
+  kind        String
+  amountMinor BigInt
+  currency    String   @default("CNY")
+  occurredAt  DateTime
+  vendor      String?
+  notes       String?
+  provenance  String
+  externalKey String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, occurredAt(sort: Desc)])
+  @@index([kind])
+  @@index([occurredAt(sort: Desc)])
+}
+
+model CardValuation {
+  id          String   @id @default(cuid())
+  cardId      String
+  amountMinor BigInt
+  currency    String   @default("CNY")
+  valuedAt    DateTime
+  source      String
+  notes       String?
+  provenance  String
+  externalKey String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, valuedAt(sort: Desc)])
+  @@index([valuedAt(sort: Desc)])
+}
+
 model CardImage {
   id        String   @id @default(cuid())
   cardId    String
@@ -71,22 +133,22 @@ model CardImage {
 }
 
 model ShareCollection {
-  id                String                @id @default(cuid())
-  title             String
-  subtitle          String?
-  slug              String                @unique
-  theme             String                @default("spotlight")
-  presentationConfig String?
-  description       String?
-  themeNarrative    String?
-  themeHighlights String?
-  groupNotes        String?
-  coverImagePath    String?
+  id                  String                @id @default(cuid())
+  title               String
+  subtitle            String?
+  slug                String                @unique
+  theme               String                @default("spotlight")
+  presentationConfig  String?
+  description         String?
+  themeNarrative      String?
+  themeHighlights     String?
+  groupNotes          String?
+  coverImagePath      String?
   backgroundImagePath String?
-  sections          ShareSection[]
-  items             ShareCollectionItem[]
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
+  sections            ShareSection[]
+  items               ShareCollectionItem[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 
   @@index([createdAt(sort: Desc)])
 }
@@ -106,16 +168,16 @@ model ShareSection {
 }
 
 model ShareCollectionItem {
-  id                String          @id @default(cuid())
-  shareCollectionId String
-  cardId            String
-  sectionId         String?
-  sortOrder         Int             @default(0)
-  displayTitle      String?
+  id                 String          @id @default(cuid())
+  shareCollectionId  String
+  cardId             String
+  sectionId          String?
+  sortOrder          Int             @default(0)
+  displayTitle       String?
   displayDescription String?
-  shareCollection   ShareCollection @relation(fields: [shareCollectionId], references: [id], onDelete: Cascade)
-  section           ShareSection?   @relation(fields: [sectionId], references: [id], onDelete: SetNull)
-  card              Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  shareCollection    ShareCollection @relation(fields: [shareCollectionId], references: [id], onDelete: Cascade)
+  section            ShareSection?   @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  card               Card            @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
   @@unique([shareCollectionId, cardId])
   @@index([shareCollectionId])

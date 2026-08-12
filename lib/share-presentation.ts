@@ -18,6 +18,32 @@ export const shareLayouts = [
 
 export type ShareLayoutId = (typeof shareLayouts)[number]["id"];
 
+export const shareTypographyOptions = [
+  { id: "modern", label: "现代无衬线" },
+  { id: "editorial", label: "典藏衬线" }
+] as const;
+
+export const shareDensityOptions = [
+  { id: "comfortable", label: "舒展" },
+  { id: "compact", label: "紧凑" }
+] as const;
+
+export const shareImageFitOptions = [
+  { id: "cover", label: "铺满画面" },
+  { id: "contain", label: "完整显示" }
+] as const;
+
+export const shareTextScaleOptions = [
+  { id: "small", label: "小" },
+  { id: "standard", label: "标准" },
+  { id: "large", label: "大" }
+] as const;
+
+export type ShareTypography = (typeof shareTypographyOptions)[number]["id"];
+export type ShareDensity = (typeof shareDensityOptions)[number]["id"];
+export type ShareImageFit = (typeof shareImageFitOptions)[number]["id"];
+export type ShareTextScale = (typeof shareTextScaleOptions)[number]["id"];
+
 export type SharePresentation = {
   version: 1;
   layout: ShareLayoutId;
@@ -26,16 +52,28 @@ export type SharePresentation = {
     y: number;
   };
   panelOpacity: number;
+  typography: ShareTypography;
+  density: ShareDensity;
+  imageFit: ShareImageFit;
+  textScale: ShareTextScale;
 };
 
 export const defaultSharePresentation: SharePresentation = {
   version: 1,
   layout: "stage",
   backgroundPosition: { x: 50, y: 50 },
-  panelOpacity: 14
+  panelOpacity: 14,
+  typography: "modern",
+  density: "comfortable",
+  imageFit: "cover",
+  textScale: "standard"
 };
 
 const layoutIds = new Set<string>(shareLayouts.map((layout) => layout.id));
+const typographyIds = new Set<string>(shareTypographyOptions.map((option) => option.id));
+const densityIds = new Set<string>(shareDensityOptions.map((option) => option.id));
+const imageFitIds = new Set<string>(shareImageFitOptions.map((option) => option.id));
+const textScaleIds = new Set<string>(shareTextScaleOptions.map((option) => option.id));
 
 function boundedNumber(value: unknown, fallback: number, min: number, max: number): number {
   const number = typeof value === "number" ? value : Number(value);
@@ -44,6 +82,10 @@ function boundedNumber(value: unknown, fallback: number, min: number, max: numbe
 
 export function normalizeShareLayout(value: unknown): ShareLayoutId {
   return typeof value === "string" && layoutIds.has(value) ? (value as ShareLayoutId) : "stage";
+}
+
+function normalizeChoice<T extends string>(value: unknown, choices: Set<string>, fallback: T): T {
+  return typeof value === "string" && choices.has(value) ? (value as T) : fallback;
 }
 
 export function parseSharePresentation(value: unknown): SharePresentation {
@@ -68,7 +110,11 @@ export function parseSharePresentation(value: unknown): SharePresentation {
       x: boundedNumber(position.x, defaultSharePresentation.backgroundPosition.x, 0, 100),
       y: boundedNumber(position.y, defaultSharePresentation.backgroundPosition.y, 0, 100)
     },
-    panelOpacity: boundedNumber(record.panelOpacity, defaultSharePresentation.panelOpacity, 4, 55)
+    panelOpacity: boundedNumber(record.panelOpacity, defaultSharePresentation.panelOpacity, 4, 55),
+    typography: normalizeChoice(record.typography, typographyIds, defaultSharePresentation.typography),
+    density: normalizeChoice(record.density, densityIds, defaultSharePresentation.density),
+    imageFit: normalizeChoice(record.imageFit, imageFitIds, defaultSharePresentation.imageFit),
+    textScale: normalizeChoice(record.textScale, textScaleIds, defaultSharePresentation.textScale)
   };
 }
 
@@ -77,6 +123,10 @@ export function createSharePresentation(input: {
   backgroundPositionX: unknown;
   backgroundPositionY: unknown;
   panelOpacity: unknown;
+  typography?: unknown;
+  density?: unknown;
+  imageFit?: unknown;
+  textScale?: unknown;
 }): SharePresentation {
   return parseSharePresentation({
     layout: input.layout,
@@ -84,7 +134,11 @@ export function createSharePresentation(input: {
       x: input.backgroundPositionX,
       y: input.backgroundPositionY
     },
-    panelOpacity: input.panelOpacity
+    panelOpacity: input.panelOpacity,
+    typography: input.typography,
+    density: input.density,
+    imageFit: input.imageFit,
+    textScale: input.textScale
   });
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "card-vault",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "private": true,
   "description": "Local desktop app for managing and showcasing sports cards.",
   "author": "QL",
@@ -22,8 +22,7 @@
     "make:icon": "node scripts/make-icon.js",
     "preelectron": "npm run prisma:generate",
     "electron": "electron electron/main.js",
-    "package:win": "npm run make:icon && electron-builder --win nsis dir",
-    "dist:win": "node scripts/release-win.js",
+    "package:win": "npm run make:icon && electron-builder --config scripts/electron-builder.config.js --win nsis dir",
     "release:win": "node scripts/release-win.js",
     "db:init": "node scripts/init-db.js",
     "prisma:generate": "prisma generate"
@@ -88,7 +87,8 @@
         "dir"
       ],
       "icon": "build/icon.ico",
-      "signAndEditExecutable": false
+      "forceCodeSigning": true,
+      "signAndEditExecutable": true
     },
     "nsis": {
       "artifactName": "card-vault-${version}-setup.${ext}",

@@ -74,6 +74,23 @@ function appendServerActionFields(formData, html) {
   }
 }
 
+function appendActionFieldsForMarker(formData, html, marker) {
+  const markerIndex = html.indexOf(marker);
+  const formStart = html.lastIndexOf("<form", markerIndex);
+  const formEnd = html.indexOf("</form>", markerIndex);
+  if (markerIndex < 0 || formStart < 0 || formEnd < 0) {
+    throw new Error(`Page does not contain the expected action form: ${marker}`);
+  }
+  const form = html.slice(formStart, formEnd + 7);
+  const fields = [...form.matchAll(/<input type="hidden" name="(\$ACTION_[^"]+)"(?: value="([^"]*)")?\/>/g)];
+  if (fields.length === 0) {
+    throw new Error(`Action form does not contain a Server Action reference: ${marker}`);
+  }
+  for (const match of fields) {
+    formData.append(match[1], decodeHtmlAttribute(match[2]));
+  }
+}
+
 function appendCardFields(formData, values) {
   const fields = {
     playerName: values.playerName,
@@ -97,6 +114,9 @@ function appendCardFields(formData, values) {
     gradingFee: "20",
     currentValue: "180",
     purchaseSource: "Test Source",
+    historyCurrency: "CNY",
+    valuationDate: "2026-08-10",
+    valuationSource: "个人估计",
     visibility: "public",
     collectionStatus: "holding",
     tags: "rookie, test",
@@ -180,12 +200,23 @@ async function main() {
     let db = new DatabaseSync(dbPath, { readOnly: true });
     const created = db.prepare("SELECT playerName, cardTitle, year, grade, totalCost FROM Card WHERE id = ?").get(cardId);
     const createdImage = db.prepare("SELECT path FROM CardImage WHERE cardId = ?").get(cardId);
+    const createdTransaction = db.prepare("SELECT kind, amountMinor, currency, provenance FROM CardTransaction WHERE cardId = ?").get(cardId);
+    const createdExpense = db.prepare("SELECT kind, amountMinor, currency, provenance FROM CardExpense WHERE cardId = ?").get(cardId);
+    const createdValuation = db.prepare("SELECT amountMinor, currency, source, provenance FROM CardValuation WHERE cardId = ?").get(cardId);
     db.close();
     if (created?.playerName !== "E2E Create Player" || created?.year !== "2016-17" || created?.grade !== "Auto Auth" || created?.totalCost !== 120) {
       throw new Error("Card create did not persist the expected fields.");
     }
     if (!createdImage || !fs.existsSync(path.join(dataDir, "uploads", path.basename(createdImage.path)))) {
       throw new Error("Card create did not persist the uploaded image.");
+    }
+    if (
+      createdTransaction?.kind !== "purchase" || createdTransaction?.amountMinor !== 10000 ||
+      createdExpense?.kind !== "grading" || createdExpense?.amountMinor !== 2000 ||
+      createdValuation?.amountMinor !== 18000 || createdValuation?.source !== "个人估计" ||
+      createdTransaction?.provenance !== "initial_card_entry"
+    ) {
+      throw new Error("Card create did not persist the expected initial financial history.");
     }
 
     const editPage = await fetchPage(baseUrl, `/cards/${cardId}/edit`);
@@ -206,6 +237,7 @@ async function main() {
     db = new DatabaseSync(dbPath, { readOnly: true });
     const updated = db.prepare("SELECT playerName, cardTitle, grade, publicDescription FROM Card WHERE id = ?").get(cardId);
     const imageCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardImage WHERE cardId = ?").get(cardId).count);
+    const historyCount = Number(db.prepare("SELECT (SELECT COUNT(*) FROM CardTransaction WHERE cardId = ?) + (SELECT COUNT(*) FROM CardExpense WHERE cardId = ?) + (SELECT COUNT(*) FROM CardValuation WHERE cardId = ?) AS count").get(cardId, cardId, cardId).count);
     db.close();
     if (updated?.playerName !== "E2E Updated Player" || updated?.grade !== "Authentic" || updated?.publicDescription !== "编辑流程回归测试。") {
       throw new Error("Card edit did not persist the expected fields.");
@@ -213,15 +245,77 @@ async function main() {
     if (imageCount !== 1) {
       throw new Error("Card edit unexpectedly changed the existing image count.");
     }
+    if (historyCount !== 3) {
+      throw new Error("Ordinary card editing unexpectedly changed financial history.");
+    }
 
     const detailPage = await fetchPage(baseUrl, `/cards/${cardId}`);
     if (
       !detailPage.includes("E2E Updated Player") ||
       !detailPage.includes("E2E Updated Card") ||
       !detailPage.includes("Authentic") ||
-      !detailPage.includes("返回上一页")
+      !detailPage.includes("返回上一页") ||
+      !detailPage.includes("财务历史") ||
+      !detailPage.includes("新增交易") ||
+      !detailPage.includes("个人估计")
     ) {
       throw new Error("Updated card detail page does not show the saved values.");
+    }
+
+    const valuationForm = new FormData();
+    appendActionFieldsForMarker(valuationForm, detailPage, "保存估值");
+    valuationForm.append("amount", "210.50");
+    valuationForm.append("currency", "CNY");
+    valuationForm.append("valuedAt", "2026-08-11");
+    valuationForm.append("source", "平台报价");
+    valuationForm.append("notes", "History action regression test.");
+    const valuationResponse = await fetch(`${baseUrl}/cards/${cardId}`, { method: "POST", body: valuationForm, redirect: "manual" });
+    const valuationLocation = valuationResponse.headers.get("location") || "";
+    if (valuationResponse.status !== 303 || valuationLocation !== `/cards/${cardId}?success=history-added#financial-history`) {
+      throw new Error(`Valuation action returned HTTP ${valuationResponse.status} (${valuationLocation}).\n${(await valuationResponse.text()).slice(0, 500)}`);
+    }
+    db = new DatabaseSync(dbPath, { readOnly: true });
+    const latestValuation = db.prepare("SELECT id, amountMinor, source FROM CardValuation WHERE cardId = ? ORDER BY valuedAt DESC LIMIT 1").get(cardId);
+    const syncedSnapshot = db.prepare("SELECT currentValue FROM Card WHERE id = ?").get(cardId);
+    db.close();
+    if (latestValuation?.amountMinor !== 21050 || latestValuation?.source !== "平台报价" || syncedSnapshot?.currentValue !== 210.5) {
+      throw new Error("Detail financial action did not persist the valuation and synchronize the compatibility snapshot.");
+    }
+
+    const historyDetailPage = await fetchPage(baseUrl, `/cards/${cardId}?success=history-added`);
+    const correctionForm = new FormData();
+    appendActionFieldsForMarker(correctionForm, historyDetailPage, 'name="notes">History action regression test.');
+    correctionForm.append("amount", "220.75");
+    correctionForm.append("currency", "CNY");
+    correctionForm.append("valuedAt", "2026-08-11");
+    correctionForm.append("source", "近期成交");
+    correctionForm.append("notes", "Corrected history action regression test.");
+    const correctionResponse = await fetch(`${baseUrl}/cards/${cardId}`, { method: "POST", body: correctionForm, redirect: "manual" });
+    const correctionLocation = correctionResponse.headers.get("location") || "";
+    if (correctionResponse.status !== 303 || correctionLocation !== `/cards/${cardId}?success=history-updated#financial-history`) {
+      throw new Error(`Valuation correction returned HTTP ${correctionResponse.status} (${correctionLocation}).`);
+    }
+    db = new DatabaseSync(dbPath, { readOnly: true });
+    const correctedValuation = db.prepare("SELECT amountMinor, source, provenance FROM CardValuation WHERE cardId = ? ORDER BY valuedAt DESC, updatedAt DESC LIMIT 1").get(cardId);
+    db.close();
+    if (correctedValuation?.amountMinor !== 22075 || correctedValuation?.source !== "近期成交" || correctedValuation?.provenance !== "manual_correction") {
+      throw new Error("Valuation correction did not persist the expected values.");
+    }
+
+    const correctedDetailPage = await fetchPage(baseUrl, `/cards/${cardId}?success=history-updated`);
+    const deleteForm = new FormData();
+    appendActionFieldsForMarker(deleteForm, correctedDetailPage, "删除这条记录");
+    const deleteResponse = await fetch(`${baseUrl}/cards/${cardId}`, { method: "POST", body: deleteForm, redirect: "manual" });
+    const deleteLocation = deleteResponse.headers.get("location") || "";
+    if (deleteResponse.status !== 303 || deleteLocation !== `/cards/${cardId}?success=history-deleted#financial-history`) {
+      throw new Error(`Valuation deletion returned HTTP ${deleteResponse.status} (${deleteLocation}).`);
+    }
+    db = new DatabaseSync(dbPath, { readOnly: true });
+    const remainingValuationCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardValuation WHERE cardId = ?").get(cardId).count);
+    const revertedSnapshot = db.prepare("SELECT currentValue FROM Card WHERE id = ?").get(cardId);
+    db.close();
+    if (remainingValuationCount !== 1 || revertedSnapshot?.currentValue !== 180) {
+      throw new Error("Valuation deletion did not restore the previous compatibility snapshot.");
     }
     const showcaseDetailPage = await fetchPage(baseUrl, `/showcase/cards/${cardId}?group=E2E%20Updated%20Player&q=Updated`);
     if (
@@ -233,9 +327,17 @@ async function main() {
     }
 
     const filteredHomePage = await fetchPage(baseUrl, "/?sport=Basketball&sort=valueDesc");
+    const filteredHomeText = filteredHomePage
+      .replace(/<!--.*?-->/g, "")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&yen;/g, "¥");
     const filteredCardHref = `/cards/${cardId}?returnTo=%2F%3Fsport%3DBasketball%26sort%3DvalueDesc`;
-    if (!filteredHomePage.includes(filteredCardHref)) {
-      throw new Error("Filtered home page does not preserve its query in card detail links.");
+    if (
+      !filteredHomePage.includes(filteredCardHref) ||
+      !filteredHomeText.includes("CNY 180.00") ||
+      !filteredHomeText.includes("估值覆盖 1/1")
+    ) {
+      throw new Error(`Filtered home page mismatch: link=${filteredHomePage.includes(filteredCardHref)}, amount=${filteredHomeText.includes("CNY 180.00")}, coverage=${filteredHomeText.includes("估值覆盖 1/1")}\n${filteredHomeText.match(/总估值.{0,180}/)?.[0] || "no valuation text"}`);
     }
     const filteredDetailPage = await fetchPage(baseUrl, filteredCardHref);
     if (!filteredDetailPage.includes('href="/?sport=Basketball&amp;sort=valueDesc"')) {

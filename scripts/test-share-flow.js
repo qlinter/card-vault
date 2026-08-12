@@ -77,6 +77,34 @@ function shareActionFields(html) {
   return fields;
 }
 
+function formActionFields(html, submitLabel) {
+  const form = [...html.matchAll(/<form[\s\S]*?<\/form>/g)]
+    .map((match) => match[0])
+    .find((candidate) => candidate.includes(submitLabel));
+  if (!form) {
+    throw new Error(`Page does not contain the form for: ${submitLabel}`);
+  }
+  const fields = [...form.matchAll(/<input type="hidden" name="(\$ACTION_[^"]+)"(?: value="([^"]*)")?\/>/g)]
+    .map((match) => [match[1], decodeHtmlAttribute(match[2])]);
+  if (fields.length === 0) {
+    throw new Error(`Form does not contain a Server Action reference: ${submitLabel}`);
+  }
+  return fields;
+}
+
+async function submitExport(baseUrl, html, submitLabel, exportMode) {
+  const formData = new FormData();
+  for (const [name, value] of formActionFields(html, submitLabel)) {
+    formData.append(name, value);
+  }
+  formData.append("exportMode", exportMode);
+  return fetch(`${baseUrl}/shares/e2e-share-1/export`, {
+    method: "POST",
+    body: formData,
+    redirect: "manual"
+  });
+}
+
 async function submitShareEdit(baseUrl, editPage) {
   const formData = new FormData();
   for (const [name, value] of shareActionFields(editPage)) {
@@ -91,6 +119,10 @@ async function submitShareEdit(baseUrl, editPage) {
     backgroundPositionX: "45",
     backgroundPositionY: "50",
     panelOpacity: "18",
+    typography: "editorial",
+    density: "compact",
+    imageFit: "contain",
+    textScale: "large",
     coverMode: "auto",
     subtitle: "编辑后副标题",
     description: "编辑后简介。",
@@ -280,6 +312,12 @@ async function main() {
     assertIncludes(newSharePage, "视觉设计", "编辑器 2.0 视觉分区");
     assertIncludes(newSharePage, "桌面", "编辑器 2.0 桌面预览");
     assertIncludes(newSharePage, "手机", "编辑器 2.0 手机预览");
+    assertIncludes(newSharePage, "撤销", "编辑器 2.0 撤销入口");
+    assertIncludes(newSharePage, "重做", "编辑器 2.0 重做入口");
+    assertIncludes(newSharePage, "字体风格", "编辑器 2.0 排版选项");
+    assertIncludes(newSharePage, "文字大小", "编辑器 2.0 字号选项");
+    assertIncludes(newSharePage, "内容密度", "编辑器 2.0 密度选项");
+    assertIncludes(newSharePage, "图片构图", "编辑器 2.0 图片构图选项");
 
     const editPage = await fetchPage(baseUrl, "/shares/e2e-share-1/edit");
     assertIncludes(editPage, "编辑分享集", "分享集编辑页");
@@ -292,10 +330,16 @@ async function main() {
     assertIncludes(previewPage, "theme-archive layout-archive", "分享集预览页主题与版式");
     assertIncludes(previewPage, "E2E 策展章节", "分享集预览页结构化章节");
     assertIncludes(previewPage, "share-preview-frame-shell", "统一渲染预览容器");
+    assertIncludes(previewPage, 'data-preview-card=&quot;e2e-card-1&quot;', "应用预览内嵌单卡入口");
+    assertIncludes(previewPage, 'data-preview-detail=&quot;e2e-card-1&quot;', "应用预览内嵌单卡详情");
+    if (previewPage.includes('href=&quot;#card-e2e-card-1&quot;')) {
+      throw new Error("应用预览仍包含会导航 iframe 的片段链接。");
+    }
 
     const exportPage = await fetchPage(baseUrl, "/shares/e2e-share-1/export");
-    assertIncludes(exportPage, "生成静态分享包", "静态导出入口");
-    assertIncludes(exportPage, "生成云端发布包", "云端发布入口");
+    assertIncludes(exportPage, "生成分享包", "统一分享包入口");
+    assertIncludes(exportPage, "通用静态包", "通用静态包选项");
+    assertIncludes(exportPage, "Cloudflare Drop 临时预览包", "Cloudflare Drop 临时预览选项");
     assertIncludes(exportPage, "不包含价格、成本", "导出隐私提示");
 
     const editResponse = await submitShareEdit(baseUrl, editPage);
@@ -309,7 +353,7 @@ async function main() {
     const verifyDb = new DatabaseSync(dbPath);
     try {
       const collection = verifyDb
-        .prepare("SELECT title, subtitle FROM ShareCollection WHERE id = ?")
+        .prepare("SELECT title, subtitle, presentationConfig FROM ShareCollection WHERE id = ?")
         .get("e2e-share-1");
       const section = verifyDb
         .prepare("SELECT title, layout FROM ShareSection WHERE shareCollectionId = ?")
@@ -319,6 +363,10 @@ async function main() {
         .get("e2e-share-1");
       if (collection?.title !== "E2E 编辑后分享展馆" || collection?.subtitle !== "编辑后副标题") {
         throw new Error("Share edit did not persist the collection fields.");
+      }
+      const presentation = JSON.parse(collection.presentationConfig);
+      if (presentation.typography !== "editorial" || presentation.density !== "compact" || presentation.imageFit !== "contain" || presentation.textScale !== "large") {
+        throw new Error("Share edit did not persist the Editor 2.0 composition controls.");
       }
       if (section?.title !== "编辑后章节" || section?.layout !== "grid") {
         throw new Error("Share edit did not replace the section fields.");
@@ -335,7 +383,56 @@ async function main() {
     assertIncludes(editedPreviewPage, "编辑后章节", "编辑后的分享集章节");
     assertIncludes(editedPreviewPage, "编辑后展示标题", "编辑后的分享卡片标题");
 
-    console.log("Share flow HTTP E2E passed: list, new, edit save, preview, and export routes.");
+    const currentExportPage = await fetchPage(baseUrl, "/shares/e2e-share-1/export");
+    const staticExportResponse = await submitExport(baseUrl, currentExportPage, "生成分享包", "static");
+    const staticExportLocation = staticExportResponse.headers.get("location") ?? "";
+    if (staticExportResponse.status !== 303 || !staticExportLocation.includes("success=static")) {
+      const responseBody = await staticExportResponse.text();
+      throw new Error(`Static export returned HTTP ${staticExportResponse.status} (${staticExportLocation || "no redirect"}).\n${responseBody.slice(0, 500)}`);
+    }
+
+    const exportResponse = await submitExport(baseUrl, currentExportPage, "生成分享包", "drop");
+    const exportLocation = exportResponse.headers.get("location") ?? "";
+    if (exportResponse.status !== 303 || !exportLocation.includes("success=drop")) {
+      const responseBody = await exportResponse.text();
+      throw new Error(`Cloudflare export returned HTTP ${exportResponse.status} (${exportLocation || "no redirect"}).\n${responseBody.slice(0, 500)}`);
+    }
+
+    const exportsDir = path.join(dataDir, "exports");
+    const exportFolderName = fs.readdirSync(exportsDir).find((entry) => entry.includes("-drop-") && !entry.endsWith(".zip"));
+    if (!exportFolderName) {
+      throw new Error("Cloudflare export did not create an export folder.");
+    }
+    const exportFolder = path.join(exportsDir, exportFolderName);
+    for (const relativePath of [
+      "index.html",
+      "404.html",
+      "_headers",
+      "robots.txt",
+      "publish-manifest.json",
+      "CHECK-REPORT.md",
+      "README-Cloudflare-Drop.md",
+      "cards/e2e-e2e.html"
+    ]) {
+      if (!fs.existsSync(path.join(exportFolder, relativePath))) {
+        throw new Error(`Cloudflare export is missing ${relativePath}.`);
+      }
+    }
+    if (!fs.existsSync(`${exportFolder}.zip`)) {
+      throw new Error("Cloudflare export did not create a ZIP archive.");
+    }
+    const manifest = JSON.parse(fs.readFileSync(path.join(exportFolder, "publish-manifest.json"), "utf8"));
+    if (manifest.temporaryPublishing?.provider !== "cloudflare-drop" || manifest.temporaryPublishing?.expiresAfterMinutes !== 60) {
+      throw new Error("Cloudflare export manifest does not describe the temporary publishing boundary.");
+    }
+    const manifestText = JSON.stringify(manifest).toLowerCase();
+    if (manifestText.includes("url") || manifestText.includes("claim")) {
+      throw new Error("Cloudflare export manifest unexpectedly retains URL or claim data.");
+    }
+    assertIncludes(fs.readFileSync(path.join(exportFolder, "CHECK-REPORT.md"), "utf8"), "结果：通过", "发布前检查报告");
+    assertIncludes(fs.readFileSync(path.join(exportFolder, "index.html"), "utf8"), "noindex, nofollow, noarchive", "临时发布 noindex");
+
+    console.log("Share flow HTTP E2E passed: list, new, edit save, preview, and validated Cloudflare Drop export.");
   } finally {
     stopServer(serverProcess);
     removeTempRoot(tempRoot);

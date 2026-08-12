@@ -1,6 +1,6 @@
-import { ExportCard, ExportData } from "@/lib/share-export-types";
-import { fallbackShareSections } from "@/lib/share-sections";
-import { normalizeShareTheme, shareThemeCssVariables } from "@/lib/share-themes";
+import type { ExportCard, ExportData } from "./share-export-types.ts";
+import { fallbackShareSections } from "./share-sections.ts";
+import { normalizeShareTheme, shareThemeCssVariables } from "./share-themes.ts";
 
 function escapeHtml(value: string | null | undefined): string {
   return (value ?? "")
@@ -9,16 +9,6 @@ function escapeHtml(value: string | null | undefined): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-}
-
-function slugify(value: string): string {
-  const slug = value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  return slug || "share";
 }
 
 function paragraphHtml(value: string | null | undefined): string {
@@ -72,16 +62,17 @@ function renderLayout(
   const variableStyle = Object.entries(variables).map(([key, value]) => `${key}:${value};`).join("");
   const backgroundStyle = ` style="${backgroundVariable}${variableStyle}"`;
   const themeClass = `theme-${normalizeShareTheme(data.theme)}`;
-  const bodyClass = ` class="${themeClass} layout-${presentation.layout}${data.backgroundImage ? " has-custom-bg" : ""}"`;
+  const bodyClass = ` class="${themeClass} layout-${presentation.layout} typography-${presentation.typography} density-${presentation.density} image-fit-${presentation.imageFit} text-scale-${presentation.textScale}${data.backgroundImage ? " has-custom-bg" : ""}"`;
   const assets = inlineAssets
     ? `<style>${siteCss()}</style>\n  <script>${siteJs()}</script>`
     : `<link rel="stylesheet" href="${prefix}assets/site.css" />\n  <script src="${prefix}assets/site.js" defer></script>`;
+  const robots = data.mode === "drop" ? `\n  <meta name="robots" content="noindex, nofollow, noarchive" />` : "";
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${escapeHtml(title)}</title>
+  <title>${escapeHtml(title)}</title>${robots}
   ${assets}
 </head>
 <body${bodyClass}${backgroundStyle}>
@@ -91,14 +82,21 @@ ${body}
 `;
 }
 
-function renderGalleryCard(card: ExportCard, className: string): string {
+function cardLinkOpen(card: ExportCard, className: string, inlineDetails: boolean, content: string, ariaLabel?: string): string {
+  if (inlineDetails) {
+    return `<button type="button" class="${className} preview-card-link" data-preview-card="${escapeHtml(card.id)}"${ariaLabel ? ` aria-label="${escapeHtml(ariaLabel)}"` : ""}>${content}</button>`;
+  }
+  return `<a class="${className}" href="${escapeHtml(card.href)}"${ariaLabel ? ` aria-label="${escapeHtml(ariaLabel)}"` : ""}>${content}</a>`;
+}
+
+function renderGalleryCard(card: ExportCard, className: string, inlineDetails = false): string {
   const image = card.images[0]
     ? `<img src="${escapeHtml(card.images[0])}" alt="${escapeHtml(card.displayTitle)}" loading="lazy" />`
     : `<div class="placeholder"></div>`;
-  return `<a class="${className}" href="${escapeHtml(card.href)}">
+  return cardLinkOpen(card, className, inlineDetails, `
     ${image}
     <span><strong>${escapeHtml(card.playerName)}</strong><small>${escapeHtml(card.displayTitle)}</small></span>
-  </a>`;
+  `);
 }
 
 function legacySections(data: ExportData) {
@@ -110,7 +108,7 @@ function legacySections(data: ExportData) {
   });
 }
 
-function renderSections(data: ExportData): string {
+function renderSections(data: ExportData, inlineDetails = false): string {
   const sections = data.sections.length > 0 ? data.sections : legacySections(data);
   if (sections.length === 0) {
     return "";
@@ -120,7 +118,7 @@ function renderSections(data: ExportData): string {
     ${sections.map((section, index) => {
       const sectionCards = section.cardIds.map((cardId) => cards.get(cardId)).filter((card): card is ExportCard => Boolean(card));
       const cardHtml = sectionCards.length > 0
-        ? `<div class="section-cards">${sectionCards.map((card) => renderGalleryCard(card, "section-card")).join("")}</div>`
+        ? `<div class="section-cards">${sectionCards.map((card) => renderGalleryCard(card, "section-card", inlineDetails)).join("")}</div>`
         : "";
       return `<article class="curated-section section-${escapeHtml(section.layout)}">
         <div class="section-number">${String(index + 1).padStart(2, "0")}</div>
@@ -145,13 +143,13 @@ function renderHero(data: ExportData, coverImage: string | undefined, coverTitle
   </section>`;
 }
 
-function renderCarousel(data: ExportData): string {
+function renderCarousel(data: ExportData, inlineDetails = false): string {
   const cardsHtml = data.cards.map((card, index) => {
     const image = card.images[0]
       ? `<img src="${escapeHtml(card.images[0])}" alt="${escapeHtml(card.displayTitle)}" />`
       : `<div class="placeholder"></div>`;
     return `<article class="card carousel-card" data-index="${index}" aria-label="${escapeHtml(`${card.playerName} ${card.displayTitle}`)}" style="--offset:${index};--abs-offset:${Math.abs(index)}">
-      <a class="card-image" href="${escapeHtml(card.href)}" aria-label="查看 ${escapeHtml(card.displayTitle)}">${image}</a>
+      ${cardLinkOpen(card, "card-image", inlineDetails, image, `查看 ${card.displayTitle}`)}
     </article>`;
   }).join("");
   return `<section class="carousel" aria-label="卡片立体切换">
@@ -164,7 +162,33 @@ function renderCarousel(data: ExportData): string {
   </section>`;
 }
 
-export function renderIndex(data: ExportData, inlineAssets = false): string {
+function renderInlineCardDetails(data: ExportData): string {
+  return `<div class="preview-detail-layer" data-preview-detail-layer hidden>
+    ${data.cards.map((card) => {
+      const images = card.images
+        .map((image) => `<img src="${escapeHtml(image)}" alt="${escapeHtml(card.displayTitle)}" />`)
+        .join("");
+      const meta = cardMeta(card)
+        .map(([label, value]) => `<div><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value)}</span></div>`)
+        .join("");
+      return `<article class="preview-detail" data-preview-detail="${escapeHtml(card.id)}" hidden>
+        <button type="button" class="preview-detail-back" data-preview-back>← 返回展馆</button>
+        <section class="detail">
+          <div class="detail-images">${images || `<div class="placeholder large"></div>`}</div>
+          <div class="detail-copy">
+            <p class="kicker">${escapeHtml(data.title)}</p>
+            <h1>${escapeHtml(card.playerName)}</h1>
+            <p class="subtitle">${escapeHtml(card.displayTitle)}</p>
+            ${paragraphHtml(card.description)}
+            <div class="meta">${meta}</div>
+          </div>
+        </section>
+      </article>`;
+    }).join("")}
+  </div>`;
+}
+
+export function renderIndex(data: ExportData, inlineAssets = false, inlineDetails = false): string {
   const cover = data.cards.find((card) => card.images.length > 0);
   const coverImage = data.coverImage ?? cover?.images[0];
   const groups = new Map<string, number>();
@@ -176,20 +200,20 @@ export function renderIndex(data: ExportData, inlineAssets = false): string {
     .map(([name, count]) => `<span class="chip">${escapeHtml(name)} <strong>${count}</strong></span>`)
     .join("");
   const hero = renderHero(data, coverImage, cover?.displayTitle ?? data.title);
-  const sections = renderSections(data);
-  const carousel = renderCarousel(data);
+  const sections = renderSections(data, inlineDetails);
+  const carousel = renderCarousel(data, inlineDetails);
   const layoutContent = data.presentation.layout === "archive"
     ? `${hero}<div class="archive-catalog"><aside><p class="kicker">馆藏索引</p><div class="groups">${groupHtml}</div></aside>${sections}</div>${carousel}`
     : data.presentation.layout === "arena"
       ? `${hero}<section class="arena-board"><div><strong>${data.cards.length}</strong><span>CARDS</span></div><div><strong>${groups.size}</strong><span>PLAYERS</span></div><div class="groups">${groupHtml}</div></section>${carousel}${sections}`
       : `${hero}${sections}<div class="groups">${groupHtml}</div>${carousel}`;
-  const body = `<main class="shell">${layoutContent}</main>`;
+  const body = `<main class="shell" data-preview-gallery>${layoutContent}</main>${inlineDetails ? renderInlineCardDetails(data) : ""}`;
 
   return renderLayout(data.title, body, data, "root", inlineAssets);
 }
 
 export function renderPreviewDocument(data: ExportData): string {
-  return renderIndex(data, true);
+  return renderIndex(data, true, true);
 }
 
 export function renderCardPage(data: ExportData, card: ExportCard): string {
@@ -215,6 +239,21 @@ export function renderCardPage(data: ExportData, card: ExportCard): string {
   </main>`;
 
   return renderLayout(`${card.playerName} - ${data.title}`, body, data, "card");
+}
+
+export function renderNotFound(data: ExportData): string {
+  const description = data.mode === "drop"
+    ? "这个地址可能有误，或者 Cloudflare Drop 的一小时临时预览已经结束。"
+    : "这个地址可能有误，请返回展馆首页继续浏览。";
+  const body = `<main class="shell">
+    <section class="detail-copy">
+      <p class="kicker">Card Vault 临时分享</p>
+      <h1>页面不存在</h1>
+      <p>${description}</p>
+      <a class="back" href="index.html">← 返回展馆首页</a>
+    </section>
+  </main>`;
+  return renderLayout(`页面不存在 - ${data.title}`, body, data);
 }
 
 export function siteCss(): string {
@@ -247,7 +286,11 @@ body.has-custom-bg::before {
   background: var(--share-bg-image) var(--share-bg-position-x, 50%) var(--share-bg-position-y, 50%) / cover no-repeat;
 }
 a { color: inherit; text-decoration: none; }
+button.preview-card-link { color: inherit; font: inherit; text-align: inherit; cursor: pointer; }
 img { display: block; max-width: 100%; }
+.text-scale-small { font-size: 14px; }
+.text-scale-standard { font-size: 16px; }
+.text-scale-large { font-size: 18px; }
 .shell { position: relative; z-index: 1; width: min(1160px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 48px; }
 body.has-custom-bg .back {
   display: inline-flex;
@@ -309,7 +352,7 @@ body.has-custom-bg .detail-copy p {
 .curated-section h2 { margin: 0 0 12px; font-size: clamp(24px, 4vw, 42px); line-height: 1.08; }
 .section-number { color: var(--accent); font-size: 13px; font-weight: 900; border-top: 2px solid currentColor; padding-top: 8px; }
 .section-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.section-card { min-width: 0; border-radius: 12px; overflow: hidden; background: var(--panel-strong); border: 1px solid var(--line); }
+.section-card { min-width: 0; padding: 0; border-radius: 12px; overflow: hidden; background: var(--panel-strong); border: 1px solid var(--line); }
 .section-card img, .section-card .placeholder { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; }
 .section-card span { display: grid; gap: 2px; padding: 10px; }
 .section-card strong, .section-card small { overflow-wrap: anywhere; }
@@ -374,7 +417,19 @@ body.has-custom-bg .detail-copy p {
   transition: transform 220ms ease, opacity 220ms ease;
 }
 .carousel-card[aria-hidden="true"] { pointer-events: none; opacity: 0; }
+.card-image { display: block; width: 100%; padding: 0; border: 0; background: transparent; }
 .card-image img, .placeholder { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; background: rgba(255,255,255,0.06); }
+.image-fit-contain .card-image img,
+.image-fit-contain .section-card img,
+.image-fit-contain .hero-cover img { object-fit: contain; }
+.typography-editorial .hero-copy h1,
+.typography-editorial .detail-copy h1,
+.typography-editorial .curated-section h2 { font-family: Georgia, "Times New Roman", "Microsoft YaHei", serif; }
+.density-compact .shell { padding-top: 20px; padding-bottom: 30px; }
+.density-compact .hero { min-height: 54vh; gap: 18px; }
+.density-compact .curated-sections { gap: 14px; }
+.density-compact .curated-section { gap: 14px; padding: clamp(14px, 2vw, 22px); }
+.density-compact .card-stage { min-height: 400px; }
 .carousel-card .card-image img,
 .carousel-card .placeholder {
   display: block;
@@ -392,6 +447,8 @@ body.has-custom-bg .detail-copy p {
 .meta strong { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 .meta span { overflow-wrap: anywhere; }
 .large { min-height: 420px; }
+.preview-detail-layer { position: relative; z-index: 2; width: min(1160px, calc(100% - 32px)); margin: 0 auto; padding: 20px 0 48px; }
+.preview-detail-back { margin-bottom: 18px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; color: var(--accent); background: var(--panel-strong); font: inherit; font-weight: 800; cursor: pointer; }
 .archive-catalog { display: grid; grid-template-columns: minmax(190px, 0.3fr) minmax(0, 1fr); gap: 28px; align-items: start; }
 .archive-catalog > aside { position: sticky; top: 20px; padding: 22px; border: 1px solid var(--line); background: var(--panel); backdrop-filter: blur(14px); }
 .archive-catalog > aside .groups { display: grid; margin: 0; }
@@ -611,10 +668,43 @@ export function siteJs(): string {
   render();
   }
 
+  function initPreviewDetails() {
+    const gallery = document.querySelector("[data-preview-gallery]");
+    const layer = document.querySelector("[data-preview-detail-layer]");
+    if (!gallery || !layer) return;
+
+    function closeDetail() {
+      layer.querySelectorAll("[data-preview-detail]").forEach((detail) => { detail.hidden = true; });
+      layer.hidden = true;
+      gallery.hidden = false;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    document.querySelectorAll("[data-preview-card]").forEach((trigger) => {
+      trigger.addEventListener("click", (event) => {
+        const carouselCard = trigger.closest(".carousel-card");
+        if (carouselCard && !carouselCard.classList.contains("active")) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const cardId = trigger.getAttribute("data-preview-card");
+        const detail = cardId
+          ? Array.from(layer.querySelectorAll("[data-preview-detail]")).find((entry) => entry.getAttribute("data-preview-detail") === cardId)
+          : null;
+        if (!detail) return;
+        layer.querySelectorAll("[data-preview-detail]").forEach((entry) => { entry.hidden = entry !== detail; });
+        gallery.hidden = true;
+        layer.hidden = false;
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    });
+    layer.querySelectorAll("[data-preview-back]").forEach((button) => button.addEventListener("click", closeDetail));
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initGallery, { once: true });
+    document.addEventListener("DOMContentLoaded", () => { initGallery(); initPreviewDetails(); }, { once: true });
   } else {
     initGallery();
+    initPreviewDetails();
   }
 })();`;
 }
@@ -638,49 +728,46 @@ export function readmeDeploy(data: ExportData): string {
 `;
 }
 
-export function cloudReadme(data: ExportData): string {
-  return `# ${data.title} - 云端部署说明
+export function dropReadme(data: ExportData): string {
+  return `# ${data.title} - Cloudflare Drop 临时发布说明
 
-本目录是 Card Vault 生成的静态展馆发布包，适合上传到服务器静态目录，并通过 Nginx 等服务对外访问。
+本目录是 Card Vault 生成的 Cloudflare Drop 临时预览包。它只包含静态 HTML、CSS、JavaScript、JSON 和图片，不需要服务器程序。
 
-## 推荐目录
+## 发布步骤
 
-\`\`\`bash
-/var/www/card-vault/${slugify(data.title)}/
-\`\`\`
+1. 打开 Cloudflare Drop。
+2. 上传本导出目录，或直接上传与本目录同时生成的 ZIP。
+3. 等待临时地址生成后，检查首页、章节、单卡详情、图片以及手机显示。
+4. 需要长期保留时，请在 Cloudflare 提示的期限内登录并认领；否则临时预览约一小时后失效。
 
-## 部署步骤
+## 发布前检查
 
-1. 将本目录内所有文件上传到服务器静态目录。
-2. 确认 Nginx root 指向该目录，或将该目录作为某个 location 的 alias。
-3. 重载 Nginx。
+导出时已检查根目录首页、内部资源引用、私密字段、文件数量和单文件大小。结果见 \`CHECK-REPORT.md\`，导出内容摘要见 \`publish-manifest.json\`。
 
-## 服务器开关
+## 隐私与链接
 
-没有分享需求时可以关闭服务器。服务器关闭时公网链接不可访问；重新启动后，只要文件仍保留在服务器目录中，链接会恢复。
+- 包内默认生成 \`robots.txt\` 和 \`noindex\` 元数据，减少临时页面被搜索引擎收录的概率。
+- 临时地址仍是公开地址；知道地址的人可以访问，\`noindex\` 不等于密码保护。
+- Card Vault 不记录临时发布地址或认领链接。认领链接具有敏感性，请不要粘贴到日志、备注或公开聊天中。
 
-## 后续一键发布预留
+## 本地复核
 
-后续版本可在 Card Vault 设置中配置 SSH/SFTP 信息，将本目录同步到远程目录。不会把服务器凭证写入导出包。
+上传前可以直接打开 \`index.html\`。上传后只需在临时有效期内人工确认显示结果，不需要将 URL 填回 Card Vault。
 `;
 }
 
-export function nginxConf(data: ExportData): string {
-  const slug = slugify(data.title);
-  return `server {
-    listen 80;
-    server_name example.com;
-
-    location /shares/${slug}/ {
-        alias /var/www/card-vault/${slug}/;
-        index index.html;
-        try_files $uri $uri/ =404;
-    }
-
-    location ~* \\.(?:css|js|jpg|jpeg|png|webp|gif|json)$ {
-        expires 30d;
-        add_header Cache-Control "public";
-    }
+export function cloudflareHeaders(): string {
+  return `/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Robots-Tag: noindex, nofollow, noarchive
+`;
 }
+
+export function cloudflareRobots(): string {
+  return `User-agent: *
+Disallow: /
 `;
 }

@@ -13,22 +13,6 @@ type CardFormProps = {
   values?: CardFormValues;
 };
 
-function formatDate(date: Date | null): string {
-  if (!date) {
-    return "";
-  }
-
-  return new Date(date).toISOString().slice(0, 10);
-}
-
-function formatCurrencyInput(value: number | null | undefined): string {
-  if (value === null || value === undefined || Number.isNaN(value)) {
-    return "";
-  }
-
-  return `${value}`;
-}
-
 function pickValue(value: string | undefined, fallback: string): string {
   return value ?? fallback;
 }
@@ -139,26 +123,42 @@ export function CardForm({ mode, action, error, card, values }: CardFormProps) {
           />
         </label>
 
-        <label className="field">
-          <span>购买日期</span>
-          <input
-            name="purchaseDate"
-            type="date"
-            defaultValue={pickValue(values?.purchaseDate, formatDate(card?.purchaseDate ?? null))}
-          />
-        </label>
+        {mode === "create" ? (
+          <>
+            <div className="form-section-heading full">
+              <div>
+                <h2>初始财务记录</h2>
+                <p>这些内容会分别保存为购买交易、评级费用和估值记录，之后请在卡片详情页继续维护。</p>
+              </div>
+            </div>
 
-        <InvestmentInputs
-          purchasePrice={pickValue(values?.purchasePrice, formatCurrencyInput(card?.purchasePrice))}
-          gradingFee={pickValue(values?.gradingFee, formatCurrencyInput(card?.gradingFee))}
-          totalCost={pickValue(values?.totalCost, formatCurrencyInput(card?.totalCost))}
-          currentValue={pickValue(values?.currentValue, formatCurrencyInput(card?.currentValue))}
-        />
+            <label className="field">
+              <span>购买日期</span>
+              <input name="purchaseDate" type="date" defaultValue={values?.purchaseDate ?? ""} />
+            </label>
 
-        <label className="field">
-          <span>购买渠道</span>
-          <input name="purchaseSource" defaultValue={pickValue(values?.purchaseSource, card?.purchaseSource ?? "")} />
-        </label>
+            <label className="field">
+              <span>购买渠道</span>
+              <input name="purchaseSource" defaultValue={values?.purchaseSource ?? ""} />
+            </label>
+
+            <InvestmentInputs
+              purchasePrice={values?.purchasePrice ?? ""}
+              gradingFee={values?.gradingFee ?? ""}
+              totalCost={values?.totalCost ?? ""}
+              currentValue={values?.currentValue ?? ""}
+              currency={values?.historyCurrency ?? "CNY"}
+              valuationDate={values?.valuationDate ?? ""}
+              valuationSource={values?.valuationSource ?? "个人估计"}
+            />
+          </>
+        ) : (
+          <div className="history-edit-notice full">
+            <strong>财务记录已从卡片资料中分离</strong>
+            <span>购买、费用和估值请在卡片详情页的“财务历史”中新增或纠错，保存本页不会改写历史记录。</span>
+            <a href={`/cards/${card?.id}#financial-history`}>前往财务历史</a>
+          </div>
+        )}
 
         <label className="field">
           <span>公开状态</span>
@@ -261,5 +261,3 @@ export function CardForm({ mode, action, error, card, values }: CardFormProps) {
     </form>
   );
 }
-
-

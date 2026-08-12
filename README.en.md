@@ -6,24 +6,30 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 
 ## Current Version
 
-`1.0.13`
+`1.0.14`
 
-### 1.0.13 Highlights
+### 1.0.14 Highlights
 
-- Azure OpenAI configuration now uses only the `v1` API, with the dated `api-version` setting and UI field removed.
-- Azure endpoints accept both `.openai.azure.com` and unified `.services.ai.azure.com` resource roots and consistently use `/openai/v1` routes.
-- Deployments for the GPT-5.4, GPT-5.5, and GPT-5.6 families are supported; GPT-5 reasoning requests automatically omit the unsupported `temperature` parameter.
-- Legacy AI settings migrate safely to the v3 format while preserving the endpoint, deployment, and encrypted API key and dropping the obsolete API version.
+- Completed Share Gallery Editor 2.0 with four workspaces, drag and keyboard ordering, undo/redo, local draft recovery, pre-save cover/background preview, and typography, density, and image-fit controls.
+- Fixed application share previews loading the complete Card Vault UI after a card click; previews now use an inline card detail.
+- Consolidated share-package export with general static and Cloudflare Drop variants plus public-field, broken-link, file-count, and 25 MiB per-file validation.
+- Added transaction, expense, and valuation history with entry, timeline, per-currency summary, correction, and deletion; legacy fields remain CNY compatibility snapshots only.
+- Limited financial currencies to CNY/USD and valuation sources to Personal estimate, Recent sale, or Platform quote, with automatic migration for existing and restored backups.
+- Home-page totals now use each filtered card's latest valuation. CNY/USD display on separate lines with matching typography, ISO labels, thousands separators, and compact coverage.
+- Home portfolio analysis now reads transaction, expense, and latest-valuation history directly, presenting cost, net cash invested, comparable unrealized return, valuation age, and sources separately for CNY and USD without implicit FX conversion.
+- Backup restore now completes pending migrations and integrity checks in staging before replacing active data.
+- The desktop launcher now detects missing or lockfile-stale dependencies and installs them automatically when needed.
+- Windows production releases now require Authenticode signing, SHA-256 RFC 3161 timestamps, and post-build signature verification, preventing accidental unsigned distribution.
 
 ## Core Features
 
 - Create, edit, delete, and inspect cards with up to five images per card.
 - Search, filter, and sort by player, sport, team, year, product line, grade, autograph, patch, and collection status.
-- Track purchase price, grading fee, total investment, valuation, grading, collection status, and visibility.
+- Track purchases, sales, refunds, grading, other costs, and latest values through transaction, expense, and valuation history.
 - Browse the Showcase by player or group, with collapsible navigation and multi-image card views.
 - Use Azure OpenAI or MiniMax for AI card recognition, gallery copy, and portfolio analysis.
 - Build editable share galleries with themes, layouts, sections, covers, backgrounds, and per-card presentation overrides.
-- Export standalone static galleries and server-ready static hosting packages.
+- Export a general static sharing bundle or a temporary Cloudflare Drop preview bundle.
 - Store data in local SQLite, move the active data path, configure separate backups, inspect health, and restore in-app.
 - Distribute self-contained Windows installer and portable ZIP builds that do not require Node.js.
 
@@ -45,20 +51,22 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 | `1.0.11` | Established migration, recovery, credential, data-health, portfolio-analysis, and release foundations. |
 | `1.0.12` | Upgraded core dependencies and hardened storage migration, safe navigation, filtered context, and Share Gallery Editor 2.0. |
 | `1.0.13` | Unified Azure OpenAI on the v1 API with unified-resource endpoints and GPT-5.4 / 5.5 / 5.6 support. |
+| `1.0.14` | Completed Editor 2.0 and Drop export, reliable financial history, history-backed portfolio analysis, staged backup migration, and mandatory Windows release signing. |
 
 ## Install and Run
 
 ### Installer
 
-File: `dist/card-vault-1.0.13-setup.exe`
+Planned file: `dist/card-vault-1.0.14-setup.exe` (generated after confirmation)
 
 - Uses an installation wizard and supports a user-selected installation directory.
 - Installing a newer build of the same application normally replaces program files without deleting collection data.
-- Current releases are not code-signed, so Windows may show a security warning on first launch.
+- Starting with v1.0.14, official releases require a trusted Windows Authenticode signature with an SHA-256 RFC 3161 timestamp. The release script verifies both the installer and application executable and rejects unsigned output.
+- A new standard OV certificate may still show SmartScreen prompts while reputation builds; prefer EV or Microsoft Artifact Signing when immediate public trust is required.
 
 ### Portable Build
 
-File: `dist/card-vault-1.0.13-portable.zip`
+Planned file: `dist/card-vault-1.0.14-portable.zip` (generated after confirmation)
 
 1. Extract the complete ZIP.
 2. Run `Card Vault.exe` from the extracted directory.
@@ -109,7 +117,7 @@ Settings supports:
 - Restoring from a dated backup folder or a specific data folder after automatically creating a safety copy of current data.
 - Backup, restore, health checks, and cleanup run in a separate storage process; Settings reports the current stage and progress while the desktop shell remains responsive.
 
-Use the in-app backup workflow when moving to another computer. Copying only the database or only the images produces an incomplete collection. See the [Chinese Data Backup Guide](./数据备份说明.md) for the detailed workflow.
+Use the in-app backup workflow when moving to another computer. Copying only the database or only the images produces an incomplete collection. See the [Chinese Data Backup Guide](./docs/data-backup-guide.md) for the detailed workflow.
 
 ## AI Features
 
@@ -127,13 +135,26 @@ Use the in-app backup workflow when moving to another computer. Copying only the
 
 - Share collections are independent from the local Showcase and contain only explicitly selected cards.
 - Editor 2.0 separates Content, Visual, Sections, and per-card presentation into focused workspaces while retaining a continuously updated preview.
-- Live preview switches between desktop and mobile widths; preview, static export, and cloud packages continue to share one renderer.
+- Live preview switches between desktop and mobile widths; preview, static export, and Cloudflare Drop packages continue to share one renderer.
 - Titles, introductions, narratives, sections, themes, layouts, covers, backgrounds, and per-card overrides remain editable.
-- General, Sport, and Team themes use the same renderer in preview, static exports, and cloud packages.
+- General, Sport, and Team themes use the same renderer in preview, static exports, and Cloudflare Drop packages.
 - Static export uses a strict public-field allowlist and excludes prices, costs, purchase sources, private notes, AI keys, and local paths.
-- Cloud packages include static-server deployment guidance; in-app publish, update, revoke, and URL management are not implemented yet.
+- Cloudflare Drop packages validate broken references, private fields, file count, and per-file size, and include noindex metadata, a 404 page, a content manifest, and one-hour preview guidance.
+- Card Vault does not retain temporary Drop URLs or claim links; permanent publishing, update, revoke, and online verification remain future work.
 
 See [Share Gallery Editor 2.0](./docs/share-editor-2.0.md) for its boundaries, delivered phase, and planned iterations.
+See [Cloudflare Drop temporary publishing](./docs/cloudflare-drop-publishing.md) for the package checks and privacy boundaries.
+See [Financial history model](./docs/financial-history-model.md) for storage rules, constraints, and legacy migration behavior.
+
+## Financial History
+
+- Initial card entry creates separate purchase, grading-expense, and valuation records.
+- Editing card metadata never overwrites financial history; transactions, expenses, and valuations are maintained on the card detail page.
+- The detail page provides separate CNY/USD summaries, a unified timeline, record correction, and deletion. Valuation sources are limited to Personal estimate, Recent sale, or Platform quote.
+- Legacy financial fields remain CNY-only compatibility snapshots for flows not yet migrated; home valuation and portfolio analysis both read financial history directly.
+- Home-page total valuation uses exactly the latest dated valuation for every card in the current filtered result. CNY and USD use matching ISO-code typography, regardless of collection status, without summing older valuation history.
+- Home portfolio analysis summarizes actual transactions, expenses, and latest valuations separately for CNY and USD, including active cost basis, net cash invested, comparable unrealized return, valuation age, and sources without implicit FX conversion or fabricated realized returns.
+- Restoring an older backup runs all pending migrations and integrity checks in staging before replacing current data, including normalization of restored valuation sources to Personal estimate.
 
 ## Common Commands
 
@@ -161,6 +182,8 @@ GitHub should primarily contain source code, documentation, and configuration. `
 
 Whether to track `dist` is a repository policy choice. Publishing the installer and portable ZIP through GitHub Releases usually keeps the source repository smaller and clearer.
 
+Windows production releases require code-signing credentials. See the [Windows Code Signing Guide](./docs/windows-code-signing.md) for PFX, certificate-store/EV, Microsoft Artifact Signing, and verification setup. Never store certificate files or passwords in the repository or `.env`.
+
 ## Project Structure
 
 - `app/`: pages, API routes, and Server Actions.
@@ -173,11 +196,11 @@ Whether to track `dist` is a repository policy choice. Publishing the installer 
 
 ## Roadmap
 
-- Continue Share Gallery Editor 2.0 with drag ordering, undo/redo, draft recovery, immediate uploaded-image preview, and mobile visual QA.
-- Complete managed cloud publishing, update, revoke, URL, and visibility workflows.
+- Add stable desktop/mobile screenshot baselines and improve editing performance for very large share galleries.
+- Add valuation charts, realized returns, and explicit exchange-rate records without implicit cross-currency conversion.
+- Add managed publishing, update, revoke, and access workflows after a permanent Cloudflare project or standalone server is available.
 - Add recognition confidence, batch ingestion, and duplicate-card warnings.
-- Introduce separate transaction, expense, and valuation-history models.
-- Expand portfolio analytics, transaction records, and AI valuation after historical data is reliable.
+- Add trend comparison, configurable analysis periods, and AI valuation assistance on top of the history-backed portfolio analysis.
 
 ## Technology
 

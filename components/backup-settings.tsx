@@ -106,7 +106,10 @@ export function BackupSettings() {
         setBusyAction(null);
         setProgress(null);
       } else {
-        setMessage("恢复完成，Card Vault 正在重新启动。");
+        const migrationText = result.appliedMigrations?.length
+          ? `，并已自动完成 ${result.appliedMigrations.length} 项数据库迁移`
+          : "，数据库结构已确认是最新版本";
+        setMessage(`恢复完成${migrationText}。Card Vault 正在重新启动。`);
       }
     } catch (error) {
       setMessage(`恢复失败：${error instanceof Error ? error.message : "请稍后重试。"}`);
@@ -123,7 +126,7 @@ export function BackupSettings() {
         <div>
           <h2>备份与恢复</h2>
           <p className="muted" style={{ margin: "0.35rem 0 0" }}>
-            备份会生成 SQLite 一致性快照；恢复前会再次备份当前数据。
+            备份会生成 SQLite 一致性快照；恢复前会再次备份当前数据，旧备份会先在暂存区完成数据库迁移和校验。
           </p>
         </div>
         <div className="backup-actions">

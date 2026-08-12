@@ -128,6 +128,7 @@ export function ShareCollectionForm({ action, cards, share, error }: ShareCollec
   return (
     <ShareCollectionWizard
       action={action}
+      draftId={share?.id ?? "new"}
       cards={pickerCards}
       aiCards={cards.map(cardSummary)}
       initialValues={{

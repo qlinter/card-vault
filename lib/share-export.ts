@@ -1,13 +1,17 @@
 import fs from "fs";
+import { createHash } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
+import packageJson from "@/package.json";
 import { toPublicExportCard } from "@/lib/share-export-data";
 import {
-  cloudReadme,
-  nginxConf,
+  cloudflareHeaders,
+  cloudflareRobots,
+  dropReadme,
   readmeDeploy,
   renderCardPage,
   renderIndex,
+  renderNotFound,
   siteCss,
   siteJs
 } from "@/lib/share-export-render";
@@ -23,6 +27,12 @@ import { normalizeShareTheme, shareThemeBackgroundPath } from "@/lib/share-theme
 import { parseSharePresentation } from "@/lib/share-presentation";
 import { normalizeShareSectionLayout } from "@/lib/share-sections";
 import { createZipArchive } from "@/lib/zip-archive";
+import {
+  renderExportValidationReport,
+  ShareExportIssue,
+  validateExportDirectory,
+  validatePublicExportData
+} from "@/lib/share-export-validation";
 
 export type { ShareExportMode } from "@/lib/share-export-types";
 
@@ -71,6 +81,8 @@ export async function exportShareCollection(
   await mkdir(cardsDir, { recursive: true });
 
   const cards: ExportCard[] = [];
+  const issues: ShareExportIssue[] = [];
+  const cardFileNames = new Set<string>();
   let imageCount = 0;
   let coverImage: string | null = null;
   let backgroundImage: string | null = null;
@@ -79,12 +91,24 @@ export async function exportShareCollection(
 
   for (const [cardIndex, item] of sortedItems.entries()) {
     const card = item.card;
-    const cardSlug = slugify(`${card.playerName}-${card.cardTitle}`) || `card-${cardIndex + 1}`;
+    const cardSlugBase = slugify(`${card.playerName}-${card.cardTitle}`) || `card-${cardIndex + 1}`;
+    let cardSlug = cardSlugBase;
+    let duplicateIndex = 2;
+    while (cardFileNames.has(cardSlug)) {
+      cardSlug = `${cardSlugBase}-${duplicateIndex}`;
+      duplicateIndex += 1;
+    }
+    cardFileNames.add(cardSlug);
     const images: string[] = [];
 
     for (const [imageIndex, image] of card.images.entries()) {
       const source = imageSourcePath(image.path);
       if (!fs.existsSync(source)) {
+        issues.push({
+          level: "warning",
+          code: "missing-card-image",
+          message: `${card.playerName} / ${card.cardTitle} 的图片文件不存在，导出包将显示占位图。`
+        });
         continue;
       }
 
@@ -111,6 +135,8 @@ export async function exportShareCollection(
       coverImage = `assets/images/${fileName}`;
       await fs.promises.copyFile(source, path.join(imageDir, fileName));
       imageCount += 1;
+    } else {
+      issues.push({ level: "warning", code: "missing-cover", message: "自定义封面文件不存在，已改用卡片图片或占位内容。" });
     }
   }
 
@@ -121,6 +147,8 @@ export async function exportShareCollection(
       backgroundImage = `assets/images/${fileName}`;
       await fs.promises.copyFile(source, path.join(imageDir, fileName));
       imageCount += 1;
+    } else {
+      issues.push({ level: "warning", code: "missing-background", message: "自定义背景文件不存在，导出包将使用主题底色。" });
     }
   } else {
     const themeBackground = shareThemeBackgroundPath(theme);
@@ -156,19 +184,61 @@ export async function exportShareCollection(
     cards
   };
 
+  issues.push(...validatePublicExportData(data));
+  const publicData = JSON.stringify(data, null, 2);
+  const manifest = {
+    format: "card-vault-share",
+    formatVersion: 1,
+    appVersion: packageJson.version,
+    title: data.title,
+    slug: collection.slug,
+    mode,
+    generatedAt: data.generatedAt,
+    cardCount: cards.length,
+    imageCount,
+    publicDataSha256: createHash("sha256").update(publicData).digest("hex"),
+    temporaryPublishing: mode === "drop" ? { provider: "cloudflare-drop", expiresAfterMinutes: 60 } : null
+  };
+
   await writeFile(path.join(assetsDir, "site.css"), siteCss(), "utf8");
   await writeFile(path.join(assetsDir, "site.js"), siteJs(), "utf8");
-  await writeFile(path.join(assetsDir, "data.json"), JSON.stringify(data, null, 2), "utf8");
+  await writeFile(path.join(assetsDir, "data.json"), publicData, "utf8");
   await writeFile(path.join(folderPath, "index.html"), renderIndex(data), "utf8");
-  await writeFile(path.join(folderPath, "README-deploy.md"), readmeDeploy(data), "utf8");
+  await writeFile(path.join(folderPath, "404.html"), renderNotFound(data), "utf8");
+  await writeFile(path.join(folderPath, "publish-manifest.json"), JSON.stringify(manifest, null, 2), "utf8");
 
-  if (mode === "cloud") {
-    await writeFile(path.join(folderPath, "README-deploy-cloud.md"), cloudReadme(data), "utf8");
-    await writeFile(path.join(folderPath, "nginx-card-vault-share.conf"), nginxConf(data), "utf8");
+  if (mode === "drop") {
+    await writeFile(path.join(folderPath, "README-Cloudflare-Drop.md"), dropReadme(data), "utf8");
+    await writeFile(path.join(folderPath, "_headers"), cloudflareHeaders(), "utf8");
+    await writeFile(path.join(folderPath, "robots.txt"), cloudflareRobots(), "utf8");
+  } else {
+    await writeFile(path.join(folderPath, "README-deploy.md"), readmeDeploy(data), "utf8");
   }
 
   for (const card of cards) {
     await writeFile(path.join(folderPath, card.href), renderCardPage(data, card), "utf8");
+  }
+
+  const reportPath = path.join(folderPath, "CHECK-REPORT.md");
+  await writeFile(reportPath, "正在生成检查报告。\n", "utf8");
+  let validation = await validateExportDirectory(folderPath, issues);
+  for (let pass = 0; pass < 5; pass += 1) {
+    await writeFile(reportPath, renderExportValidationReport(validation), "utf8");
+    const nextValidation = await validateExportDirectory(folderPath, issues);
+    const stable =
+      nextValidation.fileCount === validation.fileCount &&
+      nextValidation.totalBytes === validation.totalBytes &&
+      nextValidation.maxFileBytes === validation.maxFileBytes;
+    validation = nextValidation;
+    if (stable) break;
+  }
+  if (!validation.valid) {
+    const errorSummary = validation.issues
+      .filter((issue) => issue.level === "error")
+      .slice(0, 3)
+      .map((issue) => issue.message)
+      .join("；");
+    throw new Error(`分享包发布前检查未通过：${errorSummary}`);
   }
 
   const zipPath = `${folderPath}.zip`;
@@ -177,7 +247,11 @@ export async function exportShareCollection(
   return {
     folderPath,
     zipPath,
+    reportPath,
     cardCount: cards.length,
-    imageCount
+    imageCount,
+    fileCount: validation.fileCount,
+    totalBytes: validation.totalBytes,
+    warningCount: validation.issues.filter((issue) => issue.level === "warning").length
   };
 }

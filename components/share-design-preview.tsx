@@ -17,6 +17,7 @@ type ShareDesignPreviewProps = {
   sections: ShareSectionDraft[];
   cards: SharePickerCard[];
   drafts: Record<string, ShareCardDraft>;
+  coverImagePath: string;
   backgroundImagePath: string;
 };
 
@@ -27,6 +28,7 @@ export function ShareDesignPreview({
   sections,
   cards,
   drafts,
+  coverImagePath,
   backgroundImagePath
 }: ShareDesignPreviewProps) {
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
@@ -70,7 +72,7 @@ export function ShareDesignPreview({
       themeNarrative: values.themeNarrative || null,
       themeHighlights: values.themeHighlights || null,
       groupNotes: values.groupNotes || null,
-      coverImage: exportCards.find((card) => card.images.length > 0)?.images[0] ?? null,
+      coverImage: coverImagePath ? normalizeImagePath(coverImagePath) : exportCards.find((card) => card.images.length > 0)?.images[0] ?? null,
       backgroundImage: backgroundImagePath ? normalizeImagePath(backgroundImagePath) : shareThemeBackgroundPath(theme),
       generatedAt: new Date(0).toISOString(),
       mode: "static",
@@ -78,7 +80,7 @@ export function ShareDesignPreview({
       cards: exportCards
     };
     return renderPreviewDocument(data);
-  }, [backgroundImagePath, cards, drafts, presentation, sections, theme, values]);
+  }, [backgroundImagePath, cards, coverImagePath, drafts, presentation, sections, theme, values]);
 
   return (
     <aside className={`share-live-preview is-${previewMode}`}>

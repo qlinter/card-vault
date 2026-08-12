@@ -10,6 +10,7 @@ type ShareSectionEditorProps = {
   onChange: (sectionId: string, patch: Partial<ShareSectionDraft>) => void;
   onRemove: (sectionId: string) => void;
   onMove: (sectionId: string, direction: -1 | 1) => void;
+  onReorder: (activeId: string, targetId: string) => void;
   onCardAssignment: (sectionId: string, cardId: string, assigned: boolean) => void;
 };
 
@@ -20,6 +21,7 @@ export function ShareSectionEditor({
   onChange,
   onRemove,
   onMove,
+  onReorder,
   onCardAssignment
 }: ShareSectionEditorProps) {
   return (
@@ -38,9 +40,26 @@ export function ShareSectionEditor({
 
       <div className="share-section-editor-list">
         {sections.map((section, index) => (
-          <article key={section.id} className="share-section-editor-card">
+          <article
+            key={section.id}
+            className="share-section-editor-card"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              const activeId = event.dataTransfer.getData("text/share-section");
+              if (activeId) onReorder(activeId, section.id);
+            }}
+          >
             <div className="share-section-editor-toolbar">
-              <strong>章节 {index + 1}</strong>
+              <strong>
+                <span
+                  className="share-drag-handle"
+                  draggable
+                  title="拖拽调整章节顺序"
+                  aria-hidden="true"
+                  onDragStart={(event) => event.dataTransfer.setData("text/share-section", section.id)}
+                >⠿</span> 章节 {index + 1}
+              </strong>
               <div>
                 <button type="button" className="icon-btn" title="上移章节" onClick={() => onMove(section.id, -1)} disabled={index === 0}>
                   ↑

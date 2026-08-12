@@ -148,7 +148,11 @@ async function collectionData(formData: FormData) {
             layout: formData.get("layout"),
             backgroundPositionX: formData.get("backgroundPositionX"),
             backgroundPositionY: formData.get("backgroundPositionY"),
-            panelOpacity: formData.get("panelOpacity")
+            panelOpacity: formData.get("panelOpacity"),
+            typography: formData.get("typography"),
+            density: formData.get("density"),
+            imageFit: formData.get("imageFit"),
+            textScale: formData.get("textScale")
           })
         ),
         subtitle: toOptionalString(formData.get("subtitle")),
@@ -314,10 +318,12 @@ export async function deleteShareCollectionAction(shareId: string): Promise<void
   redirect(redirectPath);
 }
 
-export async function exportShareCollectionAction(shareId: string, mode: ShareExportMode): Promise<void> {
+export async function exportShareCollectionAction(shareId: string, formData: FormData): Promise<void> {
   let redirectPath = `/shares/${shareId}/export?error=unknown`;
 
   try {
+    const requestedMode = formData.get("exportMode");
+    const mode: ShareExportMode = requestedMode === "static" ? "static" : "drop";
     const collection = await prisma.shareCollection.findUnique({
       where: { id: shareId },
       include: {
@@ -337,7 +343,7 @@ export async function exportShareCollectionAction(shareId: string, mode: ShareEx
     }
 
     const result = await exportShareCollection(collection, mode);
-    redirectPath = `/shares/${shareId}/export?success=${mode}&path=${encodeURIComponent(result.folderPath)}&zip=${encodeURIComponent(result.zipPath)}&cards=${result.cardCount}&images=${result.imageCount}`;
+    redirectPath = `/shares/${shareId}/export?success=${mode}&path=${encodeURIComponent(result.folderPath)}&zip=${encodeURIComponent(result.zipPath)}&report=${encodeURIComponent(result.reportPath)}&cards=${result.cardCount}&images=${result.imageCount}&files=${result.fileCount}&bytes=${result.totalBytes}&warnings=${result.warningCount}`;
   } catch (error) {
     const message = error instanceof Error ? error.message : "导出失败，请稍后重试。";
     redirectPath = `/shares/${shareId}/export?error=${encodeURIComponent(message)}`;

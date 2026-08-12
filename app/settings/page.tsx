@@ -25,12 +25,6 @@ export default function SettingsPage() {
 
       <AiSettings />
 
-      <section className="panel settings-section">
-        <h2>{"\u4e91\u7aef\u53d1\u5e03"}</h2>
-        <p className="muted">
-          {"\u5f53\u524d\u7248\u672c\u5148\u751f\u6210\u9002\u914d\u670d\u52a1\u5668\u9759\u6001\u6258\u7ba1 / Nginx \u7684\u53d1\u5e03\u5305\u3002\u540e\u7eed\u4e00\u952e\u4e0a\u4f20\u4f1a\u5728\u8fd9\u91cc\u914d\u7f6e\u670d\u52a1\u5668\u5730\u5740\u3001\u8fdc\u7a0b\u76ee\u5f55\u548c SSH/SFTP \u51ed\u8bc1\u3002"}
-        </p>
-      </section>
     </div>
   );
 }

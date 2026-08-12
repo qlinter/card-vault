@@ -19,7 +19,7 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 - Home portfolio analysis now reads transaction, expense, and latest-valuation history directly, presenting cost, net cash invested, comparable unrealized return, valuation age, and sources separately for CNY and USD without implicit FX conversion.
 - Backup restore now completes pending migrations and integrity checks in staging before replacing active data.
 - The desktop launcher now detects missing or lockfile-stale dependencies and installs them automatically when needed.
-- Windows production releases now require Authenticode signing, SHA-256 RFC 3161 timestamps, and post-build signature verification, preventing accidental unsigned distribution.
+- Windows releases support optional Authenticode signing and can still be generated when no certificate is configured.
 
 ## Core Features
 
@@ -51,7 +51,7 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 | `1.0.11` | Established migration, recovery, credential, data-health, portfolio-analysis, and release foundations. |
 | `1.0.12` | Upgraded core dependencies and hardened storage migration, safe navigation, filtered context, and Share Gallery Editor 2.0. |
 | `1.0.13` | Unified Azure OpenAI on the v1 API with unified-resource endpoints and GPT-5.4 / 5.5 / 5.6 support. |
-| `1.0.14` | Completed Editor 2.0 and Drop export, reliable financial history, history-backed portfolio analysis, staged backup migration, and mandatory Windows release signing. |
+| `1.0.14` | Completed Editor 2.0 and Drop export, reliable financial history, history-backed portfolio analysis, staged backup migration, and optional Windows release signing. |
 
 ## Install and Run
 
@@ -61,8 +61,8 @@ Planned file: `dist/card-vault-1.0.14-setup.exe` (generated after confirmation)
 
 - Uses an installation wizard and supports a user-selected installation directory.
 - Installing a newer build of the same application normally replaces program files without deleting collection data.
-- Starting with v1.0.14, official releases require a trusted Windows Authenticode signature with an SHA-256 RFC 3161 timestamp. The release script verifies both the installer and application executable and rejects unsigned output.
-- A new standard OV certificate may still show SmartScreen prompts while reputation builds; prefer EV or Microsoft Artifact Signing when immediate public trust is required.
+- Releases can be generated without a signing certificate, but Windows may display an unknown-publisher or SmartScreen warning.
+- When OV/EV credentials or Microsoft Artifact Signing are configured, the build signs automatically; a new OV certificate may still need time to build SmartScreen reputation.
 
 ### Portable Build
 
@@ -182,7 +182,7 @@ GitHub should primarily contain source code, documentation, and configuration. `
 
 Whether to track `dist` is a repository policy choice. Publishing the installer and portable ZIP through GitHub Releases usually keeps the source repository smaller and clearer.
 
-Windows production releases require code-signing credentials. See the [Windows Code Signing Guide](./docs/windows-code-signing.md) for PFX, certificate-store/EV, Microsoft Artifact Signing, and verification setup. Never store certificate files or passwords in the repository or `.env`.
+Windows code signing is an optional enhancement and no longer blocks routine packaging. See the [Windows Code Signing Guide](./docs/windows-code-signing.md) for PFX, certificate-store/EV, and Microsoft Artifact Signing setup. Never store certificate files or passwords in the repository or `.env`.
 
 ## Project Structure
 

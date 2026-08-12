@@ -79,18 +79,6 @@ function verifyPackagedFiles() {
   return executablePath;
 }
 
-function verifyAuthenticode(filePath) {
-  const command = [
-    "$ErrorActionPreference = 'Stop'",
-    `$signature = Get-AuthenticodeSignature -LiteralPath ${powershellLiteral(filePath)}`,
-    "if ($signature.Status -ne 'Valid') { throw \"Authenticode status is $($signature.Status): $($signature.StatusMessage)\" }",
-    "if (-not $signature.SignerCertificate) { throw 'Signer certificate is missing.' }",
-    "if (-not $signature.TimeStamperCertificate) { throw 'RFC 3161 timestamp is missing.' }",
-    "Write-Output \"Verified Authenticode: $($signature.SignerCertificate.Subject)\""
-  ].join("; ");
-  run("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", command]);
-}
-
 function smokeTestPackagedRuntime(executablePath) {
   const packagedScriptsDir = path.join(unpackedDir, "resources", "app", "scripts");
   for (const scriptName of ["test-card-flow.js", "test-share-flow.js"]) {
@@ -132,14 +120,12 @@ async function main() {
   }
 
   const signing = resolveWindowsSigning(process.env);
-  process.stdout.write(`Windows signing preflight passed: ${signing.description}\n`);
+  process.stdout.write(`Windows signing mode: ${signing.description}\n`);
 
   cleanDistDirectory();
   run("npm.cmd", ["run", "check:release"]);
   run("npm.cmd", ["run", "package:win"]);
   const executablePath = verifyPackagedFiles();
-  verifyAuthenticode(executablePath);
-  verifyAuthenticode(setupPath);
   smokeTestPackagedRuntime(executablePath);
   removeArtifact(path.join(unpackedDir, "resources", "app", "logs"));
   createPortableZip();

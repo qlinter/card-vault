@@ -87,8 +87,7 @@
         "dir"
       ],
       "icon": "build/icon.ico",
-      "forceCodeSigning": true,
-      "signAndEditExecutable": true
+      "signAndEditExecutable": false
     },
     "nsis": {
       "artifactName": "card-vault-${version}-setup.${ext}",

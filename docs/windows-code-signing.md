@@ -1,6 +1,6 @@
 # Windows 代码签名
 
-Card Vault v1.0.14 起只允许生成通过 Authenticode 验证的正式 Windows 发布包。发布流程会签名 `Card Vault.exe` 和 NSIS 安装器；便携 ZIP 包含同一个已签名主程序。
+Card Vault v1.0.14 支持可选 Authenticode 签名。没有证书时仍可生成 Windows 安装包和便携包；配置签名凭据后，发布流程会自动签名 `Card Vault.exe` 和 NSIS 安装器，便携 ZIP 包含同一个已签名主程序。
 
 代码签名可以证明发布者身份和文件完整性，并避免“未知发布者”。SmartScreen 还会结合证书与下载信誉判断风险：普通 OV 新证书可能需要一段信誉积累期，EV 证书或 Microsoft Artifact Signing 更适合希望新发布身份尽快获得公开信任的场景。
 
@@ -46,18 +46,16 @@ npm.cmd run release:win
 
 全部 `CARD_VAULT_AZURE_SIGN_*` 与 `AZURE_*` 变量必须同时配置；缺少任何一项都会在清理旧发布文件之前中止。
 
-## 发布门禁
+## 发布流程
 
 `npm run release:win` 会依次：
 
-1. 检查签名方式及凭据是否完整。
+1. 检查是否配置签名方式；没有凭据时进入未签名模式。
 2. 执行完整测试和生产构建。
-3. 由 electron-builder 签名主程序、卸载程序和安装器。
-4. 使用 PowerShell `Get-AuthenticodeSignature` 验证主程序和安装器状态为 `Valid`。
-5. 要求签名证书与时间戳证书同时存在。
-6. 完成打包冒烟测试后生成便携 ZIP 和 SHA-256 校验值。
+3. 已配置证书时由 electron-builder 签名主程序、卸载程序和安装器。
+4. 完成打包冒烟测试后生成便携 ZIP 和 SHA-256 校验值。
 
-没有有效证书时不能生成 v1.0.14 正式发布包。开发调试继续使用 `npm run electron`，不要求发布证书。
+没有有效证书不会阻止 v1.0.14 打包，但未签名文件可能触发 Windows 风险提示。开发调试继续使用 `npm run electron`，同样不要求发布证书。
 
 ## 手工复核
 

@@ -43,12 +43,14 @@ function resolveWindowsSigning(env = process.env) {
   const certificateSubjectName = value(env, "CARD_VAULT_SIGNING_SUBJECT");
   const certificateSha1 = value(env, "CARD_VAULT_SIGNING_SHA1");
   if (!certificateLink && !certificateSubjectName && !certificateSha1) {
-    throw new Error([
-      "Windows code-signing credentials are required.",
-      "Set WIN_CSC_LINK (plus WIN_CSC_KEY_PASSWORD when needed),",
-      "CARD_VAULT_SIGNING_SUBJECT / CARD_VAULT_SIGNING_SHA1 for a certificate-store or EV identity,",
-      "or the CARD_VAULT_AZURE_SIGN_* and AZURE_* variables for Microsoft Artifact Signing."
-    ].join(" "));
+    return {
+      mode: "unsigned",
+      description: "unsigned development release",
+      winOptions: {
+        forceCodeSigning: false,
+        signAndEditExecutable: false
+      }
+    };
   }
 
   const signtoolOptions = {

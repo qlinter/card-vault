@@ -33,11 +33,10 @@
 
 ## Windows 发布签名
 
-- v1.0.14 正式发布启用强制 Authenticode 签名；主程序、NSIS 安装器和便携包中的主程序使用同一发布身份。
-- PFX/证书存储签名统一使用 SHA-256 文件摘要和 RFC 3161 时间戳；同时支持 Microsoft Artifact Signing。
-- 发布脚本在清理旧 `dist` 前检查签名配置，并在打包后验证主程序和安装器的 Authenticode 状态、签名证书及时间戳；任何一项失败都会中止发布。
+- v1.0.14 支持可选 Authenticode 签名；未配置证书时仍可直接生成安装包和便携包，不再执行强制证书验证。
+- 配置 PFX、证书存储/EV 或 Microsoft Artifact Signing 后，主程序和 NSIS 安装器会自动使用同一发布身份签名；PFX/证书存储方式使用 SHA-256 与 RFC 3161 时间戳。
 - 证书路径、密码和 Microsoft Entra 凭据只通过当前 PowerShell 会话或 CI Secret 注入，不写入源码、`.env`、数据库或发布包。
-- 代码签名可以消除“未知发布者”并证明文件完整性，但普通 OV 新证书仍可能经历 SmartScreen 信誉积累；EV 或 Microsoft Artifact Signing 更适合希望新版本尽快建立公开信任的发布场景。
+- 未签名包可能触发 Windows“未知发布者”或 SmartScreen 提示；普通 OV 新证书也可能经历信誉积累期。
 
 ## 兼容说明
 

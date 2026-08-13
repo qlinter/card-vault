@@ -343,6 +343,20 @@ async function main() {
     if (!filteredDetailPage.includes('href="/?sport=Basketball&amp;sort=valueDesc"')) {
       throw new Error("Card detail page does not return to the preserved home filter query.");
     }
+    const analysisResponse = await fetch(`${baseUrl}/api/ai/portfolio-analysis`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: { sport: "Basketball", sort: "valueDesc", unknown: "drop me" } })
+    });
+    const analysisPayload = await analysisResponse.json();
+    if (
+      analysisResponse.status !== 400 ||
+      analysisPayload?.snapshot?.cardCount !== 1 ||
+      analysisPayload?.snapshot?.scope?.criteria?.length !== 1 ||
+      analysisPayload?.snapshot?.scope?.criteria?.[0]?.field !== "sport"
+    ) {
+      throw new Error(`Portfolio analysis did not build a trusted server-side snapshot before AI configuration validation.\n${JSON.stringify(analysisPayload).slice(0, 500)}`);
+    }
     console.log("Card flow HTTP E2E passed: create, upload, edit, and detail routes.");
   } finally {
     stopServer(serverProcess);

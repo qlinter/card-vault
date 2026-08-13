@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildPortfolioScope,
   buildPortfolioSnapshot,
+  normalizePortfolioFilterInput,
   normalizePortfolioAnalysis,
   normalizePortfolioSnapshot,
   portfolioScopeInstructions
@@ -22,7 +23,7 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
       isPatch: false,
       transactions: [{ kind: "purchase", amountMinor: 10000n, currency: "CNY" }],
       expenses: [{ amountMinor: 1000n, currency: "CNY" }],
-      valuations: [{ amountMinor: 15000n, currency: "CNY", valuedAt: new Date("2026-08-01"), createdAt: new Date("2026-08-01"), source: "娑擃亙姹夋导鎷岊吀" }]
+      valuations: [{ amountMinor: 15000n, currency: "CNY", valuedAt: new Date("2026-08-01"), createdAt: new Date("2026-08-01"), source: "个人估计" }]
     },
     {
       playerName: "Player A",
@@ -35,7 +36,7 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
       isPatch: false,
       transactions: [{ kind: "purchase", amountMinor: 20000n, currency: "USD" }],
       expenses: [],
-      valuations: [{ amountMinor: 18000n, currency: "USD", valuedAt: new Date("2026-05-20"), createdAt: new Date("2026-05-20"), source: "鏉╂垶婀￠幋鎰唉" }]
+      valuations: [{ amountMinor: 18000n, currency: "USD", valuedAt: new Date("2026-05-20"), createdAt: new Date("2026-05-20"), source: "近期成交" }]
     },
     {
       playerName: "Player B",
@@ -64,7 +65,7 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
         { kind: "sale", amountMinor: 50000n, currency: "CNY" }
       ],
       expenses: [],
-      valuations: [{ amountMinor: 50000n, currency: "CNY", valuedAt: new Date("2025-01-01"), createdAt: new Date("2025-01-01"), source: "娑擃亙姹夋导鎷岊吀" }]
+      valuations: [{ amountMinor: 50000n, currency: "CNY", valuedAt: new Date("2025-01-01"), createdAt: new Date("2025-01-01"), source: "个人估计" }]
     },
     {
       playerName: "Player D",
@@ -77,7 +78,7 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
       isPatch: false,
       transactions: [],
       expenses: [],
-      valuations: [{ amountMinor: 80000n, currency: "USD", valuedAt: new Date("2026-02-01"), createdAt: new Date("2026-02-01"), source: "楠炲啿褰撮幎銉ょ幆" }]
+      valuations: [{ amountMinor: 80000n, currency: "USD", valuedAt: new Date("2026-02-01"), createdAt: new Date("2026-02-01"), source: "平台报价" }]
     }
   ], undefined, asOf);
 
@@ -164,7 +165,7 @@ test("portfolio snapshot exposes multidimensional allocation, concentration, cov
       imageCount: 2,
       transactions: [{ kind: "purchase", amountMinor: 10000n, currency: "CNY", occurredAt: new Date("2026-01-05") }],
       expenses: [{ amountMinor: 500n, currency: "CNY", occurredAt: new Date("2026-01-06") }],
-      valuations: [{ amountMinor: 20000n, currency: "CNY", valuedAt: new Date("2026-08-01"), createdAt: new Date("2026-08-01"), source: "娑擃亙姹夋导鎷岊吀" }]
+      valuations: [{ amountMinor: 20000n, currency: "CNY", valuedAt: new Date("2026-08-01"), createdAt: new Date("2026-08-01"), source: "个人估计" }]
     },
     {
       playerName: "Player B",
@@ -185,7 +186,7 @@ test("portfolio snapshot exposes multidimensional allocation, concentration, cov
       imageCount: 0,
       transactions: [],
       expenses: [],
-      valuations: [{ amountMinor: 10000n, currency: "CNY", valuedAt: new Date("2025-12-01"), createdAt: new Date("2025-12-01"), source: "楠炲啿褰撮幎銉ょ幆" }]
+      valuations: [{ amountMinor: 10000n, currency: "CNY", valuedAt: new Date("2025-12-01"), createdAt: new Date("2025-12-01"), source: "平台报价" }]
     },
     {
       playerName: "Player C",
@@ -226,6 +227,29 @@ test("portfolio snapshot exposes multidimensional allocation, concentration, cov
   assert.equal(snapshot.topPositions[0].playerName, "Player A");
   assert.equal(snapshot.topPositions[0].isSerialNumbered, true);
 });
+
+test("portfolio snapshot keeps complete totals for a large local collection", () => {
+  const cards = Array.from({ length: 1000 }, (_, index) => ({
+    playerName: `Player ${index % 40}`,
+    cardTitle: `Card ${index}`,
+    sport: index % 2 === 0 ? "Basketball" : "Football",
+    collectionStatus: "holding",
+    gradingCompany: index % 3 === 0 ? "PSA" : null,
+    grade: index % 3 === 0 ? "10" : null,
+    isRookie: index % 5 === 0,
+    isAutograph: index % 7 === 0,
+    isPatch: false,
+    transactions: [{ kind: "purchase", amountMinor: 10000n, currency: "CNY", occurredAt: new Date("2026-01-01") }],
+    expenses: [],
+    valuations: [{ amountMinor: 15000n, currency: "CNY", valuedAt: new Date("2026-08-01"), createdAt: new Date("2026-08-01"), source: "个人估计" }]
+  }));
+  const snapshot = buildPortfolioSnapshot(cards, undefined, new Date("2026-08-12"));
+  assert.equal(snapshot.cardCount, 1000);
+  assert.equal(snapshot.financials.valuationCoverageCount, 1000);
+  assert.equal(snapshot.financials.currencies[0].latestValue, 150000);
+  assert.equal(snapshot.players.reduce((sum, item) => sum + item.count, 0), 300);
+  assert.equal(snapshot.allocation.byPlayer.reduce((sum, item) => sum + item.count, 0), 1000);
+});
 test("portfolio scope records active filters and excludes sorting", () => {
   const scope = buildPortfolioScope({
     sport: "足球",
@@ -248,6 +272,13 @@ test("portfolio scope records active filters and excludes sorting", () => {
   assert.match(instructions, /运动类型=足球/);
   assert.match(instructions, /不得提出“足球卡占比过高”/);
   assert.match(instructions, /仅适用于当前筛选结果/);
+});
+
+test("portfolio analysis accepts only known bounded filter strings", () => {
+  assert.deepEqual(normalizePortfolioFilterInput({ sport: " 足球 ", sort: "priceDesc", unknown: "drop me" }), { sport: "足球" });
+  assert.deepEqual(normalizePortfolioFilterInput(null), {});
+  assert.throws(() => normalizePortfolioFilterInput({ year: 2024 }), /格式无效/);
+  assert.throws(() => normalizePortfolioFilterInput({ q: "x".repeat(161) }), /过长/);
 });
 test("portfolio analysis normalization accepts version 2 sections, evidence, and sufficiency", () => {
   const analysis = normalizePortfolioAnalysis({
@@ -382,7 +413,7 @@ test("portfolio snapshot normalization drops unknown fields and bounds nested va
       staleValuationCount: 1,
       latestValuationAt: "2026-08-01T00:00:00.000Z",
       oldestLatestValuationAt: "invalid",
-      valuationSources: [{ name: "娑擃亙姹夋导鎷岊吀", count: 2 }],
+      valuationSources: [{ name: "个人估计", count: 2 }],
       excludedComplexPositionCount: 8,
       secret: "drop me"
     },

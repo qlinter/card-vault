@@ -267,9 +267,15 @@ test("orphan cleanup is refused when the data health check does not pass", (t) =
   assert.equal(fs.existsSync(orphanPath), true);
 });
 
-test("restore replaces current data only after creating a safety backup", (t) => {
+test("v1.0.15-compatible backup restores without migration after creating a safety backup", (t) => {
   const { root, manager } = createTestManager(t);
   seedCardVaultData(manager, "Before Backup");
+  const sourceDb = new DatabaseSync(manager.getDbPath());
+  sourceDb.prepare(`
+    INSERT INTO CardValuation (id, cardId, amountMinor, currency, valuedAt, source, provenance)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run("v1015-valuation", "card-1", 12345, "CNY", "2026-08-12", "个人估计", "manual");
+  sourceDb.close();
   manager.chooseBackupDir(path.join(root, "backups"));
   const sourceBackup = manager.backupDataFolder();
 
@@ -280,9 +286,13 @@ test("restore replaces current data only after creating a safety backup", (t) =>
   const restored = manager.restoreDataFolder(sourceBackup.backupPath);
   const restoredDb = new DatabaseSync(manager.getDbPath(), { readOnly: true });
   const card = restoredDb.prepare("SELECT playerName FROM Card WHERE id = ?").get("card-1");
+  const valuation = restoredDb.prepare("SELECT amountMinor, source FROM CardValuation WHERE id = ?").get("v1015-valuation");
   restoredDb.close();
 
   assert.equal(card.playerName, "Before Backup");
+  assert.equal(valuation.amountMinor, 12345);
+  assert.equal(valuation.source, "个人估计");
+  assert.deepEqual(restored.appliedMigrations, []);
   assert.ok(restored.safetyBackupPath);
   assert.equal(fs.existsSync(path.join(restored.safetyBackupPath, "dev.db")), true);
   assert.equal(restored.health.integrity, "ok");

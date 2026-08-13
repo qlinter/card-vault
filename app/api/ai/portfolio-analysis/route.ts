@@ -3,14 +3,29 @@ import { ensureAiSettings } from "@/lib/ai-settings";
 import { AiUpstreamError, aiProviderName, requestAiChatText } from "@/lib/ai-chat-client";
 import { extractJsonRecord } from "@/lib/ai-response-parsing";
 import { errorMessage } from "@/lib/feedback-messages";
-import { normalizePortfolioAnalysis, normalizePortfolioSnapshot, portfolioScopeInstructions, type PortfolioSnapshot } from "@/lib/portfolio-analysis";
+import { buildCardFilters } from "@/lib/card-helpers";
+import { portfolioAnalysisCardSelect } from "@/lib/card-query-shapes";
+import { prisma } from "@/lib/prisma";
+import { buildPortfolioScope, buildPortfolioSnapshot, normalizePortfolioAnalysis, normalizePortfolioFilterInput, portfolioScopeInstructions, type PortfolioSnapshot } from "@/lib/portfolio-analysis";
 
 export const runtime = "nodejs";
 
-function snapshotPayload(value: unknown): PortfolioSnapshot {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("缺少可分析的组合统计数据。");
-  if (JSON.stringify(value).length > 120000) throw new Error("组合统计数据过大，请缩小首页筛选范围后重试。");
-  return normalizePortfolioSnapshot(value);
+const maximumAnalysisCardCount = 5000;
+
+async function requestedSnapshot(value: unknown): Promise<PortfolioSnapshot> {
+  const query = normalizePortfolioFilterInput(value);
+  const where = buildCardFilters(query);
+  const cardCount = await prisma.card.count({ where });
+  if (cardCount === 0) throw new Error("当前筛选范围内没有可分析的卡片。");
+  if (cardCount > maximumAnalysisCardCount) throw new Error(`当前筛选结果超过 ${maximumAnalysisCardCount} 张，请缩小范围后重试。`);
+
+  const cards = await prisma.card.findMany({
+    where,
+    select: portfolioAnalysisCardSelect
+  });
+  const snapshot = buildPortfolioSnapshot(cards.map((card) => ({ ...card, imageCount: card._count.images })), buildPortfolioScope(query));
+  if (JSON.stringify(snapshot).length > 120000) throw new Error("组合统计数据过大，请缩小首页筛选范围后重试。");
+  return snapshot;
 }
 
 function analysisPrompt(snapshot: PortfolioSnapshot): string {
@@ -38,15 +53,16 @@ async function repairAnalysis(settings: ReturnType<typeof ensureAiSettings>, raw
 }
 
 export async function POST(request: NextRequest) {
+  let snapshot: PortfolioSnapshot | undefined;
   try {
-    const settings = ensureAiSettings();
     const body = await request.json() as Record<string, unknown>;
-    const snapshot = snapshotPayload(body.snapshot);
+    snapshot = await requestedSnapshot(body.query);
+    const settings = ensureAiSettings();
     const rawText = await requestAiChatText(settings, { messages: [{ role: "system", content: "你是严谨的球星卡收藏组合分析助手，只使用用户提供的汇总数据并输出严格 JSON。" }, { role: "user", content: analysisPrompt(snapshot) }], maxTokens: 3200, temperature: settings.provider === "azure" ? 0.2 : 0.35, operation: "组合分析" });
     try {
-      return NextResponse.json({ analysis: normalizePortfolioAnalysis(extractJsonRecord(rawText)), provider: aiProviderName(settings.provider) });
+      return NextResponse.json({ analysis: normalizePortfolioAnalysis(extractJsonRecord(rawText)), snapshot, provider: aiProviderName(settings.provider) });
     } catch (initialError) {
-      try { return NextResponse.json({ analysis: await repairAnalysis(settings, rawText), provider: aiProviderName(settings.provider) }); }
+      try { return NextResponse.json({ analysis: await repairAnalysis(settings, rawText), snapshot, provider: aiProviderName(settings.provider) }); }
       catch (repairError) {
         const first = errorMessage(initialError, "首次响应无法解析");
         const second = errorMessage(repairError, "修复响应无法解析");
@@ -55,6 +71,6 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     const message = errorMessage(error, "组合分析失败，请稍后重试。");
-    return NextResponse.json({ error: message }, { status: error instanceof AiUpstreamError ? 502 : 400 });
+    return NextResponse.json({ error: message, snapshot }, { status: error instanceof AiUpstreamError ? 502 : 400 });
   }
 }

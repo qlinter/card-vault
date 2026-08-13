@@ -10,6 +10,7 @@ const distDir = path.join(rootDir, "dist");
 const setupPath = path.join(distDir, `card-vault-${packageJson.version}-setup.exe`);
 const zipPath = path.join(distDir, `card-vault-${packageJson.version}-portable.zip`);
 const unpackedDir = path.join(distDir, "win-unpacked");
+const checksumPath = path.join(distDir, "SHA256SUMS.txt");
 
 function run(command, args, options = {}) {
   process.stdout.write(`\n> ${command} ${args.join(" ")}\n`);
@@ -89,6 +90,14 @@ function smokeTestPackagedRuntime(executablePath) {
   }
 }
 
+function verifyPackagedHealthEndpoint(executablePath) {
+  const smokeScriptPath = path.join(rootDir, "scripts", "test-packaged-runtime.js");
+  run(executablePath, [smokeScriptPath, unpackedDir], {
+    timeout: 120000,
+    env: { ELECTRON_RUN_AS_NODE: "1" }
+  });
+}
+
 function powershellLiteral(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
@@ -127,10 +136,12 @@ async function main() {
   run("npm.cmd", ["run", "package:win"]);
   const executablePath = verifyPackagedFiles();
   smokeTestPackagedRuntime(executablePath);
+  verifyPackagedHealthEndpoint(executablePath);
   removeArtifact(path.join(unpackedDir, "resources", "app", "logs"));
   createPortableZip();
 
   const [setupHash, zipHash] = await Promise.all([hashFile(setupPath), hashFile(zipPath)]);
+  fs.writeFileSync(checksumPath, `${setupHash}  ${path.basename(setupPath)}\n${zipHash}  ${path.basename(zipPath)}\n`, "utf8");
   removeArtifact(unpackedDir);
   removeArtifact(`${setupPath}.blockmap`);
   removeArtifact(path.join(distDir, "latest.yml"));
@@ -140,6 +151,7 @@ async function main() {
   process.stdout.write("\nWindows release completed.\n");
   process.stdout.write(`${path.basename(setupPath)}  SHA256 ${setupHash}\n`);
   process.stdout.write(`${path.basename(zipPath)}  SHA256 ${zipHash}\n`);
+  process.stdout.write(`${path.basename(checksumPath)} written.\n`);
 }
 
 main().catch((error) => {

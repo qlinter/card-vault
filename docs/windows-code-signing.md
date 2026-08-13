@@ -1,6 +1,6 @@
 # Windows 代码签名
 
-Card Vault v1.0.15 支持可选 Authenticode 签名。没有证书时仍可生成 Windows 安装包和便携包；配置签名凭据后，发布流程会自动签名 `Card Vault.exe` 和 NSIS 安装器，便携 ZIP 包含同一个已签名主程序。
+Card Vault v1.0.16 支持可选 Authenticode 签名。没有证书时仍可生成 Windows 安装包和便携包；配置签名凭据后，发布流程会自动签名 `Card Vault.exe` 和 NSIS 安装器，便携 ZIP 包含同一个已签名主程序。
 
 代码签名可以证明发布者身份和文件完整性，并减少“未知发布者”提示。SmartScreen 还会结合证书与下载信誉判断风险；普通 OV 新证书可能需要一段信誉积累期，EV 证书或 Microsoft Artifact Signing 更适合希望新发布身份尽快获得公开信任的场景。
 
@@ -55,14 +55,14 @@ npm.cmd run release:win
 4. 验证打包文件、运行卡片和分享流程冒烟测试。
 5. 生成便携 ZIP 和 SHA-256 校验值。
 
-没有有效证书不会阻止 v1.0.15 打包，但未签名文件可能触发 Windows 风险提示。开发调试继续使用 `npm run electron`，同样不要求发布证书。
+没有有效证书不会阻止 v1.0.16 打包，但未签名文件可能触发 Windows 风险提示。开发调试继续使用 `npm run electron`，同样不要求发布证书。
 
 ## 手工复核
 
 发布后可再次检查安装包签名：
 
 ```powershell
-Get-AuthenticodeSignature -LiteralPath '.\dist\card-vault-1.0.15-setup.exe' |
+Get-AuthenticodeSignature -LiteralPath '.\dist\card-vault-1.0.16-setup.exe' |
   Format-List Status,StatusMessage,SignerCertificate,TimeStamperCertificate
 ```
 

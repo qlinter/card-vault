@@ -6,16 +6,16 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 
 ## Current Version
 
-`1.0.15`
+`1.0.16`
 
-### 1.0.15 Highlights
+### 1.0.16 Highlights
 
-- Upgraded homepage AI portfolio analysis to the complete v2 protocol with broader data dimensions, unified snapshots and normalization, stronger JSON parsing and repair, and richer frontend reporting.
-- Split the Electron main process, storage manager, IPC, backup/restore, and local-server runtime, while unifying storage-path resolution rules.
-- Further modularized the Share Gallery Editor by extracting wizard state, history, draft recovery, navigation, and content, visual, section, and card settings panels.
-- Centralized success-code mappings and error-message normalization across pages, Server Actions, and AI API routes.
-- Removed the unused Tailwind CSS configuration and dependency; the project now uses its existing custom CSS exclusively.
-- Added automated coverage for storage paths, feedback messages, and the v2 portfolio-analysis protocol while keeping production builds and release checks green.
+- The home page now loads only list and latest-valuation data; complete financial history is queried after Portfolio Analysis is requested for the current filter scope.
+- Portfolio filters now use a strict field allowlist, type and length validation, and a maximum analysis size.
+- Added Windows GitHub Actions for clean-environment quality checks and manually triggered release-candidate packaging on Node.js 24.
+- Added packaged `/api/health` smoke testing, standalone artifact validation, and a generated `SHA256SUMS.txt` manifest.
+- Added release-metadata consistency checks and expanded mojibake detection after repairing stale test fixtures.
+- v1.0.16 introduces no database migration and remains directly compatible with v1.0.15 data and backups.
 
 - Completed Share Gallery Editor 2.0 with four workspaces, drag and keyboard ordering, undo/redo, local draft recovery, pre-save cover/background preview, and typography, density, and image-fit controls.
 - Fixed application share previews loading the complete Card Vault UI after a card click; previews now use an inline card detail.
@@ -60,12 +60,13 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 | `1.0.13` | Unified Azure OpenAI on the v1 API with unified-resource endpoints and GPT-5.4 / 5.5 / 5.6 support. |
 | `1.0.14` | Completed Editor 2.0 and Drop export, reliable financial history, history-backed portfolio analysis, staged backup migration, and optional Windows release signing. |
 | `1.0.15` | Completed the v2 AI analysis protocol, further Electron/storage/share-editor modularization, feedback-message consolidation, storage-rule unification, and Tailwind removal. |
+| `1.0.16` | Reduced home-page history loading and added clean Windows CI, repeatable release candidates, artifact verification, and release-metadata safeguards. |
 
 ## Install and Run
 
 ### Installer
 
-Release file: `dist/card-vault-1.0.15-setup.exe`
+Release file: `dist/card-vault-1.0.16-setup.exe`
 
 - Uses an installation wizard and supports a user-selected installation directory.
 - Installing a newer build of the same application normally replaces program files without deleting collection data.
@@ -74,7 +75,7 @@ Release file: `dist/card-vault-1.0.15-setup.exe`
 
 ### Portable Build
 
-Release file: `dist/card-vault-1.0.15-portable.zip`
+Release file: `dist/card-vault-1.0.16-portable.zip`
 
 1. Extract the complete ZIP.
 2. Run `Card Vault.exe` from the extracted directory.
@@ -87,7 +88,7 @@ The portable release is suitable for testing, temporary use, external drives, an
 Initial preparation:
 
 ```bash
-npm install
+npm ci
 npm run db:init
 npm run build
 ```
@@ -171,11 +172,13 @@ See [Financial history model](./docs/financial-history-model.md) for storage rul
 | `npm run build` | Create the Next.js production build. |
 | `npm run typecheck` | Run TypeScript checks. |
 | `npm run check:encoding` | Check UTF-8 and known Chinese mojibake patterns. |
+| `npm run check:metadata` | Verify version, lockfile, README, and release-note consistency. |
 | `npm test` | Run the core automated test suite. |
 | `npm run test:card` | Verify card create, upload, edit, and detail flows. |
 | `npm run test:share` | Verify share create, edit save, preview, and export flows. |
 | `npm run check:release` | Run all pre-release checks without creating distributions. |
 | `npm run release:win` | Verify and create the installer and portable ZIP. |
+| `npm run verify:release-artifacts` | Verify the installer, portable ZIP, and SHA-256 manifest. |
 | `npm run clean:cache` | Remove regenerable caches and logs. |
 
 ## Git and Generated Files

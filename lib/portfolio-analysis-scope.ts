@@ -27,6 +27,31 @@ export const portfolioFilterDefinitions = {
 
 export type PortfolioFilterInput = Record<string, string | undefined>;
 
+const maximumFilterValueLength = 160;
+
+export function normalizePortfolioFilterInput(value: unknown): PortfolioFilterInput {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const source = value as Record<string, unknown>;
+  const normalized: PortfolioFilterInput = {};
+  for (const field of Object.keys(portfolioFilterDefinitions) as PortfolioFilterField[]) {
+    const candidate = source[field];
+    if (candidate === undefined || candidate === null || candidate === "") continue;
+    if (typeof candidate !== "string") {
+      throw new Error(`筛选条件 ${portfolioFilterDefinitions[field]} 格式无效。`);
+    }
+    const trimmed = candidate.trim();
+    if (!trimmed) continue;
+    if (trimmed.length > maximumFilterValueLength) {
+      throw new Error(`筛选条件 ${portfolioFilterDefinitions[field]} 过长。`);
+    }
+    normalized[field] = trimmed;
+  }
+  return normalized;
+}
+
 function displayFilterValue(field: PortfolioFilterField, value: string): string {
   if (["isRookie", "isAutograph", "isPatch", "isGraded"].includes(field)) return value === "true" ? "是" : value === "false" ? "否" : value;
   if (field === "visibility") return { private: "私密", public: "公开", linkOnly: "仅链接可见" }[value] ?? value;

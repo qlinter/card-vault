@@ -23,11 +23,15 @@ if errorlevel 1 goto install_dependencies
 goto dependencies_ready
 
 :install_dependencies
-echo Dependencies are missing or out of date. Updating them now...
-call npm.cmd install
+echo Dependencies are missing or out of date. Recreating them from package-lock.json...
+if exist "package-lock.json" (
+  call npm.cmd ci
+) else (
+  call npm.cmd install
+)
 if errorlevel 1 (
   echo.
-  echo Dependency update failed. Check the network or run npm install manually.
+  echo Dependency update failed. Check the network or run npm ci manually.
   pause
   exit /b 1
 )

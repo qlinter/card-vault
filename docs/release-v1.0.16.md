@@ -35,3 +35,8 @@
 - `dist/card-vault-1.0.16-setup.exe`
 - `dist/card-vault-1.0.16-portable.zip`
 - `dist/SHA256SUMS.txt`
+
+## 后续开发路线
+
+- v1.0.16 之后的功能扩展顺序已经确认为录入工作台、持仓与收益、组合中心、分享展馆、批量数据、提醒计划和可选在线服务。
+- 详细版本目标、范围边界和跨版本验收标准见 [Card Vault 产品开发路线图](./product-roadmap.md)。

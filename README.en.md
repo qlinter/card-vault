@@ -207,11 +207,17 @@ Windows code signing is an optional enhancement and no longer blocks routine pac
 
 ## Roadmap
 
-- Add stable desktop/mobile screenshot baselines and improve editing performance for very large share galleries.
-- Add valuation charts, realized returns, and explicit exchange-rate records without implicit cross-currency conversion.
-- Add managed publishing, update, revoke, and access workflows after a permanent Cloudflare project or standalone server is available.
-- Add recognition confidence, batch ingestion, and duplicate-card warnings.
-- Add trend comparison, configurable analysis periods, and AI valuation assistance on top of the history-backed portfolio analysis.
+The confirmed version sequence is:
+
+1. `v1.1.0`: Card Entry Workbench 2.0.
+2. `v1.2.0`: Position quantity, partial sales, and return accounting.
+3. `v1.3.0`: Collection Portfolio Center and trend analytics.
+4. `v1.4.0`: Share Gallery 3.0.
+5. `v1.5.0`: Batch Data and Migration Center.
+6. `v1.6.0`: Reminders and Collection Planning.
+7. `v2.0.0`: Optional managed publishing and multi-device sync after permanent infrastructure is available.
+
+See the [Card Vault Product Roadmap](./docs/product-roadmap.en.md) for version scope, exclusions, risk controls, and shared release standards.
 
 ## Technology
 

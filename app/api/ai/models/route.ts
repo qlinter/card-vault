@@ -1,54 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  ActiveAiSettings,
-  AiProvider,
-  getAiSettingsFile,
+  AiSettingsDraft,
+  getActiveAiSettingsFromDraft,
   getChatCompletionsHeaders,
   getModelsUrl
 } from "@/lib/ai-settings";
 import { errorMessage } from "@/lib/feedback-messages";
 
 export const runtime = "nodejs";
-
-type ModelsPayload = {
-  provider?: AiProvider;
-  azure?: {
-    endpoint?: string;
-    apiKey?: string;
-    deployment?: string;
-  };
-  minimax?: {
-    endpoint?: string;
-    apiKey?: string;
-    model?: string;
-  };
-};
-
-function trimOrFallback(value: string | undefined, fallback: string): string {
-  const trimmed = value?.trim();
-  return trimmed || fallback;
-}
-
-function activeSettingsFromPayload(payload: ModelsPayload): ActiveAiSettings {
-  const saved = getAiSettingsFile();
-  const provider: AiProvider = payload.provider === "minimax" ? "minimax" : "azure";
-
-  if (provider === "minimax") {
-    return {
-      provider,
-      endpoint: trimOrFallback(payload.minimax?.endpoint, saved.minimax.endpoint),
-      apiKey: trimOrFallback(payload.minimax?.apiKey, saved.minimax.apiKey),
-      model: trimOrFallback(payload.minimax?.model, saved.minimax.model)
-    };
-  }
-
-  return {
-    provider,
-    endpoint: trimOrFallback(payload.azure?.endpoint, saved.azure.endpoint),
-    apiKey: trimOrFallback(payload.azure?.apiKey, saved.azure.apiKey),
-    deployment: trimOrFallback(payload.azure?.deployment, saved.azure.deployment)
-  };
-}
 
 function extractModelIds(value: unknown): string[] {
   if (!value || typeof value !== "object") {
@@ -79,11 +38,11 @@ function extractModelIds(value: unknown): string[] {
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = (await request.json().catch(() => ({}))) as ModelsPayload;
-    const settings = activeSettingsFromPayload(payload);
+    const payload = (await request.json().catch(() => ({}))) as AiSettingsDraft;
+    const settings = getActiveAiSettingsFromDraft(payload);
 
-    if (!settings.endpoint || !settings.apiKey) {
-      throw new Error("请先填写当前服务商的 Endpoint 和 API Key。");
+    if (!settings.endpoint || (settings.provider !== "custom" && !settings.apiKey)) {
+      throw new Error(settings.provider === "custom" ? "请先填写自定义 AI 的 Endpoint。" : "请先填写当前服务商的 Endpoint 和 API Key。");
     }
 
     const response = await fetch(getModelsUrl(settings), {

@@ -12,7 +12,7 @@ export const shareLayouts = [
   {
     id: "arena",
     label: "竞技主场",
-    description: "以数据看板、横向阵容和强节奏章节呈现球队与运动收藏。"
+    description: "以数据看板、横向阵容和强节奏章节呈现 Team 与运动收藏。"
   }
 ] as const;
 

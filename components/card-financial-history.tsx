@@ -13,6 +13,7 @@ import { formatMinorMoney, selectLatestValuation } from "@/lib/financial-history
 
 type FinancialHistoryProps = {
   cardId: string;
+  returnTo?: string;
   transactions: CardTransaction[];
   expenses: CardExpense[];
   valuations: CardValuation[];
@@ -60,7 +61,7 @@ function ValuationSourceField({ value = "个人估计" }: { value?: string }) {
   );
 }
 
-function Summary({ transactions, expenses, valuations }: Omit<FinancialHistoryProps, "cardId">) {
+function Summary({ transactions, expenses, valuations }: Omit<FinancialHistoryProps, "cardId" | "returnTo">) {
   const currencies = [...new Set([
     ...transactions.map((row) => row.currency),
     ...expenses.map((row) => row.currency),
@@ -100,10 +101,10 @@ function Summary({ transactions, expenses, valuations }: Omit<FinancialHistoryPr
   );
 }
 
-function AddForms({ cardId }: { cardId: string }) {
-  const addTransaction = addTransactionAction.bind(null, cardId);
-  const addExpense = addExpenseAction.bind(null, cardId);
-  const addValuation = addValuationAction.bind(null, cardId);
+function AddForms({ cardId, returnTo }: { cardId: string; returnTo?: string }) {
+  const addTransaction = addTransactionAction.bind(null, cardId, returnTo);
+  const addExpense = addExpenseAction.bind(null, cardId, returnTo);
+  const addValuation = addValuationAction.bind(null, cardId, returnTo);
   return (
     <div className="financial-entry-grid">
       <details className="financial-entry-card">
@@ -148,7 +149,7 @@ function AddForms({ cardId }: { cardId: string }) {
   );
 }
 
-function TimelineRecord({ cardId, item }: { cardId: string; item: TimelineItem }) {
+function TimelineRecord({ cardId, item, returnTo }: { cardId: string; item: TimelineItem; returnTo?: string }) {
   const record = item.record;
   const isTransaction = item.type === "transaction";
   const isExpense = item.type === "expense";
@@ -164,11 +165,11 @@ function TimelineRecord({ cardId, item }: { cardId: string; item: TimelineItem }
       : (record as CardValuation).source;
   const supportedCurrency = record.currency === "CNY" || record.currency === "USD";
   const updateAction = isTransaction
-    ? updateTransactionAction.bind(null, cardId, record.id)
+    ? updateTransactionAction.bind(null, cardId, record.id, returnTo)
     : isExpense
-      ? updateExpenseAction.bind(null, cardId, record.id)
-      : updateValuationAction.bind(null, cardId, record.id);
-  const deleteAction = deleteFinancialRecordAction.bind(null, cardId, item.type, record.id);
+      ? updateExpenseAction.bind(null, cardId, record.id, returnTo)
+      : updateValuationAction.bind(null, cardId, record.id, returnTo);
+  const deleteAction = deleteFinancialRecordAction.bind(null, cardId, item.type, record.id, returnTo);
 
   return (
     <article className="financial-timeline-item">
@@ -178,11 +179,10 @@ function TimelineRecord({ cardId, item }: { cardId: string; item: TimelineItem }
           <strong>{formatMinorMoney(record.amountMinor, record.currency)}</strong>
           <small>{item.date.toLocaleDateString("zh-CN", { timeZone: "UTC" })}{source ? ` · ${source}` : ""}</small>
         </div>
-        <span className="financial-provenance">{!supportedCurrency ? "旧币种待纠正" : record.provenance === "manual_correction" ? "已纠错" : record.provenance === "legacy_card_snapshot" ? "旧数据迁移" : record.provenance === "initial_card_entry" ? "初始录入" : "手动录入"}</span>
       </div>
       {record.notes ? <p>{record.notes}</p> : null}
       <details className="financial-correction">
-        <summary>纠错与删除</summary>
+        <summary>编辑</summary>
         <form action={updateAction} className="financial-form compact">
           <input type="hidden" name="recordMarker" value={`${item.type}-${record.id}`} />
           {isTransaction ? (
@@ -201,7 +201,7 @@ function TimelineRecord({ cardId, item }: { cardId: string; item: TimelineItem }
             <label className="field"><span>{isExpense ? "服务方" : "渠道 / 来源"}</span><input name={isExpense ? "vendor" : "source"} defaultValue={source ?? ""} /></label>
           )}
           <label className="field full"><span>备注</span><textarea name="notes" defaultValue={record.notes ?? ""} /></label>
-          <button className="btn btn-secondary" type="submit">保存纠错</button>
+          <button className="btn btn-secondary" type="submit">保存修改</button>
         </form>
         <form action={deleteAction} className="financial-delete-form">
           <button className="btn btn-danger" type="submit">删除这条记录</button>
@@ -226,10 +226,10 @@ export function CardFinancialHistory(props: FinancialHistoryProps) {
         <span>{timeline.length} 条记录</span>
       </div>
       <Summary transactions={props.transactions} expenses={props.expenses} valuations={props.valuations} />
-      <AddForms cardId={props.cardId} />
+      <AddForms cardId={props.cardId} returnTo={props.returnTo} />
       <div className="financial-timeline">
         <h3>时间线</h3>
-        {timeline.length ? timeline.map((item) => <TimelineRecord key={`${item.type}-${item.record.id}`} cardId={props.cardId} item={item} />) : <p className="muted">暂无历史记录。</p>}
+        {timeline.length ? timeline.map((item) => <TimelineRecord key={`${item.type}-${item.record.id}`} cardId={props.cardId} item={item} returnTo={props.returnTo} />) : <p className="muted">暂无历史记录。</p>}
       </div>
     </section>
   );

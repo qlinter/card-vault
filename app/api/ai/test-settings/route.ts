@@ -1,79 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  ActiveAiSettings,
-  AiProvider,
-  getAiSettingsFile
+  AiSettingsDraft,
+  ensureCompleteAiSettings,
+  getActiveAiSettingsFromDraft
 } from "@/lib/ai-settings";
-import { AiUpstreamError, aiProviderName, requestAiChat } from "@/lib/ai-chat-client";
+import { AiUpstreamError, requestAiChat } from "@/lib/ai-chat-client";
 import { errorMessage } from "@/lib/feedback-messages";
 
 export const runtime = "nodejs";
 
-type TestSettingsPayload = {
-  provider?: AiProvider;
-  azure?: {
-    endpoint?: string;
-    apiKey?: string;
-    deployment?: string;
-  };
-  minimax?: {
-    endpoint?: string;
-    apiKey?: string;
-    model?: string;
-  };
-};
-
-function trimOrFallback(value: string | undefined, fallback: string): string {
-  const trimmed = value?.trim();
-  return trimmed || fallback;
-}
-
-function activeSettingsFromPayload(payload: TestSettingsPayload): ActiveAiSettings {
-  const saved = getAiSettingsFile();
-  const provider: AiProvider = payload.provider === "minimax" ? "minimax" : "azure";
-
-  if (provider === "minimax") {
-    return {
-      provider,
-      endpoint: trimOrFallback(payload.minimax?.endpoint, saved.minimax.endpoint),
-      apiKey: trimOrFallback(payload.minimax?.apiKey, saved.minimax.apiKey),
-      model: trimOrFallback(payload.minimax?.model, saved.minimax.model)
-    };
-  }
-
-  return {
-    provider,
-    endpoint: trimOrFallback(payload.azure?.endpoint, saved.azure.endpoint),
-    apiKey: trimOrFallback(payload.azure?.apiKey, saved.azure.apiKey),
-    deployment: trimOrFallback(payload.azure?.deployment, saved.azure.deployment)
-  };
-}
-
-function assertComplete(settings: ActiveAiSettings): void {
-  const missing =
-    settings.provider === "minimax"
-      ? [
-          !settings.endpoint ? "Endpoint" : null,
-          !settings.apiKey ? "API Key" : null,
-          !settings.model ? "Model" : null
-        ]
-      : [
-          !settings.endpoint ? "Endpoint" : null,
-          !settings.apiKey ? "API Key" : null,
-          !settings.deployment ? "Deployment" : null
-        ];
-  const missingLabels = missing.filter(Boolean);
-
-  if (missingLabels.length > 0) {
-    throw new Error(`${aiProviderName(settings.provider)} 设置不完整：缺少 ${missingLabels.join("、")}。`);
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const payload = (await request.json().catch(() => ({}))) as TestSettingsPayload;
-    const settings = activeSettingsFromPayload(payload);
-    assertComplete(settings);
+    const payload = (await request.json().catch(() => ({}))) as AiSettingsDraft;
+    const settings = ensureCompleteAiSettings(getActiveAiSettingsFromDraft(payload));
 
     await requestAiChat(settings, {
       messages: [{ role: "user", content: "Reply with OK." }],

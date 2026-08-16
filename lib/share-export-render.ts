@@ -24,7 +24,7 @@ function cardMeta(card: ExportCard): Array<[string, string]> {
   const rows: Array<[string, string | null]> = [
     ["年份", card.year],
     ["运动", card.sport],
-    ["球队", card.team],
+    ["Team", card.team],
     ["品牌", card.brand],
     ["产品线", card.productLine],
     ["子系列", card.subsetName],

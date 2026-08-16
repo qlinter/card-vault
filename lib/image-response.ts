@@ -1,6 +1,8 @@
 import { readFile } from "fs/promises";
 import path from "path";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+
+type ImageRouteContext = { params: Promise<{ filename: string }> };
 
 function imageContentType(fileName: string): string {
   switch (path.extname(fileName).toLowerCase()) {
@@ -30,4 +32,11 @@ export async function imageFileResponse(directory: string, fileName: string): Pr
   } catch {
     return NextResponse.json({ message: "File not found" }, { status: 404 });
   }
+}
+
+export function createImageFileRoute(directory: string) {
+  return async function GET(_request: NextRequest, { params }: ImageRouteContext): Promise<NextResponse> {
+    const { filename } = await params;
+    return imageFileResponse(directory, filename);
+  };
 }

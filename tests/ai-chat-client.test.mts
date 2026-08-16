@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { requestAiChatText } from "../lib/ai-chat-client.ts";
+import { requestAiChatText, requestAiChatTextResult } from "../lib/ai-chat-client.ts";
 import {
+  getChatCompletionsHeaders,
   getChatCompletionsUrl,
   getModelsUrl,
   type ActiveAiSettings
@@ -123,6 +124,59 @@ test("Azure v1 accepts unified resource endpoints and exposes the models route",
   assert.equal(getModelsUrl(openAiResourceSettings), "https://example.openai.azure.com/openai/v1/models");
 });
 
+test("custom AI uses the configured OpenAI-compatible endpoints, model, and authorization header", async (t) => {
+  const customSettings: ActiveAiSettings = {
+    provider: "custom",
+    id: "private-gateway",
+    name: "Private Gateway",
+    endpoint: "https://ai.example.test/v1/chat/completions",
+    modelsEndpoint: "",
+    apiKey: "custom-secret",
+    model: "vision-model",
+    apiKeyHeader: "X-API-Key",
+    apiKeyPrefix: "Token"
+  };
+  assert.equal(getChatCompletionsUrl(customSettings), "https://ai.example.test/v1/chat/completions");
+  assert.equal(getModelsUrl(customSettings), "https://ai.example.test/v1/models");
+  assert.deepEqual(getChatCompletionsHeaders(customSettings), {
+    "Content-Type": "application/json",
+    "X-API-Key": "Token custom-secret"
+  });
+
+  const originalFetch = globalThis.fetch;
+  let requestBody: Record<string, unknown> = {};
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  globalThis.fetch = async (_input, init) => {
+    requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return Response.json({ choices: [{ message: { content: "CUSTOM OK" } }] });
+  };
+
+  const result = await requestAiChatText(customSettings, {
+    messages: [{ role: "user", content: "test" }],
+    maxTokens: 16,
+    operation: "测试"
+  });
+  assert.equal(result, "CUSTOM OK");
+  assert.equal(requestBody.model, "vision-model");
+});
+
+test("custom AI supports local services without an API key", () => {
+  const localSettings: ActiveAiSettings = {
+    provider: "custom",
+    id: "local-ai",
+    name: "Local AI",
+    endpoint: "http://127.0.0.1:1234/v1/chat/completions",
+    modelsEndpoint: "http://127.0.0.1:1234/v1/models",
+    apiKey: "",
+    model: "local-model",
+    apiKeyHeader: "Authorization",
+    apiKeyPrefix: "Bearer"
+  };
+  assert.deepEqual(getChatCompletionsHeaders(localSettings), { "Content-Type": "application/json" });
+});
+
 test("AI client retries without temperature when an Azure deployment rejects it", async (t) => {
   const originalFetch = globalThis.fetch;
   const requestBodies: Array<Record<string, unknown>> = [];
@@ -153,4 +207,52 @@ test("AI client retries without temperature when an Azure deployment rejects it"
   assert.equal(requestBodies.length, 2);
   assert.equal(requestBodies[0].temperature, 0.2);
   assert.equal("temperature" in requestBodies[1], false);
+});
+
+test("AI client requests JSON mode and falls back when a compatible provider rejects it", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const requestBodies: Array<Record<string, unknown>> = [];
+  t.after(() => { globalThis.fetch = originalFetch; });
+
+  globalThis.fetch = async (_input, init) => {
+    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    requestBodies.push(body);
+    if (requestBodies.length === 1) {
+      return new Response(JSON.stringify({ error: { message: "Unsupported parameter: response_format" } }), { status: 400 });
+    }
+    return Response.json({ choices: [{ finish_reason: "stop", message: { content: "{\"ok\":true}" } }] });
+  };
+
+  const result = await requestAiChatTextResult(settings, {
+    messages: [{ role: "user", content: "return JSON" }],
+    maxTokens: 32,
+    responseFormat: "json_object",
+    operation: "测试"
+  });
+
+  assert.deepEqual(requestBodies[0].response_format, { type: "json_object" });
+  assert.equal("response_format" in requestBodies[1], false);
+  assert.equal(result.text, "{\"ok\":true}");
+  assert.equal(result.finishReason, "stop");
+});
+
+test("AI client retries transient rate limits before succeeding", async (t) => {
+  const originalFetch = globalThis.fetch;
+  let attempts = 0;
+  t.after(() => { globalThis.fetch = originalFetch; });
+
+  globalThis.fetch = async () => {
+    attempts += 1;
+    if (attempts === 1) return new Response("rate limited", { status: 429, headers: { "retry-after": "0" } });
+    return Response.json({ choices: [{ message: { content: "OK after retry" } }] });
+  };
+
+  const result = await requestAiChatText(settings, {
+    messages: [{ role: "user", content: "test" }],
+    maxTokens: 16,
+    operation: "测试"
+  });
+
+  assert.equal(result, "OK after retry");
+  assert.equal(attempts, 2);
 });

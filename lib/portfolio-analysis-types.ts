@@ -1,3 +1,5 @@
+import type { PortfolioScorecardKey, PortfolioSectionKey } from "./portfolio-analysis-protocol.ts";
+
 export type PortfolioMoneyRecord = { amountMinor: bigint; currency: string; occurredAt?: Date };
 export type PortfolioTransactionRecord = PortfolioMoneyRecord & { kind: string; createdAt?: Date };
 export type PortfolioValuationRecord = PortfolioMoneyRecord & { valuedAt: Date; createdAt: Date; source: string };
@@ -69,7 +71,7 @@ export type PortfolioSnapshot = {
 export type PortfolioAnalysis = {
   analysisVersion: 2;
   executiveSummary: { overallScore: number; positioning: string; summary: string; confidence: "high" | "medium" | "low"; dataSufficiency: PortfolioDataSufficiency };
-  scorecard: { structure: PortfolioScorecardItem; financialEfficiency: PortfolioScorecardItem; collectibleQuality: PortfolioScorecardItem; liquidity: PortfolioScorecardItem; dataCompleteness: PortfolioScorecardItem };
-  sections: { structure: PortfolioAnalysisSection; financials: PortfolioAnalysisSection; collectibleQuality: PortfolioAnalysisSection; liquidity: PortfolioAnalysisSection; dataQuality: PortfolioAnalysisSection };
+  scorecard: Record<PortfolioScorecardKey, PortfolioScorecardItem>;
+  sections: Record<PortfolioSectionKey, PortfolioAnalysisSection>;
   attentionItems: PortfolioAnalysisAttentionItem[]; actionItems: PortfolioAnalysisAction[];
 };

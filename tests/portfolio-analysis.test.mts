@@ -3,9 +3,14 @@ import test from "node:test";
 import {
   buildPortfolioScope,
   buildPortfolioSnapshot,
+  buildPortfolioAnalysisInput,
+  buildPortfolioClientSnapshot,
+  buildFallbackPortfolioAnalysis,
+  completePortfolioAnalysis,
   normalizePortfolioFilterInput,
   normalizePortfolioAnalysis,
   normalizePortfolioSnapshot,
+  portfolioAnalysisPrompt,
   portfolioScopeInstructions
 } from "../lib/portfolio-analysis.ts";
 
@@ -249,6 +254,100 @@ test("portfolio snapshot keeps complete totals for a large local collection", ()
   assert.equal(snapshot.financials.currencies[0].latestValue, 150000);
   assert.equal(snapshot.players.reduce((sum, item) => sum + item.count, 0), 300);
   assert.equal(snapshot.allocation.byPlayer.reduce((sum, item) => sum + item.count, 0), 1000);
+});
+
+test("portfolio AI input remains bounded for high-cardinality collections", () => {
+  const longName = "Long player name ".repeat(20);
+  const cards = Array.from({ length: 500 }, (_, index) => ({
+    playerName: `${longName}${index}`,
+    cardTitle: `${"Long title ".repeat(30)}${index}`,
+    sport: `Sport ${index}`,
+    team: `Team ${index}`,
+    year: `${1900 + index}`,
+    brand: `Brand ${index}`,
+    productLine: `Product ${index}`,
+    collectionStatus: "holding",
+    gradingCompany: null,
+    grade: null,
+    isRookie: false,
+    isAutograph: false,
+    isPatch: false,
+    transactions: [],
+    expenses: [],
+    valuations: []
+  }));
+  const snapshot = buildPortfolioSnapshot(cards, undefined, new Date("2026-08-12"));
+  const input = buildPortfolioAnalysisInput(snapshot);
+  const clientSnapshot = buildPortfolioClientSnapshot(snapshot);
+  const prompt = portfolioAnalysisPrompt(snapshot);
+
+  assert.equal(snapshot.allocation.byPlayer.length, 500);
+  assert.equal(input.allocation.byPlayer.length, 12);
+  assert.equal(input.allocation.byTeam.length, 12);
+  assert.equal(clientSnapshot.allocation.byPlayer.length, 12);
+  assert.ok(input.topPositions.every((item) => item.playerName.length <= 80 && item.cardTitle.length <= 100));
+  assert.ok(prompt.length < JSON.stringify(snapshot).length);
+  assert.ok(prompt.length < 60000);
+});
+
+test("local portfolio fallback always produces a complete version 2 report", () => {
+  const snapshot = buildPortfolioSnapshot([{
+    playerName: "Player A",
+    sport: "Basketball",
+    collectionStatus: "holding",
+    gradingCompany: null,
+    grade: null,
+    isRookie: true,
+    isAutograph: false,
+    isPatch: false,
+    imageCount: 0,
+    transactions: [],
+    expenses: [],
+    valuations: []
+  }], undefined, new Date("2026-08-12"));
+  const analysis = buildFallbackPortfolioAnalysis(snapshot);
+
+  assert.equal(analysis.analysisVersion, 2);
+  assert.match(analysis.executiveSummary.summary, /本地汇总数据/);
+  assert.ok(Object.hasOwn(analysis.scorecard, "liquidity"));
+  assert.ok(Object.hasOwn(analysis.sections, "dataQuality"));
+  assert.ok(analysis.attentionItems.length > 0);
+  assert.ok(analysis.actionItems.length >= 2);
+});
+
+test("content-light AI reports are completed from local portfolio statistics", () => {
+  const snapshot = buildPortfolioSnapshot([{
+    playerName: "Player A",
+    sport: "Basketball",
+    collectionStatus: "holding",
+    gradingCompany: "PSA",
+    grade: "10",
+    isRookie: true,
+    isAutograph: true,
+    isPatch: false,
+    imageCount: 1,
+    transactions: [{ kind: "purchase", amountMinor: 10000n, currency: "CNY" }],
+    expenses: [],
+    valuations: [{ amountMinor: 12000n, currency: "CNY", valuedAt: new Date("2026-08-01"), createdAt: new Date("2026-08-01"), source: "个人估计" }]
+  }], undefined, new Date("2026-08-12"));
+  const partial = normalizePortfolioAnalysis({
+    analysisVersion: 2,
+    executiveSummary: { overallScore: 72, positioning: "集中型收藏", summary: "组合主题明确。", confidence: "medium", dataSufficiency: "partial" },
+    scorecard: {
+      structure: { score: 70 }, financialEfficiency: { score: 68 }, collectibleQuality: { score: 80 }, liquidity: { score: 55 }, dataCompleteness: { score: 90 }
+    },
+    sections: {
+      structure: { findings: [] }, financials: { findings: [] }, collectibleQuality: { findings: [] }, liquidity: { findings: [] }, dataQuality: { findings: [] }
+    },
+    attentionItems: [],
+    actionItems: []
+  });
+  const completed = completePortfolioAnalysis(partial, snapshot);
+
+  assert.equal(completed.executiveSummary.overallScore, 72);
+  assert.notEqual(completed.scorecard.structure.explanation, "暂无判断");
+  assert.ok(Object.values(completed.sections).every((section) => section.findings.length >= 1));
+  assert.ok(completed.actionItems.length >= 2);
 });
 test("portfolio scope records active filters and excludes sorting", () => {
   const scope = buildPortfolioScope({

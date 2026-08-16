@@ -6,27 +6,19 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 
 ## Current Version
 
-`1.0.16`
+`1.0.17`
 
-### 1.0.16 Highlights
+### 1.0.17 Highlights
 
-- The home page now loads only list and latest-valuation data; complete financial history is queried after Portfolio Analysis is requested for the current filter scope.
-- Portfolio filters now use a strict field allowlist, type and length validation, and a maximum analysis size.
-- Added Windows GitHub Actions for clean-environment quality checks and manually triggered release-candidate packaging on Node.js 24.
-- Added packaged `/api/health` smoke testing, standalone artifact validation, and a generated `SHA256SUMS.txt` manifest.
-- Added release-metadata consistency checks and expanded mojibake detection after repairing stale test fixtures.
-- v1.0.16 introduces no database migration and remains directly compatible with v1.0.15 data and backups.
-
-- Completed Share Gallery Editor 2.0 with four workspaces, drag and keyboard ordering, undo/redo, local draft recovery, pre-save cover/background preview, and typography, density, and image-fit controls.
-- Fixed application share previews loading the complete Card Vault UI after a card click; previews now use an inline card detail.
-- Consolidated share-package export with general static and Cloudflare Drop variants plus public-field, broken-link, file-count, and 25 MiB per-file validation.
-- Added transaction, expense, and valuation history with entry, timeline, per-currency summary, correction, and deletion; legacy fields remain CNY compatibility snapshots only.
-- Limited financial currencies to CNY/USD and valuation sources to Personal estimate, Recent sale, or Platform quote, with automatic migration for existing and restored backups.
-- Home-page totals now use each filtered card's latest valuation. CNY/USD display on separate lines with matching typography, ISO labels, thousands separators, and compact coverage.
-- Home portfolio analysis now reads transaction, expense, and latest-valuation history directly, presenting cost, net cash invested, comparable unrealized return, valuation age, and sources separately for CNY and USD without implicit FX conversion.
-- Backup restore now completes pending migrations and integrity checks in staging before replacing active data.
-- The desktop launcher now detects missing or lockfile-stale dependencies and installs them automatically when needed.
-- Windows releases support optional Authenticode signing and can still be generated when no certificate is configured.
+- AI Settings can now add, name, and retain multiple OpenAI Chat Completions-compatible services. Provider lists use the configured display name, and local services may omit an API key.
+- Hardened Azure OpenAI, MiniMax, and custom-provider requests with bounded portfolio inputs, transient retries, JSON-mode fallback, and compatibility handling for model-specific parameters.
+- Portfolio Analysis now uses one five-dimension report covering structure, financial records, collectible attributes, valuation recency, and catalog completeness, including evidence, attention items, and actions.
+- When remote AI cannot return a complete protocol response, Card Vault completes light responses or supplies a full deterministic local fallback instead of showing only the overall score or failing the report.
+- Standardized the card field label as `Team` so it also covers F1 constructors and other non-ball-sport teams.
+- Removed migration, correction, and manual-entry status labels from financial history and consolidated entry operations under Edit without changing CNY/USD financial facts.
+- Fixed filtered list context so editing a card or financial-history entry and returning preserves filters, sorting, and pagination.
+- Consolidated AI configuration normalization, portfolio-analysis protocol metadata, image routes, feedback messages, and share-card mapping while removing unused legacy styles and aliases.
+- v1.0.17 introduces no database migration and remains directly compatible with v1.0.16 data and backups.
 
 ## Core Features
 
@@ -34,7 +26,7 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 - Search, filter, and sort by player, sport, team, year, product line, grade, autograph, patch, and collection status.
 - Track purchases, sales, refunds, grading, other costs, and latest values through transaction, expense, and valuation history.
 - Browse the Showcase by player or group, with collapsible navigation and multi-image card views.
-- Use Azure OpenAI or MiniMax for AI card recognition, gallery copy, and portfolio analysis.
+- Use Azure OpenAI, MiniMax, or multiple named OpenAI Chat Completions-compatible custom providers for AI card recognition, gallery copy, and portfolio analysis.
 - Build editable share galleries with themes, layouts, sections, covers, backgrounds, and per-card presentation overrides.
 - Export a general static sharing bundle or a temporary Cloudflare Drop preview bundle.
 - Store data in local SQLite, move the active data path, configure separate backups, inspect health, and restore in-app.
@@ -61,12 +53,13 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 | `1.0.14` | Completed Editor 2.0 and Drop export, reliable financial history, history-backed portfolio analysis, staged backup migration, and optional Windows release signing. |
 | `1.0.15` | Completed the v2 AI analysis protocol, further Electron/storage/share-editor modularization, feedback-message consolidation, storage-rule unification, and Tailwind removal. |
 | `1.0.16` | Reduced home-page history loading and added clean Windows CI, repeatable release candidates, artifact verification, and release-metadata safeguards. |
+| `1.0.17` | Added multiple custom AI providers, more reliable five-dimension portfolio analysis, preserved filtered return context, and consolidated shared protocols and redundant code. |
 
 ## Install and Run
 
 ### Installer
 
-Release file: `dist/card-vault-1.0.16-setup.exe`
+Release file: `dist/card-vault-1.0.17-setup.exe`
 
 - Uses an installation wizard and supports a user-selected installation directory.
 - Installing a newer build of the same application normally replaces program files without deleting collection data.
@@ -75,7 +68,7 @@ Release file: `dist/card-vault-1.0.16-setup.exe`
 
 ### Portable Build
 
-Release file: `dist/card-vault-1.0.16-portable.zip`
+Release file: `dist/card-vault-1.0.17-portable.zip`
 
 1. Extract the complete ZIP.
 2. Run `Card Vault.exe` from the extracted directory.

@@ -20,6 +20,7 @@ import { prepareImageUpload } from "@/lib/image-upload";
 import { prisma } from "@/lib/prisma";
 import { getUploadsDir } from "@/lib/storage-paths";
 import { errorMessage } from "@/lib/feedback-messages";
+import { normalizeReturnTo } from "@/lib/query-params";
 
 const uploadDir = getUploadsDir();
 const maxImagesPerCard = 5;
@@ -291,7 +292,10 @@ export async function createCardFormAction(
 }
 
 export async function updateCardAction(cardId: string, formData: FormData): Promise<void> {
-  let redirectPath = `/cards/${cardId}/edit?error=unknown`;
+  const rawReturnTo = formData.get("returnTo");
+  const returnTo = normalizeReturnTo(typeof rawReturnTo === "string" ? rawReturnTo : undefined);
+  const returnQuery = returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : "";
+  let redirectPath = `/cards/${cardId}/edit?error=unknown${returnQuery}`;
 
   try {
     const existing = await prisma.card.findUnique({
@@ -348,10 +352,10 @@ export async function updateCardAction(cardId: string, formData: FormData): Prom
     revalidatePath(`/cards/${cardId}`);
     revalidatePath("/showcase");
     revalidatePath(`/showcase/cards/${cardId}`);
-    redirectPath = `/cards/${cardId}?success=updated`;
+    redirectPath = `/cards/${cardId}?success=updated${returnQuery}`;
   } catch (error) {
     const message = errorMessage(error, "更新失败，请稍后重试。");
-    redirectPath = `/cards/${cardId}/edit?error=${encodeURIComponent(message)}`;
+    redirectPath = `/cards/${cardId}/edit?error=${encodeURIComponent(message)}${returnQuery}`;
   }
 
   redirect(redirectPath);
@@ -383,4 +387,3 @@ export async function deleteCardAction(cardId: string): Promise<void> {
 
   redirect(redirectPath);
 }
-

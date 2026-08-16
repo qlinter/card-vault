@@ -11,6 +11,8 @@ const setupPath = path.join(distDir, `card-vault-${packageJson.version}-setup.ex
 const zipPath = path.join(distDir, `card-vault-${packageJson.version}-portable.zip`);
 const unpackedDir = path.join(distDir, "win-unpacked");
 const checksumPath = path.join(distDir, "SHA256SUMS.txt");
+const legacyNsisDirName = "nsis-3.0.4.1-nsis-3.0.4.1";
+const legacyNsisResourcesDirName = "nsis-resources-3.4.1-nsis-resources-3.4.1";
 
 function run(command, args, options = {}) {
   process.stdout.write(`\n> ${command} ${args.join(" ")}\n`);
@@ -54,6 +56,27 @@ function cleanDistDirectory() {
     }
   }
   fs.mkdirSync(distDir, { recursive: true });
+}
+
+function resolveBundledNsisToolEnv() {
+  const env = {};
+  const cacheRoot = process.env.ELECTRON_BUILDER_CACHE || path.join(process.env.LOCALAPPDATA || "", "electron-builder", "Cache");
+  const nsisCacheRoot = path.join(cacheRoot, "nsis");
+  const nsisDir = path.join(nsisCacheRoot, legacyNsisDirName);
+  const nsisResourcesDir = path.join(nsisCacheRoot, legacyNsisResourcesDirName);
+
+  if (process.env.ELECTRON_BUILDER_NSIS_DIR == null && fs.existsSync(path.join(nsisDir, "Bin", "makensis.exe"))) {
+    env.ELECTRON_BUILDER_NSIS_DIR = nsisDir;
+  }
+
+  if (
+    process.env.ELECTRON_BUILDER_NSIS_RESOURCES_DIR == null &&
+    fs.existsSync(path.join(nsisResourcesDir, "plugins"))
+  ) {
+    env.ELECTRON_BUILDER_NSIS_RESOURCES_DIR = nsisResourcesDir;
+  }
+
+  return env;
 }
 
 function verifyPackagedFiles() {
@@ -105,7 +128,9 @@ function powershellLiteral(value) {
 function createPortableZip() {
   const command = [
     "$ErrorActionPreference = 'Stop'",
-    `Compress-Archive -Path ${powershellLiteral(path.join(unpackedDir, "*"))} -DestinationPath ${powershellLiteral(zipPath)} -CompressionLevel Optimal`
+    "Add-Type -AssemblyName System.IO.Compression.FileSystem",
+    `if (Test-Path -LiteralPath ${powershellLiteral(zipPath)}) { Remove-Item -LiteralPath ${powershellLiteral(zipPath)} -Force }`,
+    `[System.IO.Compression.ZipFile]::CreateFromDirectory(${powershellLiteral(unpackedDir)}, ${powershellLiteral(zipPath)}, [System.IO.Compression.CompressionLevel]::Optimal, $false)`
   ].join("; ");
   run("powershell.exe", ["-NoProfile", "-Command", command]);
   if (!fs.existsSync(zipPath) || fs.statSync(zipPath).size === 0) {
@@ -133,7 +158,8 @@ async function main() {
 
   cleanDistDirectory();
   run("npm.cmd", ["run", "check:release"]);
-  run("npm.cmd", ["run", "package:win"]);
+  run("node", ["scripts/patch-electron-builder-nsis.js"]);
+  run("npm.cmd", ["run", "package:win"], { env: resolveBundledNsisToolEnv() });
   const executablePath = verifyPackagedFiles();
   smokeTestPackagedRuntime(executablePath);
   verifyPackagedHealthEndpoint(executablePath);

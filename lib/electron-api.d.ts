@@ -46,7 +46,8 @@ declare global {
       }>;
       onStorageProgress: (callback: (progress: DesktopStorageProgress) => void) => () => void;
       getAiSettings: () => Promise<{
-        provider: "azure" | "minimax";
+        provider: "azure" | "minimax" | "custom";
+        activeCustomId: string;
         keyRecoveryRequired?: boolean;
         azure: {
           endpoint: string;
@@ -58,9 +59,20 @@ declare global {
           model: string;
           hasApiKey: boolean;
         };
+        customProviders: Array<{
+          id: string;
+          name: string;
+          endpoint: string;
+          modelsEndpoint: string;
+          model: string;
+          apiKeyHeader: string;
+          apiKeyPrefix: string;
+          hasApiKey: boolean;
+        }>;
       }>;
       saveAiSettings: (settings: {
-        provider: "azure" | "minimax";
+        provider: "azure" | "minimax" | "custom";
+        activeCustomId: string;
         azure: {
           endpoint: string;
           apiKey?: string;
@@ -71,8 +83,19 @@ declare global {
           apiKey?: string;
           model: string;
         };
+        customProviders: Array<{
+          id: string;
+          name: string;
+          endpoint: string;
+          modelsEndpoint: string;
+          apiKey?: string;
+          model: string;
+          apiKeyHeader: string;
+          apiKeyPrefix: string;
+        }>;
       }) => Promise<{
-        provider: "azure" | "minimax";
+        provider: "azure" | "minimax" | "custom";
+        activeCustomId: string;
         keyRecoveryRequired?: boolean;
         azure: {
           endpoint: string;
@@ -84,6 +107,16 @@ declare global {
           model: string;
           hasApiKey: boolean;
         };
+        customProviders: Array<{
+          id: string;
+          name: string;
+          endpoint: string;
+          modelsEndpoint: string;
+          model: string;
+          apiKeyHeader: string;
+          apiKeyPrefix: string;
+          hasApiKey: boolean;
+        }>;
       }>;
     };
   }

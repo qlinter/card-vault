@@ -29,7 +29,7 @@ function shareItemMap(share?: ShareWithItems): Map<string, ShareCollectionItem &
   return new Map((share?.items ?? []).map((item) => [item.cardId, item]));
 }
 
-function cardSummary(card: CardOption): ShareThemeCard {
+function cardCatalogFields(card: CardOption) {
   return {
     id: card.id,
     playerName: card.playerName,
@@ -44,11 +44,6 @@ function cardSummary(card: CardOption): ShareThemeCard {
     cardNumber: card.cardNumber,
     serialNumber: card.serialNumber,
     serialRange: card.serialRange,
-    isRookie: card.isRookie,
-    isAutograph: card.isAutograph,
-    autoType: card.autoType,
-    isPatch: card.isPatch,
-    patchType: card.patchType,
     gradingCompany: card.gradingCompany,
     grade: card.grade,
     certNumber: card.certNumber,
@@ -56,26 +51,21 @@ function cardSummary(card: CardOption): ShareThemeCard {
   };
 }
 
+function cardSummary(card: CardOption): ShareThemeCard {
+  return {
+    ...cardCatalogFields(card),
+    isRookie: card.isRookie,
+    isAutograph: card.isAutograph,
+    autoType: card.autoType,
+    isPatch: card.isPatch,
+    patchType: card.patchType
+  };
+}
+
 function toPickerCard(card: CardOption, item: (ShareCollectionItem & { card: CardOption }) | undefined): SharePickerCard {
   return {
-    id: card.id,
-    playerName: card.playerName,
-    cardTitle: card.cardTitle,
-    sport: card.sport,
-    team: card.team,
-    year: card.year,
-    brand: card.brand,
-    productLine: card.productLine,
-    subsetName: card.subsetName,
-    parallel: card.parallel,
-    cardNumber: card.cardNumber,
-    serialNumber: card.serialNumber,
-    serialRange: card.serialRange,
-    gradingCompany: card.gradingCompany,
-    grade: card.grade,
-    certNumber: card.certNumber,
+    ...cardCatalogFields(card),
     visibility: card.visibility,
-    publicDescription: card.publicDescription,
     tags: card.tags,
     imagePath: card.images[0]?.path ?? null,
     selected: Boolean(item),

@@ -10,7 +10,7 @@ export const commonSuccessMessages = {
 export const cardSuccessMessages = {
   ...commonSuccessMessages,
   "history-added": "财务记录已添加",
-  "history-updated": "财务记录已纠错",
+  "history-updated": "财务记录已更新",
   "history-deleted": "财务记录已删除"
 } as const;
 

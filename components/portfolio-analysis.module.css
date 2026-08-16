@@ -234,6 +234,21 @@
   padding: 1.2rem 1.4rem 1.4rem;
 }
 
+.fallbackNotice {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(181, 126, 38, 0.35);
+  border-radius: 12px;
+  background: rgba(214, 160, 70, 0.1);
+  color: var(--muted-ink);
+  font-size: 0.88rem;
+}
+
+.fallbackNotice strong {
+  color: var(--ink);
+}
+
 .verdict {
   display: grid;
   grid-template-columns: 116px minmax(0, 1fr);
@@ -281,57 +296,125 @@
   line-height: 1.7;
 }
 
-.scorecard,
-.sections {
+.dimensions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
-.scorecardItem,
-.analysisSection,
-.list {
-  padding: 0.9rem;
-  border: 1px solid rgba(16, 19, 26, 0.09);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.78);
+.dimensionsIntro {
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.15rem 0.1rem;
 }
 
-.scorecardHeading,
-.analysisSection > header,
-.dimensions h3,
-.list h3,
+.dimensionsIntro span {
+  color: var(--teal);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+
+.dimensionsIntro h3,
+.dimension h3,
 .actions h3 {
   margin: 0;
   font-size: 0.96rem;
 }
 
-.scorecardHeading,
-.analysisSection > header { display: flex; justify-content: space-between; gap: 0.6rem; align-items: baseline; }
-.scorecardHeading strong { color: var(--teal); font-size: 1.35rem; }
-.scorecardItem p,
-.finding p { margin: 0.42rem 0 0; color: #4a5769; font-size: 0.9rem; line-height: 1.68; }
-.scorecardItem > small,
-.analysisSection > header span,
+.dimensionsIntro p {
+  margin: 0;
+  color: var(--muted-ink);
+  font-size: 0.8rem;
+}
+
+.dimension {
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(16, 19, 26, 0.09);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.dimensionHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: flex-start;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid rgba(16, 19, 26, 0.08);
+}
+
+.dimensionHeader > div:first-child {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.dimensionHeader > div:first-child span {
+  color: var(--muted-ink);
+  font-size: 0.75rem;
+}
+
+.dimensionScore {
+  display: flex;
+  gap: 0.55rem;
+  align-items: baseline;
+  flex: 0 0 auto;
+}
+
+.dimensionScore strong {
+  color: var(--teal);
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.dimensionScore span,
 .finding > small,
 .finding > div span,
 .confidence,
-.actions li small { color: var(--muted-ink); font-size: 0.72rem; }
-.analysisSection > header { padding-bottom: 0.55rem; border-bottom: 1px solid rgba(16, 19, 26, 0.08); }
-.finding { padding: 0.7rem 0; border-bottom: 1px solid rgba(16, 19, 26, 0.07); }
-.finding:last-of-type { border-bottom: 0; }
-.finding > div { display: flex; justify-content: space-between; gap: 0.6rem; }
-.empty { margin: 0.7rem 0 0; color: var(--muted-ink); font-size: 0.84rem; }
-.confidence { display: block; margin-top: 0.5rem; }
+.actions li small {
+  color: var(--muted-ink);
+  font-size: 0.72rem;
+}
 
-.dimensions p {
-  margin: 0.42rem 0 0;
+.dimensionSummary,
+.finding p {
+  margin: 0.58rem 0 0;
   color: #4a5769;
   font-size: 0.9rem;
   line-height: 1.68;
 }
 
-.list ul,
+.dimensionEvidence {
+  display: flex;
+  gap: 0.35rem 0.8rem;
+  flex-wrap: wrap;
+  margin-top: 0.45rem;
+  color: #607083;
+  font-size: 0.74rem;
+}
+
+.dimensionFindings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.65rem;
+}
+
+.finding {
+  padding: 0.7rem 0.75rem;
+  border-left: 3px solid rgba(62, 168, 168, 0.45);
+  border-radius: 7px;
+  background: rgba(62, 168, 168, 0.055);
+}
+
+.finding > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.empty { margin: 0.7rem 0 0; color: var(--muted-ink); font-size: 0.84rem; }
+.confidence { display: block; margin-top: 0.5rem; }
+
 .actions ol {
   display: grid;
   gap: 0.5rem;
@@ -344,14 +427,6 @@
 .actions ul { display: grid; gap: 0.5rem; margin: 0; padding-left: 1.2rem; color: #3d4959; line-height: 1.55; }
 .actions li small { display: block; margin-top: 0.18rem; }
 .attention { border-color: rgba(202, 123, 52, 0.22); background: rgba(202, 123, 52, 0.08); }
-
-.strengths {
-  border-top: 3px solid var(--cyan);
-}
-
-.risks {
-  border-top: 3px solid var(--accent);
-}
 
 .actions {
   display: grid;
@@ -415,15 +490,17 @@
   }
 
   .snapshotStrip,
-  .financialOverview,
-  .scorecard,
-  .sections {
+  .financialOverview {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .verdict,
   .actions {
     grid-template-columns: 1fr;
+  }
+
+  .dimensionHeader {
+    align-items: baseline;
   }
 
   .score {
@@ -435,5 +512,9 @@
   .snapshotStrip,
   .financialOverview {
     grid-template-columns: 1fr;
+  }
+
+  .dimensionHeader {
+    flex-direction: column;
   }
 }

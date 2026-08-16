@@ -101,6 +101,26 @@ export function responseToText(data: unknown): string {
   return "";
 }
 
+export function responseFinishReason(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const record = data as Record<string, unknown>;
+  const choices = Array.isArray(record.choices) ? record.choices : [];
+  const first = choices[0];
+  if (first && typeof first === "object") {
+    const reason = (first as Record<string, unknown>).finish_reason;
+    if (typeof reason === "string" && reason.trim()) return reason.trim();
+  }
+  if (record.status === "incomplete") {
+    const details = record.incomplete_details;
+    if (details && typeof details === "object") {
+      const reason = (details as Record<string, unknown>).reason;
+      if (typeof reason === "string" && reason.trim()) return reason.trim();
+    }
+    return "incomplete";
+  }
+  return null;
+}
+
 export function findJsonSlice(value: unknown): string | null {
   const withoutFence = safeText(value)
     .replace(/^```(?:json)?/i, "")

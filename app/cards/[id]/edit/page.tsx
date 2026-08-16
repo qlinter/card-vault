@@ -2,7 +2,7 @@
 import { CardForm } from "@/components/card-form";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { toScalar } from "@/lib/query-params";
+import { normalizeReturnTo, toScalar } from "@/lib/query-params";
 
 type EditProps = {
   params: Promise<{ id: string }>;
@@ -22,6 +22,7 @@ export default async function EditCardPage({ params, searchParams }: EditProps) 
   }
 
   const error = toScalar(query.error);
+  const returnTo = normalizeReturnTo(toScalar(query.returnTo));
 
   return (
     <div className="page">
@@ -31,7 +32,7 @@ export default async function EditCardPage({ params, searchParams }: EditProps) 
           <p className="muted">支持更新字段，并可替换、新增或删除图片，总数需保留 1-5 张。</p>
         </div>
       </div>
-      <CardForm mode="edit" card={card} action={updateCardAction.bind(null, id)} error={error} />
+      <CardForm mode="edit" card={card} action={updateCardAction.bind(null, id)} error={error} returnTo={returnTo} />
     </div>
   );
 }

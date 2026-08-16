@@ -16,6 +16,7 @@ import {
 } from "@/lib/financial-history-store";
 import { prisma } from "@/lib/prisma";
 import { errorMessage } from "@/lib/feedback-messages";
+import { normalizeReturnTo } from "@/lib/query-params";
 
 type FinancialRecordType = "transaction" | "expense" | "valuation";
 
@@ -56,19 +57,21 @@ async function mutateHistory(
   });
 }
 
-function finishHistoryMutation(cardId: string, success: string, error?: unknown): never {
+function finishHistoryMutation(cardId: string, success: string, returnTo?: string, error?: unknown): never {
   revalidatePath("/");
   revalidatePath(`/cards/${cardId}`);
   revalidatePath("/showcase");
   revalidatePath(`/showcase/cards/${cardId}`);
+  const preservedReturnTo = normalizeReturnTo(returnTo);
+  const returnQuery = preservedReturnTo ? `&returnTo=${encodeURIComponent(preservedReturnTo)}` : "";
   if (error) {
     const message = errorMessage(error, "财务记录操作失败，请稍后重试。");
-    redirect(`/cards/${cardId}?error=${encodeURIComponent(message)}#financial-history`);
+    redirect(`/cards/${cardId}?error=${encodeURIComponent(message)}${returnQuery}#financial-history`);
   }
-  redirect(`/cards/${cardId}?success=${success}#financial-history`);
+  redirect(`/cards/${cardId}?success=${success}${returnQuery}#financial-history`);
 }
 
-export async function addTransactionAction(cardId: string, formData: FormData): Promise<void> {
+export async function addTransactionAction(cardId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
     await mutateHistory(cardId, (transaction) => createCardTransaction(transaction, {
         cardId,
@@ -82,12 +85,12 @@ export async function addTransactionAction(cardId: string, formData: FormData): 
       })
     );
   } catch (error) {
-    finishHistoryMutation(cardId, "", error);
+    finishHistoryMutation(cardId, "", returnTo, error);
   }
-  finishHistoryMutation(cardId, "history-added");
+  finishHistoryMutation(cardId, "history-added", returnTo);
 }
 
-export async function addExpenseAction(cardId: string, formData: FormData): Promise<void> {
+export async function addExpenseAction(cardId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
     await mutateHistory(cardId, (transaction) => createCardExpense(transaction, {
         cardId,
@@ -100,12 +103,12 @@ export async function addExpenseAction(cardId: string, formData: FormData): Prom
       })
     );
   } catch (error) {
-    finishHistoryMutation(cardId, "", error);
+    finishHistoryMutation(cardId, "", returnTo, error);
   }
-  finishHistoryMutation(cardId, "history-added");
+  finishHistoryMutation(cardId, "history-added", returnTo);
 }
 
-export async function addValuationAction(cardId: string, formData: FormData): Promise<void> {
+export async function addValuationAction(cardId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
     await mutateHistory(cardId, (transaction) => createCardValuation(transaction, {
         cardId,
@@ -117,12 +120,12 @@ export async function addValuationAction(cardId: string, formData: FormData): Pr
       })
     );
   } catch (error) {
-    finishHistoryMutation(cardId, "", error);
+    finishHistoryMutation(cardId, "", returnTo, error);
   }
-  finishHistoryMutation(cardId, "history-added");
+  finishHistoryMutation(cardId, "history-added", returnTo);
 }
 
-export async function updateTransactionAction(cardId: string, recordId: string, formData: FormData): Promise<void> {
+export async function updateTransactionAction(cardId: string, recordId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
     await mutateHistory(cardId, (transaction) => updateCardTransaction(transaction, cardId, recordId, {
       kind: requiredText(formData, "kind", "交易类型"),
@@ -135,12 +138,12 @@ export async function updateTransactionAction(cardId: string, recordId: string, 
       })
     );
   } catch (error) {
-    finishHistoryMutation(cardId, "", error);
+    finishHistoryMutation(cardId, "", returnTo, error);
   }
-  finishHistoryMutation(cardId, "history-updated");
+  finishHistoryMutation(cardId, "history-updated", returnTo);
 }
 
-export async function updateExpenseAction(cardId: string, recordId: string, formData: FormData): Promise<void> {
+export async function updateExpenseAction(cardId: string, recordId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
     await mutateHistory(cardId, (transaction) => updateCardExpense(transaction, cardId, recordId, {
       kind: requiredText(formData, "kind", "费用类型"),
@@ -152,12 +155,12 @@ export async function updateExpenseAction(cardId: string, recordId: string, form
       })
     );
   } catch (error) {
-    finishHistoryMutation(cardId, "", error);
+    finishHistoryMutation(cardId, "", returnTo, error);
   }
-  finishHistoryMutation(cardId, "history-updated");
+  finishHistoryMutation(cardId, "history-updated", returnTo);
 }
 
-export async function updateValuationAction(cardId: string, recordId: string, formData: FormData): Promise<void> {
+export async function updateValuationAction(cardId: string, recordId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
     await mutateHistory(cardId, (transaction) => updateCardValuation(transaction, cardId, recordId, {
       amount: requiredText(formData, "amount", "金额"),
@@ -168,20 +171,21 @@ export async function updateValuationAction(cardId: string, recordId: string, fo
       })
     );
   } catch (error) {
-    finishHistoryMutation(cardId, "", error);
+    finishHistoryMutation(cardId, "", returnTo, error);
   }
-  finishHistoryMutation(cardId, "history-updated");
+  finishHistoryMutation(cardId, "history-updated", returnTo);
 }
 
 export async function deleteFinancialRecordAction(
   cardId: string,
   recordType: FinancialRecordType,
-  recordId: string
+  recordId: string,
+  returnTo: string | undefined
 ): Promise<void> {
   try {
     await mutateHistory(cardId, (transaction) => deleteCardFinancialRecord(transaction, cardId, recordType, recordId));
   } catch (error) {
-    finishHistoryMutation(cardId, "", error);
+    finishHistoryMutation(cardId, "", returnTo, error);
   }
-  finishHistoryMutation(cardId, "history-deleted");
+  finishHistoryMutation(cardId, "history-deleted", returnTo);
 }

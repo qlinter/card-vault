@@ -1,41 +1,11 @@
 const fs = require("node:fs");
 const path = require("node:path");
-
-const defaultMiniMaxEndpoint = "https://api.minimax.io/v1/chat/completions";
-const defaultMiniMaxModel = "MiniMax-VL-01";
-
-function normalizeProvider(value) {
-  return value === "minimax" ? "minimax" : "azure";
-}
-
-function normalizeAzure(value = {}) {
-  return {
-    endpoint: typeof value.endpoint === "string" ? value.endpoint.trim() : "",
-    apiKey: typeof value.apiKey === "string" ? value.apiKey.trim() : "",
-    deployment: typeof value.deployment === "string" ? value.deployment.trim() : ""
-  };
-}
-
-function normalizeMiniMax(value = {}) {
-  return {
-    endpoint: typeof value.endpoint === "string" && value.endpoint.trim() ? value.endpoint.trim() : defaultMiniMaxEndpoint,
-    apiKey: typeof value.apiKey === "string" ? value.apiKey.trim() : "",
-    model: typeof value.model === "string" && value.model.trim() ? value.model.trim() : defaultMiniMaxModel
-  };
-}
-
-function normalizeSettings(value = {}) {
-  const provider = normalizeProvider(value.provider);
-  return {
-    provider,
-    azure: normalizeAzure(value.azure),
-    minimax: normalizeMiniMax(value.minimax)
-  };
-}
+const { normalizeProvider, normalizeSettings } = require("../lib/ai-settings-core");
 
 function publicSettings(settings, keyRecoveryRequired = false) {
   return {
     provider: settings.provider,
+    activeCustomId: settings.activeCustomId,
     keyRecoveryRequired,
     azure: {
       endpoint: settings.azure.endpoint,
@@ -46,7 +16,8 @@ function publicSettings(settings, keyRecoveryRequired = false) {
       endpoint: settings.minimax.endpoint,
       model: settings.minimax.model,
       hasApiKey: Boolean(settings.minimax.apiKey)
-    }
+    },
+    customProviders: settings.customProviders.map(({ apiKey, ...item }) => ({ ...item, hasApiKey: Boolean(apiKey) }))
   };
 }
 
@@ -58,9 +29,7 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
   }
 
   function decryptKey(value) {
-    if (!value) {
-      return "";
-    }
+    if (!value) return "";
     if (!encryptionAvailable() || typeof cryptoAdapter.decryptString !== "function") {
       throw new Error("Windows 安全存储当前不可用，无法读取已加密的 AI API Key。");
     }
@@ -73,9 +42,7 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
   }
 
   function encryptKey(value) {
-    if (!value) {
-      return "";
-    }
+    if (!value) return "";
     if (!encryptionAvailable() || typeof cryptoAdapter.encryptString !== "function") {
       throw new Error("Windows 安全存储当前不可用，AI API Key 未保存。");
     }
@@ -96,8 +63,14 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
     const provider = normalizeProvider(raw.provider);
     const azureRaw = raw.azure || {};
     const minimaxRaw = raw.minimax || {};
+    const customRawItems = Array.isArray(raw.customProviders)
+      ? raw.customProviders
+      : raw.custom && (provider === "custom" || raw.custom.endpoint || raw.custom.model || raw.custom.apiKeyEncrypted || raw.custom.apiKey)
+        ? [{ ...raw.custom, id: raw.custom.id || "custom-legacy" }]
+        : [];
     return normalizeSettings({
       provider,
+      activeCustomId: raw.activeCustomId,
       azure: {
         endpoint: azureRaw.endpoint ?? (provider === "azure" ? raw.endpoint : undefined),
         apiKey: azureRaw.apiKeyEncrypted ? decryptKey(azureRaw.apiKeyEncrypted) : (azureRaw.apiKey ?? (provider === "azure" ? raw.apiKey : "")),
@@ -107,14 +80,19 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
         endpoint: minimaxRaw.endpoint ?? (provider === "minimax" ? raw.endpoint : undefined),
         apiKey: minimaxRaw.apiKeyEncrypted ? decryptKey(minimaxRaw.apiKeyEncrypted) : (minimaxRaw.apiKey ?? (provider === "minimax" ? raw.apiKey : "")),
         model: minimaxRaw.model ?? raw.model
-      }
+      },
+      customProviders: customRawItems.map((item) => ({
+        ...item,
+        apiKey: item.apiKeyEncrypted ? decryptKey(item.apiKeyEncrypted) : (item.apiKey ?? (provider === "custom" ? raw.apiKey : ""))
+      }))
     });
   }
 
   function writeEncrypted(settings) {
     const stored = {
-      version: 3,
+      version: 5,
       provider: settings.provider,
+      activeCustomId: settings.activeCustomId,
       azure: {
         endpoint: settings.azure.endpoint,
         apiKeyEncrypted: encryptKey(settings.azure.apiKey),
@@ -124,7 +102,11 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
         endpoint: settings.minimax.endpoint,
         apiKeyEncrypted: encryptKey(settings.minimax.apiKey),
         model: settings.minimax.model
-      }
+      },
+      customProviders: settings.customProviders.map(({ apiKey, ...item }) => ({
+        ...item,
+        apiKeyEncrypted: encryptKey(apiKey)
+      }))
     };
     fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(configPath, JSON.stringify(stored, null, 2));
@@ -132,8 +114,11 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
 
   function save(value) {
     const current = load();
+    const currentCustomById = new Map(current.customProviders.map((item) => [item.id, item]));
+    const requestedCustomProviders = Array.isArray(value.customProviders) ? value.customProviders : current.customProviders;
     const next = normalizeSettings({
       provider: value.provider,
+      activeCustomId: value.activeCustomId,
       azure: {
         endpoint: value.azure?.endpoint,
         apiKey: value.azure?.apiKey === undefined ? current.azure.apiKey : value.azure.apiKey,
@@ -143,7 +128,11 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
         endpoint: value.minimax?.endpoint,
         apiKey: value.minimax?.apiKey === undefined ? current.minimax.apiKey : value.minimax.apiKey,
         model: value.minimax?.model
-      }
+      },
+      customProviders: requestedCustomProviders.map((item) => ({
+        ...item,
+        apiKey: item.apiKey === undefined ? currentCustomById.get(item.id)?.apiKey || "" : item.apiKey
+      }))
     });
     writeEncrypted(next);
     return publicSettings(next, false);
@@ -151,15 +140,14 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
 
   function migrateLegacyConfig() {
     const raw = readRaw();
-    if (!fs.existsSync(configPath) || raw.version === 3) {
-      return false;
-    }
+    if (!fs.existsSync(configPath) || raw.version === 5) return false;
     writeEncrypted(load());
     return true;
   }
 
   function getRuntimeEnv() {
     const settings = load();
+    const activeCustom = settings.customProviders.find((item) => item.id === settings.activeCustomId) || settings.customProviders[0];
     return {
       CARD_VAULT_AI_PROVIDER: settings.provider,
       AZURE_OPENAI_ENDPOINT: settings.azure.endpoint,
@@ -167,13 +155,21 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
       AZURE_OPENAI_DEPLOYMENT: settings.azure.deployment,
       MINIMAX_API_ENDPOINT: settings.minimax.endpoint,
       MINIMAX_API_KEY: settings.minimax.apiKey,
-      MINIMAX_MODEL: settings.minimax.model
+      MINIMAX_MODEL: settings.minimax.model,
+      CARD_VAULT_CUSTOM_AI_ACTIVE_ID: settings.activeCustomId,
+      CARD_VAULT_CUSTOM_AI_PROFILES_JSON: JSON.stringify(settings.customProviders),
+      CARD_VAULT_CUSTOM_AI_NAME: activeCustom?.name || "",
+      CARD_VAULT_CUSTOM_AI_ENDPOINT: activeCustom?.endpoint || "",
+      CARD_VAULT_CUSTOM_AI_MODELS_ENDPOINT: activeCustom?.modelsEndpoint || "",
+      CARD_VAULT_CUSTOM_AI_API_KEY: activeCustom?.apiKey || "",
+      CARD_VAULT_CUSTOM_AI_MODEL: activeCustom?.model || "",
+      CARD_VAULT_CUSTOM_AI_API_KEY_HEADER: activeCustom?.apiKeyHeader || "Authorization",
+      CARD_VAULT_CUSTOM_AI_API_KEY_PREFIX: activeCustom?.apiKeyPrefix ?? "Bearer"
     };
   }
 
   function getPublicSettings() {
-    const settings = load();
-    return publicSettings(settings, decryptionFailed);
+    return publicSettings(load(), decryptionFailed);
   }
 
   return {
@@ -185,6 +181,4 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
   };
 }
 
-module.exports = {
-  createAiConfigManager
-};
+module.exports = { createAiConfigManager };

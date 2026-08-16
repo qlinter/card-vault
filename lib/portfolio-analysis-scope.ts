@@ -3,7 +3,7 @@ import type { PortfolioFilterCriterion, PortfolioFilterField, PortfolioScope } f
 export const portfolioFilterDefinitions = {
   q: "搜索关键词",
   sport: "运动类型",
-  team: "球队",
+  team: "Team",
   year: "年份",
   brand: "品牌",
   productLine: "产品线",
@@ -74,7 +74,7 @@ export function portfolioScopeInstructions(scope: PortfolioScope): string[] {
   return [
     `本次分析对象是筛选结果，不是完整收藏。筛选条件：${criteria}。`,
     "必须把上述筛选条件视为用户主动设定的研究范围，不得因为被筛选字段在结果中高度集中，就将其判断为集中度风险、结构缺陷或扣分项。",
-    "例如筛选条件为“运动类型=足球”时，不得提出“足球卡占比过高”；筛选球队、球员关键词、年份、评级或签名属性时同理。",
+    "例如筛选条件为“运动类型=足球”时，不得提出“足球卡占比过高”；筛选 Team、球员关键词、年份、评级或签名属性时同理。",
     "组合结构只评价筛选范围内部仍可比较的维度，并明确结论仅适用于当前筛选结果，不得外推到用户的完整收藏。",
     "summary 和 structure 中应明确说明分析基于当前筛选范围。"
   ];

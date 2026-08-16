@@ -1,8 +1,8 @@
 # Card Vault Product Roadmap
 
-Last confirmed: 2026-08-13.
+Last confirmed: 2026-08-16.
 
-This document records the product direction after v1.0.16. The roadmap may be adjusted in response to real usage, data-safety concerns, and platform availability, while preserving the agreed product principles and overall sequence.
+This document records the product direction after v1.0.17. The roadmap may be adjusted in response to real usage, data-safety concerns, and platform availability, while preserving the agreed product principles and overall sequence.
 
 ## Product Direction
 
@@ -24,7 +24,7 @@ Development follows four connected tracks:
 - CNY and USD remain separate unless the user supplies or confirms a dated exchange rate.
 - Do not combine a high-risk data migration with a major UI redesign in one release.
 - Keep Cloudflare Drop as a manual temporary publishing channel until permanent infrastructure exists.
-- Feature growth must preserve the backup, recovery, testing, and repeatable-release baseline established in v1.0.16.
+- Feature growth must preserve the backup, recovery, testing, and repeatable-release baseline maintained and hardened in v1.0.17.
 
 ## Version Overview
 

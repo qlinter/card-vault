@@ -11,6 +11,25 @@ const { createWindowManager } = require("./window-manager");
 
 const rootDir = path.resolve(__dirname, "..");
 
+// Some Windows environments cannot load Electron's GPU subprocess dependencies.
+// Disable hardware acceleration before app startup so this does not prevent the
+// local server and desktop window from launching.
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch("disable-gpu");
+app.commandLine.appendSwitch("in-process-gpu");
+
+function canWriteDirectory(directory) {
+  try {
+    fs.mkdirSync(directory, { recursive: true });
+    const probePath = path.join(directory, `.write-probe-${process.pid}`);
+    fs.writeFileSync(probePath, "ok");
+    fs.rmSync(probePath, { force: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function configureUserDataPath() {
   if (process.env.CARD_VAULT_USER_DATA_DIR) {
     app.setPath("userData", path.resolve(process.env.CARD_VAULT_USER_DATA_DIR));
@@ -19,13 +38,21 @@ function configureUserDataPath() {
   if (app.isPackaged) return;
   const legacyUserDataDir = app.getPath("userData");
   const developmentUserDataDir = path.join(app.getPath("appData"), "Card Vault Development");
-  fs.mkdirSync(developmentUserDataDir, { recursive: true });
+  const userDataDir = canWriteDirectory(developmentUserDataDir)
+    ? developmentUserDataDir
+    : path.join(rootDir, ".desktop-user-data");
+  fs.mkdirSync(userDataDir, { recursive: true });
   for (const fileName of ["storage-config.json", "ai-config.json"]) {
-    const sourcePath = path.join(legacyUserDataDir, fileName);
-    const targetPath = path.join(developmentUserDataDir, fileName);
-    if (fs.existsSync(sourcePath) && !fs.existsSync(targetPath)) fs.copyFileSync(sourcePath, targetPath);
+    const targetPath = path.join(userDataDir, fileName);
+    if (fs.existsSync(targetPath)) continue;
+    for (const sourceDir of [developmentUserDataDir, legacyUserDataDir]) {
+      const sourcePath = path.join(sourceDir, fileName);
+      if (!fs.existsSync(sourcePath)) continue;
+      fs.copyFileSync(sourcePath, targetPath);
+      break;
+    }
   }
-  app.setPath("userData", developmentUserDataDir);
+  app.setPath("userData", userDataDir);
 }
 
 configureUserDataPath();

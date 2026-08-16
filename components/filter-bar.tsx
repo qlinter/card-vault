@@ -77,7 +77,7 @@ export function FilterBar({
         </select>
 
         <select name="team" defaultValue={query.team ?? ""}>
-          <option value="">{"球队"}</option>
+          <option value="">Team</option>
           {teams.map((team) => (
             <option key={team} value={team}>
               {team}

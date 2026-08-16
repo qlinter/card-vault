@@ -65,16 +65,16 @@ export const shareThemes = [
   {
     id: "nerazzurri",
     label: "蓝黑军团-1",
-    description: "明亮典藏感的蓝黑球队背景，适合突出传奇球星、经典赛季和荣誉叙事。",
-    category: "球队主题",
+    description: "明亮典藏感的蓝黑 Team 背景，适合突出传奇球星、经典赛季和荣誉叙事。",
+    category: "Team 主题",
     backgroundImagePath: "/share-themes/nerazzurri-1.webp",
     tokens: { text: "#10233c", muted: "#3f5875", accent: "#004e9a", panelRgb: "255, 255, 255", line: "rgba(0,78,154,0.22)" }
   },
   {
     id: "nerazzurri-2",
     label: "蓝黑军团-2",
-    description: "深色主场氛围的蓝黑球队背景，适合更有冲击力的核心球星和冠军主题收藏。",
-    category: "球队主题",
+    description: "深色主场氛围的蓝黑 Team 背景，适合更有冲击力的核心球星和冠军主题收藏。",
+    category: "Team 主题",
     backgroundImagePath: "/share-themes/nerazzurri-2.webp",
     tokens: { text: "#f2f7ff", muted: "#c1cee0", accent: "#d9ad54", panelRgb: "3, 12, 28", line: "rgba(217,173,84,0.36)" }
   }

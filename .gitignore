@@ -6,6 +6,7 @@ node_modules
 dist
 coverage
 logs
+.desktop-user-data
 backups
 data
 *.log

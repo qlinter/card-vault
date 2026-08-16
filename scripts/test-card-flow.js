@@ -250,16 +250,26 @@ async function main() {
     }
 
     const detailPage = await fetchPage(baseUrl, `/cards/${cardId}`);
-    if (
-      !detailPage.includes("E2E Updated Player") ||
-      !detailPage.includes("E2E Updated Card") ||
-      !detailPage.includes("Authentic") ||
-      !detailPage.includes("返回上一页") ||
-      !detailPage.includes("财务历史") ||
-      !detailPage.includes("新增交易") ||
-      !detailPage.includes("个人估计")
-    ) {
-      throw new Error("Updated card detail page does not show the saved values.");
+    const detailChecks = [
+      detailPage.includes("E2E Updated Player"),
+      detailPage.includes("E2E Updated Card"),
+      detailPage.includes("Authentic"),
+      detailPage.includes("返回上一页"),
+      detailPage.includes("财务历史"),
+      detailPage.includes("新增交易"),
+      detailPage.includes("个人估计"),
+      detailPage.includes("Team")
+    ];
+    if (detailChecks.some((check) => !check)) {
+      throw new Error(`Updated card detail page does not show the saved values: ${detailChecks.join(",")}`);
+    }
+    if (!detailPage.includes("<summary>编辑</summary>") || detailPage.includes("纠错与删除") || detailPage.includes("保存纠错")) {
+      throw new Error("Financial history does not use the expected edit wording.");
+    }
+    for (const financialStatus of ["旧数据迁移", "已纠错", "手动录入", "初始录入", "旧币种待纠正"]) {
+      if (detailPage.includes(financialStatus)) {
+        throw new Error(`Financial timeline still exposes an internal edit status: ${financialStatus}`);
+      }
     }
 
     const valuationForm = new FormData();
@@ -342,6 +352,67 @@ async function main() {
     const filteredDetailPage = await fetchPage(baseUrl, filteredCardHref);
     if (!filteredDetailPage.includes('href="/?sport=Basketball&amp;sort=valueDesc"')) {
       throw new Error("Card detail page does not return to the preserved home filter query.");
+    }
+    const filteredEditPath = `/cards/${cardId}/edit?returnTo=${encodeURIComponent("/?sport=Basketball&sort=valueDesc")}`;
+    if (!filteredDetailPage.includes(`href="${filteredEditPath}"`)) {
+      throw new Error("Card detail page does not preserve the home filter query in the edit link.");
+    }
+    const filteredEditPage = await fetchPage(baseUrl, filteredEditPath);
+    if (!filteredEditPage.includes('name="returnTo" value="/?sport=Basketball&amp;sort=valueDesc"')) {
+      throw new Error("Card edit page does not carry the preserved home filter query.");
+    }
+    const filteredEditForm = new FormData();
+    appendServerActionFields(filteredEditForm, filteredEditPage);
+    appendCardFields(filteredEditForm, {
+      playerName: "E2E Filtered Player",
+      cardTitle: "E2E Filtered Card",
+      grade: "Authentic",
+      description: "筛选状态回归测试。"
+    });
+    filteredEditForm.append("returnTo", "/?sport=Basketball&sort=valueDesc");
+    const filteredEditResponse = await fetch(`${baseUrl}${filteredEditPath}`, { method: "POST", body: filteredEditForm, redirect: "manual" });
+    const filteredEditLocation = filteredEditResponse.headers.get("location") || "";
+    const expectedFilteredEditLocation = `/cards/${cardId}?success=updated&returnTo=${encodeURIComponent("/?sport=Basketball&sort=valueDesc")}`;
+    if (filteredEditResponse.status !== 303 || filteredEditLocation !== expectedFilteredEditLocation) {
+      throw new Error(`Filtered card edit did not preserve the return query (${filteredEditLocation}).`);
+    }
+    const filteredEditedDetailPage = await fetchPage(baseUrl, filteredEditLocation);
+    if (!filteredEditedDetailPage.includes('href="/?sport=Basketball&amp;sort=valueDesc"')) {
+      throw new Error("Filtered card edit result does not return to the preserved home filter query.");
+    }
+
+    db = new DatabaseSync(dbPath, { readOnly: true });
+    const filteredValuation = db.prepare("SELECT id FROM CardValuation WHERE cardId = ? ORDER BY valuedAt DESC, updatedAt DESC LIMIT 1").get(cardId);
+    db.close();
+    if (!filteredValuation?.id) {
+      throw new Error("Filtered financial history test could not find a valuation record.");
+    }
+    const filteredHistoryEditForm = new FormData();
+    appendActionFieldsForMarker(filteredHistoryEditForm, filteredEditedDetailPage, `value="valuation-${filteredValuation.id}"`);
+    filteredHistoryEditForm.append("amount", "190.25");
+    filteredHistoryEditForm.append("currency", "CNY");
+    filteredHistoryEditForm.append("valuedAt", "2026-08-10");
+    filteredHistoryEditForm.append("source", "近期成交");
+    filteredHistoryEditForm.append("notes", "Filtered financial history regression test.");
+    const filteredHistoryEditResponse = await fetch(`${baseUrl}${filteredEditLocation}`, {
+      method: "POST",
+      body: filteredHistoryEditForm,
+      redirect: "manual"
+    });
+    const filteredHistoryEditLocation = filteredHistoryEditResponse.headers.get("location") || "";
+    const expectedFilteredHistoryEditLocation = `/cards/${cardId}?success=history-updated&returnTo=${encodeURIComponent("/?sport=Basketball&sort=valueDesc")}#financial-history`;
+    if (filteredHistoryEditResponse.status !== 303 || filteredHistoryEditLocation !== expectedFilteredHistoryEditLocation) {
+      throw new Error(`Filtered financial history edit did not preserve the return query (${filteredHistoryEditLocation}).`);
+    }
+    const filteredHistoryEditedDetailPage = await fetchPage(baseUrl, filteredHistoryEditLocation);
+    if (!filteredHistoryEditedDetailPage.includes('href="/?sport=Basketball&amp;sort=valueDesc"')) {
+      throw new Error("Filtered financial history edit result does not return to the preserved home filter query.");
+    }
+    db = new DatabaseSync(dbPath, { readOnly: true });
+    const filteredEditedValuation = db.prepare("SELECT amountMinor, source FROM CardValuation WHERE id = ?").get(filteredValuation.id);
+    db.close();
+    if (filteredEditedValuation?.amountMinor !== 19025 || filteredEditedValuation?.source !== "近期成交") {
+      throw new Error("Filtered financial history edit did not persist the expected valuation changes.");
     }
     const analysisResponse = await fetch(`${baseUrl}/api/ai/portfolio-analysis`, {
       method: "POST",

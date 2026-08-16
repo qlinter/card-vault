@@ -5,7 +5,7 @@ import { normalizeImagePath } from "@/lib/image-path";
 import { normalizeHttpUrl } from "@/lib/http-url";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { toScalar } from "@/lib/query-params";
+import { encodeReturnTo, normalizeReturnTo, toScalar } from "@/lib/query-params";
 import { cardSuccessMessages, resolveSuccessMessage } from "@/lib/feedback-messages";
 
 type DetailProps = {
@@ -60,8 +60,8 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
   const query = await searchParams;
   const success = resolveSuccessMessage(toScalar(query.success), cardSuccessMessages, { passthroughUnknown: true });
   const error = toScalar(query.error);
-  const returnTo = toScalar(query.returnTo);
-  const returnHref = returnTo === "/" || returnTo?.startsWith("/?") ? returnTo : "/";
+  const returnTo = normalizeReturnTo(toScalar(query.returnTo));
+  const returnHref = returnTo ?? "/";
 
   const card = await prisma.card.findUnique({
     where: { id },
@@ -89,7 +89,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
         </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <BackButton href={returnHref} />
-          <a href={`/cards/${card.id}/edit`} className="btn btn-secondary">
+          <a href={`/cards/${card.id}/edit${encodeReturnTo(returnTo)}`} className="btn btn-secondary">
             编辑
           </a>
           <a href={`/cards/${card.id}/delete`} className="btn btn-danger">
@@ -123,7 +123,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
               <span>{valueOrDash(card.sport)}</span>
             </div>
             <div className="info-item">
-              <strong>球队</strong>
+              <strong>Team</strong>
               <span>{valueOrDash(card.team)}</span>
             </div>
             <div className="info-item">
@@ -225,6 +225,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
 
       <CardFinancialHistory
         cardId={card.id}
+        returnTo={returnTo}
         transactions={card.transactions}
         expenses={card.expenses}
         valuations={card.valuations}
@@ -232,4 +233,3 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
     </div>
   );
 }
-

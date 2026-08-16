@@ -68,7 +68,7 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
         <input
           name="q"
           defaultValue={query.q ?? ""}
-          placeholder="搜索球员、球队、系列、年份、标签..."
+          placeholder="搜索球员、Team、系列、年份、标签..."
           className="showcase-search-input"
         />
         {query.group ? <input type="hidden" name="group" value={query.group} /> : null}

@@ -4,6 +4,7 @@ import { InvestmentInputs } from "@/components/investment-inputs";
 import { splitTagString, stringifyTags } from "@/lib/card-helpers";
 import { CardFormValues } from "@/lib/card-form-values";
 import { normalizeImagePath } from "@/lib/image-path";
+import { encodeReturnTo } from "@/lib/query-params";
 
 type CardFormProps = {
   mode: "create" | "edit";
@@ -11,19 +12,21 @@ type CardFormProps = {
   error?: string;
   card?: Card & { images: CardImage[] };
   values?: CardFormValues;
+  returnTo?: string;
 };
 
 function pickValue(value: string | undefined, fallback: string): string {
   return value ?? fallback;
 }
 
-export function CardForm({ mode, action, error, card, values }: CardFormProps) {
+export function CardForm({ mode, action, error, card, values, returnTo }: CardFormProps) {
   const tags = splitTagString(card?.tags ?? null);
   const defaultAiImageUrls = card?.images.slice(0, 2).map((image) => normalizeImagePath(image.path)) ?? [];
 
   return (
     <form action={action} className="panel" encType="multipart/form-data">
       {error ? <p className="note-error">{error}</p> : null}
+      {mode === "edit" && returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
 
       <AiRecognitionPanel mode={mode} defaultImageUrls={defaultAiImageUrls} />
 
@@ -49,7 +52,7 @@ export function CardForm({ mode, action, error, card, values }: CardFormProps) {
         </label>
 
         <label className="field">
-          <span>球队</span>
+          <span>Team</span>
           <input name="team" defaultValue={pickValue(values?.team, card?.team ?? "")} />
         </label>
 
@@ -155,7 +158,7 @@ export function CardForm({ mode, action, error, card, values }: CardFormProps) {
         ) : (
           <div className="history-edit-notice full">
             <strong>财务记录已从卡片资料中分离</strong>
-            <span>购买、费用和估值请在卡片详情页的“财务历史”中新增或纠错，保存本页不会改写历史记录。</span>
+            <span>购买、费用和估值请在卡片详情页的“财务历史”中新增或编辑，保存本页不会改写历史记录。</span>
             <a href={`/cards/${card?.id}#financial-history`}>前往财务历史</a>
           </div>
         )}
@@ -254,7 +257,7 @@ export function CardForm({ mode, action, error, card, values }: CardFormProps) {
         <button type="submit" className="btn btn-primary">
           {mode === "create" ? "保存并创建" : "保存修改"}
         </button>
-        <a href={mode === "create" ? "/" : `/cards/${card?.id}`} className="btn btn-secondary">
+        <a href={mode === "create" ? "/" : `/cards/${card?.id}${encodeReturnTo(returnTo)}`} className="btn btn-secondary">
           取消
         </a>
       </div>

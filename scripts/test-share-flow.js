@@ -305,8 +305,8 @@ async function main() {
     assertIncludes(newSharePage, "竞技主场", "竞技主场版式");
     assertIncludes(newSharePage, "足球赛场", "运动主题选项");
     assertIncludes(newSharePage, "F1 维修区", "F1 主题选项");
-    assertIncludes(newSharePage, "蓝黑军团-1", "球队主题选项");
-    assertIncludes(newSharePage, "蓝黑军团-2", "球队主题选项");
+    assertIncludes(newSharePage, "蓝黑军团-1", "Team 主题选项");
+    assertIncludes(newSharePage, "蓝黑军团-2", "Team 主题选项");
     assertIncludes(newSharePage, "分享展馆编辑工作台", "编辑器 2.0 工作台");
     assertIncludes(newSharePage, "基础内容", "编辑器 2.0 内容分区");
     assertIncludes(newSharePage, "视觉设计", "编辑器 2.0 视觉分区");

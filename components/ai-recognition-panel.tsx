@@ -41,7 +41,7 @@ function fieldLabel(field: string): string {
     playerName: "球员姓名",
     cardTitle: "卡片名称",
     sport: "运动类型",
-    team: "球队",
+  team: "Team",
     year: "年份",
     brand: "品牌",
     productLine: "产品线",

@@ -11,8 +11,8 @@
   display: grid;
   place-items: center;
   padding: 1.2rem;
-  background: rgba(9, 13, 19, 0.66);
-  backdrop-filter: blur(10px);
+  background: rgba(9, 13, 19, 0.76);
+  overscroll-behavior: contain;
   animation: fade 180ms ease both;
 }
 
@@ -20,6 +20,7 @@
   width: min(980px, 96vw);
   max-height: min(880px, 94vh);
   overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 18px;
   background:
@@ -213,6 +214,7 @@
   border-top-color: var(--cyan);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+  will-change: transform;
 }
 
 .loading p,

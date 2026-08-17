@@ -1,6 +1,6 @@
 {
   "name": "card-vault",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "private": true,
   "packageManager": "npm@11.9.0",
   "engines": {

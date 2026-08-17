@@ -6,17 +6,20 @@ const { createDesktopLogger } = require("./desktop-logger");
 const { createLocalServerRuntime } = require("./local-server-runtime");
 const { registerAiIpc } = require("./ipc/ai-ipc");
 const { registerStorageIpc } = require("./ipc/storage-ipc");
+const { shouldUseSoftwareRendering } = require("./rendering-mode");
 const { createStorageManager } = require("./storage");
 const { createWindowManager } = require("./window-manager");
 
 const rootDir = path.resolve(__dirname, "..");
 
-// Some Windows environments cannot load Electron's GPU subprocess dependencies.
-// Disable hardware acceleration before app startup so this does not prevent the
-// local server and desktop window from launching.
-app.disableHardwareAcceleration();
-app.commandLine.appendSwitch("disable-gpu");
-app.commandLine.appendSwitch("in-process-gpu");
+// Keep GPU acceleration enabled by default. Software rendering remains available
+// as an explicit compatibility mode for Windows environments with GPU failures.
+const softwareRendering = shouldUseSoftwareRendering();
+if (softwareRendering) {
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch("disable-gpu");
+  app.commandLine.appendSwitch("in-process-gpu");
+}
 
 function canWriteDirectory(directory) {
   try {
@@ -66,11 +69,11 @@ const windowManager = createWindowManager({ app, serverRuntime: runtime, rootDir
 
 registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, logger });
 registerAiIpc({ ipcMain, aiConfig, runtime, logger });
-
 async function bootDesktopApp() {
   try {
     logger.ensureLogsDir();
     logger.appendLog("desktop.log", "Desktop app boot started.");
+    logger.appendLog("desktop.log", `Rendering mode: ${softwareRendering ? "software compatibility" : "hardware accelerated"}.`);
     logger.appendLog("desktop.log", `User data directory: ${app.getPath("userData")}`);
     if (aiConfig.migrateLegacyConfig()) logger.appendLog("desktop.log", "Legacy AI settings were encrypted with Windows safeStorage.");
     storage.runPendingCleanup();

@@ -6,19 +6,18 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 
 ## Current Version
 
-`1.0.17`
+`1.0.18`
 
-### 1.0.17 Highlights
+### 1.0.18 Highlights
 
-- AI Settings can now add, name, and retain multiple OpenAI Chat Completions-compatible services. Provider lists use the configured display name, and local services may omit an API key.
-- Hardened Azure OpenAI, MiniMax, and custom-provider requests with bounded portfolio inputs, transient retries, JSON-mode fallback, and compatibility handling for model-specific parameters.
-- Portfolio Analysis now uses one five-dimension report covering structure, financial records, collectible attributes, valuation recency, and catalog completeness, including evidence, attention items, and actions.
-- When remote AI cannot return a complete protocol response, Card Vault completes light responses or supplies a full deterministic local fallback instead of showing only the overall score or failing the report.
-- Standardized the card field label as `Team` so it also covers F1 constructors and other non-ball-sport teams.
-- Removed migration, correction, and manual-entry status labels from financial history and consolidated entry operations under Edit without changing CNY/USD financial facts.
-- Fixed filtered list context so editing a card or financial-history entry and returning preserves filters, sorting, and pagination.
-- Consolidated AI configuration normalization, portfolio-analysis protocol metadata, image routes, feedback messages, and share-card mapping while removing unused legacy styles and aliases.
-- v1.0.17 introduces no database migration and remains directly compatible with v1.0.16 data and backups.
+- Home-page card images now use lazy loading and asynchronous decoding, while card-level blur and off-screen rendering costs are reduced for smoother scrolling through large collections.
+- Portfolio Analysis removes the expensive backdrop blur, locks background scrolling while open, and contains scroll chaining to reduce UI stutter while waiting for AI results.
+- Electron uses hardware acceleration by default again, with an explicit environment variable or launch switch available for software-rendering compatibility.
+- `start-desktop.bat` now verifies npm, Electron, and a dependency fingerprint so a repository synced across computers rebuilds dependencies only when they are missing or materially out of date.
+- npm cache and install logs stay inside the project; an npmmirror registry automatically selects the matching Electron mirror, and non-fatal deprecation warnings are explained during recovery.
+- Settings adds a compact collapsible About section with the current application version, release notes, and project-homepage access.
+- Duplicate dependency-fingerprint code in the startup script is consolidated into one tested utility.
+- v1.0.18 introduces no database migration and remains directly compatible with v1.0.17 data and backups.
 
 ## Core Features
 
@@ -54,12 +53,13 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 | `1.0.15` | Completed the v2 AI analysis protocol, further Electron/storage/share-editor modularization, feedback-message consolidation, storage-rule unification, and Tailwind removal. |
 | `1.0.16` | Reduced home-page history loading and added clean Windows CI, repeatable release candidates, artifact verification, and release-metadata safeguards. |
 | `1.0.17` | Added multiple custom AI providers, more reliable five-dimension portfolio analysis, preserved filtered return context, and consolidated shared protocols and redundant code. |
+| `1.0.18` | Improved home and portfolio-analysis rendering, hardened cross-computer dependency recovery, restored default GPU acceleration, and added a compact application-version entry. |
 
 ## Install and Run
 
 ### Installer
 
-Release file: `dist/card-vault-1.0.17-setup.exe`
+Release file: `dist/card-vault-1.0.18-setup.exe`
 
 - Uses an installation wizard and supports a user-selected installation directory.
 - Installing a newer build of the same application normally replaces program files without deleting collection data.
@@ -68,7 +68,7 @@ Release file: `dist/card-vault-1.0.17-setup.exe`
 
 ### Portable Build
 
-Release file: `dist/card-vault-1.0.17-portable.zip`
+Release file: `dist/card-vault-1.0.18-portable.zip`
 
 1. Extract the complete ZIP.
 2. Run `Card Vault.exe` from the extracted directory.

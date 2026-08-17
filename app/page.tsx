@@ -163,7 +163,13 @@ export default async function Home({ searchParams }: HomeProps) {
             <article key={card.id} className="card-item">
               <a href={`/cards/${card.id}?returnTo=${encodeURIComponent(cardListReturnHref)}`}>
                 {card.images[0] ? (
-                  <img className="card-thumb" src={normalizeImagePath(card.images[0].path)} alt={card.cardTitle} />
+                  <img
+                    className="card-thumb"
+                    src={normalizeImagePath(card.images[0].path)}
+                    alt={card.cardTitle}
+                    loading="lazy"
+                    decoding="async"
+                  />
                 ) : (
                   <div className="card-thumb" />
                 )}

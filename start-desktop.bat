@@ -34,7 +34,7 @@ if not exist "node_modules\electron\dist\electron.exe" goto install_dependencies
 call npm.cmd ls --depth=0 >nul 2>nul
 if errorlevel 1 goto install_dependencies
 
-call :dependency_fingerprint_matches
+node scripts\dependency-fingerprint.js check
 if errorlevel 1 goto install_dependencies
 goto dependencies_ready
 
@@ -54,7 +54,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-call :write_dependency_fingerprint
+node scripts\dependency-fingerprint.js write
 if errorlevel 1 (
   echo.
   echo Dependencies were installed, but their verification record could not be saved.
@@ -77,14 +77,6 @@ if errorlevel 1 (
 )
 
 exit /b 0
-
-:dependency_fingerprint_matches
-node -e "const c=require('crypto'),f=require('fs'),p=require('./package.json'),scripts=p.scripts||{};const s={runtime:process.platform+'-'+process.arch+'-node'+process.versions.node.split('.')[0],dependencies:p.dependencies||{},devDependencies:p.devDependencies||{},optionalDependencies:p.optionalDependencies||{},peerDependencies:p.peerDependencies||{},overrides:p.overrides||{},installScripts:{preinstall:scripts.preinstall||'',install:scripts.install||'',postinstall:scripts.postinstall||''}};if(f.existsSync('package-lock.json')){const l=require('./package-lock.json');s.lockfileVersion=l.lockfileVersion;s.packages=Object.fromEntries(Object.entries(l.packages||{}).filter(([k])=>k));}const hash=c.createHash('sha256').update(JSON.stringify(s)).digest('hex'),marker='node_modules/.card-vault-dependencies.sha256';process.exit(f.existsSync(marker)&&f.readFileSync(marker,'utf8').trim()===hash?0:1)"
-exit /b %errorlevel%
-
-:write_dependency_fingerprint
-node -e "const c=require('crypto'),f=require('fs'),p=require('./package.json'),scripts=p.scripts||{};const s={runtime:process.platform+'-'+process.arch+'-node'+process.versions.node.split('.')[0],dependencies:p.dependencies||{},devDependencies:p.devDependencies||{},optionalDependencies:p.optionalDependencies||{},peerDependencies:p.peerDependencies||{},overrides:p.overrides||{},installScripts:{preinstall:scripts.preinstall||'',install:scripts.install||'',postinstall:scripts.postinstall||''}};if(f.existsSync('package-lock.json')){const l=require('./package-lock.json');s.lockfileVersion=l.lockfileVersion;s.packages=Object.fromEntries(Object.entries(l.packages||{}).filter(([k])=>k));}const hash=c.createHash('sha256').update(JSON.stringify(s)).digest('hex');f.writeFileSync('node_modules/.card-vault-dependencies.sha256',hash+'\n')"
-exit /b %errorlevel%
 
 :configure_electron_mirror
 set "card_vault_npm_registry="

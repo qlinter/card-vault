@@ -33,9 +33,15 @@ export function PortfolioAnalysisButton({ cardCount, query, scope }: PortfolioAn
   useEffect(() => setMounted(true), []);
   useEffect(() => { setAnalysis(null); setSnapshot(null); setWarning(null); setError(null); setOpen(false); }, [fingerprint]);
   useEffect(() => {
+    if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
-    if (open) window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    window.addEventListener("keydown", onKeyDown);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [open]);
 
   async function analyze() {
@@ -65,7 +71,7 @@ export function PortfolioAnalysisButton({ cardCount, query, scope }: PortfolioAn
   return <>
     <button type="button" className={`btn btn-secondary ${styles.trigger}`} onClick={openReport} disabled={cardCount === 0}>{cardCount === 0 ? "暂无卡片" : loading ? "分析中…" : "组合分析"}</button>
     {mounted && open ? createPortal(<div className={styles.backdrop} onMouseDown={() => setOpen(false)} role="presentation">
-      <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="portfolio-analysis-title" onMouseDown={(event) => event.stopPropagation()}>
+      <section className={styles.modal} role="dialog" aria-modal="true" aria-busy={loading} aria-labelledby="portfolio-analysis-title" onMouseDown={(event) => event.stopPropagation()}>
         <header className={styles.modalHeader}><div><span className={styles.kicker}>CARD VAULT INTELLIGENCE</span><h2 id="portfolio-analysis-title">组合分析</h2><p>基于当前首页筛选结果中的 {displayCardCount} 张卡片</p></div><button type="button" className={styles.close} onClick={() => setOpen(false)} aria-label="关闭组合分析">×</button></header>
         {snapshot ? <><div className={styles.snapshotStrip}><span><small>活跃收藏</small><strong>{snapshot.activeCount} 张</strong></span><span><small>已售 / 目标</small><strong>{snapshot.soldCount} / {snapshot.targetCount} 张</strong></span><span><small>估值覆盖</small><strong>{percent(snapshot.financials.valuationCoverageCount, snapshot.cardCount)}</strong></span><span><small>90 天内估值</small><strong>{snapshot.financials.freshValuationCount} 张</strong></span></div>
         <section className={styles.financialOverview} aria-label="财务摘要">{snapshot.financials.currencies.map((item) => <article key={item.currency}><header><strong>{item.currency}</strong><span>{item.valuedCardCount} 张有最新估值</span></header><dl><div><dt>最新估值</dt><dd>{currency(item.latestValue, item.currency)}</dd></div><div><dt>活跃成本基础</dt><dd>{currency(item.activeCostBasis, item.currency)}</dd></div><div><dt>可比未实现盈亏</dt><dd>{currency(item.unrealizedDifference, item.currency)}</dd></div><div><dt>可比回报率</dt><dd>{item.unrealizedReturnRate === null ? "--" : `${item.unrealizedReturnRate > 0 ? "+" : ""}${item.unrealizedReturnRate}%`}</dd></div></dl></article>)}</section>

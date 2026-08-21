@@ -48,7 +48,8 @@ function resolveWindowsSigning(env = process.env) {
       description: "unsigned development release",
       winOptions: {
         forceCodeSigning: false,
-        signAndEditExecutable: false
+        signAndEditExecutable: true,
+        signExecutable: false
       }
     };
   }

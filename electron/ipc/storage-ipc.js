@@ -1,11 +1,13 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { createStorageWorkerBridge } = require("./storage-worker-bridge");
+const { createTrustedIpcRegistrar } = require("./security");
 
 function registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, logger }) {
   const { sendStorageProgress, runStorageWorker, withStorageOperation } = createStorageWorkerBridge({ app, runtime, storage, logger });
+  const trustedHandle = createTrustedIpcRegistrar(ipcMain, () => runtime.getServerUrl());
 
-  ipcMain.handle("card-vault:choose-storage-directory", async (event) => {
+  trustedHandle("card-vault:choose-storage-directory", async (event) => {
     try {
       const result = await dialog.showOpenDialog({ title: "选择卡片资料存储路径", properties: ["openDirectory", "createDirectory"], defaultPath: storage.getDataDir() });
       if (result.canceled || result.filePaths.length === 0) { logger.appendLog("desktop.log", "Storage path change cancelled."); return { cancelled: true, changed: false, path: storage.getDataDir() }; }
@@ -25,24 +27,24 @@ function registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, log
     } catch (error) { logger.appendLog("desktop.log", `Storage path update failed: ${error instanceof Error ? error.message : "Unknown storage path error."}`); throw error; }
   });
 
-  ipcMain.handle("card-vault:get-backup-settings", async () => storage.getBackupSettings());
-  ipcMain.handle("card-vault:choose-backup-directory", async () => {
+  trustedHandle("card-vault:get-backup-settings", async () => storage.getBackupSettings());
+  trustedHandle("card-vault:choose-backup-directory", async () => {
     try {
       const result = await dialog.showOpenDialog({ title: "选择备份保存路径", properties: ["openDirectory", "createDirectory"], defaultPath: storage.getBackupDir() });
       if (result.canceled || result.filePaths.length === 0) { logger.appendLog("desktop.log", "Backup path change cancelled."); return { cancelled: true, path: storage.getBackupDir() }; }
       const backup = storage.chooseBackupDir(result.filePaths[0]); logger.appendLog("desktop.log", `Backup path updated to: ${backup.path}`); return { cancelled: false, path: backup.path };
     } catch (error) { logger.appendLog("desktop.log", `Backup path update failed: ${error instanceof Error ? error.message : "Unknown backup path error."}`); throw error; }
   });
-  ipcMain.handle("card-vault:backup-data-folder", async (event) => withStorageOperation(event, "backup", async (sender) => { try { const result = await runStorageWorker(sender, "backup"); logger.appendLog("desktop.log", `Data folder backup created: ${result.backupPath}`); return result; } catch (error) { logger.appendLog("desktop.log", `Data folder backup failed: ${error instanceof Error ? error.message : "Unknown backup error."}`); throw error; } }));
-  ipcMain.handle("card-vault:check-data-health", async (event) => withStorageOperation(event, "health", async (sender) => { try { const result = await runStorageWorker(sender, "health"); logger.appendLog("desktop.log", `Data health check completed: ${result.ok ? "ok" : "issues found"}.`); return result; } catch (error) { logger.appendLog("desktop.log", `Data health check failed: ${error instanceof Error ? error.message : "Unknown data health error."}`); throw error; } }));
-  ipcMain.handle("card-vault:show-orphan-file-in-folder", async (event, file) => {
+  trustedHandle("card-vault:backup-data-folder", async (event) => withStorageOperation(event, "backup", async (sender) => { try { const result = await runStorageWorker(sender, "backup"); logger.appendLog("desktop.log", `Data folder backup created: ${result.backupPath}`); return result; } catch (error) { logger.appendLog("desktop.log", `Data folder backup failed: ${error instanceof Error ? error.message : "Unknown backup error."}`); throw error; } }));
+  trustedHandle("card-vault:check-data-health", async (event) => withStorageOperation(event, "health", async (sender) => { try { const result = await runStorageWorker(sender, "health"); logger.appendLog("desktop.log", `Data health check completed: ${result.ok ? "ok" : "issues found"}.`); return result; } catch (error) { logger.appendLog("desktop.log", `Data health check failed: ${error instanceof Error ? error.message : "Unknown data health error."}`); throw error; } }));
+  trustedHandle("card-vault:show-orphan-file-in-folder", async (event, file) => {
     try {
       const result = await withStorageOperation(event, "reveal", (sender) => runStorageWorker(sender, "resolveOrphan", { file }, { start: 0, end: 100 }, "reveal"));
       if (!result.path || !fs.existsSync(result.path)) throw new Error("该文件已不在当前未引用文件列表中，请重新检查数据健康。");
       shell.showItemInFolder(result.path); logger.appendLog("desktop.log", `Revealed orphan file in folder: ${result.path}`); return { path: result.path };
     } catch (error) { logger.appendLog("desktop.log", `Failed to reveal orphan file: ${error instanceof Error ? error.message : "Unknown orphan file reveal error."}`); throw error; }
   });
-  ipcMain.handle("card-vault:clean-orphan-files", async (event) => withStorageOperation(event, "cleanup", async (sender) => {
+  trustedHandle("card-vault:clean-orphan-files", async (event) => withStorageOperation(event, "cleanup", async (sender) => {
     try {
       const health = await runStorageWorker(sender, "health", {}, { start: 0, end: 35 }, "cleanup");
       if (!health.ok) throw new Error("数据健康检查未通过，暂时不能清理未引用文件。");
@@ -55,7 +57,7 @@ function registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, log
       const result = await runStorageWorker(sender, "cleanup", {}, { start: 40, end: 100 }); logger.appendLog("desktop.log", `Orphan cleanup completed: ${result.deletedFiles.length} deleted, ${result.failedFiles.length} failed.`); return { cancelled: false, ...result };
     } catch (error) { logger.appendLog("desktop.log", `Orphan cleanup failed: ${error instanceof Error ? error.message : "Unknown orphan cleanup error."}`); throw error; }
   }));
-  ipcMain.handle("card-vault:restore-data-folder", async (event) => withStorageOperation(event, "restore", async (sender) => {
+  trustedHandle("card-vault:restore-data-folder", async (event) => withStorageOperation(event, "restore", async (sender) => {
     let serverWasStopped = false;
     try {
       sendStorageProgress(sender, "restore", { percent: 1, message: "请选择要恢复的备份文件夹..." });

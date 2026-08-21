@@ -50,9 +50,10 @@ function seedLegacyDatabase(dbPath) {
   `);
   db.prepare(`
     INSERT INTO Card (
-      id, playerName, cardTitle, sport, year, setName, grade, purchaseDate, purchasePrice, purchaseSource
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run("legacy-card", "Legacy Player", "Legacy Card", "Basketball", 2016, "Legacy Set", 9.5, "2025-01-02", 100.25, "Legacy Source");
+      id, playerName, cardTitle, sport, year, setName, grade, serialNumber, serialRange,
+      purchaseDate, purchasePrice, purchaseSource
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run("legacy-card", "Legacy Player", "Legacy Card", "Basketball", 2016, "Legacy Set", 9.5, "12", "/99", "2025-01-02", 100.25, "Legacy Source");
   db.prepare("INSERT INTO CardImage (id, cardId, path) VALUES (?, ?, ?)")
     .run("legacy-image", "legacy-card", "/media/legacy.jpg");
   db.close();
@@ -69,7 +70,7 @@ test("ordered migrations preserve legacy cards and create a pre-migration snapsh
 
   const db = new DatabaseSync(dbPath, { readOnly: true });
   const card = db.prepare(`
-    SELECT playerName, year, productLine, grade, visibility, collectionStatus
+    SELECT playerName, year, productLine, grade, visibility, collectionStatus, isSerialNumbered
     FROM Card WHERE id = ?
   `).get("legacy-card");
   const image = db.prepare("SELECT path FROM CardImage WHERE cardId = ?").get("legacy-card");
@@ -86,6 +87,7 @@ test("ordered migrations preserve legacy cards and create a pre-migration snapsh
   assert.equal(card.grade, "9.5");
   assert.equal(card.visibility, "private");
   assert.equal(card.collectionStatus, "holding");
+  assert.equal(card.isSerialNumbered, 1);
   assert.equal(image.path, "/media/legacy.jpg");
   assert.deepEqual(applied, migrationIds);
   assert.ok(shareColumns.includes("presentationConfig"));
@@ -96,6 +98,40 @@ test("ordered migrations preserve legacy cards and create a pre-migration snapsh
   assert.equal(transaction.provenance, "legacy_card_snapshot");
   assert.equal(expenseCount, 0);
   assert.equal(valuationCount, 0);
+});
+
+test("serial-numbered backfill handles each evidence path exactly once", (t) => {
+  const dbPath = temporaryDatabase(t);
+  initializeDatabase(dbPath);
+  const db = new DatabaseSync(dbPath);
+  const insert = db.prepare(`
+    INSERT INTO Card (id, playerName, cardTitle, sport, isSerialNumbered, serialNumber, serialRange)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  insert.run("serial-only", "Serial", "Serial only", "Basketball", 0, "12", null);
+  insert.run("range-only", "Range", "Range only", "Basketball", 0, null, "/99");
+  insert.run("blank-numbering", "Blank", "Blank numbering", "Basketball", 0, "  ", "");
+  insert.run("explicit-limit", "Explicit", "Explicit limit", "Basketball", 1, null, null);
+  db.prepare("DELETE FROM SchemaMigration WHERE id = ?").run("009_backfill_serial_numbered_v1_0_19");
+  db.close();
+
+  const firstRun = initializeDatabase(dbPath);
+  assert.deepEqual(firstRun.appliedMigrations, ["009_backfill_serial_numbered_v1_0_19"]);
+
+  const verify = new DatabaseSync(dbPath, { readOnly: true });
+  const flags = Object.fromEntries(
+    verify.prepare("SELECT id, isSerialNumbered FROM Card ORDER BY id").all()
+      .map((row) => [row.id, row.isSerialNumbered])
+  );
+  verify.close();
+
+  assert.deepEqual(flags, {
+    "blank-numbering": 0,
+    "explicit-limit": 1,
+    "range-only": 1,
+    "serial-only": 1
+  });
+  assert.deepEqual(initializeDatabase(dbPath).appliedMigrations, []);
 });
 
 test("financial history migration backfills exact baseline records and enforces constraints", (t) => {

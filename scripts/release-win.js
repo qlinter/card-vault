@@ -173,6 +173,7 @@ async function main() {
   removeArtifact(path.join(distDir, "latest.yml"));
   removeArtifact(path.join(distDir, "builder-debug.yml"));
   removeArtifact(path.join(distDir, "builder-effective-config.yaml"));
+  run("node", ["scripts/verify-release-artifacts.js"]);
 
   process.stdout.write("\nWindows release completed.\n");
   process.stdout.write(`${path.basename(setupPath)}  SHA256 ${setupHash}\n`);

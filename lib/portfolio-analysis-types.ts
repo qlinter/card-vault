@@ -47,7 +47,7 @@ export type PortfolioTimeSeriesPoint = { month: string; count: number; values: R
 export type PortfolioAttentionItem = { type: "missing_valuation" | "stale_valuation" | "missing_transaction" | "missing_image" | "incomplete_data"; priority: "high" | "medium" | "low"; count: number };
 export type PortfolioTopPosition = { playerName: string; cardTitle: string; sport: string; team: string | null; year: string | null; brand: string | null; productLine: string | null; subsetName: string | null; parallel: string | null; collectionStatus: string; gradingCompany: string | null; grade: string | null; isRookie: boolean; isAutograph: boolean; isPatch: boolean; isSerialNumbered: boolean; currency: string; latestValue: number; valuedAt: string; valuationAgeDays: number; fieldCompleteness: number };
 
-export type PortfolioFilterField = "q" | "sport" | "team" | "year" | "brand" | "productLine" | "subsetName" | "parallel" | "cardNumber" | "serialNumber" | "serialRange" | "isRookie" | "isAutograph" | "autoType" | "isPatch" | "patchType" | "isGraded" | "gradingCompany" | "grade" | "certNumber" | "visibility" | "collectionStatus";
+export type PortfolioFilterField = "q" | "sport" | "team" | "year" | "brand" | "productLine" | "subsetName" | "parallel" | "cardNumber" | "isSerialNumbered" | "isRookie" | "isAutograph" | "autoType" | "isPatch" | "patchType" | "isGraded" | "gradingCompany" | "grade" | "certNumber" | "visibility" | "collectionStatus";
 export type PortfolioFilterCriterion = { field: PortfolioFilterField; label: string; value: string };
 export type PortfolioScope = { isFiltered: boolean; criteria: PortfolioFilterCriterion[] };
 export type PortfolioDataSufficiency = "sufficient" | "partial" | "insufficient";

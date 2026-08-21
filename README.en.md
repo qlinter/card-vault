@@ -6,18 +6,18 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 
 ## Current Version
 
-`1.0.18`
+`1.0.19`
 
-### 1.0.18 Highlights
+### 1.0.19 Highlights
 
-- Home-page card images now use lazy loading and asynchronous decoding, while card-level blur and off-screen rendering costs are reduced for smoother scrolling through large collections.
-- Portfolio Analysis removes the expensive backdrop blur, locks background scrolling while open, and contains scroll chaining to reduce UI stutter while waiting for AI results.
-- Electron uses hardware acceleration by default again, with an explicit environment variable or launch switch available for software-rendering compatibility.
-- `start-desktop.bat` now verifies npm, Electron, and a dependency fingerprint so a repository synced across computers rebuilds dependencies only when they are missing or materially out of date.
-- npm cache and install logs stay inside the project; an npmmirror registry automatically selects the matching Electron mirror, and non-fatal deprecation warnings are explained during recovery.
-- Settings adds a compact collapsible About section with the current application version, release notes, and project-homepage access.
-- Duplicate dependency-fingerprint code in the startup script is consolidated into one tested utility.
-- v1.0.18 introduces no database migration and remains directly compatible with v1.0.17 data and backups.
+- Card entry now has an explicit serial-numbered toggle and also infers the status whenever a serial number or serial range is present.
+- A snapshot-backed one-time migration marks existing numbered cards correctly without changing financial or share-gallery schemas.
+- Server-side card validation now constrains visibility, collection status, dates, text lengths, and tag counts.
+- The home page now offers explicit CNY total-cost and CNY valuation sorting, with a serial-numbered yes/no filter replacing dedicated numbering-text filters.
+- The Electron local service now requires a per-launch random session token and validates the request host, mutation origin, and IPC sender.
+- The renderer runs with the Electron sandbox and responses include baseline CSP, referrer, MIME-sniffing, and framing protections.
+- ESLint, React Hooks, and JSX accessibility checks are enforced; test coverage thresholds and a trusted-CI production dependency audit are added, with React pinned to the patched 19.2.8 release.
+- Older data and backups upgrade automatically through the existing snapshot and staged-restore process.
 
 ## Core Features
 
@@ -54,12 +54,13 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 | `1.0.16` | Reduced home-page history loading and added clean Windows CI, repeatable release candidates, artifact verification, and release-metadata safeguards. |
 | `1.0.17` | Added multiple custom AI providers, more reliable five-dimension portfolio analysis, preserved filtered return context, and consolidated shared protocols and redundant code. |
 | `1.0.18` | Improved home and portfolio-analysis rendering, hardened cross-computer dependency recovery, restored default GPU acceleration, and added a compact application-version entry. |
+| `1.0.19` | Corrected serial-numbered data, added serial-numbered filtering and CNY cost/valuation sorting, and hardened the local service, Electron sandbox, IPC, and quality gates. |
 
 ## Install and Run
 
 ### Installer
 
-Release file: `dist/card-vault-1.0.18-setup.exe`
+Release file: `dist/card-vault-1.0.19-setup.exe`
 
 - Uses an installation wizard and supports a user-selected installation directory.
 - Installing a newer build of the same application normally replaces program files without deleting collection data.
@@ -68,7 +69,7 @@ Release file: `dist/card-vault-1.0.18-setup.exe`
 
 ### Portable Build
 
-Release file: `dist/card-vault-1.0.18-portable.zip`
+Release file: `dist/card-vault-1.0.19-portable.zip`
 
 1. Extract the complete ZIP.
 2. Run `Card Vault.exe` from the extracted directory.
@@ -164,11 +165,15 @@ See [Financial history model](./docs/financial-history-model.md) for storage rul
 | --- | --- |
 | `npm run build` | Create the Next.js production build. |
 | `npm run typecheck` | Run TypeScript checks. |
+| `npm run lint` | Check JavaScript, TypeScript, React Hooks, and JSX accessibility rules. |
 | `npm run check:encoding` | Check UTF-8 and known Chinese mojibake patterns. |
 | `npm run check:metadata` | Verify version, lockfile, README, and release-note consistency. |
 | `npm test` | Run the core automated test suite. |
+| `npm run test:coverage` | Run automated tests with coverage thresholds. |
+| `npm run audit:prod` | Check production dependencies for high-severity advisories. |
 | `npm run test:card` | Verify card create, upload, edit, and detail flows. |
 | `npm run test:share` | Verify share create, edit save, preview, and export flows. |
+| `npm run test:security` | Verify desktop local-session tokens, Host/Origin enforcement, and security headers. |
 | `npm run check:release` | Run all pre-release checks without creating distributions. |
 | `npm run release:win` | Verify and create the installer and portable ZIP. |
 | `npm run verify:release-artifacts` | Verify the installer, portable ZIP, and SHA-256 manifest. |

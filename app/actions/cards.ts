@@ -5,8 +5,17 @@ import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { parseTags } from "@/lib/card-helpers";
-import { CardFormValues } from "@/lib/card-form-values";
+import type { CardFormValues } from "@/lib/card-form-values";
+import {
+  cardTextLimits,
+  normalizeCardCollectionStatus,
+  normalizeCardTags,
+  normalizeCardVisibility,
+  optionalCardDate,
+  optionalCardText,
+  requiredCardText,
+  resolveIsSerialNumbered
+} from "@/lib/card-domain";
 import { normalizeCurrency } from "@/lib/financial-history";
 import { deriveLegacyFinancialSnapshot } from "@/lib/financial-history-snapshot";
 import {
@@ -43,21 +52,11 @@ function toOptionalString(value: FormDataEntryValue | null): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function toOptionalDate(value: FormDataEntryValue | null): Date | null {
-  const raw = toOptionalString(value);
-  if (!raw) {
-    return null;
-  }
-
-  const parsed = new Date(raw);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
 function parseBoolean(formData: FormData, field: string): boolean {
   return formData.get(field) === "on";
 }
 
-function getCreateCardValues(formData: FormData): CardFormValues {
+function readCardFormValues(formData: FormData): CardFormValues {
   const getString = (field: keyof CardFormValues) => {
     const value = formData.get(field);
     return typeof value === "string" ? value : "";
@@ -76,6 +75,7 @@ function getCreateCardValues(formData: FormData): CardFormValues {
     cardNumber: getString("cardNumber"),
     serialNumber: getString("serialNumber"),
     serialRange: getString("serialRange"),
+    isSerialNumbered: parseBoolean(formData, "isSerialNumbered"),
     gradingCompany: getString("gradingCompany"),
     grade: getString("grade"),
     certNumber: getString("certNumber"),
@@ -102,71 +102,63 @@ function getCreateCardValues(formData: FormData): CardFormValues {
   };
 }
 
-function ensureBaseFields(formData: FormData): { playerName: string; cardTitle: string; sport: string } {
-  const playerName = toOptionalString(formData.get("playerName"));
-  const cardTitle = toOptionalString(formData.get("cardTitle"));
-  const sport = toOptionalString(formData.get("sport"));
-
-  if (!playerName || !cardTitle || !sport) {
-    throw new Error("球员姓名、卡片名称、运动类型是必填项。");
-  }
-
-  return { playerName, cardTitle, sport };
-}
-
-function buildCardData(formData: FormData, isSerialNumbered: boolean) {
-  const { playerName, cardTitle, sport } = ensureBaseFields(formData);
-  const tagsRaw = toOptionalString(formData.get("tags"));
-  const gradingLinkRaw = toOptionalString(formData.get("gradingLink"));
+function buildCardData(values: CardFormValues) {
+  const serialNumber = optionalCardText(values.serialNumber, "编号");
+  const serialRange = optionalCardText(values.serialRange, "编号范围");
+  const gradingLinkRaw = optionalCardText(values.gradingLink, "评级链接", cardTextLimits.link);
   const gradingLink = normalizeHttpUrl(gradingLinkRaw);
   if (gradingLinkRaw && !gradingLink) {
     throw new Error("评级链接必须是有效的 http 或 https 地址。");
   }
 
   return {
-    playerName,
-    cardTitle,
-    sport,
-    team: toOptionalString(formData.get("team")),
-    year: toOptionalString(formData.get("year")),
-    brand: toOptionalString(formData.get("brand")),
-    productLine: toOptionalString(formData.get("productLine")),
-    subsetName: toOptionalString(formData.get("subsetName")),
-    parallel: toOptionalString(formData.get("parallel")),
-    cardNumber: toOptionalString(formData.get("cardNumber")),
-    isSerialNumbered,
-    serialNumber: toOptionalString(formData.get("serialNumber")),
-    serialRange: toOptionalString(formData.get("serialRange")),
-    isRookie: parseBoolean(formData, "isRookie"),
-    isAutograph: parseBoolean(formData, "isAutograph"),
-    autoType: toOptionalString(formData.get("autoType")),
-    isPatch: parseBoolean(formData, "isPatch"),
-    patchType: toOptionalString(formData.get("patchType")),
-    gradingCompany: toOptionalString(formData.get("gradingCompany")),
-    grade: toOptionalString(formData.get("grade")),
-    certNumber: toOptionalString(formData.get("certNumber")),
+    playerName: requiredCardText(values.playerName, "球员姓名"),
+    cardTitle: requiredCardText(values.cardTitle, "卡片名称"),
+    sport: requiredCardText(values.sport, "运动类型"),
+    team: optionalCardText(values.team, "Team"),
+    year: optionalCardText(values.year, "年份"),
+    brand: optionalCardText(values.brand, "品牌"),
+    productLine: optionalCardText(values.productLine, "产品线"),
+    subsetName: optionalCardText(values.subsetName, "子系列"),
+    parallel: optionalCardText(values.parallel, "平行版本"),
+    cardNumber: optionalCardText(values.cardNumber, "卡号"),
+    isSerialNumbered: resolveIsSerialNumbered({
+      explicit: values.isSerialNumbered,
+      serialNumber,
+      serialRange
+    }),
+    serialNumber,
+    serialRange,
+    isRookie: values.isRookie,
+    isAutograph: values.isAutograph,
+    autoType: optionalCardText(values.autoType, "签字类型"),
+    isPatch: values.isPatch,
+    patchType: optionalCardText(values.patchType, "Patch 类型"),
+    gradingCompany: optionalCardText(values.gradingCompany, "评级机构"),
+    grade: optionalCardText(values.grade, "评级"),
+    certNumber: optionalCardText(values.certNumber, "证书号"),
     gradingLink,
-    visibility: toOptionalString(formData.get("visibility")) ?? "private",
-    collectionStatus: toOptionalString(formData.get("collectionStatus")) ?? "holding",
-    tags: tagsRaw ? parseTags(tagsRaw).join(",") : null,
-    publicDescription: toOptionalString(formData.get("publicDescription")),
-    notes: toOptionalString(formData.get("notes"))
+    visibility: normalizeCardVisibility(values.visibility),
+    collectionStatus: normalizeCardCollectionStatus(values.collectionStatus),
+    tags: normalizeCardTags(values.tags),
+    publicDescription: optionalCardText(values.publicDescription, "展示描述", cardTextLimits.publicDescription),
+    notes: optionalCardText(values.notes, "备注", cardTextLimits.notes)
   };
 }
 
 async function createInitialFinancialHistory(
   transaction: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
   cardId: string,
-  formData: FormData,
+  values: CardFormValues,
   gradingCompany: string | null
 ) {
-  const purchaseAmount = toOptionalString(formData.get("purchasePrice"));
-  const gradingAmount = toOptionalString(formData.get("gradingFee"));
-  const valuationAmount = toOptionalString(formData.get("currentValue"));
-  const purchaseDate = toOptionalDate(formData.get("purchaseDate"));
-  const valuationDate = toOptionalDate(formData.get("valuationDate"));
-  const currency = normalizeCurrency(toOptionalString(formData.get("historyCurrency")));
-  const valuationSource = toOptionalString(formData.get("valuationSource"));
+  const purchaseAmount = toOptionalString(values.purchasePrice);
+  const gradingAmount = toOptionalString(values.gradingFee);
+  const valuationAmount = toOptionalString(values.currentValue);
+  const purchaseDate = optionalCardDate(values.purchaseDate, "购买日期");
+  const valuationDate = optionalCardDate(values.valuationDate, "估值日期");
+  const currency = normalizeCurrency(toOptionalString(values.historyCurrency));
+  const valuationSource = toOptionalString(values.valuationSource);
 
   if ((purchaseAmount || gradingAmount) && !purchaseDate) {
     throw new Error("填写购买价格或评级费用时，必须填写购买日期。");
@@ -185,7 +177,7 @@ async function createInitialFinancialHistory(
       amount: purchaseAmount,
       currency,
       occurredAt: purchaseDate,
-      source: toOptionalString(formData.get("purchaseSource")),
+      source: toOptionalString(values.purchaseSource),
       provenance: "initial_card_entry"
     });
   }
@@ -250,9 +242,10 @@ export async function createCardFormAction(
 ): Promise<CreateCardFormState> {
   let redirectPath: string | null = null;
   let imagePaths: string[] = [];
+  const values = readCardFormValues(formData);
 
   try {
-    const cardData = buildCardData(formData, false);
+    const cardData = buildCardData(values);
     const files = formData.getAll("images").filter((entry): entry is File => entry instanceof File && entry.size > 0);
 
     if (files.length < 1) {
@@ -272,7 +265,7 @@ export async function createCardFormAction(
           }
         }
       });
-      await createInitialFinancialHistory(transaction, createdCard.id, formData, cardData.gradingCompany);
+      await createInitialFinancialHistory(transaction, createdCard.id, values, cardData.gradingCompany);
       return createdCard;
     });
     imagePaths = [];
@@ -284,7 +277,7 @@ export async function createCardFormAction(
     await Promise.all(imagePaths.map((imagePath) => removeImageIfExists(imagePath)));
     return {
       error: errorMessage(error, "创建失败，请稍后重试。"),
-      values: getCreateCardValues(formData)
+      values
     };
   }
 
@@ -296,6 +289,7 @@ export async function updateCardAction(cardId: string, formData: FormData): Prom
   const returnTo = normalizeReturnTo(typeof rawReturnTo === "string" ? rawReturnTo : undefined);
   const returnQuery = returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : "";
   let redirectPath = `/cards/${cardId}/edit?error=unknown${returnQuery}`;
+  const values = readCardFormValues(formData);
 
   try {
     const existing = await prisma.card.findUnique({
@@ -307,7 +301,7 @@ export async function updateCardAction(cardId: string, formData: FormData): Prom
       throw new Error("卡片不存在或已删除。");
     }
 
-    const cardData = buildCardData(formData, existing.isSerialNumbered);
+    const cardData = buildCardData(values);
     const removeImageIds = formData.getAll("removeImageIds").map((value) => String(value));
     const files = formData.getAll("images").filter((entry): entry is File => entry instanceof File && entry.size > 0);
 

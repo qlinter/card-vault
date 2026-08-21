@@ -198,13 +198,13 @@ async function main() {
     }
 
     let db = new DatabaseSync(dbPath, { readOnly: true });
-    const created = db.prepare("SELECT playerName, cardTitle, year, grade, totalCost FROM Card WHERE id = ?").get(cardId);
+    const created = db.prepare("SELECT playerName, cardTitle, year, grade, totalCost, isSerialNumbered FROM Card WHERE id = ?").get(cardId);
     const createdImage = db.prepare("SELECT path FROM CardImage WHERE cardId = ?").get(cardId);
     const createdTransaction = db.prepare("SELECT kind, amountMinor, currency, provenance FROM CardTransaction WHERE cardId = ?").get(cardId);
     const createdExpense = db.prepare("SELECT kind, amountMinor, currency, provenance FROM CardExpense WHERE cardId = ?").get(cardId);
     const createdValuation = db.prepare("SELECT amountMinor, currency, source, provenance FROM CardValuation WHERE cardId = ?").get(cardId);
     db.close();
-    if (created?.playerName !== "E2E Create Player" || created?.year !== "2016-17" || created?.grade !== "Auto Auth" || created?.totalCost !== 120) {
+    if (created?.playerName !== "E2E Create Player" || created?.year !== "2016-17" || created?.grade !== "Auto Auth" || created?.totalCost !== 120 || created?.isSerialNumbered !== 1) {
       throw new Error("Card create did not persist the expected fields.");
     }
     if (!createdImage || !fs.existsSync(path.join(dataDir, "uploads", path.basename(createdImage.path)))) {

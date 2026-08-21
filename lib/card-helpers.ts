@@ -10,8 +10,7 @@ type CardFilterInput = {
   subsetName?: string;
   parallel?: string;
   cardNumber?: string;
-  serialNumber?: string;
-  serialRange?: string;
+  isSerialNumbered?: string;
   isRookie?: string;
   isAutograph?: string;
   autoType?: string;
@@ -45,7 +44,7 @@ export function splitTagString(value: string | null): string[] {
   return parseTags(value);
 }
 
-function addBooleanFilter(parts: Prisma.CardWhereInput[], value: string | undefined, field: "isRookie" | "isAutograph" | "isPatch"): void {
+function addBooleanFilter(parts: Prisma.CardWhereInput[], value: string | undefined, field: "isRookie" | "isSerialNumbered" | "isAutograph" | "isPatch"): void {
   if (value === "true") {
     parts.push({ [field]: true });
   } else if (value === "false") {
@@ -109,12 +108,6 @@ export function buildCardFilters(input: CardFilterInput): Prisma.CardWhereInput 
   if (input.cardNumber) {
     andParts.push({ cardNumber: { contains: input.cardNumber } });
   }
-  if (input.serialNumber) {
-    andParts.push({ serialNumber: { contains: input.serialNumber } });
-  }
-  if (input.serialRange) {
-    andParts.push({ serialRange: { contains: input.serialRange } });
-  }
   if (input.autoType) {
     andParts.push({ autoType: input.autoType });
   }
@@ -138,6 +131,7 @@ export function buildCardFilters(input: CardFilterInput): Prisma.CardWhereInput 
   }
 
   addBooleanFilter(andParts, input.isRookie, "isRookie");
+  addBooleanFilter(andParts, input.isSerialNumbered, "isSerialNumbered");
   addBooleanFilter(andParts, input.isAutograph, "isAutograph");
   addBooleanFilter(andParts, input.isPatch, "isPatch");
 
@@ -160,10 +154,16 @@ export function buildCardSorting(sort?: string): Prisma.CardOrderByWithRelationI
       return [{ year: "asc" }, { createdAt: "desc" }];
     case "yearDesc":
       return [{ year: "desc" }, { createdAt: "desc" }];
-    case "priceAsc":
-      return [{ purchasePrice: "asc" }, { createdAt: "desc" }];
-    case "priceDesc":
-      return [{ purchasePrice: "desc" }, { createdAt: "desc" }];
+    case "priceAsc": // Preserve v1.0.18 bookmarked and shared URLs.
+    case "costCnyAsc":
+      return [{ totalCost: "asc" }, { createdAt: "desc" }];
+    case "priceDesc": // Preserve v1.0.18 bookmarked and shared URLs.
+    case "costCnyDesc":
+      return [{ totalCost: "desc" }, { createdAt: "desc" }];
+    case "valueCnyAsc":
+      return [{ currentValue: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }];
+    case "valueCnyDesc":
+      return [{ currentValue: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }];
     default:
       return [{ createdAt: "desc" }];
   }

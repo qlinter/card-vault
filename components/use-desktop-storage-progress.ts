@@ -23,6 +23,9 @@ export function useDesktopStorageProgress(operations: readonly string[]) {
         setProgress(nextProgress.done ? null : { percent: nextProgress.percent, message: nextProgress.message });
       }
     });
+    // operationKey intentionally represents the caller's operation list without
+    // resubscribing when an equivalent inline array is recreated during render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [operationKey]);
 
   return { progress, setProgress, activeStorageOperation };

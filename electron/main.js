@@ -65,7 +65,7 @@ const logger = createDesktopLogger(path.join(rootDir, "logs"));
 const storage = createStorageManager({ appDataRoot: app.getPath("userData"), projectRoot: rootDir, log: (message) => logger.appendLog("desktop.log", message) });
 const aiConfig = createAiConfigManager(path.join(app.getPath("userData"), "ai-config.json"), { isEncryptionAvailable: () => safeStorage.isEncryptionAvailable(), encryptString: (value) => safeStorage.encryptString(value), decryptString: (value) => safeStorage.decryptString(value) });
 const runtime = createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger });
-const windowManager = createWindowManager({ app, serverRuntime: runtime, rootDir, logger });
+const windowManager = createWindowManager({ serverRuntime: runtime, rootDir, logger });
 
 registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, logger });
 registerAiIpc({ ipcMain, aiConfig, runtime, logger });

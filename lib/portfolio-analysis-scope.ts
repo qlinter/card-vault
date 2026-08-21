@@ -10,8 +10,7 @@ export const portfolioFilterDefinitions = {
   subsetName: "子系列",
   parallel: "平行版本",
   cardNumber: "卡号",
-  serialNumber: "编号",
-  serialRange: "编号范围",
+  isSerialNumbered: "限量卡",
   isRookie: "Rookie",
   isAutograph: "签名卡",
   autoType: "签字类型",
@@ -28,6 +27,11 @@ export const portfolioFilterDefinitions = {
 export type PortfolioFilterInput = Record<string, string | undefined>;
 
 const maximumFilterValueLength = 160;
+const booleanFilterFields = new Set<PortfolioFilterField>(["isRookie", "isSerialNumbered", "isAutograph", "isPatch", "isGraded"]);
+
+function isBooleanFilterValue(value: string): boolean {
+  return value === "true" || value === "false";
+}
 
 export function normalizePortfolioFilterInput(value: unknown): PortfolioFilterInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -47,13 +51,16 @@ export function normalizePortfolioFilterInput(value: unknown): PortfolioFilterIn
     if (trimmed.length > maximumFilterValueLength) {
       throw new Error(`筛选条件 ${portfolioFilterDefinitions[field]} 过长。`);
     }
+    if (booleanFilterFields.has(field) && !isBooleanFilterValue(trimmed)) {
+      throw new Error(`筛选条件 ${portfolioFilterDefinitions[field]} 格式无效。`);
+    }
     normalized[field] = trimmed;
   }
   return normalized;
 }
 
 function displayFilterValue(field: PortfolioFilterField, value: string): string {
-  if (["isRookie", "isAutograph", "isPatch", "isGraded"].includes(field)) return value === "true" ? "是" : value === "false" ? "否" : value;
+  if (booleanFilterFields.has(field)) return value === "true" ? "是" : value === "false" ? "否" : value;
   if (field === "visibility") return { private: "私密", public: "公开", linkOnly: "仅链接可见" }[value] ?? value;
   if (field === "collectionStatus") return { holding: "持有中", listed: "在售", grading: "送评中", sold: "已售出", target: "目标卡" }[value] ?? value;
   return value;
@@ -63,6 +70,7 @@ export function buildPortfolioScope(input: PortfolioFilterInput): PortfolioScope
   const criteria: PortfolioFilterCriterion[] = [];
   for (const field of Object.keys(portfolioFilterDefinitions) as PortfolioFilterField[]) {
     const value = input[field]?.trim();
+    if (value && booleanFilterFields.has(field) && !isBooleanFilterValue(value)) continue;
     if (value) criteria.push({ field, label: portfolioFilterDefinitions[field], value: displayFilterValue(field, value) });
   }
   return { isFiltered: criteria.length > 0, criteria };

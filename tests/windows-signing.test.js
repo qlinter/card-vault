@@ -6,7 +6,8 @@ test("Windows release remains available without signing credentials", () => {
   const signing = resolveWindowsSigning({});
   assert.equal(signing.mode, "unsigned");
   assert.equal(signing.winOptions.forceCodeSigning, false);
-  assert.equal(signing.winOptions.signAndEditExecutable, false);
+  assert.equal(signing.winOptions.signAndEditExecutable, true);
+  assert.equal(signing.winOptions.signExecutable, false);
 });
 
 test("PFX signing uses SHA-256 and RFC 3161 timestamps", () => {

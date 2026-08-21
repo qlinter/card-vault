@@ -1,4 +1,3 @@
-const fs = require("node:fs");
 const path = require("node:path");
 const { resolveDbPath, resolveShareBackgroundsDir, resolveShareCoversDir, resolveUploadsDir } = require("../../scripts/storage-paths");
 const { clearFile, isSubPath, loadJson, pathsEqual, saveJson } = require("./file-utils");

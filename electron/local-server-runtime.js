@@ -1,4 +1,5 @@
 const fs = require("node:fs");
+const { randomBytes } = require("node:crypto");
 const http = require("node:http");
 const net = require("node:net");
 const path = require("node:path");
@@ -12,6 +13,9 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
   const prepareLocalScriptPath = path.join(rootDir, "scripts", "prepare-local.js");
   const storageWorkerPath = path.join(__dirname, "storage-worker.js");
   const defaultServerPort = 3000;
+  const sessionCookieName = "card-vault-session";
+  const sessionHeaderName = "x-card-vault-session";
+  const sessionToken = randomBytes(32).toString("base64url");
   const nextBuildSourcePaths = [
     path.join(rootDir, "app"), path.join(rootDir, "components"), path.join(rootDir, "lib"),
     path.join(rootDir, "next.config.mjs"), path.join(rootDir, "package.json"),
@@ -53,7 +57,7 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
 
   function checkServer(url) {
     return new Promise((resolve) => {
-      const request = http.get(`${url}/api/health`, (response) => {
+      const request = http.get(`${url}/api/health`, { headers: { Cookie: `${sessionCookieName}=${sessionToken}`, [sessionHeaderName]: sessionToken } }, (response) => {
         let body = "";
         response.setEncoding("utf8");
         response.on("data", (chunk) => { body += chunk; });
@@ -117,7 +121,7 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
     fs.mkdirSync(storage.getShareBackgroundsDir(), { recursive: true });
     await runNodeCommand(initDbScriptPath, [], "prepare.log");
     const dbPath = storage.getDbPath();
-    serverProcess = spawn(process.execPath, [nextCliPath, "start", "--hostname", "127.0.0.1", "--port", String(serverPort)], { cwd: rootDir, windowsHide: true, env: { ...process.env, ...getDesktopEnv(), ELECTRON_RUN_AS_NODE: "1", DATABASE_URL: `file:${dbPath.replace(/\\/g, "/")}` } });
+    serverProcess = spawn(process.execPath, [nextCliPath, "start", "--hostname", "127.0.0.1", "--port", String(serverPort)], { cwd: rootDir, windowsHide: true, env: { ...process.env, ...getDesktopEnv(), ELECTRON_RUN_AS_NODE: "1", DATABASE_URL: `file:${dbPath.replace(/\\/g, "/")}`, CARD_VAULT_SESSION_TOKEN: sessionToken, CARD_VAULT_ALLOWED_ORIGIN: serverUrl } });
     serverProcess.stdout.on("data", (chunk) => logger.appendLog("server.log", chunk.toString().trimEnd()));
     serverProcess.stderr.on("data", (chunk) => logger.appendLog("server.log", chunk.toString().trimEnd()));
     serverProcess.on("error", (error) => logger.appendLog("desktop.log", `Server process error: ${error.message}`));
@@ -148,7 +152,7 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
     try { await serverRestartPromise; } finally { serverRestartPromise = null; }
   }
 
-  return { getRootDir: () => rootDir, getServerUrl: () => serverUrl, getServerPort: () => serverPort, getDesktopEnv, runNodeCommand, waitForServer, waitForAvailablePort, selectServerTarget, ensurePreparedBuild, startServer, stopServer, waitForProcessExit, resumeLocalServer, restartLocalServer, getStorageWorkerPath: () => storageWorkerPath };
+  return { getRootDir: () => rootDir, getServerUrl: () => serverUrl, getServerPort: () => serverPort, getSessionCookie: () => ({ name: sessionCookieName, value: sessionToken }), getDesktopEnv, runNodeCommand, waitForServer, waitForAvailablePort, selectServerTarget, ensurePreparedBuild, startServer, stopServer, waitForProcessExit, resumeLocalServer, restartLocalServer, getStorageWorkerPath: () => storageWorkerPath };
 }
 
 module.exports = { createLocalServerRuntime };

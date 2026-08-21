@@ -7,9 +7,9 @@ type AboutSettingsProps = {
 };
 
 const releaseHighlights = [
-  "优化卡片列表和组合分析的渲染性能。",
-  "改进跨设备开发时的依赖检查与自动恢复。",
-  "设置页新增可折叠的版本与项目入口。"
+  "自动识别并回填限量编号状态，首页支持限量卡筛选及 CNY 成本/估值排序。",
+  "加固本地服务会话、Electron sandbox 与 IPC 来源校验。",
+  "新增领域校验、代码检查和自动化测试覆盖率门槛，并升级 React 安全修复版本。"
 ];
 
 export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
@@ -47,7 +47,7 @@ export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
 
           {showReleaseNotes ? (
             <div className="about-release-notes" role="region" aria-label={`Card Vault v${defaultVersion} 更新说明`}>
-              <div><h3>v{defaultVersion} 主要更新</h3><small>2026-08-17</small></div>
+              <div><h3>v{defaultVersion} 主要更新</h3><small>2026-08-21</small></div>
               <ul>{releaseHighlights.map((item) => <li key={item}>{item}</li>)}</ul>
             </div>
           ) : null}

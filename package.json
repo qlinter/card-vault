@@ -1,6 +1,6 @@
 {
   "name": "card-vault",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "private": true,
   "packageManager": "npm@11.9.0",
   "engines": {
@@ -14,13 +14,17 @@
     "build": "next build --webpack",
     "check:encoding": "node scripts/check-encoding.js",
     "check:metadata": "node scripts/check-release-metadata.js",
+    "lint": "eslint . --max-warnings=0",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/*.test.mts tests/*.test.js",
+    "test:coverage": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-test-coverage --test-coverage-lines=70 --test-coverage-functions=65 --test-coverage-branches=60 --test tests/*.test.mts tests/*.test.js",
     "test:card": "node scripts/test-card-flow.js",
     "test:share": "node scripts/test-share-flow.js",
-    "check:release": "npm run prisma:generate && npm run check:encoding && npm run check:metadata && npm run typecheck && npm test && next build --webpack && npm run test:card && npm run test:share",
+    "test:security": "node scripts/test-local-session-flow.js",
+    "check:release": "npm run prisma:generate && npm run check:encoding && npm run check:metadata && npm run lint && npm run typecheck && npm run test:coverage && next build --webpack && npm run test:security && npm run test:card && npm run test:share",
+    "audit:prod": "npm audit --omit=dev --audit-level=high",
     "typecheck": "tsc --noEmit",
     "clean:cache": "node scripts/clean-cache.js",
-    "prebuild": "npm run prisma:generate && npm run check:encoding && npm run typecheck",
+    "prebuild": "npm run prisma:generate && npm run check:encoding && npm run lint && npm run typecheck",
     "start": "next start",
     "postinstall": "prisma generate",
     "prepare:local": "node scripts/prepare-local.js",
@@ -37,18 +41,24 @@
     "@prisma/client": "^6.19.3",
     "@swc/helpers": "^0.5.15",
     "next": "^16.3.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.0",
     "@types/node": "^22.15.17",
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.4",
     "electron": "^41.10.4",
     "electron-builder": "^26.15.3",
+    "eslint": "^9.39.0",
+    "eslint-plugin-jsx-a11y": "^6.10.0",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "globals": "^16.4.0",
     "png-to-ico": "^3.0.1",
     "prisma": "^6.19.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.46.0"
   },
   "build": {
     "appId": "com.ql.cardvault",
@@ -57,7 +67,6 @@
     "asar": false,
     "npmRebuild": false,
     "electronDist": "node_modules/electron/dist",
-    "afterPack": "scripts/patch-exe-icon.js",
     "directories": {
       "buildResources": "build",
       "output": "dist"
@@ -90,8 +99,7 @@
       "target": [
         "nsis"
       ],
-      "icon": "build/icon.ico",
-      "signAndEditExecutable": false
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "artifactName": "card-vault-${version}-setup.${ext}",

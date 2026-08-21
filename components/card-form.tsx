@@ -96,6 +96,18 @@ export function CardForm({ mode, action, error, card, values, returnTo }: CardFo
           <input name="serialRange" placeholder="例如 /99" defaultValue={pickValue(values?.serialRange, card?.serialRange ?? "")} />
         </label>
 
+        <label className="field full">
+          <span>
+            <input
+              name="isSerialNumbered"
+              type="checkbox"
+              defaultChecked={values?.isSerialNumbered ?? card?.isSerialNumbered ?? false}
+            />{" "}
+            限量编号卡
+          </span>
+          <small className="muted">填写“编号”或“编号范围”时会自动判定为限量卡；也可以在尚未补全编号时手动勾选。</small>
+        </label>
+
         <label className="field">
           <span>评级机构</span>
           <input name="gradingCompany" defaultValue={pickValue(values?.gradingCompany, card?.gradingCompany ?? "")} />

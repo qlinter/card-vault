@@ -334,19 +334,27 @@ test("restore migrates an older backup before replacing current data", (t) => {
   const backupDb = new DatabaseSync(path.join(oldBackup.backupPath, "dev.db"));
   backupDb.prepare("INSERT INTO CardValuation (id, cardId, amountMinor, currency, valuedAt, source, provenance) VALUES (?, ?, ?, ?, ?, ?, ?)")
     .run("old-valuation", "card-1", 12345, "CNY", "2025-01-01", "平台报价", "manual");
-  backupDb.prepare("DELETE FROM SchemaMigration WHERE id = ?").run("007_normalize_valuation_sources_v1_1_0");
+  backupDb.prepare("UPDATE Card SET isSerialNumbered = 0, serialNumber = ?, serialRange = ? WHERE id = ?")
+    .run("12", "/99", "card-1");
+  backupDb.prepare("DELETE FROM SchemaMigration WHERE id IN (?, ?)")
+    .run("007_normalize_valuation_sources_v1_1_0", "009_backfill_serial_numbered_v1_0_19");
   backupDb.close();
 
   const restored = manager.restoreDataFolder(oldBackup.backupPath);
   const restoredDb = new DatabaseSync(manager.getDbPath(), { readOnly: true });
   const valuation = restoredDb.prepare("SELECT source FROM CardValuation WHERE id = ?").get("old-valuation");
+  const card = restoredDb.prepare("SELECT isSerialNumbered FROM Card WHERE id = ?").get("card-1");
   const latestMigration = restoredDb.prepare("SELECT id FROM SchemaMigration ORDER BY appliedAt DESC, rowid DESC LIMIT 1").get();
   restoredDb.close();
 
-  assert.deepEqual(restored.appliedMigrations, ["007_normalize_valuation_sources_v1_1_0"]);
-  assert.equal(restored.schemaVersion, "008_limit_financial_currencies_v1_1_0");
+  assert.deepEqual(restored.appliedMigrations, [
+    "007_normalize_valuation_sources_v1_1_0",
+    "009_backfill_serial_numbered_v1_0_19"
+  ]);
+  assert.equal(restored.schemaVersion, "009_backfill_serial_numbered_v1_0_19");
   assert.equal(valuation.source, "个人估计");
-  assert.equal(latestMigration.id, "007_normalize_valuation_sources_v1_1_0");
+  assert.equal(card.isSerialNumbered, 1);
+  assert.equal(latestMigration.id, "009_backfill_serial_numbered_v1_0_19");
 });
 
 test("restore rejects folders that do not contain a generated backup", (t) => {

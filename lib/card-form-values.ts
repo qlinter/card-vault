@@ -11,6 +11,7 @@
   cardNumber: string;
   serialNumber: string;
   serialRange: string;
+  isSerialNumbered: boolean;
   gradingCompany: string;
   grade: string;
   certNumber: string;
@@ -49,6 +50,7 @@ export const emptyCardFormValues: CardFormValues = {
   cardNumber: "",
   serialNumber: "",
   serialRange: "",
+  isSerialNumbered: false,
   gradingCompany: "",
   grade: "",
   certNumber: "",

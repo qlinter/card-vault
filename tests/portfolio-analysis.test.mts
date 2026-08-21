@@ -352,15 +352,17 @@ test("content-light AI reports are completed from local portfolio statistics", (
 test("portfolio scope records active filters and excludes sorting", () => {
   const scope = buildPortfolioScope({
     sport: "足球",
+    isSerialNumbered: "false",
     isAutograph: "true",
     collectionStatus: "holding",
-    sort: "priceDesc"
+    sort: "valueCnyDesc"
   });
 
   assert.deepEqual(scope, {
     isFiltered: true,
     criteria: [
       { field: "sport", label: "运动类型", value: "足球" },
+      { field: "isSerialNumbered", label: "限量卡", value: "否" },
       { field: "isAutograph", label: "签名卡", value: "是" },
       { field: "collectionStatus", label: "收藏状态", value: "持有中" }
     ]
@@ -374,9 +376,13 @@ test("portfolio scope records active filters and excludes sorting", () => {
 });
 
 test("portfolio analysis accepts only known bounded filter strings", () => {
-  assert.deepEqual(normalizePortfolioFilterInput({ sport: " 足球 ", sort: "priceDesc", unknown: "drop me" }), { sport: "足球" });
+  assert.deepEqual(
+    normalizePortfolioFilterInput({ sport: " 足球 ", isSerialNumbered: "true", serialNumber: "12", sort: "valueCnyDesc", unknown: "drop me" }),
+    { sport: "足球", isSerialNumbered: "true" }
+  );
   assert.deepEqual(normalizePortfolioFilterInput(null), {});
   assert.throws(() => normalizePortfolioFilterInput({ year: 2024 }), /格式无效/);
+  assert.throws(() => normalizePortfolioFilterInput({ isSerialNumbered: "yes" }), /限量卡.*格式无效/);
   assert.throws(() => normalizePortfolioFilterInput({ q: "x".repeat(161) }), /过长/);
 });
 test("portfolio analysis normalization accepts version 2 sections, evidence, and sufficiency", () => {

@@ -10,7 +10,8 @@ const migrations = [
   { id: "005_indexes_v1_0_10", run: createIndexes },
   { id: "006_card_financial_history_v1_1_0", run: migrateCardFinancialHistory },
   { id: "007_normalize_valuation_sources_v1_1_0", run: normalizeValuationSources },
-  { id: "008_limit_financial_currencies_v1_1_0", run: limitFinancialCurrencies }
+  { id: "008_limit_financial_currencies_v1_1_0", run: limitFinancialCurrencies },
+  { id: "009_backfill_serial_numbered_v1_0_19", run: backfillSerialNumbered }
 ];
 
 const cardColumns = [
@@ -500,6 +501,18 @@ function limitFinancialCurrencies(db) {
       `);
     }
   }
+}
+
+function backfillSerialNumbered(db) {
+  db.exec(`
+    UPDATE Card
+    SET isSerialNumbered = 1
+    WHERE isSerialNumbered = 0
+      AND (
+        (serialNumber IS NOT NULL AND TRIM(serialNumber) <> '')
+        OR (serialRange IS NOT NULL AND TRIM(serialRange) <> '')
+      );
+  `);
 }
 
 function createMigrationTable(db) {

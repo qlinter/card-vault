@@ -6,22 +6,24 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 
 ## Current Version
 
-`1.0.19`
+`1.1.0`
 
-### 1.0.19 Highlights
+### 1.1.0 Highlights
 
-- Card entry now has an explicit serial-numbered toggle and also infers the status whenever a serial number or serial range is present.
-- A snapshot-backed one-time migration marks existing numbered cards correctly without changing financial or share-gallery schemas.
-- Server-side card validation now constrains visibility, collection status, dates, text lengths, and tag counts.
-- The home page now offers explicit CNY total-cost and CNY valuation sorting, with a serial-numbered yes/no filter replacing dedicated numbering-text filters.
-- The Electron local service now requires a per-launch random session token and validates the request host, mutation origin, and IPC sender.
-- The renderer runs with the Electron sandbox and responses include baseline CSP, referrer, MIME-sniffing, and framing protections.
-- ESLint, React Hooks, and JSX accessibility checks are enforced; test coverage thresholds and a trusted-CI production dependency audit are added, with React pinned to the patched 19.2.8 release.
-- Older data and backups upgrade automatically through the existing snapshot and staged-restore process.
+- Card Entry Workbench 2.0 stores text fields in SQLite drafts, restores interrupted work, and supports save-and-view, save-and-continue, and copy-common-fields flows.
+- A collapsible batch queue groups front/back pairs or single images, normalizes orientation and dimensions, and converts queued images to WebP.
+- Queue items isolate failures and support retry, removal, side swapping, continuous navigation, and atomic adoption when a card is saved.
+- Reusable public-field templates and non-blocking duplicate candidates reduce repeated work while preserving active draft and queue context across detail navigation.
+- Batch AI recognition persists review candidates, highlights low-confidence fields, and always requires per-card confirmation before collection data is written.
+- Keyboard actions, invalid-field focus, and consistent back navigation are included, while shared form-control and API-route logic has been consolidated.
+- Three idempotent database migrations upgrade current data and restored legacy backups after creating a pre-migration SQLite snapshot.
+- Built-in gallery backgrounds are restored, carousel arrows are centered, and desktop startup no longer regenerates the Prisma client unnecessarily.
+- Entry, Showcase, Share, and Settings helper copy is streamlined, with consistent disclosure icons, queue-count alignment, and Settings section typography.
 
 ## Core Features
 
 - Create, edit, delete, and inspect cards with up to five images per card.
+- Use SQLite drafts, continuous entry, public-field templates, duplicate review, and batch entry with WebP preparation, retry, AI candidate review, and front/back swapping.
 - Search, filter, and sort by player, sport, team, year, product line, grade, autograph, patch, and collection status.
 - Track purchases, sales, refunds, grading, other costs, and latest values through transaction, expense, and valuation history.
 - Browse the Showcase by player or group, with collapsible navigation and multi-image card views.
@@ -55,12 +57,13 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 | `1.0.17` | Added multiple custom AI providers, more reliable five-dimension portfolio analysis, preserved filtered return context, and consolidated shared protocols and redundant code. |
 | `1.0.18` | Improved home and portfolio-analysis rendering, hardened cross-computer dependency recovery, restored default GPU acceleration, and added a compact application-version entry. |
 | `1.0.19` | Corrected serial-numbered data, added serial-numbered filtering and CNY cost/valuation sorting, and hardened the local service, Electron sandbox, IPC, and quality gates. |
+| `1.1.0` | Delivered Card Entry Workbench 2.0 with draft recovery, continuous entry, batch-image preparation, templates, duplicate review, and confirmation-gated AI candidates. |
 
 ## Install and Run
 
 ### Installer
 
-Release file: `dist/card-vault-1.0.19-setup.exe`
+Release file: `dist/card-vault-1.1.0-setup.exe`
 
 - Uses an installation wizard and supports a user-selected installation directory.
 - Installing a newer build of the same application normally replaces program files without deleting collection data.
@@ -69,7 +72,7 @@ Release file: `dist/card-vault-1.0.19-setup.exe`
 
 ### Portable Build
 
-Release file: `dist/card-vault-1.0.19-portable.zip`
+Release file: `dist/card-vault-1.1.0-portable.zip`
 
 1. Extract the complete ZIP.
 2. Run `Card Vault.exe` from the extracted directory.
@@ -100,6 +103,7 @@ npm run electron
 ```
 
 Development mode stores desktop configuration under `%APPDATA%\Card Vault Development`. On first use it inherits only the previous development storage path and AI configuration; it does not move or clean collection data.
+The Prisma client is generated during dependency installation and production builds. Routine desktop startup does not regenerate it, avoiding Windows file-lock failures.
 
 ## Data and Backup
 
@@ -107,6 +111,7 @@ Card Vault data consists of the SQLite database and managed media directories:
 
 - `dev.db`: cards, share collections, and related records.
 - `uploads`: card images.
+- `entry-queue`: source images for unfinished batch-entry items; successful preprocessing removes the corresponding source files.
 - `share-covers`: custom share covers.
 - `share-backgrounds`: custom share backgrounds.
 - `schema-backups`: pre-migration database snapshots.
@@ -140,7 +145,8 @@ Use the in-app backup workflow when moving to another computer. Copying only the
 - Editor 2.0 separates Content, Visual, Sections, and per-card presentation into focused workspaces while retaining a continuously updated preview.
 - Live preview switches between desktop and mobile widths; preview, static export, and Cloudflare Drop packages continue to share one renderer.
 - Titles, introductions, narratives, sections, themes, layouts, covers, backgrounds, and per-card overrides remain editable.
-- General, Sport, and Team themes use the same renderer in preview, static exports, and Cloudflare Drop packages.
+- General, Sport, and Team themes include their background assets and use the same renderer in preview, static exports, and Cloudflare Drop packages.
+- Multi-image controls use centered vector arrows; the in-app preview permits same-origin theme assets while continuing to isolate forms and top-level navigation.
 - Static export uses a strict public-field allowlist and excludes prices, costs, purchase sources, private notes, AI keys, and local paths.
 - Cloudflare Drop packages validate broken references, private fields, file count, and per-file size, and include noindex metadata, a 404 page, a content manifest, and one-hour preview guidance.
 - Card Vault does not retain temporary Drop URLs or claim links; permanent publishing, update, revoke, and online verification remain future work.
@@ -205,15 +211,14 @@ Windows code signing is an optional enhancement and no longer blocks routine pac
 
 ## Roadmap
 
-The confirmed version sequence is:
+The next confirmed versions are:
 
-1. `v1.1.0`: Card Entry Workbench 2.0.
-2. `v1.2.0`: Position quantity, partial sales, and return accounting.
-3. `v1.3.0`: Collection Portfolio Center and trend analytics.
-4. `v1.4.0`: Share Gallery 3.0.
-5. `v1.5.0`: Batch Data and Migration Center.
-6. `v1.6.0`: Reminders and Collection Planning.
-7. `v2.0.0`: Optional managed publishing and multi-device sync after permanent infrastructure is available.
+1. `v1.2.0`: Position quantity, partial sales, and return accounting.
+2. `v1.3.0`: Collection Portfolio Center and trend analytics.
+3. `v1.4.0`: Share Gallery 3.0.
+4. `v1.5.0`: Batch Data and Migration Center.
+5. `v1.6.0`: Reminders and Collection Planning.
+6. `v2.0.0`: Optional managed publishing and multi-device sync after permanent infrastructure is available.
 
 See the [Card Vault Product Roadmap](./docs/product-roadmap.en.md) for version scope, exclusions, risk controls, and shared release standards.
 

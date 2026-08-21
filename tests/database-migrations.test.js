@@ -79,6 +79,14 @@ test("ordered migrations preserve legacy cards and create a pre-migration snapsh
   const transaction = db.prepare("SELECT * FROM CardTransaction WHERE cardId = ?").get("legacy-card");
   const expenseCount = db.prepare("SELECT COUNT(*) AS count FROM CardExpense WHERE cardId = ?").get("legacy-card").count;
   const valuationCount = db.prepare("SELECT COUNT(*) AS count FROM CardValuation WHERE cardId = ?").get("legacy-card").count;
+  const draftColumns = db.prepare("PRAGMA table_info(CardEntryDraft)").all().map((column) => column.name);
+  const draftIndexes = db.prepare("PRAGMA index_list(CardEntryDraft)").all().map((index) => index.name);
+  const queueItemColumns = db.prepare("PRAGMA table_info(CardEntryQueueItem)").all().map((column) => column.name);
+  const queueImageColumns = db.prepare("PRAGMA table_info(CardEntryQueueImage)").all().map((column) => column.name);
+  const queueImageIndexes = db.prepare("PRAGMA index_list(CardEntryQueueImage)").all().map((index) => index.name);
+  const templateColumns = db.prepare("PRAGMA table_info(CardEntryTemplate)").all().map((column) => column.name);
+  const recognitionColumns = db.prepare("PRAGMA table_info(CardEntryRecognition)").all().map((column) => column.name);
+  const recognitionIndexes = db.prepare("PRAGMA index_list(CardEntryRecognition)").all().map((index) => index.name);
   db.close();
 
   assert.equal(card.playerName, "Legacy Player");
@@ -98,6 +106,16 @@ test("ordered migrations preserve legacy cards and create a pre-migration snapsh
   assert.equal(transaction.provenance, "legacy_card_snapshot");
   assert.equal(expenseCount, 0);
   assert.equal(valuationCount, 0);
+  assert.deepEqual(draftColumns, ["id", "schemaVersion", "status", "valuesJson", "createdAt", "updatedAt"]);
+  assert.ok(draftIndexes.includes("CardEntryDraft_status_updatedAt_idx"));
+  assert.ok(draftIndexes.includes("CardEntryDraft_updatedAt_idx"));
+  assert.deepEqual(queueItemColumns, ["id", "batchId", "status", "sortOrder", "attemptCount", "errorMessage", "createdAt", "updatedAt"]);
+  assert.deepEqual(queueImageColumns, ["id", "itemId", "originalName", "sourcePath", "processedPath", "side", "sortOrder", "mimeType", "originalBytes", "processedBytes", "width", "height", "createdAt", "updatedAt"]);
+  assert.ok(queueImageIndexes.includes("CardEntryQueueImage_itemId_sortOrder_idx"));
+  assert.deepEqual(templateColumns, ["id", "name", "valuesJson", "useCount", "lastUsedAt", "createdAt", "updatedAt"]);
+  assert.deepEqual(recognitionColumns, ["id", "itemId", "status", "suggestionJson", "confidenceJson", "attemptCount", "errorMessage", "createdAt", "updatedAt"]);
+  assert.ok(recognitionIndexes.includes("CardEntryRecognition_itemId_key"));
+  assert.ok(recognitionIndexes.includes("CardEntryRecognition_status_updatedAt_idx"));
 });
 
 test("serial-numbered backfill handles each evidence path exactly once", (t) => {

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { ShareCardDraft, SharePickerCard } from "@/components/share-card-picker";
 import type { ShareThemeValues } from "@/components/share-theme-generator";
 import { normalizeImagePath } from "@/lib/image-path";
+import { sharePreviewSandboxPolicy } from "@/lib/share-preview-policy";
 import { renderPreviewDocument } from "@/lib/share-export-render";
 import type { ExportData } from "@/lib/share-export-types";
 import type { SharePresentation } from "@/lib/share-presentation";
@@ -108,7 +109,7 @@ export function ShareDesignPreview({
           </button>
         </div>
       </div>
-      <iframe title="分享展馆实时预览" srcDoc={document} sandbox="allow-scripts" />
+      <iframe title="分享展馆实时预览" srcDoc={document} sandbox={sharePreviewSandboxPolicy} />
     </aside>
   );
 }

@@ -3,7 +3,12 @@ export function toScalar(value: string | string[] | undefined): string | undefin
 }
 
 export function normalizeReturnTo(value: string | undefined): string | undefined {
-  if (value === "/" || value?.startsWith("/?")) {
+  if (
+    value === "/" ||
+    value?.startsWith("/?") ||
+    value === "/cards/new" ||
+    value?.startsWith("/cards/new?")
+  ) {
     return value;
   }
 

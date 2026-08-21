@@ -15,6 +15,7 @@ type OrphanFile = DataHealth["orphanFiles"][number];
 
 const orphanTypeLabels: Record<string, string> = {
   cardImage: "卡片图片",
+  queueSource: "待处理源图",
   shareCover: "分享封面",
   shareBackground: "分享背景"
 };
@@ -145,9 +146,6 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
       <div className="title-row" style={{ marginBottom: "0.4rem" }}>
         <div>
           <h2>存储数据</h2>
-          <p className="muted" style={{ margin: "0.35rem 0 0" }}>
-            设置数据库、卡片图片、分享封面和导出文件的本地保存位置，并检查当前存储数据是否完整。
-          </p>
         </div>
         <div className="storage-actions">
           <button type="button" className="btn btn-secondary" onClick={handleChooseDirectory} disabled={busy}>
@@ -166,7 +164,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
         <div className={health.ok ? "note-ok health-result" : "note-error health-result"}>
           <strong>{health.ok ? "数据状态正常" : "数据需要处理"}</strong>
           <p>
-            数据库：{health.integrity}；卡片 {health.counts.cards} 张；图片记录 {health.counts.images} 条；分享集 {health.counts.shares} 个。
+            数据库：{health.integrity}；卡片 {health.counts.cards} 张；图片记录 {health.counts.images} 条；待处理项目 {health.counts.queueItems} 个；分享集 {health.counts.shares} 个。
           </p>
           <p>
             缺失文件 {health.missingFiles.length} 个；未被数据库引用的文件 {health.orphanFiles.length} 个。

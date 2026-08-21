@@ -1,6 +1,6 @@
 ﻿# Card Vault 数据备份说明
 
-适用版本：`1.0.19`。本说明同时适用于从较早版本升级或迁移到 `1.0.19` 的数据。
+适用版本：`1.1.0`。本说明同时适用于从较早版本升级或迁移到 `1.1.0` 的数据。
 
 ## 1. 程序数据保存在哪里
 
@@ -8,13 +8,14 @@ Card Vault 的数据主要由以下部分组成：
 
 - `dev.db`：SQLite 数据库文件，用来保存卡片文字信息、字段内容和筛选数据。
 - `uploads`：图片文件夹，用来保存你上传的卡片图片。
+- `entry-queue`：批量录入队列中尚待处理或可重试的源图片；处理成功后会自动移除。
 - `share-covers`：分享集自定义封面。
 - `share-backgrounds`：分享集自定义背景。
 
 默认情况下，桌面端程序的数据通常位于：
 
 ```text
-C:\Users\<你的用户名>\AppData\Roaming\QL's card vault\data
+C:\Users\<你的用户名>\AppData\Roaming\Card Vault\data
 ```
 
 如果你在设置页手动修改过“存储路径”，请以设置页显示的“存储路径”为准。
@@ -58,7 +59,7 @@ C:\Users\<你的用户名>\AppData\Roaming\QL's card vault\data
 
 ```text
 原路径：
-C:\Users\qlint\AppData\Roaming\QL's card vault\data
+C:\Users\qlint\AppData\Roaming\Card Vault\data
 
 备份到：
 D:\CardVaultBackup\2026-03-31\data
@@ -165,3 +166,11 @@ D:\CardVaultBackup\2026-03-31\data
 - 从旧备份恢复时，会先在暂存目录完成包括限量编号回填在内的全部待办迁移，通过完整性检查后才替换当前数据。
 - 多套自定义 AI 配置继续保存在当前 Windows 用户的应用配置目录，并使用 Electron `safeStorage` 加密 API Key；AI 配置不属于收藏数据备份内容。
 - 升级前仍建议在设置页执行一次“一键备份”，尤其是在跨电脑迁移或更换安装方式时。
+
+## 12. 版本 1.1.0 录入工作台数据兼容说明
+
+- `1.1.0` 新增录入草稿、批量图片队列、录入模板和 AI 识别候选表；升级前会创建 schema 快照，迁移可重复执行。
+- `entry-queue` 保存尚未完成预处理的队列源图；预处理后的 WebP 位于 `uploads`，两类文件都会纳入备份、恢复和数据健康检查。
+- 正式保存卡片后，队列 WebP 会原子转为卡片图片，已消费的源图和草稿会被清理；未完成项目继续保留，不会因单项失败丢失整批任务。
+- 恢复旧备份时，程序会在暂存目录依次执行全部迁移并检查 SQLite 完整性，成功后才替换当前数据。
+- 草稿只保存表单字段，不保存单张录入临时选择但尚未正式提交的本地图片；重要图片仍应保留原文件。

@@ -1,10 +1,21 @@
 import { Card, CardImage } from "@prisma/client";
+import type { FormEventHandler, Ref } from "react";
 import { AiRecognitionPanel } from "@/components/ai-recognition-panel";
+import { CardEntryDuplicatePanel } from "@/components/card-entry-duplicate-panel";
+import { CardEntryTemplatePanel } from "@/components/card-entry-template-panel";
 import { InvestmentInputs } from "@/components/investment-inputs";
 import { splitTagString, stringifyTags } from "@/lib/card-helpers";
 import { CardFormValues } from "@/lib/card-form-values";
 import { normalizeImagePath } from "@/lib/image-path";
 import { encodeReturnTo } from "@/lib/query-params";
+import type { CardEntryRecognitionSummary } from "@/lib/card-entry-queue-domain";
+
+type QueuedCardImage = {
+  id: string;
+  url: string;
+  side: "front" | "back";
+  originalName: string;
+};
 
 type CardFormProps = {
   mode: "create" | "edit";
@@ -13,22 +24,58 @@ type CardFormProps = {
   card?: Card & { images: CardImage[] };
   values?: CardFormValues;
   returnTo?: string;
+  formRef?: Ref<HTMLFormElement>;
+  draftId?: string;
+  onSubmit?: FormEventHandler<HTMLFormElement>;
+  onInvalid?: FormEventHandler<HTMLFormElement>;
+  submitDisabled?: boolean;
+  queueItemId?: string;
+  queuedImages?: QueuedCardImage[];
+  queueRecognition?: CardEntryRecognitionSummary;
 };
 
 function pickValue(value: string | undefined, fallback: string): string {
   return value ?? fallback;
 }
 
-export function CardForm({ mode, action, error, card, values, returnTo }: CardFormProps) {
+export function CardForm({
+  mode,
+  action,
+  error,
+  card,
+  values,
+  returnTo,
+  formRef,
+  draftId,
+  onSubmit,
+  onInvalid,
+  submitDisabled = false,
+  queueItemId,
+  queuedImages = [],
+  queueRecognition
+}: CardFormProps) {
   const tags = splitTagString(card?.tags ?? null);
-  const defaultAiImageUrls = card?.images.slice(0, 2).map((image) => normalizeImagePath(image.path)) ?? [];
+  const defaultAiImageUrls = queuedImages.length > 0
+    ? queuedImages.slice(0, 2).map((image) => image.url)
+    : card?.images.slice(0, 2).map((image) => normalizeImagePath(image.path)) ?? [];
 
   return (
-    <form action={action} className="panel" encType="multipart/form-data">
+    <form ref={formRef} action={action} onSubmit={onSubmit} onInvalid={onInvalid} className="panel" encType="multipart/form-data" data-card-entry-form={mode === "create" ? "true" : undefined}>
       {error ? <p className="note-error">{error}</p> : null}
       {mode === "edit" && returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
+      {mode === "create" && draftId ? <input type="hidden" name="draftId" value={draftId} /> : null}
+      {mode === "create" && queueItemId ? <input type="hidden" name="queueItemId" value={queueItemId} /> : null}
 
-      <AiRecognitionPanel mode={mode} defaultImageUrls={defaultAiImageUrls} />
+      {mode === "create" ? <CardEntryTemplatePanel /> : null}
+
+      <AiRecognitionPanel
+        mode={mode}
+        defaultImageUrls={defaultAiImageUrls}
+        queueItemId={queueItemId}
+        persistedRecognition={queueRecognition}
+      />
+
+      {mode === "create" ? <CardEntryDuplicatePanel /> : null}
 
       <div className="form-grid">
         <label className="field">
@@ -243,11 +290,37 @@ export function CardForm({ mode, action, error, card, values, returnTo }: CardFo
         </label>
 
         <label className="field full">
-          <span>{mode === "create" ? "上传图片（1-5 张）*" : "新增图片（可选，单张卡总计最多 5 张）"}</span>
+          <span>
+            {mode === "create"
+              ? queuedImages.length > 0
+                ? `队列已有 ${queuedImages.length} 张图片，可追加至总计 5 张`
+                : "上传图片（1-5 张）*"
+              : "新增图片（可选，单张卡总计最多 5 张）"}
+          </span>
           <input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple />
-          {mode === "create" ? <small className="muted">提交失败时，文字和勾选项会保留；图片需要重新选择。</small> : null}
+          {mode === "create" ? (
+            <small className="muted">
+              {queuedImages.length > 0
+                ? "队列图片已经持久化；仅本次追加选择的图片在提交失败后需要重新选择。"
+                : "提交失败时，文字和勾选项会保留；图片需要重新选择。"}
+            </small>
+          ) : null}
         </label>
       </div>
+
+      {mode === "create" && queuedImages.length > 0 ? (
+        <div className="queued-card-images">
+          <h3>队列预处理图片</h3>
+          <div className="gallery">
+            {queuedImages.map((image) => (
+              <figure key={image.id}>
+                <img src={image.url} alt={`${image.side === "front" ? "正面" : "背面"}：${image.originalName}`} />
+                <figcaption>{image.side === "front" ? "正面" : "背面"}</figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {mode === "edit" && card ? (
         <div style={{ marginTop: "1rem" }}>
@@ -265,13 +338,20 @@ export function CardForm({ mode, action, error, card, values, returnTo }: CardFo
         </div>
       ) : null}
 
-      <div style={{ marginTop: "1rem", display: "flex", gap: "0.6rem" }}>
-        <button type="submit" className="btn btn-primary">
-          {mode === "create" ? "保存并创建" : "保存修改"}
-        </button>
+      <div className="card-form-actions">
+        {mode === "create" ? (
+          <>
+            <button disabled={submitDisabled} type="submit" name="saveIntent" value="view" className="btn btn-primary" title="Ctrl + Shift + Enter">保存并查看</button>
+            <button disabled={submitDisabled} type="submit" name="saveIntent" value="continue" className="btn btn-secondary" title="Ctrl + Enter">保存并继续</button>
+            <button disabled={submitDisabled} type="submit" name="saveIntent" value="copy" className="btn btn-secondary">保存并复制新增</button>
+          </>
+        ) : (
+          <button type="submit" className="btn btn-primary">保存修改</button>
+        )}
         <a href={mode === "create" ? "/" : `/cards/${card?.id}${encodeReturnTo(returnTo)}`} className="btn btn-secondary">
           取消
         </a>
+        {mode === "create" ? <small className="entry-keyboard-hint">Ctrl + Enter 保存并继续 · Ctrl + Shift + Enter 保存并查看</small> : null}
       </div>
     </form>
   );

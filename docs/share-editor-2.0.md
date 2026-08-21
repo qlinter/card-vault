@@ -1,17 +1,18 @@
 # 分享展馆编辑器 2.0
 
+适用版本：`1.1.0`。编辑器沿用 v1.0.14～v1.0.15 建立的数据和交互基础。
+
 ## 目标
 
 编辑器 2.0 将分享集的内容组织、视觉配置和单卡展示从较长的单页表单调整为清晰的编辑工作台。它继续生成完全静态的展馆，不增加浏览器端框架依赖，也不改变公开字段白名单。
 
-## v1.0.15 已完成（包含 v1.0.14 功能基础）
+## v1.1.0 当前状态
 
 - 在保持编辑器行为和数据契约不变的前提下，进一步拆分向导状态、历史记录、草稿恢复、导航，以及内容、视觉、章节和卡片设置面板。
 - 主编辑器现在主要负责面板导航、状态汇总和实时预览组合，便于后续继续扩展视觉或内容能力。
 
 - 将编辑区拆分为“基础内容、视觉设计、展馆章节、单卡展示”四个工作区。
 - 在编辑过程中持续保留最终展馆预览。
-- 预览支持桌面和手机宽度切换。
 - 新建与编辑分享集共用同一个编辑器组件。
 - 保留现有主题、布局、章节、封面、背景和单卡覆盖能力。
 - 修复应用内预览点击单卡后把完整 Card Vault 界面加载到预览框的问题；预览现在显示内嵌单卡详情并可返回展馆，静态导出仍使用独立单卡页面。
@@ -20,6 +21,8 @@
 - 新上传的封面与背景在保存前即可进入实时预览。
 - 增加字体风格、内容密度和图片构图选项，旧分享集自动使用兼容默认值。
 - 增加桌面与手机预览模式，并将预览单卡交互纳入自动化回归。
+- 修复内置主题背景在应用预览沙箱中无法加载的问题；同源素材可以显示，表单提交和顶层导航仍保持隔离。
+- 多图轮播按钮改用居中的矢量箭头，避免不同字体环境下字符图标发生偏移。
 
 ## 兼容边界
 
@@ -36,4 +39,4 @@
 
 ## English Summary
 
-Share Gallery Editor 2.0 turns the long gallery form into four focused workspaces while preserving the existing database, Server Action, public-data allowlist, and static export contract. It now includes accessible drag ordering, undo/redo, local draft recovery, pre-save cover/background preview, richer composition controls, and inline card details that cannot navigate the application preview iframe. A future CI enhancement can add stable browser screenshot baselines across every layout and viewport.
+In v1.1.0, Share Gallery Editor 2.0 keeps its existing database, Server Action, public-data allowlist, and static export contract. It includes accessible drag ordering, undo/redo, local draft recovery, pre-save cover/background preview, richer composition controls, sandboxed same-origin theme assets, centered vector carousel arrows, and inline card details that cannot navigate the application preview iframe. A future CI enhancement can add stable browser screenshot baselines across every layout and viewport.

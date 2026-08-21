@@ -1,6 +1,6 @@
-import fs from "fs";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
+import { listRelativeFiles } from "./file-tree.ts";
 
 const crcTable = new Uint32Array(256).map((_, index) => {
   let value = index;
@@ -18,22 +18,8 @@ function crc32(buffer: Buffer): number {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-async function listFiles(root: string, current = root): Promise<string[]> {
-  const entries = await fs.promises.readdir(current, { withFileTypes: true });
-  const files: string[] = [];
-  for (const entry of entries) {
-    const fullPath = path.join(current, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await listFiles(root, fullPath)));
-    } else if (entry.isFile()) {
-      files.push(path.relative(root, fullPath).replace(/\\/g, "/"));
-    }
-  }
-  return files;
-}
-
 export async function createZipArchive(sourceDir: string, zipPath: string): Promise<void> {
-  const files = await listFiles(sourceDir);
+  const files = await listRelativeFiles(sourceDir);
   const chunks: Buffer[] = [];
   const central: Buffer[] = [];
   let offset = 0;

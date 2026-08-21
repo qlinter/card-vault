@@ -44,7 +44,7 @@ function directoryFiles(directoryPath) {
 function hasExistingStorageData(dataDir) {
   const databaseNames = ["dev.db", "dev.db-journal", "dev.db-shm", "dev.db-wal"];
   if (databaseNames.some((name) => fs.existsSync(path.join(dataDir, name)))) return true;
-  return ["uploads", "share-covers", "share-backgrounds", "schema-backups"].some((directory) => directoryHasEntries(path.join(dataDir, directory)));
+  return ["uploads", "share-covers", "share-backgrounds", "entry-queue", "schema-backups"].some((directory) => directoryHasEntries(path.join(dataDir, directory)));
 }
 
 function flattenNestedUploads(uploadsDir) {

@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
+const { directoryFiles } = require("./file-utils");
 const { reportProgress } = require("./progress");
 
 function tableExists(db, tableName) {
@@ -12,25 +13,20 @@ function publicFileName(value, prefixes) {
   return typeof value === "string" && allowedPrefixes.some((prefix) => value.startsWith(prefix)) ? path.basename(value) : null;
 }
 
-function directoryFiles(directoryPath) {
-  if (!fs.existsSync(directoryPath)) return [];
-  return fs.readdirSync(directoryPath, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name);
-}
-
 function inspectDataFolder(dataDir, onProgress) {
   const resolvedDataDir = path.resolve(dataDir);
   const dbPath = path.join(resolvedDataDir, "dev.db");
   const issues = [];
   const missingFiles = [];
   const orphanFiles = [];
-  const counts = { cards: 0, images: 0, shares: 0, shareCovers: 0, shareBackgrounds: 0 };
+  const counts = { cards: 0, images: 0, queueItems: 0, shares: 0, shareCovers: 0, shareBackgrounds: 0 };
   reportProgress(onProgress, 5, "正在定位数据库和媒体目录...");
   if (!fs.existsSync(dbPath)) {
     reportProgress(onProgress, 100, "健康检查完成：未找到数据库。");
     return { ok: false, checkedAt: new Date().toISOString(), dataPath: resolvedDataDir, databasePath: dbPath, integrity: "missing", counts, missingFiles, orphanFiles, issues: ["数据库文件 dev.db 不存在。"] };
   }
 
-  const referenced = { uploads: new Set(), covers: new Set(), backgrounds: new Set() };
+  const referenced = { uploads: new Set(), queueSources: new Set(), covers: new Set(), backgrounds: new Set() };
   let integrity = "error";
   try {
     reportProgress(onProgress, 20, "正在检查 SQLite 数据库完整性...");
@@ -64,11 +60,28 @@ function inspectDataFolder(dataDir, onProgress) {
           if (background) { referenced.backgrounds.add(background.toLowerCase()); if (!fs.existsSync(path.join(resolvedDataDir, "share-backgrounds", background))) missingFiles.push({ type: "shareBackground", path: share.backgroundImagePath }); }
         }
       }
+      if (tableExists(db, "CardEntryQueueItem") && tableExists(db, "CardEntryQueueImage")) {
+        counts.queueItems = Number(db.prepare("SELECT COUNT(*) AS count FROM CardEntryQueueItem").get().count);
+        const queueImages = db.prepare("SELECT sourcePath, processedPath FROM CardEntryQueueImage").all();
+        for (const image of queueImages) {
+          const processed = publicFileName(image.processedPath, ["/media/", "/uploads/"]);
+          if (processed) {
+            referenced.uploads.add(processed.toLowerCase());
+            if (!fs.existsSync(path.join(resolvedDataDir, "uploads", processed))) missingFiles.push({ type: "queueImage", path: image.processedPath });
+          }
+          const source = typeof image.sourcePath === "string" ? path.basename(image.sourcePath) : null;
+          if (source) {
+            referenced.queueSources.add(source.toLowerCase());
+            if (!fs.existsSync(path.join(resolvedDataDir, "entry-queue", source))) missingFiles.push({ type: "queueSource", path: path.join("entry-queue", source) });
+          }
+        }
+      }
     } finally { db.close(); }
   } catch (error) { issues.push(`无法读取数据库：${error instanceof Error ? error.message : "未知错误"}`); }
 
   const groups = [
     { type: "cardImage", directory: "uploads", references: referenced.uploads },
+    { type: "queueSource", directory: "entry-queue", references: referenced.queueSources },
     { type: "shareCover", directory: "share-covers", references: referenced.covers },
     { type: "shareBackground", directory: "share-backgrounds", references: referenced.backgrounds }
   ];

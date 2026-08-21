@@ -206,13 +206,49 @@ test("legacy uploads paths remain referenced during health checks and cleanup", 
   assert.equal(fs.existsSync(path.join(manager.getUploadsDir(), "card.jpg")), true);
 });
 
+test("entry queue sources and processed images remain referenced during health checks", (t) => {
+  const { manager } = createTestManager(t);
+  seedCardVaultData(manager);
+  const queueDir = path.join(manager.getDataDir(), "entry-queue");
+  const processedPath = path.join(manager.getUploadsDir(), "queue-image.webp");
+  const sourcePath = path.join(queueDir, "queue-source.png");
+  fs.mkdirSync(queueDir, { recursive: true });
+  fs.writeFileSync(processedPath, "processed");
+  fs.writeFileSync(sourcePath, "source");
+
+  const db = new DatabaseSync(manager.getDbPath());
+  db.prepare("INSERT INTO CardEntryBatch (id, label, pairingMode) VALUES (?, ?, ?)")
+    .run("queue-batch", "Queue Batch", "pairs");
+  db.prepare("INSERT INTO CardEntryQueueItem (id, batchId, status, sortOrder, attemptCount) VALUES (?, ?, ?, ?, ?)")
+    .run("queue-item", "queue-batch", "failed", 0, 1);
+  db.prepare(`
+    INSERT INTO CardEntryQueueImage (
+      id, itemId, originalName, sourcePath, processedPath, side, sortOrder, mimeType, originalBytes, processedBytes
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run("queue-image", "queue-item", "source.png", "queue-source.png", "/media/queue-image.webp", "front", 0, "image/png", 100, 80);
+  db.close();
+
+  const health = manager.inspectDataFolder();
+  assert.equal(health.ok, true);
+  assert.equal(health.counts.queueItems, 1);
+  assert.equal(health.missingFiles.length, 0);
+  assert.equal(health.orphanFiles.some((file) => file.path === path.join("uploads", "queue-image.webp")), false);
+  assert.equal(health.orphanFiles.some((file) => file.path === path.join("entry-queue", "queue-source.png")), false);
+
+  fs.rmSync(sourcePath);
+  const missingSource = manager.inspectDataFolder();
+  assert.equal(missingSource.ok, false);
+  assert.equal(missingSource.missingFiles.some((file) => file.type === "queueSource"), true);
+});
+
 test("orphan cleanup removes only media that is not referenced by the database", (t) => {
   const { manager } = createTestManager(t);
   seedCardVaultData(manager);
   const orphanPaths = [
     path.join(manager.getUploadsDir(), "orphan-card.jpg"),
     path.join(manager.getShareCoversDir(), "orphan-cover.jpg"),
-    path.join(manager.getShareBackgroundsDir(), "orphan-background.jpg")
+    path.join(manager.getShareBackgroundsDir(), "orphan-background.jpg"),
+    path.join(manager.getDataDir(), "entry-queue", "orphan-source.png")
   ];
   for (const orphanPath of orphanPaths) {
     fs.writeFileSync(orphanPath, "orphan");
@@ -220,7 +256,7 @@ test("orphan cleanup removes only media that is not referenced by the database",
 
   const result = manager.cleanOrphanFiles();
 
-  assert.equal(result.deletedFiles.length, 3);
+  assert.equal(result.deletedFiles.length, 4);
   assert.equal(result.failedFiles.length, 0);
   assert.equal(result.health.orphanFiles.length, 0);
   assert.equal(fs.existsSync(path.join(manager.getUploadsDir(), "card.jpg")), true);
@@ -351,7 +387,7 @@ test("restore migrates an older backup before replacing current data", (t) => {
     "007_normalize_valuation_sources_v1_1_0",
     "009_backfill_serial_numbered_v1_0_19"
   ]);
-  assert.equal(restored.schemaVersion, "009_backfill_serial_numbered_v1_0_19");
+  assert.equal(restored.schemaVersion, "012_card_entry_workbench_phase3_v1_1_0");
   assert.equal(valuation.source, "个人估计");
   assert.equal(card.isSerialNumbered, 1);
   assert.equal(latestMigration.id, "009_backfill_serial_numbered_v1_0_19");

@@ -1,6 +1,7 @@
 import fs from "fs";
 import { readFile, stat } from "fs/promises";
 import path from "path";
+import { listRelativeFiles } from "./file-tree.ts";
 import type { ExportData } from "./share-export-types.ts";
 
 export const cloudflareStaticAssetFileLimit = 20_000;
@@ -75,20 +76,6 @@ export function validatePublicExportData(data: ExportData): ShareExportIssue[] {
   return issues;
 }
 
-async function listFiles(root: string, current = root): Promise<string[]> {
-  const entries = await fs.promises.readdir(current, { withFileTypes: true });
-  const files: string[] = [];
-  for (const entry of entries) {
-    const fullPath = path.join(current, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await listFiles(root, fullPath)));
-    } else if (entry.isFile()) {
-      files.push(path.relative(root, fullPath).replace(/\\/g, "/"));
-    }
-  }
-  return files.sort();
-}
-
 function localReferences(html: string): string[] {
   const references: string[] = [];
   const attributePattern = /\b(?:href|src)\s*=\s*["']([^"']+)["']/gi;
@@ -122,7 +109,7 @@ export async function validateExportDirectory(
   initialIssues: ShareExportIssue[] = []
 ): Promise<ShareExportValidation> {
   const root = path.resolve(folderPath);
-  const files = await listFiles(root);
+  const files = await listRelativeFiles(root);
   const issues = [...initialIssues];
   let totalBytes = 0;
   let maxFileBytes = 0;

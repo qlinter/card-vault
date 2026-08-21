@@ -11,7 +11,10 @@ const migrations = [
   { id: "006_card_financial_history_v1_1_0", run: migrateCardFinancialHistory },
   { id: "007_normalize_valuation_sources_v1_1_0", run: normalizeValuationSources },
   { id: "008_limit_financial_currencies_v1_1_0", run: limitFinancialCurrencies },
-  { id: "009_backfill_serial_numbered_v1_0_19", run: backfillSerialNumbered }
+  { id: "009_backfill_serial_numbered_v1_0_19", run: backfillSerialNumbered },
+  { id: "010_card_entry_drafts_v1_1_0", run: createCardEntryDrafts },
+  { id: "011_card_entry_image_queue_v1_1_0", run: createCardEntryImageQueue },
+  { id: "012_card_entry_workbench_phase3_v1_1_0", run: createCardEntryWorkbenchPhase3 }
 ];
 
 const cardColumns = [
@@ -103,6 +106,16 @@ function createLatestTables(db) {
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT CardImage_cardId_fkey FOREIGN KEY (cardId) REFERENCES Card (id) ON DELETE CASCADE ON UPDATE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS CardEntryDraft (
+      id TEXT PRIMARY KEY NOT NULL,
+      schemaVersion INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'draft',
+      valuesJson TEXT NOT NULL,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    ${cardEntryImageQueueTablesSql()}
+    ${cardEntryWorkbenchPhase3TablesSql()}
     ${financialHistoryTablesSql()}
     CREATE TABLE IF NOT EXISTS ShareCollection (
       id TEXT PRIMARY KEY NOT NULL,
@@ -512,6 +525,119 @@ function backfillSerialNumbered(db) {
         (serialNumber IS NOT NULL AND TRIM(serialNumber) <> '')
         OR (serialRange IS NOT NULL AND TRIM(serialRange) <> '')
       );
+  `);
+}
+
+function createCardEntryDrafts(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS CardEntryDraft (
+      id TEXT PRIMARY KEY NOT NULL,
+      schemaVersion INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'draft',
+      valuesJson TEXT NOT NULL,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS CardEntryDraft_status_updatedAt_idx
+      ON CardEntryDraft(status, updatedAt DESC);
+    CREATE INDEX IF NOT EXISTS CardEntryDraft_updatedAt_idx
+      ON CardEntryDraft(updatedAt DESC);
+  `);
+}
+
+function cardEntryImageQueueTablesSql() {
+  return `
+    CREATE TABLE IF NOT EXISTS CardEntryBatch (
+      id TEXT PRIMARY KEY NOT NULL,
+      label TEXT,
+      pairingMode TEXT NOT NULL DEFAULT 'pairs',
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS CardEntryQueueItem (
+      id TEXT PRIMARY KEY NOT NULL,
+      batchId TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'processing',
+      sortOrder INTEGER NOT NULL DEFAULT 0,
+      attemptCount INTEGER NOT NULL DEFAULT 0,
+      errorMessage TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT CardEntryQueueItem_batchId_fkey FOREIGN KEY (batchId) REFERENCES CardEntryBatch (id) ON DELETE CASCADE ON UPDATE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS CardEntryQueueImage (
+      id TEXT PRIMARY KEY NOT NULL,
+      itemId TEXT NOT NULL,
+      originalName TEXT NOT NULL,
+      sourcePath TEXT,
+      processedPath TEXT,
+      side TEXT NOT NULL DEFAULT 'front',
+      sortOrder INTEGER NOT NULL DEFAULT 0,
+      mimeType TEXT NOT NULL,
+      originalBytes INTEGER NOT NULL,
+      processedBytes INTEGER,
+      width INTEGER,
+      height INTEGER,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT CardEntryQueueImage_itemId_fkey FOREIGN KEY (itemId) REFERENCES CardEntryQueueItem (id) ON DELETE CASCADE ON UPDATE CASCADE
+    );
+  `;
+}
+
+function createCardEntryImageQueue(db) {
+  db.exec(cardEntryImageQueueTablesSql());
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS CardEntryBatch_createdAt_idx
+      ON CardEntryBatch(createdAt DESC);
+    CREATE INDEX IF NOT EXISTS CardEntryQueueItem_batchId_sortOrder_idx
+      ON CardEntryQueueItem(batchId, sortOrder);
+    CREATE INDEX IF NOT EXISTS CardEntryQueueItem_status_createdAt_idx
+      ON CardEntryQueueItem(status, createdAt);
+    CREATE INDEX IF NOT EXISTS CardEntryQueueImage_itemId_sortOrder_idx
+      ON CardEntryQueueImage(itemId, sortOrder);
+  `);
+}
+
+function cardEntryWorkbenchPhase3TablesSql() {
+  return `
+    CREATE TABLE IF NOT EXISTS CardEntryTemplate (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      valuesJson TEXT NOT NULL,
+      useCount INTEGER NOT NULL DEFAULT 0,
+      lastUsedAt DATETIME,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS CardEntryRecognition (
+      id TEXT PRIMARY KEY NOT NULL,
+      itemId TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'recognizing',
+      suggestionJson TEXT,
+      confidenceJson TEXT,
+      attemptCount INTEGER NOT NULL DEFAULT 0,
+      errorMessage TEXT,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT CardEntryRecognition_itemId_fkey FOREIGN KEY (itemId) REFERENCES CardEntryQueueItem (id) ON DELETE CASCADE ON UPDATE CASCADE
+    );
+  `;
+}
+
+function createCardEntryWorkbenchPhase3(db) {
+  db.exec(cardEntryWorkbenchPhase3TablesSql());
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS CardEntryTemplate_name_key
+      ON CardEntryTemplate(name);
+    CREATE INDEX IF NOT EXISTS CardEntryTemplate_lastUsedAt_idx
+      ON CardEntryTemplate(lastUsedAt DESC);
+    CREATE INDEX IF NOT EXISTS CardEntryTemplate_updatedAt_idx
+      ON CardEntryTemplate(updatedAt DESC);
+    CREATE UNIQUE INDEX IF NOT EXISTS CardEntryRecognition_itemId_key
+      ON CardEntryRecognition(itemId);
+    CREATE INDEX IF NOT EXISTS CardEntryRecognition_status_updatedAt_idx
+      ON CardEntryRecognition(status, updatedAt);
   `);
 }
 

@@ -3,7 +3,7 @@ const path = require("node:path");
 const { inspectDataFolder } = require("./health");
 const { mapProgress, reportProgress } = require("./progress");
 
-const orphanDirectoryByType = { cardImage: "uploads", shareCover: "share-covers", shareBackground: "share-backgrounds" };
+const orphanDirectoryByType = { cardImage: "uploads", queueSource: "entry-queue", shareCover: "share-covers", shareBackground: "share-backgrounds" };
 
 function resolveSafeOrphanPath(dataDir, orphanFile) {
   const directory = orphanDirectoryByType[orphanFile?.type];

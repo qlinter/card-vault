@@ -15,9 +15,6 @@ export default function SettingsPage() {
       <div className="title-row">
         <div>
           <h1 className="h1">{"\u8bbe\u7f6e"}</h1>
-          <p className="muted">
-            管理本地存储、备份恢复、AI 服务和 Card Vault 应用信息。
-          </p>
         </div>
       </div>
 

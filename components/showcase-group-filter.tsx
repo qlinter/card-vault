@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { DisclosureIcon } from "@/components/disclosure-icon";
 
 type ShowcaseGroup = {
   name: string;
@@ -47,15 +48,19 @@ export function ShowcaseGroupFilter({ groups, activeGroup, queryText }: Showcase
   }, [activeGroup, expanded, groups]);
 
   return (
-    <section className="showcase-groups">
+    <section className="showcase-groups" aria-label="球员筛选">
       <div className="showcase-section-head">
-        <div>
-          <h2>按球员浏览</h2>
-          <p className="muted">共 {groups.length} 位球员或组合</p>
-        </div>
+        <p className="muted">共 {groups.length} 位球员或组合</p>
         {groups.length > 8 ? (
-          <button type="button" className="btn btn-secondary" onClick={() => setExpanded((value) => !value)}>
-            {expanded ? "收起球员列表" : "展开球员列表"}
+          <button
+            type="button"
+            className="btn btn-secondary disclosure-button"
+            onClick={() => setExpanded((value) => !value)}
+            aria-expanded={expanded}
+            aria-label={expanded ? "收起球员列表" : "展开球员列表"}
+            title={expanded ? "收起球员列表" : "展开球员列表"}
+          >
+            <DisclosureIcon expanded={expanded} />
           </button>
         ) : null}
       </div>

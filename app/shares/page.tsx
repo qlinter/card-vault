@@ -22,7 +22,6 @@ export default async function SharesPage({ searchParams }: SharesPageProps) {
       <div className="title-row">
         <div>
           <h1 className="h1">分享</h1>
-          <p className="muted">创建球星卡精品展馆</p>
         </div>
         <Link className="btn btn-primary" href="/shares/new">
           新建分享集

@@ -14,6 +14,7 @@ import { createSharePresentation, serializeSharePresentation } from "@/lib/share
 import { parseShareSectionDrafts } from "@/lib/share-sections";
 import { normalizeShareTheme } from "@/lib/share-themes";
 import { errorMessage } from "@/lib/feedback-messages";
+import { slugify } from "@/lib/slugify";
 
 const shareCoverDir = getShareCoversDir();
 const shareBackgroundDir = getShareBackgroundsDir();
@@ -24,16 +25,6 @@ function toOptionalString(value: FormDataEntryValue | null): string | null {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
-}
-
-function slugify(value: string): string {
-  const slug = value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  return slug || "share";
 }
 
 function toShareCoverPublicPath(fileName: string): string {

@@ -115,9 +115,6 @@ export function BackupSettings() {
       <div className="title-row" style={{ marginBottom: "0.4rem" }}>
         <div>
           <h2>备份与恢复</h2>
-          <p className="muted" style={{ margin: "0.35rem 0 0" }}>
-            备份会生成 SQLite 一致性快照；恢复前会再次备份当前数据，旧备份会先在暂存区完成数据库迁移和校验。
-          </p>
         </div>
         <div className="backup-actions">
           <button type="button" className="btn btn-secondary" onClick={handleChooseDirectory} disabled={busy}>

@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { resolveDataDir as resolveCoreDataDir, resolveDbPath as resolveCoreDbPath, resolveShareBackgroundsDir as resolveCoreShareBackgroundsDir, resolveShareCoversDir as resolveCoreShareCoversDir, resolveUploadsDir as resolveCoreUploadsDir } from "./storage-paths-core.js";
+import { resolveDataDir as resolveCoreDataDir, resolveDbPath as resolveCoreDbPath, resolveEntryQueueDir as resolveCoreEntryQueueDir, resolveShareBackgroundsDir as resolveCoreShareBackgroundsDir, resolveShareCoversDir as resolveCoreShareCoversDir, resolveUploadsDir as resolveCoreUploadsDir } from "./storage-paths-core.js";
 
 type StorageEnv = Record<string, string | undefined>;
 
@@ -46,6 +46,10 @@ export function resolveDatabasePath(env: StorageEnv = process.env): string {
 
 export function resolveUploadsDir(env: StorageEnv = process.env): string {
   return resolveCoreUploadsDir(process.cwd(), env);
+}
+
+export function resolveEntryQueueDir(env: StorageEnv = process.env): string {
+  return resolveCoreEntryQueueDir(process.cwd(), env);
 }
 
 export function resolveShareCoversDir(env: StorageEnv = process.env): string {

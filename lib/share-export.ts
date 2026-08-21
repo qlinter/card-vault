@@ -26,6 +26,7 @@ import { getShareBackgroundsDir, getShareCoversDir, getUploadsDir, resolveDataDi
 import { normalizeShareTheme, shareThemeBackgroundPath } from "@/lib/share-themes";
 import { parseSharePresentation } from "@/lib/share-presentation";
 import { normalizeShareSectionLayout } from "@/lib/share-sections";
+import { slugify } from "@/lib/slugify";
 import { createZipArchive } from "@/lib/zip-archive";
 import {
   renderExportValidationReport,
@@ -35,16 +36,6 @@ import {
 } from "@/lib/share-export-validation";
 
 export type { ShareExportMode } from "@/lib/share-export-types";
-
-function slugify(value: string): string {
-  const slug = value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  return slug || "share";
-}
 
 function safeFileName(value: string): string {
   const parsed = path.parse(value);

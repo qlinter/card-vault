@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { normalizeShareTheme, shareThemeBackgroundPath, shareThemeCssVariables, shareThemes } from "../lib/share-themes.ts";
+
+const publicDirectory = fileURLToPath(new URL("../public/", import.meta.url));
 
 test("share themes expose general and sport gallery directions", () => {
   assert.deepEqual(
@@ -28,6 +32,14 @@ test("theme background paths are exposed for built-in visual themes", () => {
   assert.equal(shareThemeBackgroundPath("f1"), "/share-themes/f1-pit-lane.webp");
   assert.equal(shareThemeBackgroundPath("nerazzurri"), "/share-themes/nerazzurri-1.webp");
   assert.equal(shareThemeBackgroundPath("nerazzurri-2"), "/share-themes/nerazzurri-2.webp");
+});
+
+test("every built-in share theme has a packaged background asset", () => {
+  for (const theme of shareThemes) {
+    const assetPath = fileURLToPath(new URL(`.${theme.backgroundImagePath}`, new URL("../public/", import.meta.url)));
+    assert.ok(assetPath.startsWith(publicDirectory));
+    assert.ok(existsSync(assetPath), `${theme.id} background asset is missing`);
+  }
 });
 
 test("themes expose shared gallery design tokens", () => {

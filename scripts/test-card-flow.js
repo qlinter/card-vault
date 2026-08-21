@@ -1,57 +1,18 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const net = require("node:net");
-const { execFileSync, spawn } = require("node:child_process");
 const { DatabaseSync } = require("node:sqlite");
-
-const rootDir = path.resolve(__dirname, "..");
-const initDbScriptPath = path.join(rootDir, "scripts", "init-db.js");
-const nextCliPath = path.join(rootDir, "node_modules", "next", "dist", "bin", "next");
-
-function fileDatabaseUrl(filePath) {
-  return `file:${filePath.replace(/\\/g, "/")}`;
-}
-
-function findAvailablePort(startPort) {
-  return new Promise((resolve) => {
-    const server = net.createServer();
-    server.once("error", () => resolve(findAvailablePort(startPort + 1)));
-    server.listen({ host: "127.0.0.1", port: startPort }, () => server.close(() => resolve(startPort)));
-  });
-}
-
-async function waitForServer(baseUrl, output, serverProcess) {
-  const deadline = Date.now() + 30000;
-  while (Date.now() < deadline) {
-    if (serverProcess.exitCode !== null) {
-      throw new Error(`Card flow server exited with code ${serverProcess.exitCode}.\n${output.join("")}`);
-    }
-    try {
-      const response = await fetch(`${baseUrl}/api/health`);
-      if (response.ok) {
-        return;
-      }
-    } catch {
-      // The server may still be starting.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  throw new Error(`Timed out waiting for the card flow server.\n${output.join("")}`);
-}
-
-async function fetchPage(baseUrl, route) {
-  const response = await fetch(`${baseUrl}${route}`);
-  const html = await response.text();
-  if (!response.ok) {
-    throw new Error(`${route} returned HTTP ${response.status}.\n${html.slice(0, 500)}`);
-  }
-  return html;
-}
-
-function decodeHtmlAttribute(value = "") {
-  return value.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
-}
+const {
+  decodeHtmlAttribute,
+  fetchPage,
+  fileDatabaseUrl,
+  findAvailablePort,
+  initializeTestDatabase,
+  removeTempRoot,
+  startTestServer,
+  stopServer,
+  waitForServer
+} = require("./test-http-flow-utils");
 
 function cardFormHtml(html) {
   const fieldIndex = html.indexOf('name="playerName"');
@@ -133,24 +94,6 @@ function appendCardFields(formData, values) {
   formData.append("isPatch", "on");
 }
 
-function stopServer(serverProcess) {
-  if (!serverProcess || serverProcess.killed) {
-    return;
-  }
-  try {
-    serverProcess.kill();
-  } catch {
-    // The server may already have exited.
-  }
-  try {
-    if (process.platform === "win32") {
-      execFileSync("taskkill.exe", ["/pid", String(serverProcess.pid), "/t", "/f"], { stdio: "ignore", timeout: 3000 });
-    }
-  } catch {
-    // The child process tree may already have exited.
-  }
-}
-
 async function main() {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "card-vault-card-e2e-"));
   const dataDir = path.join(tempRoot, "data");
@@ -167,27 +110,231 @@ async function main() {
       DATABASE_URL: fileDatabaseUrl(dbPath),
       NODE_ENV: "production"
     };
-    execFileSync(process.execPath, [initDbScriptPath], { cwd: rootDir, env: testEnv, stdio: "pipe" });
-    serverProcess = spawn(process.execPath, [nextCliPath, "start", "--hostname", "127.0.0.1", "--port", String(port)], {
-      cwd: rootDir,
-      env: testEnv,
-      windowsHide: true,
-      stdio: ["ignore", "pipe", "pipe"]
-    });
-    serverProcess.stdout.on("data", (chunk) => output.push(chunk.toString()));
-    serverProcess.stderr.on("data", (chunk) => output.push(chunk.toString()));
-    await waitForServer(baseUrl, output, serverProcess);
+    initializeTestDatabase(testEnv);
+    serverProcess = startTestServer(port, testEnv, output);
+    await waitForServer(baseUrl, output, serverProcess, "Card flow");
 
     const newPage = await fetchPage(baseUrl, "/cards/new");
+    for (const marker of ["录入工作台", "批量录入", "导入并预处理", "保存并查看", "保存并继续", "保存并复制新增", "录入草稿", "模板", "Ctrl + Enter 保存并继续"]) {
+      if (!newPage.includes(marker)) {
+        throw new Error(`Entry workbench is missing the expected marker: ${marker}`);
+      }
+    }
+    if (
+      newPage.includes("填写后将自动保存文字草稿。") ||
+      newPage.includes("录入模板") ||
+      !newPage.includes("disclosure-icon entry-queue-chevron") ||
+      !newPage.includes('class="entry-queue-count">0</span>')
+    ) {
+      throw new Error("Entry workbench helper copy or queue disclosure icon does not match the compact layout.");
+    }
+
+    const settingsPage = await fetchPage(baseUrl, "/settings");
+    for (const removedCopy of [
+      "管理本地存储、备份恢复、AI 服务和 Card Vault 应用信息。",
+      "设置数据库、卡片图片、分享封面和导出文件的本地保存位置，并检查当前存储数据是否完整。",
+      "备份会生成 SQLite 一致性快照；恢复前会再次备份当前数据"
+    ]) {
+      if (settingsPage.includes(removedCopy)) {
+        throw new Error(`Settings page still contains removed helper copy: ${removedCopy}`);
+      }
+    }
+    if (!settingsPage.includes('aria-label="展开 AI 设置"') || settingsPage.includes("已配置 Azure OpenAI")) {
+      throw new Error("Settings disclosure control does not use the expected compact icon presentation.");
+    }
+
+    const showcasePage = await fetchPage(baseUrl, "/showcase");
+    if (showcasePage.includes("按球员浏览")) {
+      throw new Error("Showcase page still contains the removed browsing heading.");
+    }
+
+    const templateResponse = await fetch(`${baseUrl}/api/card-entry/templates`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "E2E Template",
+        values: {
+          sport: "Basketball",
+          team: "Template Team",
+          year: "2026",
+          productLine: "Template Product",
+          cardNumber: "must-not-persist",
+          visibility: "public",
+          collectionStatus: "holding",
+          tags: "template"
+        }
+      })
+    });
+    const templatePayload = await templateResponse.json();
+    if (!templateResponse.ok || !templatePayload.template?.id || "cardNumber" in templatePayload.template.values) {
+      throw new Error(`Entry template creation mismatch: ${JSON.stringify(templatePayload)}`);
+    }
+    const templateUseResponse = await fetch(
+      `${baseUrl}/api/card-entry/templates/${templatePayload.template.id}/use`,
+      { method: "POST" }
+    );
+    const templateUsePayload = await templateUseResponse.json();
+    if (!templateUseResponse.ok || templateUsePayload.template?.useCount !== 1) {
+      throw new Error(`Entry template usage mismatch: ${JSON.stringify(templateUsePayload)}`);
+    }
+    const templateUpdateResponse = await fetch(
+      `${baseUrl}/api/card-entry/templates/${templatePayload.template.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "E2E Template Updated",
+          values: { sport: "Basketball", team: "Updated Template Team" }
+        })
+      }
+    );
+    const templateUpdatePayload = await templateUpdateResponse.json();
+    if (
+      !templateUpdateResponse.ok ||
+      templateUpdatePayload.template?.name !== "E2E Template Updated" ||
+      templateUpdatePayload.template?.values?.team !== "Updated Template Team"
+    ) {
+      throw new Error(`Entry template update mismatch: ${JSON.stringify(templateUpdatePayload)}`);
+    }
+
+    const invalidDraftResponse = await fetch(`${baseUrl}/api/card-entry/drafts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: "../invalid", values: { playerName: "Invalid" } })
+    });
+    if (invalidDraftResponse.status !== 400) {
+      throw new Error(`Invalid draft id was not rejected (${invalidDraftResponse.status}).`);
+    }
+    const oversizedDraftResponse = await fetch(`${baseUrl}/api/card-entry/drafts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: { notes: "x".repeat(100_001) } })
+    });
+    if (oversizedDraftResponse.status !== 413) {
+      throw new Error(`Oversized draft was not rejected (${oversizedDraftResponse.status}).`);
+    }
+
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+    const batchForm = new FormData();
+    batchForm.append("label", "E2E Queue Batch");
+    batchForm.append("pairingMode", "pairs");
+    batchForm.append("images", new Blob([png], { type: "image/png" }), "front.png");
+    batchForm.append("images", new Blob([png], { type: "image/png" }), "back.png");
+    batchForm.append("images", new Blob([Buffer.from("not-an-image")], { type: "image/png" }), "invalid.png");
+    const batchResponse = await fetch(`${baseUrl}/api/card-entry/queue`, {
+      method: "POST",
+      body: batchForm
+    });
+    const batchPayload = await batchResponse.json();
+    if (
+      !batchResponse.ok || batchPayload.itemCount !== 2 ||
+      batchPayload.readyCount !== 1 || batchPayload.failedCount !== 1
+    ) {
+      throw new Error(`Queue batch preprocessing mismatch: ${JSON.stringify(batchPayload)}`);
+    }
+
+    let db = new DatabaseSync(dbPath, { readOnly: true });
+    const readyQueueItem = db.prepare("SELECT id FROM CardEntryQueueItem WHERE batchId = ? AND status = 'ready'").get(batchPayload.batchId);
+    const failedQueueItem = db.prepare("SELECT id, errorMessage FROM CardEntryQueueItem WHERE batchId = ? AND status = 'failed'").get(batchPayload.batchId);
+    const processedQueueImages = readyQueueItem
+      ? db.prepare("SELECT originalName, processedPath, processedBytes, width, height, side, sortOrder FROM CardEntryQueueImage WHERE itemId = ? ORDER BY sortOrder").all(readyQueueItem.id)
+      : [];
+    db.close();
+    if (
+      !readyQueueItem?.id || !failedQueueItem?.id || processedQueueImages.length !== 2 ||
+      processedQueueImages.some((image) => !image.processedPath?.endsWith(".webp") || image.processedBytes <= 0 || image.width !== 1 || image.height !== 1)
+    ) {
+      throw new Error("Queue batch did not isolate failures or persist WebP preprocessing metadata.");
+    }
+    for (const image of processedQueueImages) {
+      if (!fs.existsSync(path.join(dataDir, "uploads", path.basename(image.processedPath)))) {
+        throw new Error("Queue preprocessing did not persist an output image.");
+      }
+    }
+
+    const retryResponse = await fetch(`${baseUrl}/api/card-entry/queue/${failedQueueItem.id}/retry`, { method: "POST" });
+    const retryPayload = await retryResponse.json();
+    if (!retryResponse.ok || retryPayload.status !== "failed") {
+      throw new Error(`Failed queue retry did not remain isolated: ${JSON.stringify(retryPayload)}`);
+    }
+    const swapResponse = await fetch(`${baseUrl}/api/card-entry/queue/${readyQueueItem.id}/swap`, { method: "POST" });
+    if (!swapResponse.ok) {
+      throw new Error(`Queue image swap failed: ${(await swapResponse.text()).slice(0, 300)}`);
+    }
+    db = new DatabaseSync(dbPath, { readOnly: true });
+    const swappedFront = db.prepare("SELECT originalName, side FROM CardEntryQueueImage WHERE itemId = ? ORDER BY sortOrder LIMIT 1").get(readyQueueItem.id);
+    db.close();
+    if (swappedFront?.originalName !== "back.png" || swappedFront?.side !== "front") {
+      throw new Error("Queue image swap did not update front/back ordering.");
+    }
+
+    db = new DatabaseSync(dbPath);
+    db.prepare(`
+      INSERT INTO CardEntryRecognition (
+        id, itemId, status, suggestionJson, confidenceJson, attemptCount
+      ) VALUES (?, ?, 'review', ?, ?, 1)
+    `).run(
+      "e2e-recognition",
+      readyQueueItem.id,
+      JSON.stringify({
+        playerName: "AI Candidate Player",
+        cardTitle: "AI Candidate Card",
+        sport: "Basketball",
+        cardNumber: "AI-42"
+      }),
+      JSON.stringify({
+        playerName: "high",
+        cardTitle: "medium",
+        sport: "high",
+        cardNumber: "low"
+      })
+    );
+    db.close();
+    const recognitionPage = await fetchPage(baseUrl, `/cards/new?queue=${encodeURIComponent(readyQueueItem.id)}`);
+    if (
+      !recognitionPage.includes('value="AI Candidate Player"') ||
+      !recognitionPage.includes('value="AI Candidate Card"') ||
+      !recognitionPage.includes("低置信字段：卡号")
+    ) {
+      throw new Error("Persisted AI candidate was not loaded for explicit review.");
+    }
+
+    const draftResponse = await fetch(`${baseUrl}/api/card-entry/drafts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        values: {
+          playerName: "E2E Draft Player",
+          cardTitle: "E2E Draft Card",
+          sport: "Basketball",
+          isRookie: true
+        }
+      })
+    });
+    const draftPayload = await draftResponse.json();
+    if (!draftResponse.ok || !draftPayload.id) {
+      throw new Error(`Draft create returned HTTP ${draftResponse.status}: ${JSON.stringify(draftPayload)}`);
+    }
+    const draftPage = await fetchPage(baseUrl, `/cards/new?draft=${encodeURIComponent(draftPayload.id)}&queue=${encodeURIComponent(readyQueueItem.id)}`);
+    if (
+      !draftPage.includes('value="E2E Draft Player"') ||
+      !draftPage.includes('value="E2E Draft Card"') ||
+      !draftPage.includes("队列预处理图片")
+    ) {
+      throw new Error("Entry workbench did not restore draft values and queue images together.");
+    }
+
     const createForm = new FormData();
-    appendServerActionFields(createForm, newPage);
+    appendServerActionFields(createForm, draftPage);
+    createForm.append("draftId", draftPayload.id);
+    createForm.append("queueItemId", readyQueueItem.id);
+    createForm.append("saveIntent", "view");
     appendCardFields(createForm, {
       playerName: "E2E Create Player",
       cardTitle: "E2E Create Card",
       grade: "Auto Auth",
       description: "创建流程回归测试。"
     });
-    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
     createForm.append("images", new Blob([png], { type: "image/png" }), "card.png");
 
     const createResponse = await fetch(`${baseUrl}/cards/new`, { method: "POST", body: createForm, redirect: "manual" });
@@ -197,18 +344,24 @@ async function main() {
       throw new Error(`Card create returned HTTP ${createResponse.status} (${createLocation}).\n${(await createResponse.text()).slice(0, 500)}`);
     }
 
-    let db = new DatabaseSync(dbPath, { readOnly: true });
+    db = new DatabaseSync(dbPath, { readOnly: true });
     const created = db.prepare("SELECT playerName, cardTitle, year, grade, totalCost, isSerialNumbered FROM Card WHERE id = ?").get(cardId);
-    const createdImage = db.prepare("SELECT path FROM CardImage WHERE cardId = ?").get(cardId);
+    const createdImages = db.prepare("SELECT path FROM CardImage WHERE cardId = ? ORDER BY createdAt, rowid").all(cardId);
     const createdTransaction = db.prepare("SELECT kind, amountMinor, currency, provenance FROM CardTransaction WHERE cardId = ?").get(cardId);
     const createdExpense = db.prepare("SELECT kind, amountMinor, currency, provenance FROM CardExpense WHERE cardId = ?").get(cardId);
     const createdValuation = db.prepare("SELECT amountMinor, currency, source, provenance FROM CardValuation WHERE cardId = ?").get(cardId);
+    const completedDraftCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardEntryDraft WHERE id = ?").get(draftPayload.id).count);
+    const completedQueueCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardEntryQueueItem WHERE id = ?").get(readyQueueItem.id).count);
+    const completedRecognitionCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardEntryRecognition WHERE itemId = ?").get(readyQueueItem.id).count);
     db.close();
     if (created?.playerName !== "E2E Create Player" || created?.year !== "2016-17" || created?.grade !== "Auto Auth" || created?.totalCost !== 120 || created?.isSerialNumbered !== 1) {
       throw new Error("Card create did not persist the expected fields.");
     }
-    if (!createdImage || !fs.existsSync(path.join(dataDir, "uploads", path.basename(createdImage.path)))) {
-      throw new Error("Card create did not persist the uploaded image.");
+    if (
+      createdImages.length !== 3 ||
+      createdImages.some((image) => !fs.existsSync(path.join(dataDir, "uploads", path.basename(image.path))))
+    ) {
+      throw new Error("Card create did not atomically adopt queue images and persist the appended upload.");
     }
     if (
       createdTransaction?.kind !== "purchase" || createdTransaction?.amountMinor !== 10000 ||
@@ -217,6 +370,56 @@ async function main() {
       createdTransaction?.provenance !== "initial_card_entry"
     ) {
       throw new Error("Card create did not persist the expected initial financial history.");
+    }
+    if (completedDraftCount !== 0) {
+      throw new Error("Card create did not atomically remove the completed entry draft.");
+    }
+    if (completedQueueCount !== 0) {
+      throw new Error("Card create did not atomically consume the completed queue item.");
+    }
+    if (completedRecognitionCount !== 0) {
+      throw new Error("Card create did not remove the consumed AI recognition candidate.");
+    }
+
+    const duplicateResponse = await fetch(`${baseUrl}/api/card-entry/duplicates`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        values: {
+          playerName: "E2E Create Player",
+          year: "2016-17",
+          brand: "Test Brand",
+          productLine: "Test Product",
+          cardNumber: "42",
+          parallel: "Gold"
+        }
+      })
+    });
+    const duplicatePayload = await duplicateResponse.json();
+    if (
+      !duplicateResponse.ok ||
+      duplicatePayload.candidates?.[0]?.id !== cardId ||
+      duplicatePayload.candidates[0].level !== "high"
+    ) {
+      throw new Error(`Duplicate candidate mismatch: ${JSON.stringify(duplicatePayload)}`);
+    }
+    const templateDeleteResponse = await fetch(
+      `${baseUrl}/api/card-entry/templates/${templatePayload.template.id}`,
+      { method: "DELETE" }
+    );
+    if (!templateDeleteResponse.ok) {
+      throw new Error(`Entry template deletion failed: ${(await templateDeleteResponse.text()).slice(0, 300)}`);
+    }
+
+    const deleteFailedQueueResponse = await fetch(`${baseUrl}/api/card-entry/queue/${failedQueueItem.id}`, { method: "DELETE" });
+    if (!deleteFailedQueueResponse.ok) {
+      throw new Error(`Failed queue item could not be removed: ${(await deleteFailedQueueResponse.text()).slice(0, 300)}`);
+    }
+    db = new DatabaseSync(dbPath, { readOnly: true });
+    const completedBatchCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardEntryBatch WHERE id = ?").get(batchPayload.batchId).count);
+    db.close();
+    if (completedBatchCount !== 0) {
+      throw new Error("Empty queue batch was not cleaned up after its final item was removed.");
     }
 
     const editPage = await fetchPage(baseUrl, `/cards/${cardId}/edit`);
@@ -242,7 +445,7 @@ async function main() {
     if (updated?.playerName !== "E2E Updated Player" || updated?.grade !== "Authentic" || updated?.publicDescription !== "编辑流程回归测试。") {
       throw new Error("Card edit did not persist the expected fields.");
     }
-    if (imageCount !== 1) {
+    if (imageCount !== 3) {
       throw new Error("Card edit unexpectedly changed the existing image count.");
     }
     if (historyCount !== 3) {
@@ -265,6 +468,14 @@ async function main() {
     }
     if (!detailPage.includes("<summary>编辑</summary>") || detailPage.includes("纠错与删除") || detailPage.includes("保存纠错")) {
       throw new Error("Financial history does not use the expected edit wording.");
+    }
+    const entryReturnTo = "/cards/new?draft=e2e-return-draft&queue=e2e-return-queue";
+    const duplicateDetailPage = await fetchPage(
+      baseUrl,
+      `/cards/${cardId}?returnTo=${encodeURIComponent(entryReturnTo)}`
+    );
+    if (!duplicateDetailPage.includes('href="/cards/new?draft=e2e-return-draft&amp;queue=e2e-return-queue"')) {
+      throw new Error("Duplicate-card detail does not return to the active entry workbench context.");
     }
     for (const financialStatus of ["旧数据迁移", "已纠错", "手动录入", "初始录入", "旧币种待纠正"]) {
       if (detailPage.includes(financialStatus)) {
@@ -428,17 +639,10 @@ async function main() {
     ) {
       throw new Error(`Portfolio analysis did not build a trusted server-side snapshot before AI configuration validation.\n${JSON.stringify(analysisPayload).slice(0, 500)}`);
     }
-    console.log("Card flow HTTP E2E passed: create, upload, edit, and detail routes.");
+    console.log("Card flow HTTP E2E passed: drafts, templates, image queue, AI candidates, duplicates, create, edit, and detail routes.");
   } finally {
     stopServer(serverProcess);
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      try {
-        fs.rmSync(tempRoot, { recursive: true, force: true });
-        break;
-      } catch {
-        await new Promise((resolve) => setTimeout(resolve, 200));
-      }
-    }
+    await removeTempRoot(tempRoot);
   }
 }
 

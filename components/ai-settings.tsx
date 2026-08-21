@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DisclosureIcon } from "@/components/disclosure-icon";
 import { errorMessage } from "@/lib/feedback-messages";
 import type { AiProvider, PublicAiSettings, PublicCustomProviderSettings } from "@/lib/ai-settings";
 
@@ -26,16 +27,6 @@ function providerName(provider: AiProvider): string {
 
 function activeCustom(settings: PublicSettings): PublicCustomProviderSettings | undefined {
   return settings.customProviders.find((item) => item.id === settings.activeCustomId) ?? settings.customProviders[0];
-}
-
-function isConfigured(settings: PublicSettings): boolean {
-  if (settings.provider === "custom") {
-    const custom = activeCustom(settings);
-    return Boolean(custom?.name && custom.endpoint && custom.model);
-  }
-  return settings.provider === "minimax"
-    ? Boolean(settings.minimax.endpoint && settings.minimax.model && settings.minimax.hasApiKey)
-    : Boolean(settings.azure.endpoint && settings.azure.deployment && settings.azure.hasApiKey);
 }
 
 function canTest(settings: PublicSettings, azureApiKey: string, minimaxApiKey: string): boolean {
@@ -299,14 +290,12 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
     setSettings((current) => ({ ...current, azure: { ...current.azure, deployment: value } }));
   }
 
-  const configured = isConfigured(settings);
   const testable = canTest(settings, azureApiKey, minimaxApiKey);
   const modelsReadable = settings.provider === "custom"
     ? Boolean(currentCustom?.endpoint)
     : settings.provider === "minimax"
       ? Boolean(settings.minimax.endpoint && (settings.minimax.hasApiKey || minimaxApiKey.trim()))
       : Boolean(settings.azure.endpoint && (settings.azure.hasApiKey || azureApiKey.trim()));
-  const configuredProviderName = settings.provider === "custom" ? currentCustom?.name || "未命名配置" : providerName(settings.provider);
   const selectedProviderValue = settings.provider === "custom" ? `custom:${currentCustom?.id || ""}` : settings.provider;
   const selectedModel = settings.provider === "custom"
     ? currentCustom?.model || ""
@@ -316,12 +305,17 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
 
   return (
     <section className="panel settings-section ai-settings-panel">
-      <button type="button" className="ai-settings-toggle" onClick={() => setIsOpen((value) => !value)}>
+      <button
+        type="button"
+        className="ai-settings-toggle"
+        onClick={() => setIsOpen((value) => !value)}
+        aria-expanded={isOpen}
+        aria-label={isOpen ? "收起 AI 设置" : "展开 AI 设置"}
+      >
         <span>
           <strong>AI 设置</strong>
-          <span className="muted">{configured ? "已配置 " + configuredProviderName : "未配置"}</span>
         </span>
-        <span>{isOpen ? "收起" : "展开"}</span>
+        <DisclosureIcon expanded={isOpen} />
       </button>
 
       {isOpen ? (

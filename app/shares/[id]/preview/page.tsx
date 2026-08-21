@@ -6,6 +6,7 @@ import { toPublicExportCard } from "@/lib/share-export-data";
 import { renderPreviewDocument } from "@/lib/share-export-render";
 import type { ExportData } from "@/lib/share-export-types";
 import { parseSharePresentation } from "@/lib/share-presentation";
+import { sharePreviewSandboxPolicy } from "@/lib/share-preview-policy";
 import { normalizeShareSectionLayout } from "@/lib/share-sections";
 import { normalizeShareTheme, shareThemeBackgroundPath } from "@/lib/share-themes";
 
@@ -86,7 +87,7 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
         </div>
       </div>
       <div className="share-preview-frame-shell">
-        <iframe title={`${share.title} 展馆预览`} srcDoc={renderPreviewDocument(data)} sandbox="allow-scripts" />
+        <iframe title={`${share.title} 展馆预览`} srcDoc={renderPreviewDocument(data)} sandbox={sharePreviewSandboxPolicy} />
       </div>
     </div>
   );

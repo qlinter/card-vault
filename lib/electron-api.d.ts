@@ -8,7 +8,7 @@ type DesktopDataHealth = {
   dataPath: string;
   databasePath: string;
   integrity: string;
-  counts: { cards: number; images: number; shares: number; shareCovers: number; shareBackgrounds: number };
+  counts: { cards: number; images: number; queueItems: number; shares: number; shareCovers: number; shareBackgrounds: number };
   missingFiles: DesktopMediaFile[];
   orphanFiles: DesktopMediaFile[];
   issues: string[];

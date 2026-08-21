@@ -3,110 +3,22 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { errorMessage } from "@/lib/feedback-messages";
-
-type SuggestionValue = string | boolean;
-type Suggestion = Record<string, SuggestionValue>;
+import type { CardEntryRecognitionSummary } from "@/lib/card-entry-queue-domain";
+import {
+  cardRecognitionFieldLabel,
+  cardRecognitionFields,
+  lowConfidenceCardRecognitionFields,
+  type CardRecognitionConfidence,
+  type CardRecognitionSuggestion
+} from "@/lib/card-recognition-domain";
+import { setCardFormCheckbox, setCardFormText } from "@/lib/card-form-controls";
 
 type AiRecognitionPanelProps = {
   mode?: "create" | "edit";
   defaultImageUrls?: string[];
+  queueItemId?: string;
+  persistedRecognition?: CardEntryRecognitionSummary;
 };
-
-const fillableTextFields = [
-  "playerName",
-  "cardTitle",
-  "sport",
-  "team",
-  "year",
-  "brand",
-  "productLine",
-  "subsetName",
-  "parallel",
-  "cardNumber",
-  "serialNumber",
-  "serialRange",
-  "gradingCompany",
-  "grade",
-  "certNumber",
-  "publicDescription",
-  "autoType",
-  "patchType"
-];
-
-const clearableTextFields = [...fillableTextFields, "notes"];
-const booleanFields = ["isRookie", "isAutograph", "isPatch"];
-
-function fieldLabel(field: string): string {
-  const labels: Record<string, string> = {
-    playerName: "球员姓名",
-    cardTitle: "卡片名称",
-    sport: "运动类型",
-  team: "Team",
-    year: "年份",
-    brand: "品牌",
-    productLine: "产品线",
-    subsetName: "子系列",
-    parallel: "平行版本",
-    cardNumber: "卡号",
-    serialNumber: "编号",
-    serialRange: "编号范围",
-    gradingCompany: "评级机构",
-    grade: "评级",
-    certNumber: "证书号",
-    publicDescription: "展示描述",
-    autoType: "签字类型",
-    patchType: "Patch 类型",
-    isRookie: "Rookie",
-    isAutograph: "签名卡",
-    isPatch: "Patch/Jersey"
-  };
-
-  return labels[field] ?? field;
-}
-
-function updateTextField(form: HTMLFormElement, field: string, value: string, overwrite: boolean): boolean {
-  const element = form.elements.namedItem(field);
-  if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement)) {
-    return false;
-  }
-
-  if (!overwrite && element.value.trim()) {
-    return false;
-  }
-
-  element.value = value;
-  element.dispatchEvent(new Event("input", { bubbles: true }));
-  element.dispatchEvent(new Event("change", { bubbles: true }));
-  return true;
-}
-
-function updateBooleanField(form: HTMLFormElement, field: string, value: boolean, overwrite: boolean): boolean {
-  const element = form.elements.namedItem(field);
-  if (!(element instanceof HTMLInputElement) || element.type !== "checkbox") {
-    return false;
-  }
-
-  if (!overwrite && !value) {
-    return false;
-  }
-
-  if (!overwrite && element.checked) {
-    return false;
-  }
-
-  element.checked = value;
-  element.dispatchEvent(new Event("change", { bubbles: true }));
-  return true;
-}
-
-function clearField(form: HTMLFormElement, field: string): void {
-  const element = form.elements.namedItem(field);
-  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) {
-    element.value = "";
-    element.dispatchEvent(new Event("input", { bubbles: true }));
-    element.dispatchEvent(new Event("change", { bubbles: true }));
-  }
-}
 
 function clearRecognizedFields(input: HTMLInputElement): void {
   const form = input.closest("form");
@@ -114,39 +26,36 @@ function clearRecognizedFields(input: HTMLInputElement): void {
     return;
   }
 
-  for (const field of clearableTextFields) {
-    clearField(form, field);
-  }
-
-  for (const field of booleanFields) {
-    const element = form.elements.namedItem(field);
-    if (element instanceof HTMLInputElement && element.type === "checkbox") {
-      element.checked = false;
-      element.dispatchEvent(new Event("change", { bubbles: true }));
+  setCardFormText(form, "notes", "");
+  for (const field of cardRecognitionFields) {
+    if (field === "isRookie" || field === "isAutograph" || field === "isPatch") {
+      setCardFormCheckbox(form, field, false);
+    } else {
+      setCardFormText(form, field, "");
     }
   }
 }
 
-function applySuggestion(button: HTMLButtonElement, suggestion: Suggestion, overwrite: boolean): string[] {
+function applySuggestion(
+  button: HTMLButtonElement,
+  suggestion: CardRecognitionSuggestion,
+  overwrite: boolean
+): string[] {
   const form = button.closest("form");
   if (!form) {
     return [];
   }
 
-  clearField(form, "notes");
+  setCardFormText(form, "notes", "");
   const applied: string[] = [];
 
-  for (const field of fillableTextFields) {
+  for (const field of cardRecognitionFields) {
     const value = suggestion[field];
-    if (typeof value === "string" && value.trim() && updateTextField(form, field, value, overwrite)) {
-      applied.push(fieldLabel(field));
-    }
-  }
-
-  for (const field of booleanFields) {
-    const value = suggestion[field];
-    if (typeof value === "boolean" && updateBooleanField(form, field, value, overwrite)) {
-      applied.push(fieldLabel(field));
+    const changed = typeof value === "string"
+      ? Boolean(value.trim()) && setCardFormText(form, field, value, overwrite)
+      : typeof value === "boolean" && setCardFormCheckbox(form, field, value, overwrite);
+    if (changed) {
+      applied.push(cardRecognitionFieldLabel(field));
     }
   }
 
@@ -169,13 +78,23 @@ async function appendUrlImages(formData: FormData, urls: string[]): Promise<numb
   return count;
 }
 
-export function AiRecognitionPanel({ mode = "create", defaultImageUrls = [] }: AiRecognitionPanelProps) {
+export function AiRecognitionPanel({
+  mode = "create",
+  defaultImageUrls = [],
+  queueItemId,
+  persistedRecognition
+}: AiRecognitionPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const actionButtonRef = useRef<HTMLButtonElement>(null);
   const [overwrite, setOverwrite] = useState(false);
-  const [useExistingImages, setUseExistingImages] = useState(mode === "edit" && defaultImageUrls.length > 0);
+  const [useExistingImages, setUseExistingImages] = useState(defaultImageUrls.length > 0);
   const [isPending, setIsPending] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(() => {
+    if (persistedRecognition?.status !== "review") return null;
+    return persistedRecognition.lowConfidenceFields.length > 0
+      ? `已载入 AI 候选；低置信字段：${persistedRecognition.lowConfidenceFields.join("、")}。请重点核对。`
+      : "已载入 AI 识别候选，请核对后保存。";
+  });
 
   function handleImageSelectionChange(event: React.ChangeEvent<HTMLInputElement>) {
     clearRecognizedFields(event.currentTarget);
@@ -196,32 +115,65 @@ export function AiRecognitionPanel({ mode = "create", defaultImageUrls = [] }: A
     setMessage(null);
 
     try {
-      const formData = new FormData();
-
-      if (useExistingImages) {
-        const count = await appendUrlImages(formData, defaultImageUrls);
-        if (count < 1) {
-          throw new Error("当前卡片没有可用于识别的已有图片。");
+      let suggestion: CardRecognitionSuggestion | undefined;
+      let confidence: CardRecognitionConfidence | undefined;
+      if (queueItemId && useExistingImages) {
+        const response = await fetch(
+          `/api/card-entry/queue/${encodeURIComponent(queueItemId)}/recognize`,
+          { method: "POST" }
+        );
+        const data = await response.json() as {
+          recognition?: CardEntryRecognitionSummary;
+          error?: string;
+        };
+        if (!response.ok || !data.recognition?.suggestion) {
+          throw new Error(data.error || "AI 识别失败。");
         }
+        suggestion = data.recognition.suggestion;
+        confidence = data.recognition.confidence;
       } else {
-        for (const file of files) {
-          formData.append("images", file);
+        const formData = new FormData();
+        if (useExistingImages) {
+          const count = await appendUrlImages(formData, defaultImageUrls);
+          if (count < 1) {
+            throw new Error("当前卡片没有可用于识别的已有图片。");
+          }
+        } else {
+          for (const file of files) {
+            formData.append("images", file);
+          }
         }
-      }
-
-      const response = await fetch("/api/ai/recognize-card", {
-        method: "POST",
-        body: formData
-      });
-      const data = (await response.json()) as { suggestion?: Suggestion; error?: string };
-
-      if (!response.ok || !data.suggestion) {
-        throw new Error(data.error || "AI 识别失败。");
+        const response = await fetch("/api/ai/recognize-card", {
+          method: "POST",
+          body: formData
+        });
+        const data = (await response.json()) as {
+          suggestion?: CardRecognitionSuggestion;
+          confidence?: CardRecognitionConfidence;
+          error?: string;
+        };
+        if (!response.ok || !data.suggestion) {
+          throw new Error(data.error || "AI 识别失败。");
+        }
+        suggestion = data.suggestion;
+        confidence = data.confidence;
       }
 
       const button = actionButtonRef.current;
-      const applied = button ? applySuggestion(button, data.suggestion, overwrite) : [];
-      setMessage(applied.length > 0 ? `已填入 ${applied.join("、")}。备注已保持为空。` : "AI 返回了建议，但当前表单没有可填入的空字段；备注已保持为空。");
+      const applied = button && suggestion
+        ? applySuggestion(button, suggestion, overwrite)
+        : [];
+      const lowConfidence = confidence
+        ? lowConfidenceCardRecognitionFields(confidence).map(cardRecognitionFieldLabel)
+        : [];
+      const confidenceNote = lowConfidence.length > 0
+        ? ` 低置信字段：${lowConfidence.join("、")}，请重点核对。`
+        : "";
+      setMessage(
+        (applied.length > 0
+          ? `已填入 ${applied.join("、")}。`
+          : "AI 返回了建议，但当前表单没有可填入的空字段。") + confidenceNote
+      );
     } catch (error) {
       const detail = errorMessage(error, "请稍后重试。");
       setMessage(detail);
@@ -238,7 +190,9 @@ export function AiRecognitionPanel({ mode = "create", defaultImageUrls = [] }: A
           <p className="muted" style={{ margin: "0.3rem 0 0" }}>
             {mode === "edit"
               ? "使用已有默认图片或重新选择图片，AI 会补充字段和中文展示描述，备注保持为空。"
-              : "选择 1-2 张正反面图片，AI 会生成字段建议；保存前仍可手动修改，备注保持为空。"}
+              : defaultImageUrls.length > 0
+                ? "可直接使用队列预处理图片识别，也可重新选择 1-2 张图片；保存前仍可手动修改。"
+                : "选择 1-2 张正反面图片，AI 会生成字段建议；保存前仍可手动修改，备注保持为空。"}
           </p>
         </div>
         <Link href="/settings" className="btn btn-secondary">
@@ -266,12 +220,12 @@ export function AiRecognitionPanel({ mode = "create", defaultImageUrls = [] }: A
         </label>
       </div>
 
-      {mode === "edit" && defaultImageUrls.length > 0 ? (
+      {defaultImageUrls.length > 0 ? (
         <label className="field ai-existing-image-option">
           <span>
-            <input type="checkbox" checked={useExistingImages} onChange={(event) => setUseExistingImages(event.target.checked)} /> 使用已有默认图片识别
+            <input type="checkbox" checked={useExistingImages} onChange={(event) => setUseExistingImages(event.target.checked)} /> 使用{mode === "edit" ? "已有默认" : "队列预处理"}图片识别
           </span>
-          <small className="muted">默认使用当前卡片的前 {Math.min(defaultImageUrls.length, 2)} 张图片。</small>
+          <small className="muted">默认使用当前项目的前 {Math.min(defaultImageUrls.length, 2)} 张图片。</small>
         </label>
       ) : null}
 

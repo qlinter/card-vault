@@ -1,6 +1,6 @@
 {
   "name": "card-vault",
-  "version": "1.0.19",
+  "version": "1.1.0",
   "private": true,
   "packageManager": "npm@11.9.0",
   "engines": {
@@ -21,7 +21,7 @@
     "test:share": "node scripts/test-share-flow.js",
     "test:security": "node scripts/test-local-session-flow.js",
     "check:release": "npm run prisma:generate && npm run check:encoding && npm run check:metadata && npm run lint && npm run typecheck && npm run test:coverage && next build --webpack && npm run test:security && npm run test:card && npm run test:share",
-    "audit:prod": "npm audit --omit=dev --audit-level=high",
+    "audit:prod": "npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org",
     "typecheck": "tsc --noEmit",
     "clean:cache": "node scripts/clean-cache.js",
     "prebuild": "npm run prisma:generate && npm run check:encoding && npm run lint && npm run typecheck",
@@ -29,7 +29,6 @@
     "postinstall": "prisma generate",
     "prepare:local": "node scripts/prepare-local.js",
     "make:icon": "node scripts/make-icon.js",
-    "preelectron": "npm run prisma:generate",
     "electron": "electron electron/main.js",
     "package:win": "npm run make:icon && electron-builder --config scripts/electron-builder.config.js --win nsis",
     "release:win": "node scripts/release-win.js",
@@ -42,7 +41,8 @@
     "@swc/helpers": "^0.5.15",
     "next": "^16.3.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

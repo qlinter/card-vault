@@ -7,9 +7,9 @@ type AboutSettingsProps = {
 };
 
 const releaseHighlights = [
-  "自动识别并回填限量编号状态，首页支持限量卡筛选及 CNY 成本/估值排序。",
-  "加固本地服务会话、Electron sandbox 与 IPC 来源校验。",
-  "新增领域校验、代码检查和自动化测试覆盖率门槛，并升级 React 安全修复版本。"
+  "新增录入工作台 2.0：SQLite 草稿、连续录入、公共字段模板和批量图片 WebP 队列。",
+  "新增疑似重复卡提示和需逐卡确认的 AI 候选，并保留详情往返时的草稿与队列上下文。",
+  "修复分享主题背景、轮播箭头居中和桌面启动重复生成 Prisma 客户端的问题。"
 ];
 
 export function AboutSettings({ defaultVersion }: AboutSettingsProps) {

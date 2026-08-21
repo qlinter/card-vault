@@ -2,7 +2,7 @@
 
 Last confirmed: 2026-08-21.
 
-This document records the product direction after v1.0.19. The roadmap may be adjusted in response to real usage, data-safety concerns, and platform availability, while preserving the agreed product principles and overall sequence.
+This document records the product direction after v1.1.0. The roadmap may be adjusted in response to real usage, data-safety concerns, and platform availability, while preserving the agreed product principles and overall sequence.
 
 ## Product Direction
 
@@ -24,7 +24,7 @@ Development follows four connected tracks:
 - CNY and USD remain separate unless the user supplies or confirms a dated exchange rate.
 - Do not combine a high-risk data migration with a major UI redesign in one release.
 - Keep Cloudflare Drop as a manual temporary publishing channel until permanent infrastructure exists.
-- Feature growth must preserve the backup, recovery, local-session security, test-coverage, and repeatable-release baseline maintained and hardened in v1.0.19.
+- Feature growth must preserve the established backup, recovery, local-session security, test-coverage, and repeatable-release baseline.
 
 ## Version Overview
 
@@ -41,6 +41,8 @@ Development follows four connected tracks:
 ## v1.1.0 — Card Entry Workbench 2.0
 
 Deliver continuous entry, batch-image queues, review-before-write AI recognition, reusable field templates, copy-as-new, draft recovery, duplicate candidates, image preparation, keyboard workflows, and field-level confidence. A single failed batch item must not discard other work, and AI must never write confirmed collection data without user review.
+
+Delivery status: completed on 2026-08-21. The shipped scope includes SQLite drafts and recovery, continuous entry, a batch WebP preparation queue, isolated retries, public-field templates, duplicate candidates, keyboard workflows, and persistent AI candidates that require per-card review. Copy-as-new and templates reuse only common fields; serial numbers, certificates, images, and financial facts are never copied implicitly.
 
 ## v1.2.0 — Positions and Returns
 

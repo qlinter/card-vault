@@ -154,9 +154,9 @@ function renderCarousel(data: ExportData, inlineDetails = false): string {
   }).join("");
   return `<section class="carousel" aria-label="卡片立体切换">
     <div class="carousel-toolbar">
-      <button type="button" data-carousel-prev aria-label="上一张">‹</button>
+      <button type="button" data-carousel-prev aria-label="上一张"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg></button>
       <span><strong data-carousel-current>1</strong> / ${data.cards.length}</span>
-      <button type="button" data-carousel-next aria-label="下一张">›</button>
+      <button type="button" data-carousel-next aria-label="下一张"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></button>
     </div>
     <div class="card-stage">${cardsHtml}</div>
   </section>`;
@@ -382,8 +382,18 @@ body.has-custom-bg .detail-copy p {
   border-radius: 50%;
   padding: 0;
   font: inherit;
-  font-size: 25px;
+  line-height: 1;
   cursor: pointer;
+}
+.carousel-toolbar button svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .card-stage {
   position: relative;

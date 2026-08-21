@@ -1,5 +1,7 @@
 # Cloudflare Drop 临时发布
 
+适用版本：`1.1.0`。
+
 Card Vault 的 Cloudflare Drop 发布包用于快速预览和短时分享。它不把 Drop 当作永久托管服务，也不保存发布 URL 或认领链接。
 
 ## 当前流程

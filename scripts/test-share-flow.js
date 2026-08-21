@@ -1,66 +1,23 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const net = require("node:net");
-const { execFileSync, spawn } = require("node:child_process");
 const { DatabaseSync } = require("node:sqlite");
-
-const rootDir = path.resolve(__dirname, "..");
-const initDbScriptPath = path.join(rootDir, "scripts", "init-db.js");
-const nextCliPath = path.join(rootDir, "node_modules", "next", "dist", "bin", "next");
+const {
+  decodeHtmlAttribute,
+  fetchPage,
+  fileDatabaseUrl,
+  findAvailablePort,
+  initializeTestDatabase,
+  removeTempRoot,
+  startTestServer,
+  stopServer,
+  waitForServer
+} = require("./test-http-flow-utils");
 
 function assertIncludes(html, expected, label) {
   if (!html.includes(expected)) {
     throw new Error(`${label} does not contain expected text: ${expected}`);
   }
-}
-
-function fileDatabaseUrl(filePath) {
-  return `file:${filePath.replace(/\\/g, "/")}`;
-}
-
-function findAvailablePort(startPort) {
-  return new Promise((resolve) => {
-    const server = net.createServer();
-    server.once("error", () => resolve(findAvailablePort(startPort + 1)));
-    server.listen({ host: "127.0.0.1", port: startPort }, () => {
-      server.close(() => resolve(startPort));
-    });
-  });
-}
-
-async function waitForServer(baseUrl, output, serverProcess) {
-  const deadline = Date.now() + 30000;
-  while (Date.now() < deadline) {
-    if (serverProcess.exitCode !== null) {
-      throw new Error(`Share flow server exited with code ${serverProcess.exitCode}.\n${output.join("")}`);
-    }
-
-    try {
-      const response = await fetch(`${baseUrl}/api/health`);
-      if (response.ok) {
-        return;
-      }
-    } catch {
-      // The server may still be starting.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-
-  throw new Error(`Timed out waiting for the share flow server.\n${output.join("")}`);
-}
-
-async function fetchPage(baseUrl, route) {
-  const response = await fetch(`${baseUrl}${route}`);
-  const html = await response.text();
-  if (!response.ok) {
-    throw new Error(`${route} returned HTTP ${response.status}.\n${html.slice(0, 500)}`);
-  }
-  return html;
-}
-
-function decodeHtmlAttribute(value = "") {
-  return value.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, "&");
 }
 
 function shareActionFields(html) {
@@ -219,45 +176,6 @@ function seedDatabase(dbPath, dataDir) {
   }
 }
 
-function stopServer(serverProcess) {
-  if (!serverProcess || serverProcess.killed) {
-    return;
-  }
-
-  try {
-    serverProcess.kill();
-  } catch {
-    // The server may have exited while the test was cleaning up.
-  }
-
-  try {
-    if (process.platform === "win32") {
-      execFileSync("taskkill.exe", ["/pid", String(serverProcess.pid), "/t", "/f"], {
-        stdio: "ignore",
-        timeout: 3000
-      });
-    }
-  } catch {
-    // The server may have exited while the test was cleaning up.
-  }
-}
-
-function removeTempRoot(tempRoot) {
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    try {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
-      return;
-    } catch {
-      const waitUntil = Date.now() + 200;
-      while (Date.now() < waitUntil) {
-        // Give Windows time to release SQLite and Next.js file handles.
-      }
-    }
-  }
-
-  console.warn(`Unable to remove temporary E2E directory: ${tempRoot}`);
-}
-
 async function main() {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "card-vault-share-e2e-"));
   const dataDir = path.join(tempRoot, "data");
@@ -275,26 +193,17 @@ async function main() {
       NODE_ENV: "production"
     };
 
-    execFileSync(process.execPath, [initDbScriptPath], {
-      cwd: rootDir,
-      env: testEnv,
-      stdio: "pipe"
-    });
+    initializeTestDatabase(testEnv);
     seedDatabase(dbPath, dataDir);
 
-    serverProcess = spawn(process.execPath, [nextCliPath, "start", "--hostname", "127.0.0.1", "--port", String(port)], {
-      cwd: rootDir,
-      env: testEnv,
-      windowsHide: true,
-      stdio: ["ignore", "pipe", "pipe"]
-    });
-    serverProcess.stdout.on("data", (chunk) => output.push(chunk.toString()));
-    serverProcess.stderr.on("data", (chunk) => output.push(chunk.toString()));
-
-    await waitForServer(baseUrl, output, serverProcess);
+    serverProcess = startTestServer(port, testEnv, output);
+    await waitForServer(baseUrl, output, serverProcess, "Share flow");
 
     const sharesPage = await fetchPage(baseUrl, "/shares");
     assertIncludes(sharesPage, "E2E 分享展馆", "分享列表页");
+    if (sharesPage.includes("创建球星卡精品展馆")) {
+      throw new Error("Share list still contains the removed helper copy.");
+    }
 
     const newSharePage = await fetchPage(baseUrl, "/shares/new");
     assertIncludes(newSharePage, "新建分享集", "新建分享集页面");
@@ -435,7 +344,7 @@ async function main() {
     console.log("Share flow HTTP E2E passed: list, new, edit save, preview, and validated Cloudflare Drop export.");
   } finally {
     stopServer(serverProcess);
-    removeTempRoot(tempRoot);
+    await removeTempRoot(tempRoot);
   }
 }
 

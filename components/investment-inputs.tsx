@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { HistoryCurrencySelect, ValuationSourceSelect } from "@/components/financial-history-selects";
 
 type InvestmentInputsProps = {
+  initialQuantity: string;
   purchasePrice: string;
   gradingFee: string;
   totalCost: string;
@@ -28,6 +29,7 @@ function formatMoneyInput(value: number): string {
 }
 
 export function InvestmentInputs({
+  initialQuantity,
   purchasePrice,
   gradingFee,
   totalCost,
@@ -49,6 +51,11 @@ export function InvestmentInputs({
       <label className="field">
         <span>币种</span>
         <HistoryCurrencySelect name="historyCurrency" defaultValue={currency || "CNY"} />
+      </label>
+
+      <label className="field">
+        <span>初始数量</span>
+        <input name="initialQuantity" type="number" min="0" step="1" defaultValue={initialQuantity || "1"} required />
       </label>
 
       <label className="field">

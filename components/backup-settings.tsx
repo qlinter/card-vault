@@ -9,6 +9,8 @@ function desktopApi() {
   return window.cardVaultDesktop;
 }
 
+const restoreMessageKey = "card-vault:restore-completed";
+
 export function BackupSettings() {
   const [backupPath, setBackupPath] = useState("正在读取...");
   const [busyAction, setBusyAction] = useState<"choose" | "backup" | "restore" | null>(null);
@@ -17,6 +19,11 @@ export function BackupSettings() {
 
   useEffect(() => {
     let mounted = true;
+    const restoredMessage = window.sessionStorage.getItem(restoreMessageKey);
+    if (restoredMessage) {
+      window.sessionStorage.removeItem(restoreMessageKey);
+      setMessage(restoredMessage);
+    }
     async function loadSettings() {
       const api = desktopApi();
       if (!api) {
@@ -96,10 +103,9 @@ export function BackupSettings() {
         setBusyAction(null);
         setProgress(null);
       } else {
-        const migrationText = result.appliedMigrations?.length
-          ? `，并已自动完成 ${result.appliedMigrations.length} 项数据库迁移`
-          : "，数据库结构已确认是最新版本";
-        setMessage(`恢复完成${migrationText}。Card Vault 正在重新启动。`);
+        window.sessionStorage.setItem(restoreMessageKey, "恢复完成，当前页面已加载备份中的数据。");
+        setMessage("恢复完成，正在刷新当前页面...");
+        window.location.reload();
       }
     } catch (error) {
       setMessage(`恢复失败：${errorMessage(error, "请稍后重试。")}`);

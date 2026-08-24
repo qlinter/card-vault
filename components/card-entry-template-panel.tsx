@@ -7,6 +7,7 @@ import {
 } from "@/lib/card-entry-template-domain";
 import { readCardFormValues } from "@/lib/card-entry-domain";
 import { closestCardForm, setCardFormText } from "@/lib/card-form-controls";
+import { DisclosureIcon } from "@/components/disclosure-icon";
 
 type TemplateResponse = {
   template?: CardEntryTemplateSummary;
@@ -30,6 +31,7 @@ export function CardEntryTemplatePanel() {
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -142,8 +144,18 @@ export function CardEntryTemplatePanel() {
   }
 
   return (
-    <details ref={panelRef} className="entry-template-panel">
-      <summary>模板 <span>{templates.length}</span></summary>
+    <details
+      ref={panelRef}
+      className="entry-template-panel"
+      onToggle={(event) => setExpanded(event.currentTarget.open)}
+    >
+      <summary title={expanded ? "收起模板" : "展开模板"}>
+        <span className="entry-template-title">模板</span>
+        <span className="entry-template-summary-meta">
+          <span className="entry-template-count">{templates.length}</span>
+          <DisclosureIcon expanded={expanded} />
+        </span>
+      </summary>
       <div className="entry-template-controls">
         <label className="field">
           <span>已有模板</span>

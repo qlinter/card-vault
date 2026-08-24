@@ -1,10 +1,11 @@
 import { FilterBar } from "@/components/filter-bar";
+import { HomeCardGrid, type HomeCardGridItem } from "@/components/home-card-grid";
 import { PortfolioAnalysisButton } from "@/components/portfolio-analysis";
 import { splitTagString, buildCardFilters, buildCardSorting } from "@/lib/card-helpers";
 import { homeCardInclude } from "@/lib/card-query-shapes";
 import { calculateLatestValuationTotals } from "@/lib/card-stats";
+import { homeThumbnailPublicPath } from "@/lib/card-thumbnail-core.js";
 import { formatMinorMoneyGrouped } from "@/lib/financial-history";
-import { normalizeImagePath } from "@/lib/image-path";
 import { buildPortfolioScope } from "@/lib/portfolio-analysis";
 import { prisma } from "@/lib/prisma";
 import { toScalar } from "@/lib/query-params";
@@ -33,6 +34,7 @@ export default async function Home({ searchParams }: HomeProps) {
     parallel: toScalar(params.parallel),
     cardNumber: toScalar(params.cardNumber),
     isSerialNumbered: toScalar(params.isSerialNumbered),
+    isOneOfOne: toScalar(params.isOneOfOne),
     isRookie: toScalar(params.isRookie),
     isAutograph: toScalar(params.isAutograph),
     autoType: toScalar(params.autoType),
@@ -97,15 +99,21 @@ export default async function Home({ searchParams }: HomeProps) {
   }
   const returnSuffix = returnParams.toString();
   const cardListReturnHref = returnSuffix ? `/?${returnSuffix}` : "/";
+  const homeCards: HomeCardGridItem[] = cards.map((card) => ({
+    id: card.id,
+    playerName: card.playerName,
+    cardTitle: card.cardTitle,
+    details: [card.year, card.team, card.productLine].filter(Boolean).join(" / ") || "未补充更多信息",
+    tags: splitTagString(card.tags).slice(0, 4),
+    imagePath: card.images[0] ? homeThumbnailPublicPath(card.images[0].path) : null,
+    href: `/cards/${card.id}?returnTo=${encodeURIComponent(cardListReturnHref)}`
+  }));
 
   return (
     <div className="page home-page">
       <div className="title-row">
         <div>
-          <h1 className="h1">{"我的球星卡收藏"}</h1>
-          <p className="muted">
-            {"当前显示 "}{cards.length}{" 张卡片，支持离线录入、管理、筛选与展示"}
-          </p>
+          <h1 className="h1">球星卡收藏</h1>
         </div>
         <a href="/cards/new" className="btn btn-primary">
           {"新增卡片"}
@@ -155,44 +163,7 @@ export default async function Home({ searchParams }: HomeProps) {
         patchTypes={patchTypes}
       />
 
-      <section className="cards-grid">
-        {cards.map((card) => {
-          const tags = splitTagString(card.tags);
-          return (
-            <article key={card.id} className="card-item">
-              <a href={`/cards/${card.id}?returnTo=${encodeURIComponent(cardListReturnHref)}`}>
-                {card.images[0] ? (
-                  <img
-                    className="card-thumb"
-                    src={normalizeImagePath(card.images[0].path)}
-                    alt={card.cardTitle}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                ) : (
-                  <div className="card-thumb" />
-                )}
-              </a>
-              <div className="card-body">
-                <h2 className="card-title">{card.playerName}</h2>
-                <p className="card-sub">{card.cardTitle}</p>
-                <p className="card-sub">
-                  {[card.year, card.team, card.productLine].filter(Boolean).join(" / ") || "未补充更多信息"}
-                </p>
-                {tags.length > 0 ? (
-                  <div className="tags">
-                    {tags.slice(0, 4).map((tag) => (
-                      <span className="tag" key={tag}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            </article>
-          );
-        })}
-      </section>
+      <HomeCardGrid key={cardListReturnHref} cards={homeCards} />
 
       {cards.length === 0 ? (
         <div className="panel" style={{ marginTop: "1rem" }}>

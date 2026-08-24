@@ -205,6 +205,7 @@ export function CardForm({
             </label>
 
             <InvestmentInputs
+              initialQuantity={values?.initialQuantity ?? "1"}
               purchasePrice={values?.purchasePrice ?? ""}
               gradingFee={values?.gradingFee ?? ""}
               totalCost={values?.totalCost ?? ""}

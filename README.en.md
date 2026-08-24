@@ -6,7 +6,19 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 
 ## Current Version
 
-`1.1.0`
+`1.1.1`
+
+### 1.1.1 Highlights
+
+- Financial history now supports multiple purchases, partial sales, and currency-isolated moving-average cost accounting.
+- Expense destinations are stated as “add to purchase cost”, “add to grading cost”, or “deduct from sale proceeds”. During the v1.1.0 upgrade, shipping on the purchase date is linked to purchase and all other shipping is linked to grading.
+- Card details present core metrics, cost/value snapshots, cumulative cost composition, and profit composition; overselling is rejected transactionally.
+- The workbench accepts an initial quantity, timelines show transaction quantities, and sale expenses can link to a concrete sale.
+- Fully sold positions switch to Sold automatically and return to Holding after a new purchase.
+- Refund, return, cancellation, and reversal workflows are intentionally excluded. A standalone database snapshot is created before the v1.1.0 upgrade.
+- Backup restore now pauses and reconnects the local service in-app without an exit or restart; legacy migration code is reduced to a fresh v1.1.1 baseline plus the official v1.1.0-to-v1.1.1 upgrade.
+- Home uses derived 640px WebP thumbnails, 24-card incremental rendering, prioritized first-screen images, and a 1/1 filter while leaving collection originals unchanged.
+- Home, Entry Workbench, Financial History, and AI Settings remove redundant helper copy and clarify the template disclosure and “+ Add record” actions.
 
 ### 1.1.0 Highlights
 
@@ -23,9 +35,10 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 ## Core Features
 
 - Create, edit, delete, and inspect cards with up to five images per card.
+- Browse the home collection through rebuildable 640px WebP thumbnails and incremental card batches while preserving every original image format and quality.
 - Use SQLite drafts, continuous entry, public-field templates, duplicate review, and batch entry with WebP preparation, retry, AI candidate review, and front/back swapping.
 - Search, filter, and sort by player, sport, team, year, product line, grade, autograph, patch, and collection status.
-- Track purchases, sales, refunds, grading, other costs, and latest values through transaction, expense, and valuation history.
+- Track purchases, sales, grading, other costs, holding quantity, and latest values through transaction, expense, and valuation history.
 - Browse the Showcase by player or group, with collapsible navigation and multi-image card views.
 - Use Azure OpenAI, MiniMax, or multiple named OpenAI Chat Completions-compatible custom providers for AI card recognition, gallery copy, and portfolio analysis.
 - Build editable share galleries with themes, layouts, sections, covers, backgrounds, and per-card presentation overrides.
@@ -58,12 +71,13 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 | `1.0.18` | Improved home and portfolio-analysis rendering, hardened cross-computer dependency recovery, restored default GPU acceleration, and added a compact application-version entry. |
 | `1.0.19` | Corrected serial-numbered data, added serial-numbered filtering and CNY cost/valuation sorting, and hardened the local service, Electron sandbox, IPC, and quality gates. |
 | `1.1.0` | Delivered Card Entry Workbench 2.0 with draft recovery, continuous entry, batch-image preparation, templates, duplicate review, and confirmation-gated AI candidates. |
+| `1.1.1` | Added position accounting, in-app restore, home thumbnails and incremental rendering, a 1/1 filter, and database/UI consolidation. |
 
 ## Install and Run
 
 ### Installer
 
-Release file: `dist/card-vault-1.1.0-setup.exe`
+Release file: `dist/card-vault-1.1.1-setup.exe`
 
 - Uses an installation wizard and supports a user-selected installation directory.
 - Installing a newer build of the same application normally replaces program files without deleting collection data.
@@ -72,7 +86,7 @@ Release file: `dist/card-vault-1.1.0-setup.exe`
 
 ### Portable Build
 
-Release file: `dist/card-vault-1.1.0-portable.zip`
+Release file: `dist/card-vault-1.1.1-portable.zip`
 
 1. Extract the complete ZIP.
 2. Run `Card Vault.exe` from the extracted directory.
@@ -111,10 +125,10 @@ Card Vault data consists of the SQLite database and managed media directories:
 
 - `dev.db`: cards, share collections, and related records.
 - `uploads`: card images.
+- `thumbnails`: rebuildable WebP cache for the home page; excluded from one-click backups and regenerated from originals after restore or when missing.
 - `entry-queue`: source images for unfinished batch-entry items; successful preprocessing removes the corresponding source files.
 - `share-covers`: custom share covers.
 - `share-backgrounds`: custom share backgrounds.
-- `schema-backups`: pre-migration database snapshots.
 
 Settings supports:
 
@@ -122,7 +136,7 @@ Settings supports:
 - Checking SQLite integrity, missing files, and unreferenced files under Data Storage.
 - Reviewing unreferenced files, locating them in Explorer, and cleaning them after confirmation.
 - Selecting a separate backup destination and creating a complete backup.
-- Restoring from a dated backup folder or a specific data folder after automatically creating a safety copy of current data.
+- Restoring from a dated backup folder or a specific data folder after automatically creating a safety copy; the local service reconnects and refreshes the page without restarting Electron.
 - Backup, restore, health checks, and cleanup run in a separate storage process; Settings reports the current stage and progress while the desktop shell remains responsive.
 
 Use the in-app backup workflow when moving to another computer. Copying only the database or only the images produces an incomplete collection. See the [Chinese Data Backup Guide](./docs/data-backup-guide.md) for the detailed workflow.
@@ -153,17 +167,17 @@ Use the in-app backup workflow when moving to another computer. Copying only the
 
 See [Share Gallery Editor 2.0](./docs/share-editor-2.0.md) for its boundaries, delivered phase, and planned iterations.
 See [Cloudflare Drop temporary publishing](./docs/cloudflare-drop-publishing.md) for the package checks and privacy boundaries.
-See [Financial history model](./docs/financial-history-model.md) for storage rules, constraints, and legacy migration behavior.
+See [Financial history model](./docs/financial-history-model.md) for storage rules, constraints, and current summary behavior.
 
 ## Financial History
 
 - Initial card entry creates separate purchase, grading-expense, and valuation records.
 - Editing card metadata never overwrites financial history; transactions, expenses, and valuations are maintained on the card detail page.
 - The detail page provides separate CNY/USD summaries, a unified timeline, record correction, and deletion. Valuation sources are limited to Personal estimate, Recent sale, or Platform quote.
-- Legacy financial fields remain CNY-only compatibility snapshots for flows not yet migrated; home valuation and portfolio analysis both read financial history directly.
+- CNY summary fields on each card are recalculated from financial history and support Home sorting; valuation totals and portfolio analysis read financial history directly.
 - Home-page total valuation uses exactly the latest dated valuation for every card in the current filtered result. CNY and USD use matching ISO-code typography, regardless of collection status, without summing older valuation history.
 - Home portfolio analysis summarizes actual transactions, expenses, and latest valuations separately for CNY and USD, including active cost basis, net cash invested, comparable unrealized return, valuation age, and sources without implicit FX conversion or fabricated realized returns.
-- Restoring an older backup runs all pending migrations and integrity checks in staging before replacing current data, including normalization of restored valuation sources to Personal estimate.
+- Restore validates SQLite integrity and the current database baseline in staging before replacing current data; older database schemas are no longer upgraded automatically.
 
 ## Common Commands
 
@@ -206,19 +220,18 @@ Windows code signing is an optional enhancement and no longer blocks routine pac
 - `lib/`: database, AI, image, statistics, and export logic.
 - `electron/`: desktop main process, preload bridge, storage, and AI configuration.
 - `prisma/`: database schema.
-- `scripts/`: migration, checking, E2E, and release scripts.
+- `scripts/`: database baseline, checking, E2E, and release scripts.
 - `tests/`: business-rule, data-safety, and export regression tests.
 
 ## Roadmap
 
 The next confirmed versions are:
 
-1. `v1.2.0`: Position quantity, partial sales, and return accounting.
-2. `v1.3.0`: Collection Portfolio Center and trend analytics.
-3. `v1.4.0`: Share Gallery 3.0.
-4. `v1.5.0`: Batch Data and Migration Center.
-5. `v1.6.0`: Reminders and Collection Planning.
-6. `v2.0.0`: Optional managed publishing and multi-device sync after permanent infrastructure is available.
+1. `v1.3.0`: Collection Portfolio Center and trend analytics.
+2. `v1.4.0`: Share Gallery 3.0.
+3. `v1.5.0`: Batch Data and Migration Center.
+4. `v1.6.0`: Reminders and Collection Planning.
+5. `v2.0.0`: Optional managed publishing and multi-device sync after permanent infrastructure is available.
 
 See the [Card Vault Product Roadmap](./docs/product-roadmap.en.md) for version scope, exclusions, risk controls, and shared release standards.
 

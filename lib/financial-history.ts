@@ -1,7 +1,7 @@
 export const defaultHistoryCurrency = "CNY";
 export const supportedHistoryCurrencies = ["CNY", "USD"] as const;
 
-export const transactionKinds = ["purchase", "sale", "refund"] as const;
+export const transactionKinds = ["purchase", "sale"] as const;
 export const expenseKinds = [
   "grading",
   "shipping",
@@ -12,9 +12,11 @@ export const expenseKinds = [
   "other"
 ] as const;
 export const valuationSources = ["个人估计", "近期成交", "平台报价"] as const;
+export const expenseContexts = ["purchase", "grading", "sale"] as const;
 
 export type TransactionKind = (typeof transactionKinds)[number];
 export type ExpenseKind = (typeof expenseKinds)[number];
+export type ExpenseContext = (typeof expenseContexts)[number];
 export type ValuationSource = (typeof valuationSources)[number];
 
 export type MoneyInput = {
@@ -89,6 +91,13 @@ export function assertExpenseKind(value: string): ExpenseKind {
     throw new Error("不支持的费用类型。");
   }
   return value as ExpenseKind;
+}
+
+export function assertExpenseContext(value: string): ExpenseContext {
+  if (!expenseContexts.includes(value as ExpenseContext)) {
+    throw new Error("费用归属必须选择计入买入成本、计入评级成本或从出售收入扣除。");
+  }
+  return value as ExpenseContext;
 }
 
 export function assertValuationSource(value: string): ValuationSource {

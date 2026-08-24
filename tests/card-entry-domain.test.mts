@@ -68,6 +68,7 @@ test("copy mode carries common set fields but resets unique and financial fields
   assert.equal(values.serialNumber, "");
   assert.equal(values.certNumber, "");
   assert.equal(values.purchasePrice, "");
+  assert.equal(values.initialQuantity, "1");
   assert.equal(values.currentValue, "");
 });
 

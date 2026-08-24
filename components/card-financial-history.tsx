@@ -1,4 +1,7 @@
+"use client";
+
 import type { CardExpense, CardTransaction, CardValuation } from "@prisma/client";
+import { useState } from "react";
 import {
   addExpenseAction,
   addTransactionAction,
@@ -8,8 +11,16 @@ import {
   updateTransactionAction,
   updateValuationAction
 } from "@/app/actions/financial-history";
-import { HistoryCurrencySelect, ValuationSourceSelect } from "@/components/financial-history-selects";
-import { formatMinorMoney, selectLatestValuation } from "@/lib/financial-history";
+import { ExpenseForm, TransactionForm, ValuationForm } from "@/components/financial-history-forms";
+import { FinancialPositionOverview } from "@/components/financial-position-overview";
+import { formatMinorMoney } from "@/lib/financial-history";
+import {
+  expenseContextLabels,
+  expenseKindLabels,
+  formatHistoryDateInput,
+  formatHistoryDateLabel,
+  transactionLabels
+} from "@/lib/financial-history-presentation";
 
 type FinancialHistoryProps = {
   cardId: string;
@@ -24,212 +35,163 @@ type TimelineItem =
   | { type: "expense"; date: Date; record: CardExpense }
   | { type: "valuation"; date: Date; record: CardValuation };
 
-const transactionLabels: Record<string, string> = { purchase: "购入", sale: "售出", refund: "退款" };
-const expenseLabels: Record<string, string> = {
-  grading: "评级",
-  shipping: "运费",
-  tax: "税费",
-  insurance: "保险",
-  storage: "存储",
-  marketplace_fee: "平台费用",
-  other: "其他"
+type RecordType = TimelineItem["type"];
+type HistoryFilter = "all" | RecordType;
+
+const filterLabels: Record<HistoryFilter, string> = {
+  all: "全部",
+  transaction: "交易",
+  expense: "费用",
+  valuation: "估值"
 };
 
-function dateInput(date = new Date()): string {
-  return date.toISOString().slice(0, 10);
+function recordTitle(item: TimelineItem): string {
+  if (item.type === "transaction") return transactionLabels[item.record.kind] ?? item.record.kind;
+  if (item.type === "expense") {
+    const kind = expenseKindLabels[item.record.kind] ?? item.record.kind;
+    const context = expenseContextLabels[item.record.context] ?? item.record.context;
+    return `${kind} · ${context}`;
+  }
+  return "估值";
 }
 
-function amountInput(amountMinor: bigint, currency: string): string {
-  return formatMinorMoney(amountMinor, currency).replace(`${currency} `, "");
+function recordAmount(item: TimelineItem): string {
+  const amount = formatMinorMoney(item.record.amountMinor, item.record.currency);
+  if (item.type === "valuation") return amount;
+  if (item.type === "transaction" && item.record.kind === "sale") return `+${amount}`;
+  return `−${amount}`;
 }
 
-function CurrencyField({ value = "CNY" }: { value?: string }) {
-  return (
-    <label className="field">
-      <span>币种</span>
-      <HistoryCurrencySelect name="currency" defaultValue={value} />
-    </label>
-  );
+function recordImpact(item: TimelineItem): string {
+  const amount = formatMinorMoney(item.record.amountMinor, item.record.currency);
+  if (item.type === "transaction") {
+    return item.record.kind === "sale"
+      ? `持仓 −${item.record.quantity} 张 · 出售收入 +${amount}`
+      : `持仓 +${item.record.quantity} 张 · 持仓成本 +${amount}`;
+  }
+  if (item.type === "expense") {
+    return item.record.context === "sale" ? `出售费用 · 净收入 −${amount}` : `计入持仓成本 +${amount}`;
+  }
+  return `单张估值更新为 ${amount}`;
 }
 
-function ValuationSourceField({ value = "个人估计" }: { value?: string }) {
-  return (
-    <label className="field">
-      <span>估值来源 *</span>
-      <ValuationSourceSelect name="source" defaultValue={value} required />
-    </label>
-  );
+function recordSource(item: TimelineItem): string | null {
+  if (item.type === "transaction") return item.record.source;
+  if (item.type === "expense") return item.record.vendor;
+  return item.record.source;
 }
 
-function Summary({ transactions, expenses, valuations }: Omit<FinancialHistoryProps, "cardId" | "returnTo">) {
-  const currencies = [...new Set([
-    ...transactions.map((row) => row.currency),
-    ...expenses.map((row) => row.currency),
-    ...valuations.map((row) => row.currency)
-  ])].sort();
-
-  if (currencies.length === 0) return <p className="muted">尚无财务记录。可从下方新增第一条记录。</p>;
-
-  return (
-    <div className="financial-summary-grid">
-      {currencies.map((currency) => {
-        const purchase = transactions
-          .filter((row) => row.currency === currency && row.kind === "purchase")
-          .reduce((sum, row) => sum + row.amountMinor, BigInt(0));
-        const sale = transactions
-          .filter((row) => row.currency === currency && row.kind === "sale")
-          .reduce((sum, row) => sum + row.amountMinor, BigInt(0));
-        const refund = transactions
-          .filter((row) => row.currency === currency && row.kind === "refund")
-          .reduce((sum, row) => sum + row.amountMinor, BigInt(0));
-        const expense = expenses
-          .filter((row) => row.currency === currency)
-          .reduce((sum, row) => sum + row.amountMinor, BigInt(0));
-        const latest = selectLatestValuation(valuations, currency);
-        return (
-          <div className="financial-summary-card" key={currency}>
-            <strong>{currency}</strong>
-            <span>购入 {formatMinorMoney(purchase, currency)}</span>
-            <span>费用 {formatMinorMoney(expense, currency)}</span>
-            <span>售出 {formatMinorMoney(sale, currency)}</span>
-            <span>退款 {formatMinorMoney(refund, currency)}</span>
-            <span>最新估值 {latest ? formatMinorMoney(latest.amountMinor, currency) : "-"}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function AddForms({ cardId, returnTo }: { cardId: string; returnTo?: string }) {
+function AddRecord({ cardId, returnTo, transactions, isOpen, onClose }: { cardId: string; returnTo?: string; transactions: CardTransaction[]; isOpen: boolean; onClose: () => void }) {
+  const [recordType, setRecordType] = useState<RecordType>("transaction");
   const addTransaction = addTransactionAction.bind(null, cardId, returnTo);
   const addExpense = addExpenseAction.bind(null, cardId, returnTo);
   const addValuation = addValuationAction.bind(null, cardId, returnTo);
   return (
-    <div className="financial-entry-grid">
-      <details className="financial-entry-card">
-        <summary>新增交易</summary>
-        <form action={addTransaction} className="financial-form">
-          <label className="field"><span>类型</span><select name="kind"><option value="purchase">购入</option><option value="sale">售出</option><option value="refund">退款</option></select></label>
-          <label className="field"><span>金额</span><input name="amount" inputMode="decimal" required /></label>
-          <CurrencyField />
-          <label className="field"><span>数量</span><input name="quantity" type="number" min="1" defaultValue="1" required /></label>
-          <label className="field"><span>日期</span><input name="occurredAt" type="date" defaultValue={dateInput()} required /></label>
-          <label className="field"><span>渠道 / 来源</span><input name="source" /></label>
-          <label className="field full"><span>备注</span><textarea name="notes" /></label>
-          <button className="btn btn-primary" type="submit">保存交易</button>
-        </form>
-      </details>
-
-      <details className="financial-entry-card">
-        <summary>新增费用</summary>
-        <form action={addExpense} className="financial-form">
-          <label className="field"><span>类型</span><select name="kind"><option value="grading">评级</option><option value="shipping">运费</option><option value="tax">税费</option><option value="insurance">保险</option><option value="storage">存储</option><option value="marketplace_fee">平台费用</option><option value="other">其他</option></select></label>
-          <label className="field"><span>金额</span><input name="amount" inputMode="decimal" required /></label>
-          <CurrencyField />
-          <label className="field"><span>日期</span><input name="occurredAt" type="date" defaultValue={dateInput()} required /></label>
-          <label className="field"><span>服务方</span><input name="vendor" /></label>
-          <label className="field full"><span>备注</span><textarea name="notes" /></label>
-          <button className="btn btn-primary" type="submit">保存费用</button>
-        </form>
-      </details>
-
-      <details className="financial-entry-card">
-        <summary>新增估值</summary>
-        <form action={addValuation} className="financial-form">
-          <label className="field"><span>金额</span><input name="amount" inputMode="decimal" required /></label>
-          <CurrencyField />
-          <label className="field"><span>估值日期</span><input name="valuedAt" type="date" defaultValue={dateInput()} required /></label>
-          <ValuationSourceField />
-          <label className="field full"><span>备注</span><textarea name="notes" /></label>
-          <button className="btn btn-primary" type="submit">保存估值</button>
-        </form>
-      </details>
+    <div className="financial-add-record" id="financial-add-record" hidden={!isOpen}>
+      <div className="financial-add-record-heading">
+        <strong>新增财务记录</strong>
+        <button type="button" className="btn btn-secondary" onClick={onClose}>收起</button>
+      </div>
+      <div className="financial-record-composer">
+        <div className="financial-record-tabs" role="tablist" aria-label="新增财务记录类型">
+          {(["transaction", "expense", "valuation"] as const).map((type) => (
+            <button key={type} type="button" role="tab" aria-selected={recordType === type} onClick={() => setRecordType(type)}>{filterLabels[type]}</button>
+          ))}
+        </div>
+        <div hidden={recordType !== "transaction"}><TransactionForm action={addTransaction} submitLabel="保存交易" /></div>
+        <div hidden={recordType !== "expense"}><ExpenseForm action={addExpense} submitLabel="保存费用" transactions={transactions} /></div>
+        <div hidden={recordType !== "valuation"}><ValuationForm action={addValuation} submitLabel="保存估值" /></div>
+      </div>
     </div>
   );
 }
 
-function TimelineRecord({ cardId, item, returnTo }: { cardId: string; item: TimelineItem; returnTo?: string }) {
+function TimelineRecord({ cardId, item, returnTo, transactions }: { cardId: string; item: TimelineItem; returnTo?: string; transactions: CardTransaction[] }) {
   const record = item.record;
-  const isTransaction = item.type === "transaction";
-  const isExpense = item.type === "expense";
-  const label = isTransaction
-    ? transactionLabels[(record as CardTransaction).kind] ?? (record as CardTransaction).kind
-    : isExpense
-      ? expenseLabels[(record as CardExpense).kind] ?? (record as CardExpense).kind
-      : "估值";
-  const source = isTransaction
-    ? (record as CardTransaction).source
-    : isExpense
-      ? (record as CardExpense).vendor
-      : (record as CardValuation).source;
-  const supportedCurrency = record.currency === "CNY" || record.currency === "USD";
-  const updateAction = isTransaction
+  const updateAction = item.type === "transaction"
     ? updateTransactionAction.bind(null, cardId, record.id, returnTo)
-    : isExpense
+    : item.type === "expense"
       ? updateExpenseAction.bind(null, cardId, record.id, returnTo)
       : updateValuationAction.bind(null, cardId, record.id, returnTo);
   const deleteAction = deleteFinancialRecordAction.bind(null, cardId, item.type, record.id, returnTo);
+  const source = recordSource(item);
+  const linkedSale = item.type === "expense" && item.record.transactionId
+    ? transactions.find((transaction) => transaction.id === item.record.transactionId)
+    : null;
 
   return (
-    <article className="financial-timeline-item">
-      <div className="financial-record-main">
-        <span className={`financial-kind financial-kind-${item.type}`}>{label}</span>
-        <div>
-          <strong>{formatMinorMoney(record.amountMinor, record.currency)}</strong>
-          <small>{item.date.toLocaleDateString("zh-CN", { timeZone: "UTC" })}{source ? ` · ${source}` : ""}</small>
-        </div>
+    <article className={`financial-timeline-item financial-timeline-${item.type}`}>
+      <time dateTime={formatHistoryDateInput(item.date)}>{formatHistoryDateLabel(item.date)}</time>
+      <div className="financial-record-description">
+        <div><span className={`financial-kind financial-kind-${item.type}`}>{filterLabels[item.type]}</span><strong>{recordTitle(item)}</strong></div>
+        <small>{recordImpact(item)}</small>
+        {linkedSale ? <small className="financial-record-link">{`关联 ${formatHistoryDateInput(linkedSale.occurredAt)} 出售`}</small> : null}
       </div>
-      {record.notes ? <p>{record.notes}</p> : null}
+      <strong className={`financial-record-amount ${item.type === "valuation" ? "is-neutral" : item.type === "transaction" && item.record.kind === "sale" ? "is-positive" : "is-negative"}`}>{recordAmount(item)}</strong>
       <details className="financial-correction">
         <summary>编辑</summary>
-        <form action={updateAction} className="financial-form compact">
-          <input type="hidden" name="recordMarker" value={`${item.type}-${record.id}`} />
-          {isTransaction ? (
-            <>
-              <label className="field"><span>类型</span><select name="kind" defaultValue={(record as CardTransaction).kind}><option value="purchase">购入</option><option value="sale">售出</option><option value="refund">退款</option></select></label>
-              <label className="field"><span>数量</span><input name="quantity" type="number" min="1" defaultValue={(record as CardTransaction).quantity} required /></label>
-            </>
-          ) : null}
-          {isExpense ? <label className="field"><span>类型</span><select name="kind" defaultValue={(record as CardExpense).kind}><option value="grading">评级</option><option value="shipping">运费</option><option value="tax">税费</option><option value="insurance">保险</option><option value="storage">存储</option><option value="marketplace_fee">平台费用</option><option value="other">其他</option></select></label> : null}
-          <label className="field"><span>金额</span><input name="amount" inputMode="decimal" defaultValue={amountInput(record.amountMinor, record.currency)} required /></label>
-          <CurrencyField value={supportedCurrency ? record.currency : "CNY"} />
-          <label className="field"><span>日期</span><input name={item.type === "valuation" ? "valuedAt" : "occurredAt"} type="date" defaultValue={dateInput(item.date)} required /></label>
-          {item.type === "valuation" ? (
-            <ValuationSourceField value={source ?? "个人估计"} />
-          ) : (
-            <label className="field"><span>{isExpense ? "服务方" : "渠道 / 来源"}</span><input name={isExpense ? "vendor" : "source"} defaultValue={source ?? ""} /></label>
-          )}
-          <label className="field full"><span>备注</span><textarea name="notes" defaultValue={record.notes ?? ""} /></label>
-          <button className="btn btn-secondary" type="submit">保存修改</button>
-        </form>
-        <form action={deleteAction} className="financial-delete-form">
-          <button className="btn btn-danger" type="submit">删除这条记录</button>
-          <small>删除后将重新计算兼容快照，此操作无法撤销。</small>
-        </form>
+        <div className="financial-correction-body">
+          {source || record.notes ? <div className="financial-record-context">{source ? <span>来源 / 服务方：{source}</span> : null}{record.notes ? <span>备注：{record.notes}</span> : null}</div> : null}
+          {item.type === "transaction" ? <TransactionForm action={updateAction} submitLabel="保存修改" marker={`${item.type}-${record.id}`} record={item.record} /> : null}
+          {item.type === "expense" ? <ExpenseForm action={updateAction} submitLabel="保存修改" marker={`${item.type}-${record.id}`} record={item.record} transactions={transactions} /> : null}
+          {item.type === "valuation" ? <ValuationForm action={updateAction} submitLabel="保存修改" marker={`${item.type}-${record.id}`} record={item.record} /> : null}
+          <form action={deleteAction} className="financial-delete-form">
+            <button className="btn btn-danger" type="submit">删除这条记录</button>
+            <small>删除后将重新计算持仓、成本和盈亏，此操作无法撤销。</small>
+          </form>
+        </div>
       </details>
     </article>
   );
 }
 
 export function CardFinancialHistory(props: FinancialHistoryProps) {
+  const [filter, setFilter] = useState<HistoryFilter>("all");
+  const [isAddingRecord, setIsAddingRecord] = useState(false);
   const timeline: TimelineItem[] = [
     ...props.transactions.map((record) => ({ type: "transaction" as const, date: record.occurredAt, record })),
     ...props.expenses.map((record) => ({ type: "expense" as const, date: record.occurredAt, record })),
     ...props.valuations.map((record) => ({ type: "valuation" as const, date: record.valuedAt, record }))
   ].sort((left, right) => right.date.getTime() - left.date.getTime());
+  const visibleTimeline = filter === "all" ? timeline : timeline.filter((item) => item.type === filter);
+  const counts: Record<HistoryFilter, number> = {
+    all: timeline.length,
+    transaction: props.transactions.length,
+    expense: props.expenses.length,
+    valuation: props.valuations.length
+  };
 
   return (
     <section className="panel financial-history" id="financial-history">
       <div className="financial-history-heading">
-        <div><h2>财务历史</h2><p className="muted">交易、费用和估值按时间独立保存；不同币种不会被混合计算。</p></div>
-        <span>{timeline.length} 条记录</span>
+        <div><h2>财务历史</h2></div>
+        <div className="financial-history-actions">
+          <span className="financial-history-count">{timeline.length} 条记录</span>
+          <button
+            type="button"
+            className="btn btn-primary financial-add-trigger"
+            aria-expanded={isAddingRecord}
+            aria-controls="financial-add-record"
+            onClick={() => setIsAddingRecord((open) => !open)}
+          >
+            ＋ 新增记录
+          </button>
+        </div>
       </div>
-      <Summary transactions={props.transactions} expenses={props.expenses} valuations={props.valuations} />
-      <AddForms cardId={props.cardId} returnTo={props.returnTo} />
+      <AddRecord cardId={props.cardId} returnTo={props.returnTo} transactions={props.transactions} isOpen={isAddingRecord} onClose={() => setIsAddingRecord(false)} />
+      <FinancialPositionOverview transactions={props.transactions} expenses={props.expenses} valuations={props.valuations} />
       <div className="financial-timeline">
-        <h3>时间线</h3>
-        {timeline.length ? timeline.map((item) => <TimelineRecord key={`${item.type}-${item.record.id}`} cardId={props.cardId} item={item} returnTo={props.returnTo} />) : <p className="muted">暂无历史记录。</p>}
+        <div className="financial-timeline-heading">
+          <h3>历史记录</h3>
+          <div className="financial-history-filters" aria-label="筛选财务记录">
+            {(Object.keys(filterLabels) as HistoryFilter[]).map((type) => (
+              <button key={type} type="button" aria-pressed={filter === type} onClick={() => setFilter(type)}>{filterLabels[type]} <span>{counts[type]}</span></button>
+            ))}
+          </div>
+        </div>
+        {visibleTimeline.length
+          ? visibleTimeline.map((item) => <TimelineRecord key={`${item.type}-${item.record.id}`} cardId={props.cardId} item={item} returnTo={props.returnTo} transactions={props.transactions} />)
+          : <p className="financial-empty muted">暂无{filter === "all" ? "" : filterLabels[filter]}记录。</p>}
       </div>
     </section>
   );

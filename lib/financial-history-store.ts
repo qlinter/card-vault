@@ -1,12 +1,14 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import {
   assertExpenseKind,
+  assertExpenseContext,
   assertHistoryDate,
   assertTransactionKind,
   assertValuationSource,
   moneyValue,
   normalizeOptionalHistoryText,
   type ExpenseKind,
+  type ExpenseContext,
   type TransactionKind
 } from "./financial-history.ts";
 
@@ -28,6 +30,8 @@ export type CreateTransactionInput = {
 export type CreateExpenseInput = {
   cardId: string;
   kind: ExpenseKind | string;
+  context: ExpenseContext | string;
+  transactionId?: string | null;
   amount: string | number;
   currency?: string;
   occurredAt: Date;
@@ -74,11 +78,16 @@ export async function createCardTransaction(client: HistoryClient, input: Create
 }
 
 export async function createCardExpense(client: HistoryClient, input: CreateExpenseInput) {
+  const context = assertExpenseContext(input.context);
+  const money = moneyValue(input);
+  const transactionId = await resolveExpenseTransactionId(client, input.cardId, context, money.currency, input.transactionId);
   return client.cardExpense.create({
     data: {
       cardId: input.cardId,
       kind: assertExpenseKind(input.kind),
-      ...moneyValue(input),
+      context,
+      transactionId,
+      ...money,
       occurredAt: assertHistoryDate(input.occurredAt),
       vendor: normalizeOptionalHistoryText(input.vendor),
       notes: normalizeOptionalHistoryText(input.notes),
@@ -110,14 +119,19 @@ export async function updateCardTransaction(
   input: UpdateTransactionInput
 ) {
   const money = moneyValue(input);
+  const kind = assertTransactionKind(input.kind);
   const quantity = input.quantity ?? 1;
   if (!Number.isInteger(quantity) || quantity <= 0) {
     throw new Error("交易数量必须是正整数。");
   }
+  const linkedExpense = await client.cardExpense.findFirst({ where: { transactionId: recordId } });
+  if (linkedExpense && (kind !== "sale" || linkedExpense.currency !== money.currency)) {
+    throw new Error("该出售记录已关联费用，不能改为买入或更换币种。请先修改关联费用。");
+  }
   const result = await client.cardTransaction.updateMany({
     where: { id: recordId, cardId },
     data: {
-      kind: assertTransactionKind(input.kind),
+      kind,
       ...money,
       quantity,
       occurredAt: assertHistoryDate(input.occurredAt),
@@ -130,11 +144,16 @@ export async function updateCardTransaction(
 }
 
 export async function updateCardExpense(client: HistoryClient, cardId: string, recordId: string, input: UpdateExpenseInput) {
+  const context = assertExpenseContext(input.context);
+  const money = moneyValue(input);
+  const transactionId = await resolveExpenseTransactionId(client, cardId, context, money.currency, input.transactionId);
   const result = await client.cardExpense.updateMany({
     where: { id: recordId, cardId },
     data: {
       kind: assertExpenseKind(input.kind),
-      ...moneyValue(input),
+      context,
+      transactionId,
+      ...money,
       occurredAt: assertHistoryDate(input.occurredAt),
       vendor: normalizeOptionalHistoryText(input.vendor),
       notes: normalizeOptionalHistoryText(input.notes),
@@ -165,12 +184,34 @@ export async function deleteCardFinancialRecord(
   recordType: "transaction" | "expense" | "valuation",
   recordId: string
 ) {
+  if (recordType === "transaction") {
+    const linkedExpense = await client.cardExpense.findFirst({ where: { transactionId: recordId, cardId } });
+    if (linkedExpense) throw new Error("该出售记录仍有关联费用，请先修改或删除关联费用。");
+  }
   const result = recordType === "transaction"
     ? await client.cardTransaction.deleteMany({ where: { id: recordId, cardId } })
     : recordType === "expense"
       ? await client.cardExpense.deleteMany({ where: { id: recordId, cardId } })
       : await client.cardValuation.deleteMany({ where: { id: recordId, cardId } });
   if (result.count !== 1) throw new Error("财务记录不存在或已删除。");
+}
+
+async function resolveExpenseTransactionId(
+  client: HistoryClient,
+  cardId: string,
+  context: ExpenseContext,
+  currency: string,
+  transactionIdValue: string | null | undefined
+): Promise<string | null> {
+  const transactionId = normalizeOptionalHistoryText(transactionIdValue);
+  if (context !== "sale") return null;
+  if (!transactionId) throw new Error("出售相关费用必须关联一笔具体出售记录。");
+  const transaction = await client.cardTransaction.findFirst({
+    where: { id: transactionId, cardId, kind: "sale", currency },
+    select: { id: true }
+  });
+  if (!transaction) throw new Error("关联的出售记录不存在，或与费用币种不一致。");
+  return transaction.id;
 }
 
 export async function getCardFinancialHistory(client: HistoryClient, cardId: string) {

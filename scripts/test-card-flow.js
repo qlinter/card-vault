@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
+const sharp = require("sharp");
 const {
   decodeHtmlAttribute,
   fetchPage,
@@ -71,6 +72,7 @@ function appendCardFields(formData, values) {
     certNumber: "CERT-1",
     gradingLink: "https://example.test/cert-1",
     purchaseDate: "2026-08-09",
+    initialQuantity: "2",
     purchasePrice: "100",
     gradingFee: "20",
     currentValue: "180",
@@ -124,6 +126,8 @@ async function main() {
       newPage.includes("填写后将自动保存文字草稿。") ||
       newPage.includes("录入模板") ||
       !newPage.includes("disclosure-icon entry-queue-chevron") ||
+      !newPage.includes('title="展开模板"') ||
+      !newPage.includes('class="entry-template-summary-meta"') ||
       !newPage.includes('class="entry-queue-count">0</span>')
     ) {
       throw new Error("Entry workbench helper copy or queue disclosure icon does not match the compact layout.");
@@ -345,17 +349,17 @@ async function main() {
     }
 
     db = new DatabaseSync(dbPath, { readOnly: true });
-    const created = db.prepare("SELECT playerName, cardTitle, year, grade, totalCost, isSerialNumbered FROM Card WHERE id = ?").get(cardId);
+    const created = db.prepare("SELECT playerName, cardTitle, year, grade, totalCost, holdingQuantity, isSerialNumbered FROM Card WHERE id = ?").get(cardId);
     const createdImages = db.prepare("SELECT path FROM CardImage WHERE cardId = ? ORDER BY createdAt, rowid").all(cardId);
-    const createdTransaction = db.prepare("SELECT kind, amountMinor, currency, provenance FROM CardTransaction WHERE cardId = ?").get(cardId);
-    const createdExpense = db.prepare("SELECT kind, amountMinor, currency, provenance FROM CardExpense WHERE cardId = ?").get(cardId);
+    const createdTransaction = db.prepare("SELECT kind, amountMinor, currency, quantity, provenance FROM CardTransaction WHERE cardId = ?").get(cardId);
+    const createdExpense = db.prepare("SELECT kind, context, amountMinor, currency, provenance FROM CardExpense WHERE cardId = ?").get(cardId);
     const createdValuation = db.prepare("SELECT amountMinor, currency, source, provenance FROM CardValuation WHERE cardId = ?").get(cardId);
     const completedDraftCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardEntryDraft WHERE id = ?").get(draftPayload.id).count);
     const completedQueueCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardEntryQueueItem WHERE id = ?").get(readyQueueItem.id).count);
     const completedRecognitionCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardEntryRecognition WHERE itemId = ?").get(readyQueueItem.id).count);
     db.close();
-    if (created?.playerName !== "E2E Create Player" || created?.year !== "2016-17" || created?.grade !== "Auto Auth" || created?.totalCost !== 120 || created?.isSerialNumbered !== 1) {
-      throw new Error("Card create did not persist the expected fields.");
+    if (created?.playerName !== "E2E Create Player" || created?.year !== "2016-17" || created?.grade !== "Auto Auth" || created?.totalCost !== 120 || created?.holdingQuantity !== 2 || created?.isSerialNumbered !== 1) {
+      throw new Error(`Card create did not persist the expected fields: ${JSON.stringify(created)}.`);
     }
     if (
       createdImages.length !== 3 ||
@@ -364,8 +368,8 @@ async function main() {
       throw new Error("Card create did not atomically adopt queue images and persist the appended upload.");
     }
     if (
-      createdTransaction?.kind !== "purchase" || createdTransaction?.amountMinor !== 10000 ||
-      createdExpense?.kind !== "grading" || createdExpense?.amountMinor !== 2000 ||
+      createdTransaction?.kind !== "purchase" || createdTransaction?.amountMinor !== 10000 || createdTransaction?.quantity !== 2 ||
+      createdExpense?.kind !== "grading" || createdExpense?.context !== "grading" || createdExpense?.amountMinor !== 2000 ||
       createdValuation?.amountMinor !== 18000 || createdValuation?.source !== "个人估计" ||
       createdTransaction?.provenance !== "initial_card_entry"
     ) {
@@ -379,6 +383,20 @@ async function main() {
     }
     if (completedRecognitionCount !== 0) {
       throw new Error("Card create did not remove the consumed AI recognition candidate.");
+    }
+
+    const thumbnailHomePage = await fetchPage(baseUrl, "/");
+    const thumbnailPath = thumbnailHomePage.match(/\/thumbnails\/[^"']+\.home\.webp/)?.[0];
+    if (!thumbnailPath || thumbnailHomePage.includes('src="/media/')) {
+      throw new Error("Home page did not replace original card media with the derived thumbnail route.");
+    }
+    const thumbnailResponse = await fetch(`${baseUrl}${thumbnailPath}`);
+    if (!thumbnailResponse.ok || thumbnailResponse.headers.get("content-type") !== "image/webp") {
+      throw new Error(`Home thumbnail route returned HTTP ${thumbnailResponse.status} (${thumbnailResponse.headers.get("content-type")}).`);
+    }
+    const thumbnailMetadata = await sharp(Buffer.from(await thumbnailResponse.arrayBuffer())).metadata();
+    if (Math.max(thumbnailMetadata.width || 0, thumbnailMetadata.height || 0) > 640) {
+      throw new Error(`Home thumbnail exceeds the 640px boundary: ${thumbnailMetadata.width}x${thumbnailMetadata.height}.`);
     }
 
     const duplicateResponse = await fetch(`${baseUrl}/api/card-entry/duplicates`, {
@@ -459,7 +477,12 @@ async function main() {
       detailPage.includes("Authentic"),
       detailPage.includes("返回上一页"),
       detailPage.includes("财务历史"),
-      detailPage.includes("新增交易"),
+      detailPage.includes("新增记录"),
+      detailPage.includes("持仓成本与估值变化"),
+      detailPage.includes("累计成本构成"),
+      detailPage.includes("费用归属"),
+      detailPage.includes("计入评级成本"),
+      !detailPage.includes("库存费用"),
       detailPage.includes("个人估计"),
       detailPage.includes("Team")
     ];
@@ -547,6 +570,17 @@ async function main() {
       throw new Error("Showcase card detail page does not provide filtered-context navigation.");
     }
 
+    db = new DatabaseSync(dbPath);
+    db.prepare("UPDATE Card SET serialRange = ? WHERE id = ?").run("/1", cardId);
+    db.close();
+    const oneOfOnePage = await fetchPage(baseUrl, "/?isOneOfOne=true");
+    if (
+      !oneOfOnePage.includes(`href="/cards/${cardId}?returnTo=%2F%3FisOneOfOne%3Dtrue"`) ||
+      !oneOfOnePage.includes('<select name="isOneOfOne"><option value="">1/1</option><option value="true" selected="">是</option>')
+    ) {
+      throw new Error("Home 1/1 filter did not preserve the selected state or matching card.");
+    }
+
     const filteredHomePage = await fetchPage(baseUrl, "/?sport=Basketball&sort=valueDesc");
     const filteredHomeText = filteredHomePage
       .replace(/<!--.*?-->/g, "")
@@ -555,10 +589,10 @@ async function main() {
     const filteredCardHref = `/cards/${cardId}?returnTo=%2F%3Fsport%3DBasketball%26sort%3DvalueDesc`;
     if (
       !filteredHomePage.includes(filteredCardHref) ||
-      !filteredHomeText.includes("CNY 180.00") ||
+      !filteredHomeText.includes("CNY 360.00") ||
       !filteredHomeText.includes("估值覆盖 1/1")
     ) {
-      throw new Error(`Filtered home page mismatch: link=${filteredHomePage.includes(filteredCardHref)}, amount=${filteredHomeText.includes("CNY 180.00")}, coverage=${filteredHomeText.includes("估值覆盖 1/1")}\n${filteredHomeText.match(/总估值.{0,180}/)?.[0] || "no valuation text"}`);
+      throw new Error(`Filtered home page mismatch: link=${filteredHomePage.includes(filteredCardHref)}, amount=${filteredHomeText.includes("CNY 360.00")}, coverage=${filteredHomeText.includes("估值覆盖 1/1")}\n${filteredHomeText.match(/总估值.{0,180}/)?.[0] || "no valuation text"}`);
     }
     const filteredDetailPage = await fetchPage(baseUrl, filteredCardHref);
     if (!filteredDetailPage.includes('href="/?sport=Basketball&amp;sort=valueDesc"')) {
@@ -625,6 +659,73 @@ async function main() {
     if (filteredEditedValuation?.amountMinor !== 19025 || filteredEditedValuation?.source !== "近期成交") {
       throw new Error("Filtered financial history edit did not persist the expected valuation changes.");
     }
+
+    const saleForm = new FormData();
+    appendActionFieldsForMarker(saleForm, filteredHistoryEditedDetailPage, "保存交易");
+    saleForm.append("kind", "sale");
+    saleForm.append("amount", "300");
+    saleForm.append("currency", "CNY");
+    saleForm.append("quantity", "2");
+    saleForm.append("occurredAt", "2026-08-11");
+    saleForm.append("source", "E2E Market");
+    saleForm.append("notes", "Full sale regression test.");
+    const saleResponse = await fetch(`${baseUrl}/cards/${cardId}`, { method: "POST", body: saleForm, redirect: "manual" });
+    const saleLocation = saleResponse.headers.get("location") || "";
+    if (saleResponse.status !== 303 || !saleLocation.includes("success=history-added")) {
+      throw new Error(`Full sale action failed (${saleResponse.status}, ${saleLocation}).`);
+    }
+    db = new DatabaseSync(dbPath, { readOnly: true });
+    const soldCard = db.prepare("SELECT holdingQuantity, collectionStatus FROM Card WHERE id = ?").get(cardId);
+    const sale = db.prepare("SELECT id FROM CardTransaction WHERE cardId = ? AND kind = 'sale' ORDER BY occurredAt DESC LIMIT 1").get(cardId);
+    db.close();
+    if (soldCard?.holdingQuantity !== 0 || soldCard?.collectionStatus !== "sold" || !sale?.id) {
+      throw new Error(`Full sale did not update the position and status: ${JSON.stringify(soldCard)}.`);
+    }
+
+    const soldDetailPage = await fetchPage(baseUrl, saleLocation);
+    const saleExpenseForm = new FormData();
+    appendActionFieldsForMarker(saleExpenseForm, soldDetailPage, "保存费用");
+    saleExpenseForm.append("kind", "marketplace_fee");
+    saleExpenseForm.append("context", "sale");
+    saleExpenseForm.append("transactionId", sale.id);
+    saleExpenseForm.append("amount", "10");
+    saleExpenseForm.append("currency", "CNY");
+    saleExpenseForm.append("occurredAt", "2026-08-11");
+    saleExpenseForm.append("vendor", "E2E Market");
+    const expenseResponse = await fetch(`${baseUrl}/cards/${cardId}`, { method: "POST", body: saleExpenseForm, redirect: "manual" });
+    const expenseLocation = expenseResponse.headers.get("location") || "";
+    if (expenseResponse.status !== 303 || !expenseLocation.includes("success=history-added")) {
+      throw new Error(`Linked sale expense action failed (${expenseResponse.status}, ${expenseLocation}).`);
+    }
+    db = new DatabaseSync(dbPath, { readOnly: true });
+    const linkedExpense = db.prepare("SELECT transactionId FROM CardExpense WHERE cardId = ? AND context = 'sale'").get(cardId);
+    db.close();
+    if (linkedExpense?.transactionId !== sale.id) throw new Error("Sale expense did not preserve its concrete sale link.");
+
+    const expenseDetailPage = await fetchPage(baseUrl, expenseLocation);
+    const repurchaseForm = new FormData();
+    appendActionFieldsForMarker(repurchaseForm, expenseDetailPage, "保存交易");
+    repurchaseForm.append("kind", "purchase");
+    repurchaseForm.append("amount", "120");
+    repurchaseForm.append("currency", "CNY");
+    repurchaseForm.append("quantity", "1");
+    repurchaseForm.append("occurredAt", "2026-08-12");
+    repurchaseForm.append("source", "E2E Dealer");
+    const repurchaseResponse = await fetch(`${baseUrl}/cards/${cardId}`, { method: "POST", body: repurchaseForm, redirect: "manual" });
+    const repurchaseLocation = repurchaseResponse.headers.get("location") || "";
+    if (repurchaseResponse.status !== 303 || !repurchaseLocation.includes("success=history-added")) {
+      throw new Error(`Repurchase action failed (${repurchaseResponse.status}, ${repurchaseLocation}).`);
+    }
+    db = new DatabaseSync(dbPath, { readOnly: true });
+    const repurchasedCard = db.prepare("SELECT holdingQuantity, collectionStatus FROM Card WHERE id = ?").get(cardId);
+    db.close();
+    const repurchasedDetailPage = await fetchPage(baseUrl, repurchaseLocation);
+    if (repurchasedCard?.holdingQuantity !== 1 || repurchasedCard?.collectionStatus !== "holding") {
+      throw new Error(`Repurchase did not restore the position status: ${JSON.stringify(repurchasedCard)}.`);
+    }
+    if (!repurchasedDetailPage.includes("总盈亏") || !repurchasedDetailPage.includes("关联 2026-08-11 出售")) {
+      throw new Error(`Financial detail does not show total profit or the linked sale expense: ${repurchasedDetailPage.includes("总盈亏")},${repurchasedDetailPage.includes("关联 2026-08-11 出售")}.`);
+    }
     const analysisResponse = await fetch(`${baseUrl}/api/ai/portfolio-analysis`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -639,7 +740,7 @@ async function main() {
     ) {
       throw new Error(`Portfolio analysis did not build a trusted server-side snapshot before AI configuration validation.\n${JSON.stringify(analysisPayload).slice(0, 500)}`);
     }
-    console.log("Card flow HTTP E2E passed: drafts, templates, image queue, AI candidates, duplicates, create, edit, and detail routes.");
+  console.log("Card flow HTTP E2E passed: workbench quantity, home thumbnails, financial overview and charts, linked sale expenses, status transitions, and core card routes.");
   } finally {
     stopServer(serverProcess);
     await removeTempRoot(tempRoot);

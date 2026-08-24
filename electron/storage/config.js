@@ -1,5 +1,5 @@
 const path = require("node:path");
-const { resolveDbPath, resolveShareBackgroundsDir, resolveShareCoversDir, resolveUploadsDir } = require("../../scripts/storage-paths");
+const { resolveDbPath, resolveShareBackgroundsDir, resolveShareCoversDir, resolveThumbnailsDir, resolveUploadsDir } = require("../../scripts/storage-paths");
 const { clearFile, isSubPath, loadJson, pathsEqual, saveJson } = require("./file-utils");
 const { repairDataLayout: repairLayout } = require("./layout");
 
@@ -11,6 +11,7 @@ function createStorageConfig({ appDataRoot, projectRoot }) {
   const getDataDir = () => loadStorageConfig().dataDir || path.join(appDataRoot, "data");
   const getBackupDir = () => loadStorageConfig().backupDir || path.join(appDataRoot, "backups");
   const getUploadsDir = () => resolveUploadsDir(projectRoot, { CARD_VAULT_DATA_DIR: getDataDir() });
+  const getThumbnailsDir = () => resolveThumbnailsDir(projectRoot, { CARD_VAULT_DATA_DIR: getDataDir() });
   const getShareCoversDir = () => resolveShareCoversDir(projectRoot, { CARD_VAULT_DATA_DIR: getDataDir() });
   const getShareBackgroundsDir = () => resolveShareBackgroundsDir(projectRoot, { CARD_VAULT_DATA_DIR: getDataDir() });
   const getDbPath = () => resolveDbPath(projectRoot, { CARD_VAULT_DATA_DIR: getDataDir(), CARD_VAULT_DB_PATH: process.env.CARD_VAULT_DB_PATH });
@@ -24,7 +25,7 @@ function createStorageConfig({ appDataRoot, projectRoot }) {
     if (pathsEqual(dataDir, resolvedBackupDir) || isSubPath(dataDir, resolvedBackupDir)) throw new Error("Backup path cannot be inside the current data folder.");
   };
   const repairDataLayout = (dataDir) => repairLayout(dataDir);
-  return { storageConfigPath, cleanupConfigPath, loadStorageConfig, loadCleanupConfig, getDataDir, getBackupDir, getUploadsDir, getShareCoversDir, getShareBackgroundsDir, getDbPath, getEnv, saveStorageConfig, saveBackupConfig, clearCleanupConfig, validateBackupDir, repairDataLayout };
+  return { storageConfigPath, cleanupConfigPath, loadStorageConfig, loadCleanupConfig, getDataDir, getBackupDir, getUploadsDir, getThumbnailsDir, getShareCoversDir, getShareBackgroundsDir, getDbPath, getEnv, saveStorageConfig, saveBackupConfig, clearCleanupConfig, validateBackupDir, repairDataLayout };
 }
 
 module.exports = { createStorageConfig };

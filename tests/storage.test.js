@@ -5,7 +5,7 @@ const path = require("node:path");
 const test = require("node:test");
 const { DatabaseSync } = require("node:sqlite");
 const { createStorageManager } = require("../electron/storage");
-const { initializeDatabase } = require("../scripts/database-migrations");
+const { initializeDatabase } = require("../scripts/database-schema");
 
 function createTestManager(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "card-vault-storage-test-"));
@@ -24,6 +24,7 @@ function createTestManager(t) {
 function seedData(manager) {
   manager.repairDataLayout(manager.getDataDir());
   fs.writeFileSync(path.join(manager.getUploadsDir(), "card.jpg"), "card");
+  fs.writeFileSync(path.join(manager.getThumbnailsDir(), "card.jpg.home.webp"), "thumbnail-cache");
   fs.writeFileSync(path.join(manager.getShareCoversDir(), "cover.jpg"), "cover");
   fs.writeFileSync(path.join(manager.getShareBackgroundsDir(), "background.jpg"), "background");
 
@@ -64,6 +65,7 @@ test("storage migration includes share backgrounds", (t) => {
   manager.migrateTo(targetDir);
 
   assert.equal(fs.readFileSync(path.join(targetDir, "uploads", "card.jpg"), "utf8"), "card");
+  assert.equal(fs.existsSync(path.join(targetDir, "thumbnails")), false);
   assert.equal(fs.readFileSync(path.join(targetDir, "share-covers", "cover.jpg"), "utf8"), "cover");
   assert.equal(fs.readFileSync(path.join(targetDir, "share-backgrounds", "background.jpg"), "utf8"), "background");
   assert.equal(fs.readFileSync(path.join(targetDir, "schema-backups", "before-migration.db"), "utf8"), "snapshot");
@@ -169,6 +171,7 @@ test("backup creates an integrity-checked SQLite snapshot and copies media", (t)
     fs.readFileSync(path.join(result.backupPath, "share-backgrounds", "background.jpg"), "utf8"),
     "background"
   );
+  assert.equal(fs.existsSync(path.join(result.backupPath, "thumbnails")), false);
 });
 
 test("data health reports missing references and unreferenced media", (t) => {
@@ -303,7 +306,7 @@ test("orphan cleanup is refused when the data health check does not pass", (t) =
   assert.equal(fs.existsSync(orphanPath), true);
 });
 
-test("v1.0.15-compatible backup restores without migration after creating a safety backup", (t) => {
+test("current-version backup restores after creating a safety backup", (t) => {
   const { root, manager } = createTestManager(t);
   seedCardVaultData(manager, "Before Backup");
   const sourceDb = new DatabaseSync(manager.getDbPath());
@@ -328,10 +331,51 @@ test("v1.0.15-compatible backup restores without migration after creating a safe
   assert.equal(card.playerName, "Before Backup");
   assert.equal(valuation.amountMinor, 12345);
   assert.equal(valuation.source, "个人估计");
-  assert.deepEqual(restored.appliedMigrations, []);
+  assert.equal(restored.schemaVersion, "1.1.1");
   assert.ok(restored.safetyBackupPath);
   assert.equal(fs.existsSync(path.join(restored.safetyBackupPath, "dev.db")), true);
   assert.equal(restored.health.integrity, "ok");
+});
+
+test("restore upgrades a v1.1.0 backup and backfills its position data", (t) => {
+  const { root, manager } = createTestManager(t);
+  seedCardVaultData(manager, "v1.1.0 Backup Player");
+  manager.chooseBackupDir(path.join(root, "backups"));
+  const sourceBackup = manager.backupDataFolder();
+
+  const backupDb = new DatabaseSync(path.join(sourceBackup.backupPath, "dev.db"));
+  backupDb.exec("DROP INDEX CardExpense_transactionId_idx");
+  backupDb.exec("ALTER TABLE CardExpense DROP COLUMN transactionId");
+  backupDb.exec("ALTER TABLE Card DROP COLUMN holdingQuantity");
+  backupDb.exec("ALTER TABLE CardExpense DROP COLUMN context");
+  const purchaseDate = Date.parse("2026-08-01T00:00:00.000Z");
+  backupDb.prepare("UPDATE Card SET purchaseDate = ? WHERE id = ?").run(purchaseDate, "card-1");
+  backupDb.prepare(`INSERT INTO CardTransaction
+    (id, cardId, kind, amountMinor, currency, quantity, occurredAt, provenance)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run("purchase-v110", "card-1", "purchase", 20000, "CNY", 2, purchaseDate, "test");
+  backupDb.prepare(`INSERT INTO CardExpense
+    (id, cardId, kind, amountMinor, currency, occurredAt, provenance)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`)
+    .run("shipping-v110", "card-1", "shipping", 1000, "CNY", purchaseDate, "test");
+  backupDb.close();
+
+  const currentDb = new DatabaseSync(manager.getDbPath());
+  currentDb.prepare("UPDATE Card SET playerName = ? WHERE id = ?").run("Changed Current Player", "card-1");
+  currentDb.close();
+
+  const restored = manager.restoreDataFolder(sourceBackup.backupPath);
+  const restoredDb = new DatabaseSync(manager.getDbPath(), { readOnly: true });
+  const card = restoredDb.prepare("SELECT playerName, holdingQuantity FROM Card WHERE id = ?").get("card-1");
+  const expense = restoredDb.prepare("SELECT context, transactionId FROM CardExpense WHERE id = ?").get("shipping-v110");
+  restoredDb.close();
+
+  assert.equal(restored.schemaVersion, "1.1.1");
+  assert.equal(restored.health.integrity, "ok");
+  assert.equal(card.playerName, "v1.1.0 Backup Player");
+  assert.equal(card.holdingQuantity, 2);
+  assert.deepEqual({ ...expense }, { context: "purchase", transactionId: null });
+  assert.equal(fs.readdirSync(path.join(manager.getDataDir(), "schema-backups")).length, 1);
 });
 
 test("restore accepts a dated backup folder and selects its latest backup", (t) => {
@@ -361,36 +405,25 @@ test("restore accepts a dated backup folder and selects its latest backup", (t) 
   assert.equal(card.playerName, "Latest Backup");
 });
 
-test("restore migrates an older backup before replacing current data", (t) => {
+test("restore rejects a backup that does not match the current database baseline", (t) => {
   const { root, manager } = createTestManager(t);
   seedCardVaultData(manager, "Current Player");
   manager.chooseBackupDir(path.join(root, "backups"));
   const oldBackup = manager.backupDataFolder();
 
   const backupDb = new DatabaseSync(path.join(oldBackup.backupPath, "dev.db"));
-  backupDb.prepare("INSERT INTO CardValuation (id, cardId, amountMinor, currency, valuedAt, source, provenance) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .run("old-valuation", "card-1", 12345, "CNY", "2025-01-01", "平台报价", "manual");
-  backupDb.prepare("UPDATE Card SET isSerialNumbered = 0, serialNumber = ?, serialRange = ? WHERE id = ?")
-    .run("12", "/99", "card-1");
-  backupDb.prepare("DELETE FROM SchemaMigration WHERE id IN (?, ?)")
-    .run("007_normalize_valuation_sources_v1_1_0", "009_backfill_serial_numbered_v1_0_19");
+  backupDb.exec("DROP TABLE CardEntryRecognition");
   backupDb.close();
 
-  const restored = manager.restoreDataFolder(oldBackup.backupPath);
+  assert.throws(
+    () => manager.restoreDataFolder(oldBackup.backupPath),
+    /不是 Card Vault v1.1.0 或 1.1.1/
+  );
   const restoredDb = new DatabaseSync(manager.getDbPath(), { readOnly: true });
-  const valuation = restoredDb.prepare("SELECT source FROM CardValuation WHERE id = ?").get("old-valuation");
-  const card = restoredDb.prepare("SELECT isSerialNumbered FROM Card WHERE id = ?").get("card-1");
-  const latestMigration = restoredDb.prepare("SELECT id FROM SchemaMigration ORDER BY appliedAt DESC, rowid DESC LIMIT 1").get();
+  const card = restoredDb.prepare("SELECT playerName FROM Card WHERE id = ?").get("card-1");
   restoredDb.close();
 
-  assert.deepEqual(restored.appliedMigrations, [
-    "007_normalize_valuation_sources_v1_1_0",
-    "009_backfill_serial_numbered_v1_0_19"
-  ]);
-  assert.equal(restored.schemaVersion, "012_card_entry_workbench_phase3_v1_1_0");
-  assert.equal(valuation.source, "个人估计");
-  assert.equal(card.isSerialNumbered, 1);
-  assert.equal(latestMigration.id, "009_backfill_serial_numbered_v1_0_19");
+  assert.equal(card.playerName, "Current Player");
 });
 
 test("restore rejects folders that do not contain a generated backup", (t) => {

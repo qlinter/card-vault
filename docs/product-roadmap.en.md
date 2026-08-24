@@ -31,7 +31,7 @@ Development follows four connected tracks:
 | Version | Theme | Primary value |
 | --- | --- | --- |
 | `v1.1.0` | Card Entry Workbench 2.0 | Faster continuous entry, batch preparation, and duplicate review. |
-| `v1.2.0` | Positions and Returns | Quantities, multiple purchases, partial sales, and traceable returns. |
+| `v1.1.1` | Positions and Returns | Quantities, multiple purchases, partial sales, and traceable returns. |
 | `v1.3.0` | Collection Portfolio Center | Trends, concentration, data quality, and saved collection views. |
 | `v1.4.0` | Share Gallery 3.0 | Better output quality, responsive presentation, and large-gallery performance. |
 | `v1.5.0` | Batch Data and Migration Center | Import, bulk edit, export, deduplication, and computer migration reports. |
@@ -44,9 +44,11 @@ Deliver continuous entry, batch-image queues, review-before-write AI recognition
 
 Delivery status: completed on 2026-08-21. The shipped scope includes SQLite drafts and recovery, continuous entry, a batch WebP preparation queue, isolated retries, public-field templates, duplicate candidates, keyboard workflows, and persistent AI candidates that require per-card review. Copy-as-new and templates reuse only common fields; serial numbers, certificates, images, and financial facts are never copied implicitly.
 
-## v1.2.0 — Positions and Returns
+## v1.1.1 — Positions and Returns
 
-Separate card identity, position quantity, and transaction facts. Add multiple purchases, partial sales, refunds, reversals, linked expenses, remaining cost, realized return, unrealized return, and total return. Start with one explicit cost-allocation method, preferably moving average. Keep currencies separate and store any user-confirmed dated FX rate. Treat this as an isolated high-risk database release with snapshots, rollback, and old-backup recovery coverage.
+Separate card identity, position quantity, and transaction facts. Add multiple purchases, partial sales, purchase/grading/sale-linked expenses, remaining cost, realized return, unrealized return, and total return. Use moving average as the single cost-allocation method and keep CNY/USD separate without automatic FX conversion. Refunds, returns, cancellations, reversals, and holding-period expense links are explicitly out of scope. The delivered UI uses the same accounting output for its core metrics, cost/value snapshot chart, cumulative cost composition, profit composition, explicit per-record impact, and expense-destination wording. Database snapshots, rollback, and v1.1.0-backup recovery remain covered.
+
+Delivery status: completed on 2026-08-24.
 
 ## v1.3.0 — Collection Portfolio Center
 

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
-import { deriveLegacyFinancialSnapshot } from "@/lib/financial-history-snapshot";
+import { deriveCardFinancialSummary } from "@/lib/financial-history-snapshot";
 import {
   createCardExpense,
   createCardTransaction,
@@ -12,11 +12,15 @@ import {
   getCardFinancialHistory,
   updateCardExpense,
   updateCardTransaction,
-  updateCardValuation
+  updateCardValuation,
+  type UpdateExpenseInput,
+  type UpdateTransactionInput,
+  type UpdateValuationInput
 } from "@/lib/financial-history-store";
 import { prisma } from "@/lib/prisma";
 import { errorMessage } from "@/lib/feedback-messages";
 import { normalizeReturnTo } from "@/lib/query-params";
+import { resolvePositionCollectionStatus } from "@/lib/position-accounting";
 
 type FinancialRecordType = "transaction" | "expense" | "valuation";
 
@@ -46,6 +50,41 @@ function positiveInteger(formData: FormData, name: string): number {
   return value;
 }
 
+function transactionInput(formData: FormData): UpdateTransactionInput {
+  return {
+    kind: requiredText(formData, "kind", "交易类型"),
+    amount: requiredText(formData, "amount", "金额"),
+    currency: requiredText(formData, "currency", "币种"),
+    quantity: positiveInteger(formData, "quantity"),
+    occurredAt: requiredDate(formData, "occurredAt"),
+    source: optionalText(formData, "source"),
+    notes: optionalText(formData, "notes")
+  };
+}
+
+function expenseInput(formData: FormData): UpdateExpenseInput {
+  return {
+    kind: requiredText(formData, "kind", "费用类型"),
+    context: requiredText(formData, "context", "费用归属"),
+    transactionId: optionalText(formData, "transactionId"),
+    amount: requiredText(formData, "amount", "金额"),
+    currency: requiredText(formData, "currency", "币种"),
+    occurredAt: requiredDate(formData, "occurredAt"),
+    vendor: optionalText(formData, "vendor"),
+    notes: optionalText(formData, "notes")
+  };
+}
+
+function valuationInput(formData: FormData): UpdateValuationInput {
+  return {
+    amount: requiredText(formData, "amount", "金额"),
+    currency: requiredText(formData, "currency", "币种"),
+    valuedAt: requiredDate(formData, "valuedAt"),
+    source: requiredText(formData, "source", "估值来源"),
+    notes: optionalText(formData, "notes")
+  };
+}
+
 async function mutateHistory(
   cardId: string,
   mutation: (transaction: Prisma.TransactionClient) => Promise<unknown>
@@ -53,7 +92,14 @@ async function mutateHistory(
   await prisma.$transaction(async (transaction) => {
     await mutation(transaction);
     const history = await getCardFinancialHistory(transaction, cardId);
-    await transaction.card.update({ where: { id: cardId }, data: deriveLegacyFinancialSnapshot(history) });
+    const card = await transaction.card.findUniqueOrThrow({ where: { id: cardId }, select: { collectionStatus: true } });
+    await transaction.card.update({
+      where: { id: cardId },
+      data: {
+        ...deriveCardFinancialSummary(history),
+        collectionStatus: resolvePositionCollectionStatus(card.collectionStatus, history)
+      }
+    });
   });
 }
 
@@ -73,16 +119,8 @@ function finishHistoryMutation(cardId: string, success: string, returnTo?: strin
 
 export async function addTransactionAction(cardId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
-    await mutateHistory(cardId, (transaction) => createCardTransaction(transaction, {
-        cardId,
-        kind: requiredText(formData, "kind", "交易类型"),
-        amount: requiredText(formData, "amount", "金额"),
-        currency: requiredText(formData, "currency", "币种"),
-        quantity: positiveInteger(formData, "quantity"),
-        occurredAt: requiredDate(formData, "occurredAt"),
-        source: optionalText(formData, "source"),
-        notes: optionalText(formData, "notes")
-      })
+    await mutateHistory(cardId, (transaction) =>
+      createCardTransaction(transaction, { cardId, ...transactionInput(formData) })
     );
   } catch (error) {
     finishHistoryMutation(cardId, "", returnTo, error);
@@ -92,15 +130,8 @@ export async function addTransactionAction(cardId: string, returnTo: string | un
 
 export async function addExpenseAction(cardId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
-    await mutateHistory(cardId, (transaction) => createCardExpense(transaction, {
-        cardId,
-        kind: requiredText(formData, "kind", "费用类型"),
-        amount: requiredText(formData, "amount", "金额"),
-        currency: requiredText(formData, "currency", "币种"),
-        occurredAt: requiredDate(formData, "occurredAt"),
-        vendor: optionalText(formData, "vendor"),
-        notes: optionalText(formData, "notes")
-      })
+    await mutateHistory(cardId, (transaction) =>
+      createCardExpense(transaction, { cardId, ...expenseInput(formData) })
     );
   } catch (error) {
     finishHistoryMutation(cardId, "", returnTo, error);
@@ -110,14 +141,8 @@ export async function addExpenseAction(cardId: string, returnTo: string | undefi
 
 export async function addValuationAction(cardId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
-    await mutateHistory(cardId, (transaction) => createCardValuation(transaction, {
-        cardId,
-        amount: requiredText(formData, "amount", "金额"),
-        currency: requiredText(formData, "currency", "币种"),
-        valuedAt: requiredDate(formData, "valuedAt"),
-        source: requiredText(formData, "source", "估值来源"),
-        notes: optionalText(formData, "notes")
-      })
+    await mutateHistory(cardId, (transaction) =>
+      createCardValuation(transaction, { cardId, ...valuationInput(formData) })
     );
   } catch (error) {
     finishHistoryMutation(cardId, "", returnTo, error);
@@ -127,15 +152,8 @@ export async function addValuationAction(cardId: string, returnTo: string | unde
 
 export async function updateTransactionAction(cardId: string, recordId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
-    await mutateHistory(cardId, (transaction) => updateCardTransaction(transaction, cardId, recordId, {
-      kind: requiredText(formData, "kind", "交易类型"),
-      amount: requiredText(formData, "amount", "金额"),
-      currency: requiredText(formData, "currency", "币种"),
-      quantity: positiveInteger(formData, "quantity"),
-      occurredAt: requiredDate(formData, "occurredAt"),
-      source: optionalText(formData, "source"),
-      notes: optionalText(formData, "notes")
-      })
+    await mutateHistory(cardId, (transaction) =>
+      updateCardTransaction(transaction, cardId, recordId, transactionInput(formData))
     );
   } catch (error) {
     finishHistoryMutation(cardId, "", returnTo, error);
@@ -145,14 +163,8 @@ export async function updateTransactionAction(cardId: string, recordId: string, 
 
 export async function updateExpenseAction(cardId: string, recordId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
-    await mutateHistory(cardId, (transaction) => updateCardExpense(transaction, cardId, recordId, {
-      kind: requiredText(formData, "kind", "费用类型"),
-      amount: requiredText(formData, "amount", "金额"),
-      currency: requiredText(formData, "currency", "币种"),
-      occurredAt: requiredDate(formData, "occurredAt"),
-      vendor: optionalText(formData, "vendor"),
-      notes: optionalText(formData, "notes")
-      })
+    await mutateHistory(cardId, (transaction) =>
+      updateCardExpense(transaction, cardId, recordId, expenseInput(formData))
     );
   } catch (error) {
     finishHistoryMutation(cardId, "", returnTo, error);
@@ -162,13 +174,8 @@ export async function updateExpenseAction(cardId: string, recordId: string, retu
 
 export async function updateValuationAction(cardId: string, recordId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
-    await mutateHistory(cardId, (transaction) => updateCardValuation(transaction, cardId, recordId, {
-      amount: requiredText(formData, "amount", "金额"),
-      currency: requiredText(formData, "currency", "币种"),
-      valuedAt: requiredDate(formData, "valuedAt"),
-      source: requiredText(formData, "source", "估值来源"),
-      notes: optionalText(formData, "notes")
-      })
+    await mutateHistory(cardId, (transaction) =>
+      updateCardValuation(transaction, cardId, recordId, valuationInput(formData))
     );
   } catch (error) {
     finishHistoryMutation(cardId, "", returnTo, error);

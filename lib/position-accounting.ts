@@ -1,0 +1,282 @@
+import { normalizeCurrency, selectLatestValuation } from "./financial-history.ts";
+
+export type PositionTransaction = {
+  kind: string;
+  amountMinor: bigint;
+  currency: string;
+  quantity?: number;
+  occurredAt?: Date;
+  createdAt?: Date;
+};
+
+export type PositionExpense = {
+  context?: string;
+  amountMinor: bigint;
+  currency: string;
+  occurredAt?: Date;
+  createdAt?: Date;
+};
+
+export type PositionValuation = {
+  amountMinor: bigint;
+  currency: string;
+  valuedAt: Date;
+  createdAt: Date;
+};
+
+export type CurrencyPosition = {
+  currency: string;
+  purchasedQuantity: number;
+  soldQuantity: number;
+  remainingQuantity: number;
+  purchaseAmountMinor: bigint;
+  purchaseExpenseMinor: bigint;
+  gradingExpenseMinor: bigint;
+  inventoryExpenseMinor: bigint;
+  saleExpenseMinor: bigint;
+  grossSaleAmountMinor: bigint;
+  netSaleAmountMinor: bigint;
+  realizedCostMinor: bigint;
+  remainingCostMinor: bigint;
+  averageCostMinor: bigint | null;
+  realizedProfitMinor: bigint;
+  latestUnitValueMinor: bigint | null;
+  currentValueMinor: bigint | null;
+  unrealizedProfitMinor: bigint | null;
+  totalProfitMinor: bigint | null;
+};
+
+export type PositionSeriesPoint = {
+  occurredAt: Date;
+  type: "purchase" | "sale" | "inventory_expense" | "sale_expense" | "valuation";
+  remainingQuantity: number;
+  remainingCostMinor: bigint;
+  amountMinor: bigint;
+  quantity: number | null;
+  currentValueMinor: bigint | null;
+};
+
+type PositionHistory = {
+  transactions: readonly PositionTransaction[];
+  expenses: readonly PositionExpense[];
+  valuations?: readonly PositionValuation[];
+};
+
+type InventoryEvent =
+  | { type: "purchase" | "sale"; amountMinor: bigint; quantity: number; occurredAt: Date; createdAt?: Date }
+  | { type: "inventory_expense"; amountMinor: bigint; occurredAt: Date; createdAt?: Date }
+  | { type: "sale_expense"; amountMinor: bigint; occurredAt: Date; createdAt?: Date }
+  | { type: "valuation"; amountMinor: bigint; occurredAt: Date; createdAt?: Date };
+
+function eventPriority(type: InventoryEvent["type"]): number {
+  if (type === "purchase") return 0;
+  if (type === "inventory_expense") return 1;
+  if (type === "sale") return 2;
+  if (type === "sale_expense") return 3;
+  return 4;
+}
+
+function accountingDate(primary?: Date, fallback?: Date): Date {
+  if (primary instanceof Date && !Number.isNaN(primary.getTime())) return primary;
+  if (fallback instanceof Date && !Number.isNaN(fallback.getTime())) return fallback;
+  return new Date(0);
+}
+
+function allocateAverageCost(totalCost: bigint, totalQuantity: number, soldQuantity: number): bigint {
+  if (soldQuantity === totalQuantity) return totalCost;
+  return (totalCost * BigInt(soldQuantity) + BigInt(Math.floor(totalQuantity / 2))) / BigInt(totalQuantity);
+}
+
+function currencyEvents(history: PositionHistory, currency: string): InventoryEvent[] {
+  const transactions = history.transactions.filter((row) => normalizeCurrency(row.currency) === currency);
+  const expenses = history.expenses.filter((row) => normalizeCurrency(row.currency) === currency);
+  return [
+    ...transactions.map((row): InventoryEvent => ({
+      type: row.kind === "sale" ? "sale" : "purchase",
+      amountMinor: row.amountMinor,
+      quantity: row.quantity ?? 1,
+      occurredAt: accountingDate(row.occurredAt, row.createdAt),
+      createdAt: row.createdAt
+    })),
+    ...expenses.map((row): InventoryEvent => ({
+      type: row.context === "sale" ? "sale_expense" : "inventory_expense",
+      amountMinor: row.amountMinor,
+      occurredAt: accountingDate(row.occurredAt, row.createdAt),
+      createdAt: row.createdAt
+    })),
+    ...(history.valuations ?? [])
+      .filter((row) => normalizeCurrency(row.currency) === currency)
+      .map((row): InventoryEvent => ({
+        type: "valuation",
+        amountMinor: row.amountMinor,
+        occurredAt: accountingDate(row.valuedAt, row.createdAt),
+        createdAt: row.createdAt
+      }))
+  ].sort((left, right) => left.occurredAt.getTime() - right.occurredAt.getTime()
+    || eventPriority(left.type) - eventPriority(right.type)
+    || (left.createdAt?.getTime() ?? 0) - (right.createdAt?.getTime() ?? 0));
+}
+
+function applyInventoryEvent(
+  state: { purchasedQuantity: number; remainingQuantity: number; remainingCostMinor: bigint; realizedCostMinor: bigint },
+  event: InventoryEvent
+): void {
+  if (event.type === "inventory_expense") {
+    if (state.remainingQuantity > 0 || state.purchasedQuantity === 0) state.remainingCostMinor += event.amountMinor;
+    else state.realizedCostMinor += event.amountMinor;
+    return;
+  }
+  if (event.type === "sale_expense" || event.type === "valuation") return;
+  if (!Number.isInteger(event.quantity) || event.quantity <= 0) {
+    throw new Error("交易数量必须是正整数。");
+  }
+  if (event.type === "purchase") {
+    state.purchasedQuantity += event.quantity;
+    state.remainingQuantity += event.quantity;
+    state.remainingCostMinor += event.amountMinor;
+    return;
+  }
+  if (event.quantity > state.remainingQuantity) {
+    throw new Error(`出售数量超过当前持仓（可售 ${state.remainingQuantity} 张）。`);
+  }
+  const allocatedCost = allocateAverageCost(state.remainingCostMinor, state.remainingQuantity, event.quantity);
+  state.remainingQuantity -= event.quantity;
+  state.remainingCostMinor -= allocatedCost;
+  state.realizedCostMinor += allocatedCost;
+}
+
+export function calculateCurrencyPositionSeries(history: PositionHistory, currencyValue: string): PositionSeriesPoint[] {
+  const currency = normalizeCurrency(currencyValue);
+  const state = { purchasedQuantity: 0, remainingQuantity: 0, remainingCostMinor: BigInt(0), realizedCostMinor: BigInt(0) };
+  return currencyEvents(history, currency).map((event) => {
+    applyInventoryEvent(state, event);
+    return {
+      occurredAt: event.occurredAt,
+      type: event.type,
+      remainingQuantity: state.remainingQuantity,
+      remainingCostMinor: state.remainingCostMinor,
+      amountMinor: event.amountMinor,
+      quantity: event.type === "purchase" || event.type === "sale" ? event.quantity : null,
+      currentValueMinor: event.type === "valuation"
+        ? event.amountMinor * BigInt(state.remainingQuantity)
+        : null
+    };
+  });
+}
+
+export function calculateCurrencyPosition(history: PositionHistory, currencyValue: string): CurrencyPosition {
+  const currency = normalizeCurrency(currencyValue);
+  const expenses = history.expenses.filter((row) => normalizeCurrency(row.currency) === currency);
+  const events = currencyEvents(history, currency)
+    .filter((event): event is Exclude<InventoryEvent, { type: "sale_expense" | "valuation" }> =>
+      event.type !== "sale_expense" && event.type !== "valuation");
+
+  let purchasedQuantity = 0;
+  let soldQuantity = 0;
+  let remainingQuantity = 0;
+  let purchaseAmountMinor = BigInt(0);
+  let inventoryExpenseMinor = BigInt(0);
+  let remainingCostMinor = BigInt(0);
+  let realizedCostMinor = BigInt(0);
+  let grossSaleAmountMinor = BigInt(0);
+
+  for (const event of events) {
+    if (event.type === "inventory_expense") {
+      inventoryExpenseMinor += event.amountMinor;
+      if (remainingQuantity > 0 || purchasedQuantity === 0) remainingCostMinor += event.amountMinor;
+      else realizedCostMinor += event.amountMinor;
+      continue;
+    }
+    if (!Number.isInteger(event.quantity) || event.quantity <= 0) {
+      throw new Error("交易数量必须是正整数。");
+    }
+    if (event.type === "purchase") {
+      purchasedQuantity += event.quantity;
+      remainingQuantity += event.quantity;
+      purchaseAmountMinor += event.amountMinor;
+      remainingCostMinor += event.amountMinor;
+      continue;
+    }
+    if (event.quantity > remainingQuantity) {
+      throw new Error(`出售数量超过当前 ${currency} 持仓（可售 ${remainingQuantity} 张）。`);
+    }
+    const allocatedCost = allocateAverageCost(remainingCostMinor, remainingQuantity, event.quantity);
+    soldQuantity += event.quantity;
+    remainingQuantity -= event.quantity;
+    grossSaleAmountMinor += event.amountMinor;
+    realizedCostMinor += allocatedCost;
+    remainingCostMinor -= allocatedCost;
+  }
+
+  const saleExpenseMinor = expenses
+    .filter((row) => row.context === "sale")
+    .reduce((sum, row) => sum + row.amountMinor, BigInt(0));
+  const netSaleAmountMinor = grossSaleAmountMinor - saleExpenseMinor;
+  const latest = selectLatestValuation(history.valuations ?? [], currency);
+  const latestUnitValueMinor = latest?.amountMinor ?? null;
+  const currentValueMinor = latestUnitValueMinor === null ? null : latestUnitValueMinor * BigInt(remainingQuantity);
+  const unrealizedProfitMinor = currentValueMinor === null ? null : currentValueMinor - remainingCostMinor;
+  const realizedProfitMinor = netSaleAmountMinor - realizedCostMinor;
+  const purchaseExpenseMinor = expenses
+    .filter((row) => row.context === "purchase")
+    .reduce((sum, row) => sum + row.amountMinor, BigInt(0));
+  const gradingExpenseMinor = expenses
+    .filter((row) => row.context !== "purchase" && row.context !== "sale")
+    .reduce((sum, row) => sum + row.amountMinor, BigInt(0));
+
+  return {
+    currency,
+    purchasedQuantity,
+    soldQuantity,
+    remainingQuantity,
+    purchaseAmountMinor,
+    purchaseExpenseMinor,
+    gradingExpenseMinor,
+    inventoryExpenseMinor,
+    saleExpenseMinor,
+    grossSaleAmountMinor,
+    netSaleAmountMinor,
+    realizedCostMinor,
+    remainingCostMinor,
+    averageCostMinor: remainingQuantity > 0
+      ? allocateAverageCost(remainingCostMinor, remainingQuantity, 1)
+      : null,
+    realizedProfitMinor,
+    latestUnitValueMinor,
+    currentValueMinor,
+    unrealizedProfitMinor,
+    totalProfitMinor: unrealizedProfitMinor === null ? null : realizedProfitMinor + unrealizedProfitMinor
+  };
+}
+
+export function calculatePositions(history: PositionHistory): CurrencyPosition[] {
+  const currencies = new Set([
+    ...history.transactions.map((row) => normalizeCurrency(row.currency)),
+    ...history.expenses.map((row) => normalizeCurrency(row.currency)),
+    ...(history.valuations ?? []).map((row) => normalizeCurrency(row.currency))
+  ]);
+  return [...currencies].sort().map((currency) => calculateCurrencyPosition(history, currency));
+}
+
+export function resolvePositionQuantity(
+  position: Pick<CurrencyPosition, "purchasedQuantity" | "soldQuantity" | "remainingQuantity"> | null | undefined,
+  fallbackQuantity = 1
+): number {
+  return position && (position.purchasedQuantity > 0 || position.soldQuantity > 0)
+    ? position.remainingQuantity
+    : Math.max(0, fallbackQuantity);
+}
+
+export function resolvePositionCollectionStatus(
+  currentStatus: string,
+  history: Pick<PositionHistory, "transactions" | "expenses">
+): string {
+  if (history.transactions.length === 0) return currentStatus;
+  const remainingQuantity = calculatePositions(history)
+    .reduce((sum, position) => sum + position.remainingQuantity, 0);
+  const hasPurchase = history.transactions.some((transaction) => transaction.kind === "purchase");
+  const hasSale = history.transactions.some((transaction) => transaction.kind === "sale");
+  if (remainingQuantity === 0 && hasPurchase && hasSale) return "sold";
+  if (remainingQuantity > 0 && currentStatus === "sold") return "holding";
+  return currentStatus;
+}

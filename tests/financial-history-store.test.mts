@@ -14,8 +14,11 @@ function captureClient() {
     return data;
   };
   const client = {
-    cardTransaction: { create: create("transaction") },
-    cardExpense: { create: create("expense") },
+    cardTransaction: {
+      create: create("transaction"),
+      findFirst: async ({ where }: { where: { id?: string; kind?: string } }) => where.id && where.kind === "sale" ? { id: where.id } : null
+    },
+    cardExpense: { create: create("expense"), findFirst: async () => null },
     cardValuation: { create: create("valuation") }
   } as unknown as PrismaClient;
   return { client, calls };
@@ -34,6 +37,7 @@ test("history store writes normalized transaction and expense facts", async () =
   await createCardExpense(client, {
     cardId: "card-1",
     kind: "grading",
+    context: "grading",
     amount: "12.34",
     currency: "USD",
     occurredAt: new Date("2025-01-03T00:00:00.000Z")
@@ -45,6 +49,7 @@ test("history store writes normalized transaction and expense facts", async () =
   assert.equal(calls[0].data.provenance, "manual");
   assert.equal(calls[1].data.amountMinor, BigInt(1234));
   assert.equal(calls[1].data.currency, "USD");
+  assert.equal(calls[1].data.context, "grading");
 });
 
 test("history store rejects invalid quantity and source-free valuations", async () => {
@@ -86,4 +91,27 @@ test("history store writes traceable valuations", async () => {
   assert.equal(calls[0].data.source, "近期成交");
   assert.equal(calls[0].data.provenance, "manual_review");
   assert.equal(calls[0].data.externalKey, "valuation-import-1");
+});
+
+test("sale expenses require and preserve a concrete sale transaction link", async () => {
+  const { client, calls } = captureClient();
+  await createCardExpense(client, {
+    cardId: "card-1",
+    kind: "marketplace_fee",
+    context: "sale",
+    transactionId: "sale-1",
+    amount: "12",
+    currency: "CNY",
+    occurredAt: new Date("2026-08-01T00:00:00.000Z")
+  });
+  assert.equal(calls[0].data.transactionId, "sale-1");
+
+  await assert.rejects(createCardExpense(client, {
+    cardId: "card-1",
+    kind: "marketplace_fee",
+    context: "sale",
+    amount: "12",
+    currency: "CNY",
+    occurredAt: new Date("2026-08-01T00:00:00.000Z")
+  }), /必须关联一笔具体出售记录/);
 });

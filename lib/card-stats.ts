@@ -11,6 +11,7 @@ type ValuationRecord = {
 
 type CardValuationRecord = {
   valuations: ValuationRecord[];
+  holdingQuantity?: number;
 };
 
 export function isOwnedCollectionStatus(status: string): boolean {
@@ -29,7 +30,9 @@ export function calculateLatestValuationTotals(cards: CardValuationRecord[]): La
   for (const card of cards) {
     const latest = selectLatestValuation(card.valuations);
     if (!latest) continue;
-    totals[latest.currency] = (totals[latest.currency] ?? BigInt(0)) + latest.amountMinor;
+    const quantity = Math.max(0, card.holdingQuantity ?? 1);
+    if (quantity === 0) continue;
+    totals[latest.currency] = (totals[latest.currency] ?? BigInt(0)) + latest.amountMinor * BigInt(quantity);
     valuedCardCount += 1;
   }
 

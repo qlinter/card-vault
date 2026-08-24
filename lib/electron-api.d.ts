@@ -41,7 +41,6 @@ declare global {
         restoredFrom?: string;
         restoredTo?: string;
         safetyBackupPath?: string | null;
-        appliedMigrations?: string[];
         schemaVersion?: string;
       }>;
       onStorageProgress: (callback: (progress: DesktopStorageProgress) => void) => () => void;

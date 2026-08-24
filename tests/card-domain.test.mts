@@ -38,7 +38,7 @@ test("card tags are normalized, deduplicated, and bounded", () => {
   assert.throws(() => normalizeCardTags("x".repeat(41)), /单个标签/);
 });
 
-test("cost sorting uses the explicit CNY legacy total-cost snapshot", () => {
+test("cost sorting uses the derived CNY financial summary", () => {
   assert.deepEqual(buildCardSorting("costCnyAsc"), [{ totalCost: "asc" }, { createdAt: "desc" }]);
   assert.deepEqual(buildCardSorting("priceDesc"), [{ totalCost: "desc" }, { createdAt: "desc" }]);
 });
@@ -47,6 +47,16 @@ test("serial-numbered filtering uses the derived boolean instead of numbering te
   assert.deepEqual(buildCardFilters({ isSerialNumbered: "true" }), { AND: [{ isSerialNumbered: true }] });
   assert.deepEqual(buildCardFilters({ isSerialNumbered: "false" }), { AND: [{ isSerialNumbered: false }] });
   assert.deepEqual(buildCardFilters({ isSerialNumbered: "invalid" }), {});
+});
+
+test("one-of-one filtering recognizes current serial-range formats", () => {
+  assert.deepEqual(buildCardFilters({ isOneOfOne: "true" }), {
+    AND: [{ serialRange: { in: ["1", "/1", "1/1"] } }]
+  });
+  assert.deepEqual(buildCardFilters({ isOneOfOne: "false" }), {
+    AND: [{ OR: [{ serialRange: null }, { serialRange: { notIn: ["1", "/1", "1/1"] } }] }]
+  });
+  assert.deepEqual(buildCardFilters({ isOneOfOne: "invalid" }), {});
 });
 
 test("valuation sorting uses the CNY current-value snapshot", () => {

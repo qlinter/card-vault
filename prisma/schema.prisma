@@ -33,6 +33,7 @@ model Card {
   gradingLink       String?
   visibility        String                @default("private")
   collectionStatus  String                @default("holding")
+  holdingQuantity   Int                   @default(1)
   purchaseDate      DateTime?
   purchasePrice     Float?
   gradingFee        Float?
@@ -88,6 +89,8 @@ model CardExpense {
   id          String   @id @default(cuid())
   cardId      String
   kind        String
+  context     String   @default("grading")
+  transactionId String?
   amountMinor BigInt
   currency    String   @default("CNY")
   occurredAt  DateTime
@@ -101,6 +104,7 @@ model CardExpense {
 
   @@index([cardId, occurredAt(sort: Desc)])
   @@index([kind])
+  @@index([transactionId])
   @@index([occurredAt(sort: Desc)])
 }
 

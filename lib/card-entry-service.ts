@@ -8,7 +8,7 @@ import {
 } from "@/lib/card-media-service";
 import { optionalCardDate } from "@/lib/card-domain";
 import { normalizeCurrency } from "@/lib/financial-history";
-import { deriveLegacyFinancialSnapshot } from "@/lib/financial-history-snapshot";
+import { deriveCardFinancialSummary } from "@/lib/financial-history-snapshot";
 import {
   createCardExpense,
   createCardTransaction,
@@ -22,11 +22,24 @@ function optionalString(value: string): string | null {
   return trimmed ? trimmed : null;
 }
 
+function initialCardQuantity(value: string, collectionStatus: string): number {
+  const quantity = Number(value.trim() || "1");
+  if (!Number.isInteger(quantity) || quantity < 0) throw new Error("初始数量必须是非负整数。");
+  if (["sold", "target"].includes(collectionStatus) && quantity !== 0) {
+    throw new Error("已售出或目标卡的初始数量必须为 0。");
+  }
+  if (!["sold", "target"].includes(collectionStatus) && quantity < 1) {
+    throw new Error("持有、在售或送评中的卡片初始数量至少为 1。");
+  }
+  return quantity;
+}
+
 async function createInitialFinancialHistory(
   transaction: Prisma.TransactionClient,
   cardId: string,
   values: CardFormValues,
-  gradingCompany: string | null
+  gradingCompany: string | null,
+  quantity: number
 ) {
   const purchaseAmount = optionalString(values.purchasePrice);
   const gradingAmount = optionalString(values.gradingFee);
@@ -35,10 +48,10 @@ async function createInitialFinancialHistory(
   const valuationDate = optionalCardDate(values.valuationDate, "估值日期");
   const currency = normalizeCurrency(optionalString(values.historyCurrency));
   const valuationSource = optionalString(values.valuationSource);
-
-  if ((purchaseAmount || gradingAmount) && !purchaseDate) {
-    throw new Error("填写购买价格或评级费用时，必须填写购买日期。");
+  if ((purchaseAmount || gradingAmount || quantity > 1) && !purchaseDate) {
+    throw new Error("填写购买价格、评级费用或多张初始数量时，必须填写购买日期。");
   }
+  if (purchaseAmount && quantity === 0) throw new Error("初始数量为 0 时不能填写购买价格。");
   if (valuationAmount && !valuationDate) {
     throw new Error("填写初始估值时，必须填写估值日期。");
   }
@@ -46,12 +59,13 @@ async function createInitialFinancialHistory(
     throw new Error("填写初始估值时，必须注明估值来源。");
   }
 
-  if (purchaseAmount && purchaseDate) {
+  if (purchaseDate && quantity > 0 && (purchaseAmount || quantity > 1)) {
     await createCardTransaction(transaction, {
       cardId,
       kind: "purchase",
-      amount: purchaseAmount,
+      amount: purchaseAmount ?? "0",
       currency,
+      quantity,
       occurredAt: purchaseDate,
       source: optionalString(values.purchaseSource),
       provenance: "initial_card_entry"
@@ -61,6 +75,7 @@ async function createInitialFinancialHistory(
     await createCardExpense(transaction, {
       cardId,
       kind: "grading",
+      context: "grading",
       amount: gradingAmount,
       currency,
       occurredAt: purchaseDate,
@@ -82,7 +97,7 @@ async function createInitialFinancialHistory(
   const history = await getCardFinancialHistory(transaction, cardId);
   await transaction.card.update({
     where: { id: cardId },
-    data: deriveLegacyFinancialSnapshot(history)
+    data: deriveCardFinancialSummary(history)
   });
 }
 
@@ -94,6 +109,7 @@ export async function createCardEntry(input: {
 }) {
   const { values, files, draftId, queueItemId } = input;
   const cardData = buildCardData(values);
+  const initialQuantity = initialCardQuantity(values.initialQuantity, cardData.collectionStatus);
   const queuedItem = queueItemId
     ? await prisma.cardEntryQueueItem.findFirst({
         where: { id: queueItemId, status: "ready" },
@@ -134,6 +150,7 @@ export async function createCardEntry(input: {
       const created = await transaction.card.create({
         data: {
           ...cardData,
+          holdingQuantity: initialQuantity,
           images: {
             create: [...transactionQueuePaths, ...imagePaths].map((pathValue) => ({
               path: pathValue
@@ -141,7 +158,13 @@ export async function createCardEntry(input: {
           }
         }
       });
-      await createInitialFinancialHistory(transaction, created.id, values, cardData.gradingCompany);
+      await createInitialFinancialHistory(
+        transaction,
+        created.id,
+        values,
+        cardData.gradingCompany,
+        initialQuantity
+      );
       if (draftId) await transaction.cardEntryDraft.deleteMany({ where: { id: draftId } });
       if (transactionQueueItem) {
         await transaction.cardEntryQueueItem.delete({

@@ -19,6 +19,7 @@
   visibility: string;
   collectionStatus: string;
   purchaseDate: string;
+  initialQuantity: string;
   purchasePrice: string;
   gradingFee: string;
   totalCost: string;
@@ -58,6 +59,7 @@ export const emptyCardFormValues: CardFormValues = {
   visibility: "private",
   collectionStatus: "holding",
   purchaseDate: "",
+  initialQuantity: "1",
   purchasePrice: "",
   gradingFee: "",
   totalCost: "",
@@ -75,5 +77,4 @@ export const emptyCardFormValues: CardFormValues = {
   isPatch: false,
   patchType: ""
 };
-
 

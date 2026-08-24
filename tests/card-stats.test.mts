@@ -10,21 +10,22 @@ test("owned collection statuses remain available for portfolio analysis", () => 
   assert.equal(isOwnedCollectionStatus("target"), false);
 });
 
-test("homepage totals use exactly one latest valuation from every selected card", () => {
+test("homepage totals multiply the latest unit valuation by current holding quantity", () => {
   const result = calculateLatestValuationTotals([
     {
+      holdingQuantity: 2,
       valuations: [
         { amountMinor: 10000n, currency: "CNY", valuedAt: new Date("2025-01-01"), createdAt: new Date("2025-01-01") },
         { amountMinor: 15000n, currency: "CNY", valuedAt: new Date("2025-02-01"), createdAt: new Date("2025-02-01") }
       ]
     },
     { valuations: [{ amountMinor: 22000n, currency: "CNY", valuedAt: new Date("2025-01-05"), createdAt: new Date("2025-01-05") }] },
-    { valuations: [{ amountMinor: 9950n, currency: "USD", valuedAt: new Date("2025-01-06"), createdAt: new Date("2025-01-06") }] },
+    { holdingQuantity: 0, valuations: [{ amountMinor: 9950n, currency: "USD", valuedAt: new Date("2025-01-06"), createdAt: new Date("2025-01-06") }] },
     { valuations: [] }
   ]);
 
   assert.deepEqual(result, {
-    totals: { CNY: 37000n, USD: 9950n },
-    valuedCardCount: 3
+    totals: { CNY: 52000n },
+    valuedCardCount: 2
   });
 });

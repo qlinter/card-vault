@@ -132,9 +132,10 @@ function normalizeCurrencySummaries(value: unknown, cardCount: number): Portfoli
       return {
         currency,
         purchaseAmount: money(boundedNumber(record.purchaseAmount, 0, maximumMoney)),
-        refundAmount: money(boundedNumber(record.refundAmount, 0, maximumMoney)),
         salesAmount: money(boundedNumber(record.salesAmount, 0, maximumMoney)),
         expenseAmount: money(boundedNumber(record.expenseAmount, 0, maximumMoney)),
+        inventoryExpenseAmount: money(boundedNumber(record.inventoryExpenseAmount, 0, maximumMoney)),
+        saleExpenseAmount: money(boundedNumber(record.saleExpenseAmount, 0, maximumMoney)),
         netCashInvested: money(boundedNumber(record.netCashInvested, -maximumMoney, maximumMoney)),
         latestValue: money(boundedNumber(record.latestValue, 0, maximumMoney)),
         valuedCardCount: boundedCount(record.valuedCardCount, cardCount),
@@ -144,10 +145,13 @@ function normalizeCurrencySummaries(value: unknown, cardCount: number): Portfoli
         comparableCardCount: boundedCount(record.comparableCardCount, cardCount),
         comparableCostBasis,
         comparableValue,
+        realizedCost: money(boundedNumber(record.realizedCost, 0, maximumMoney)),
+        realizedProfit: money(boundedNumber(record.realizedProfit, -maximumMoney, maximumMoney)),
         unrealizedDifference,
         unrealizedReturnRate: comparableCostBasis > 0
           ? money(unrealizedDifference / comparableCostBasis * 100)
           : null,
+        totalProfit: money(boundedNumber(record.totalProfit, -maximumMoney, maximumMoney)),
       };
     })
     .filter((item): item is PortfolioCurrencySummary => item !== null);
@@ -203,7 +207,6 @@ export function normalizePortfolioSnapshot(value: unknown): PortfolioSnapshot {
       latestValuationAt: normalizeDateText(financials.latestValuationAt),
       oldestLatestValuationAt: normalizeDateText(financials.oldestLatestValuationAt),
       valuationSources: normalizeValuationSources(financials.valuationSources, cardCount),
-      excludedComplexPositionCount: boundedCount(financials.excludedComplexPositionCount, activeCount),
     },
     quality: {
       gradedCount: boundedCount(quality.gradedCount, activeCount),

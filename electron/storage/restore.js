@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { initializeDatabase } = require("../../scripts/database-migrations");
+const { initializeDatabase } = require("../../scripts/database-schema");
 const { dateFolderName, uniqueBackupTarget } = require("./backup");
 const { isSubPath, pathsEqual } = require("./file-utils");
 const { inspectDataFolder } = require("./health");
@@ -34,22 +34,22 @@ function createRestoreService({ config, backupDataFolder, repairDataLayout }) {
     const suffix = `${Date.now()}-${process.pid}`;
     const stagingDir = path.join(parentDir, `.${baseName}-restore-staging-${suffix}`);
     const rollbackDir = path.join(parentDir, `.${baseName}-restore-rollback-${suffix}`);
-    let migration = { appliedMigrations: [], schemaVersion: null };
+    let schema = { schemaVersion: null };
     if (pathsEqual(targetDataDir, path.parse(targetDataDir).root)) throw new Error("不能将文件系统根目录作为恢复目标。");
     fs.mkdirSync(parentDir, { recursive: true });
     try {
       fs.cpSync(sourceDataDir, stagingDir, { recursive: true });
       if (inspectDataFolder(stagingDir, mapProgress(onProgress, 64, 80)).integrity !== "ok") throw new Error("备份复制到临时目录后完整性检查失败。");
-      reportProgress(onProgress, 81, "正在升级恢复数据的数据库结构...");
-      migration = initializeDatabase(path.join(stagingDir, "dev.db"));
-      if (inspectDataFolder(stagingDir, mapProgress(onProgress, 82, 86)).integrity !== "ok") throw new Error("备份完成数据库迁移后完整性检查失败。");
+      reportProgress(onProgress, 81, "正在验证恢复数据的数据库结构...");
+      schema = initializeDatabase(path.join(stagingDir, "dev.db"));
+      if (inspectDataFolder(stagingDir, mapProgress(onProgress, 82, 86)).integrity !== "ok") throw new Error("备份数据库结构验证后的完整性检查失败。");
       if (fs.existsSync(targetDataDir)) { reportProgress(onProgress, 84, "正在保留当前数据以便回滚..."); fs.renameSync(targetDataDir, rollbackDir); }
       try { reportProgress(onProgress, 88, "正在切换到恢复后的数据目录..."); fs.renameSync(stagingDir, targetDataDir); }
       catch (error) { if (fs.existsSync(rollbackDir) && !fs.existsSync(targetDataDir)) fs.renameSync(rollbackDir, targetDataDir); throw error; }
       if (fs.existsSync(rollbackDir)) fs.rmSync(rollbackDir, { recursive: true, force: true });
     } catch (error) { if (fs.existsSync(stagingDir)) fs.rmSync(stagingDir, { recursive: true, force: true }); throw error; }
     repairDataLayout(targetDataDir);
-    const result = { restoredFrom: sourceDataDir, restoredTo: targetDataDir, safetyBackupPath, appliedMigrations: migration.appliedMigrations, schemaVersion: migration.schemaVersion, health: inspectDataFolder(targetDataDir, mapProgress(onProgress, 92, 100)) };
+    const result = { restoredFrom: sourceDataDir, restoredTo: targetDataDir, safetyBackupPath, schemaVersion: schema.schemaVersion, health: inspectDataFolder(targetDataDir, mapProgress(onProgress, 92, 100)) };
     reportProgress(onProgress, 100, "数据恢复完成。");
     return result;
   }

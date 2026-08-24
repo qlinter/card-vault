@@ -211,6 +211,10 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
               <span>{collectionStatusText(card.collectionStatus)}</span>
             </div>
             <div className="info-item">
+              <strong>持有数量</strong>
+              <span>{card.holdingQuantity}</span>
+            </div>
+            <div className="info-item">
               <strong>标签</strong>
               <span>{tags.length > 0 ? tags.join(", ") : "-"}</span>
             </div>

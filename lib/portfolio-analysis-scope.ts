@@ -11,6 +11,7 @@ export const portfolioFilterDefinitions = {
   parallel: "平行版本",
   cardNumber: "卡号",
   isSerialNumbered: "限量卡",
+  isOneOfOne: "1/1",
   isRookie: "Rookie",
   isAutograph: "签名卡",
   autoType: "签字类型",
@@ -27,7 +28,7 @@ export const portfolioFilterDefinitions = {
 export type PortfolioFilterInput = Record<string, string | undefined>;
 
 const maximumFilterValueLength = 160;
-const booleanFilterFields = new Set<PortfolioFilterField>(["isRookie", "isSerialNumbered", "isAutograph", "isPatch", "isGraded"]);
+const booleanFilterFields = new Set<PortfolioFilterField>(["isRookie", "isSerialNumbered", "isOneOfOne", "isAutograph", "isPatch", "isGraded"]);
 
 function isBooleanFilterValue(value: string): boolean {
   return value === "true" || value === "false";

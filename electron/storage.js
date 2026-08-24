@@ -34,6 +34,7 @@ function createStorageManager({ appDataRoot, projectRoot, log }) {
     getDataDir: config.getDataDir,
     getBackupDir: config.getBackupDir,
     getUploadsDir: config.getUploadsDir,
+    getThumbnailsDir: config.getThumbnailsDir,
     getShareCoversDir: config.getShareCoversDir,
     getShareBackgroundsDir: config.getShareBackgroundsDir,
     getDbPath: config.getDbPath,

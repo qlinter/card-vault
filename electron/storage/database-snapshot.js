@@ -22,7 +22,7 @@ function createDatabaseSnapshot(sourceDbPath, targetDbPath, onProgress) {
 
 function copyDataFilesForBackup(sourceDataDir, targetDataDir, sourceDbPath, onProgress) {
   const sourceDbName = path.basename(sourceDbPath);
-  const skipped = new Set([sourceDbName, `${sourceDbName}-journal`, `${sourceDbName}-shm`, `${sourceDbName}-wal`]);
+  const skipped = new Set([sourceDbName, `${sourceDbName}-journal`, `${sourceDbName}-shm`, `${sourceDbName}-wal`, "thumbnails"]);
   fs.mkdirSync(targetDataDir, { recursive: true });
   const entries = fs.readdirSync(sourceDataDir, { withFileTypes: true }).filter((entry) => !skipped.has(entry.name));
   for (const [index, entry] of entries.entries()) {

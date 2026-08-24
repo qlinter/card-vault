@@ -222,9 +222,6 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
       setMiniMaxApiKey("");
       setCustomApiKeys({});
       setClearCustomApiKeys({});
-      const savedCustom = activeCustom(loaded);
-      const name = loaded.provider === "custom" ? savedCustom?.name || "未命名配置" : providerName(loaded.provider);
-      setMessage(name + " 设置已加密保存并立即生效，无需重启 Card Vault。");
     } catch (error) {
       setMessage("保存失败：" + errorMessage(error, "请稍后重试。"));
     } finally {
@@ -320,10 +317,6 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
 
       {isOpen ? (
         <>
-          <p className="muted" style={{ margin: "0.75rem 0" }}>
-            配置 AI 识图、分享文案和组合分析共用的服务商、模型与连接信息。
-          </p>
-
           <div className="form-grid">
             <label className="field">
               <span>当前服务</span>

@@ -5,7 +5,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { DatabaseSync } = require("node:sqlite");
-const { initializeDatabase } = require("../scripts/database-migrations");
+const { initializeDatabase } = require("../scripts/database-schema");
 
 const projectRoot = path.resolve(__dirname, "..");
 const workerPath = path.join(projectRoot, "electron", "storage-worker.js");
@@ -40,7 +40,7 @@ function runWorker(request) {
   });
 }
 
-test("storage worker performs health checks, backups, restores, and migrations outside the caller process", async (t) => {
+test("storage worker performs health checks, backups, restores, and path moves outside the caller process", async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "card-vault-storage-worker-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const appDataRoot = path.join(root, "app-data");

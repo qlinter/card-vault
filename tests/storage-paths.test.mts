@@ -8,6 +8,7 @@ import {
   resolveEntryQueueDir,
   resolveShareBackgroundsDir,
   resolveShareCoversDir,
+  resolveThumbnailsDir,
   resolveUploadsDir
 } from "../lib/storage-resolver.ts";
 
@@ -21,6 +22,7 @@ test("script and application storage paths share the same default layout", () =>
   assert.equal(scriptPaths.resolveDataDir(rootDir, env), resolveDataDir(env));
   assert.equal(scriptPaths.resolveDbPath(rootDir, env), resolveDatabasePath(env));
   assert.equal(scriptPaths.resolveUploadsDir(rootDir, env), resolveUploadsDir(env));
+  assert.equal(scriptPaths.resolveThumbnailsDir(rootDir, env), resolveThumbnailsDir(env));
   assert.equal(scriptPaths.resolveEntryQueueDir(rootDir, env), resolveEntryQueueDir(env));
   assert.equal(scriptPaths.resolveShareCoversDir(rootDir, env), resolveShareCoversDir(env));
   assert.equal(scriptPaths.resolveShareBackgroundsDir(rootDir, env), resolveShareBackgroundsDir(env));
@@ -38,6 +40,7 @@ test("storage paths consistently honor custom data and database locations", () =
   assert.equal(scriptPaths.resolveDbPath(process.cwd(), env), expectedDbPath);
   assert.equal(resolveDatabasePath(env), expectedDbPath);
   assert.equal(resolveUploadsDir(env), path.join(expectedDataDir, "uploads"));
+  assert.equal(resolveThumbnailsDir(env), path.join(expectedDataDir, "thumbnails"));
   assert.equal(resolveEntryQueueDir(env), path.join(expectedDataDir, "entry-queue"));
   assert.equal(resolveShareCoversDir(env), path.join(expectedDataDir, "share-covers"));
   assert.equal(resolveShareBackgroundsDir(env), path.join(expectedDataDir, "share-backgrounds"));

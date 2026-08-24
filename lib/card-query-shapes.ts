@@ -25,6 +25,7 @@ export const portfolioAnalysisCardSelect = Prisma.validator<Prisma.CardSelect>()
   serialNumber: true,
   serialRange: true,
   collectionStatus: true,
+  holdingQuantity: true,
   gradingCompany: true,
   grade: true,
   isRookie: true,
@@ -35,7 +36,7 @@ export const portfolioAnalysisCardSelect = Prisma.validator<Prisma.CardSelect>()
   tags: true,
   publicDescription: true,
   _count: { select: { images: true } },
-  transactions: { select: { kind: true, amountMinor: true, currency: true, occurredAt: true, createdAt: true } },
-  expenses: { select: { amountMinor: true, currency: true, occurredAt: true } },
+  transactions: { select: { kind: true, amountMinor: true, currency: true, quantity: true, occurredAt: true, createdAt: true } },
+  expenses: { select: { kind: true, context: true, amountMinor: true, currency: true, occurredAt: true, createdAt: true } },
   valuations: { select: { amountMinor: true, currency: true, valuedAt: true, createdAt: true, source: true } }
 });

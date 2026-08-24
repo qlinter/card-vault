@@ -96,11 +96,12 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
     {
       currency: "CNY",
       purchaseAmount: 450,
-      refundAmount: 0,
       salesAmount: 500,
       expenseAmount: 10,
+      inventoryExpenseAmount: 10,
+      saleExpenseAmount: 0,
       netCashInvested: -40,
-      latestValue: 650,
+      latestValue: 150,
       valuedCardCount: 2,
       activeCostBasis: 160,
       activeLatestValue: 150,
@@ -108,17 +109,21 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
       comparableCardCount: 1,
       comparableCostBasis: 110,
       comparableValue: 150,
+      realizedCost: 300,
+      realizedProfit: 200,
       unrealizedDifference: 40,
-      unrealizedReturnRate: 36.36
+      unrealizedReturnRate: 36.36,
+      totalProfit: 240
     },
     {
       currency: "USD",
       purchaseAmount: 200,
-      refundAmount: 0,
       salesAmount: 0,
       expenseAmount: 0,
+      inventoryExpenseAmount: 0,
+      saleExpenseAmount: 0,
       netCashInvested: 200,
-      latestValue: 980,
+      latestValue: 180,
       valuedCardCount: 2,
       activeCostBasis: 200,
       activeLatestValue: 180,
@@ -126,8 +131,11 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
       comparableCardCount: 1,
       comparableCostBasis: 200,
       comparableValue: 180,
+      realizedCost: 0,
+      realizedProfit: 0,
       unrealizedDifference: -20,
-      unrealizedReturnRate: -10
+      unrealizedReturnRate: -10,
+      totalProfit: -20
     }
   ]);
   assert.equal(snapshot.financials.transactionCoverageCount, 4);
@@ -385,6 +393,15 @@ test("portfolio analysis accepts only known bounded filter strings", () => {
   assert.throws(() => normalizePortfolioFilterInput({ isSerialNumbered: "yes" }), /限量卡.*格式无效/);
   assert.throws(() => normalizePortfolioFilterInput({ q: "x".repeat(161) }), /过长/);
 });
+
+test("portfolio scope preserves the 1/1 filter as a boolean criterion", () => {
+  assert.deepEqual(normalizePortfolioFilterInput({ isOneOfOne: "true" }), { isOneOfOne: "true" });
+  assert.deepEqual(buildPortfolioScope({ isOneOfOne: "false" }), {
+    isFiltered: true,
+    criteria: [{ field: "isOneOfOne", label: "1/1", value: "否" }]
+  });
+  assert.throws(() => normalizePortfolioFilterInput({ isOneOfOne: "yes" }), /1\/1.*格式无效/);
+});
 test("portfolio analysis normalization accepts version 2 sections, evidence, and sufficiency", () => {
   const analysis = normalizePortfolioAnalysis({
     analysisVersion: 2,
@@ -495,7 +512,6 @@ test("portfolio snapshot normalization drops unknown fields and bounds nested va
       currencies: [{
         currency: "CNY",
         purchaseAmount: 100,
-        refundAmount: 0,
         salesAmount: 0,
         expenseAmount: 10,
         netCashInvested: 110,
@@ -519,7 +535,6 @@ test("portfolio snapshot normalization drops unknown fields and bounds nested va
       latestValuationAt: "2026-08-01T00:00:00.000Z",
       oldestLatestValuationAt: "invalid",
       valuationSources: [{ name: "个人估计", count: 2 }],
-      excludedComplexPositionCount: 8,
       secret: "drop me"
     },
     quality: { gradedCount: 1, rookieCount: 2, autographCount: 0, patchCount: 1 },
@@ -530,7 +545,7 @@ test("portfolio snapshot normalization drops unknown fields and bounds nested va
 
   assert.equal(snapshot.activeCount, 3);
   assert.equal(snapshot.financials.transactionCoverageCount, 3);
-  assert.equal(snapshot.financials.excludedComplexPositionCount, 3);
+  assert.equal("excludedComplexPositionCount" in snapshot.financials, false);
   assert.equal(snapshot.financials.oldestLatestValuationAt, null);
   assert.equal(snapshot.financials.currencies[0].unrealizedDifference, 40);
   assert.equal(snapshot.financials.currencies[0].unrealizedReturnRate, 36.36);

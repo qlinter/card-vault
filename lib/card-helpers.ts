@@ -11,6 +11,7 @@ type CardFilterInput = {
   parallel?: string;
   cardNumber?: string;
   isSerialNumbered?: string;
+  isOneOfOne?: string;
   isRookie?: string;
   isAutograph?: string;
   autoType?: string;
@@ -134,6 +135,13 @@ export function buildCardFilters(input: CardFilterInput): Prisma.CardWhereInput 
   addBooleanFilter(andParts, input.isSerialNumbered, "isSerialNumbered");
   addBooleanFilter(andParts, input.isAutograph, "isAutograph");
   addBooleanFilter(andParts, input.isPatch, "isPatch");
+
+  const oneOfOneRanges = ["1", "/1", "1/1"];
+  if (input.isOneOfOne === "true") {
+    andParts.push({ serialRange: { in: oneOfOneRanges } });
+  } else if (input.isOneOfOne === "false") {
+    andParts.push({ OR: [{ serialRange: null }, { serialRange: { notIn: oneOfOneRanges } }] });
+  }
 
   if (input.isGraded === "true") {
     andParts.push({ grade: { not: null } });

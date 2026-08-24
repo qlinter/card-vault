@@ -34,6 +34,7 @@ export const cardFormStringFields = [
   "visibility",
   "collectionStatus",
   "purchaseDate",
+  "initialQuantity",
   "purchasePrice",
   "gradingFee",
   "totalCost",

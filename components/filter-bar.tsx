@@ -14,7 +14,7 @@ type FilterBarProps = {
 };
 
 const advancedFilterFields = [
-  "brand", "subsetName", "parallel", "cardNumber", "isSerialNumbered", "isRookie",
+  "brand", "subsetName", "parallel", "cardNumber", "isSerialNumbered", "isOneOfOne", "isRookie",
   "isAutograph", "autoType", "isPatch", "patchType", "isGraded", "gradingCompany",
   "grade", "certNumber", "visibility", "collectionStatus"
 ] as const;
@@ -139,6 +139,7 @@ export function FilterBar({
           <input name="cardNumber" placeholder="卡号" defaultValue={query.cardNumber ?? ""} />
 
           <BooleanFilter name="isSerialNumbered" label="限量卡" value={query.isSerialNumbered} />
+          <BooleanFilter name="isOneOfOne" label="1/1" value={query.isOneOfOne} />
           <BooleanFilter name="isRookie" label="Rookie" value={query.isRookie} />
           <BooleanFilter name="isAutograph" label="签名卡" value={query.isAutograph} />
 

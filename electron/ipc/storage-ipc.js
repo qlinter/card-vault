@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { runWithPausedLocalServer } = require("../local-server-lifecycle");
 const { createStorageWorkerBridge } = require("./storage-worker-bridge");
 const { createTrustedIpcRegistrar } = require("./security");
 
@@ -58,7 +59,6 @@ function registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, log
     } catch (error) { logger.appendLog("desktop.log", `Orphan cleanup failed: ${error instanceof Error ? error.message : "Unknown orphan cleanup error."}`); throw error; }
   }));
   trustedHandle("card-vault:restore-data-folder", async (event) => withStorageOperation(event, "restore", async (sender) => {
-    let serverWasStopped = false;
     try {
       sendStorageProgress(sender, "restore", { percent: 1, message: "请选择要恢复的备份文件夹..." });
       const selected = await dialog.showOpenDialog({ title: "选择要恢复的数据备份文件夹", properties: ["openDirectory"], defaultPath: storage.getBackupDir() });
@@ -69,11 +69,22 @@ function registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, log
       const resolvedSourceSummary = path.resolve(selectedPath) === path.resolve(preflight.sourcePath) ? "" : `\n已自动定位到最新备份：${preflight.sourcePath}`;
       const issueSummary = preflight.health.missingFiles.length > 0 ? `\n\n注意：备份中有 ${preflight.health.missingFiles.length} 个数据库引用的图片文件缺失。` : "";
       sendStorageProgress(sender, "restore", { percent: 31, message: "备份检查完成，等待恢复确认..." });
-      const confirmation = await dialog.showMessageBox({ type: "warning", title: "确认恢复备份", message: "恢复将替换当前数据目录。程序会先自动备份当前数据，然后重新启动。", detail: `恢复来源：${selectedPath}${resolvedSourceSummary}${issueSummary}`, buttons: ["取消", "恢复并重启"], defaultId: 0, cancelId: 0, noLink: true });
+      const confirmation = await dialog.showMessageBox({ type: "warning", title: "确认恢复备份", message: "恢复将替换当前数据目录。程序会先自动备份当前数据，恢复期间本地数据服务会短暂停止。", detail: `恢复来源：${selectedPath}${resolvedSourceSummary}${issueSummary}`, buttons: ["取消", "开始恢复"], defaultId: 0, cancelId: 0, noLink: true });
       if (confirmation.response !== 1) return { cancelled: true };
-      sendStorageProgress(sender, "restore", { percent: 34, message: "正在停止本地数据服务..." }); const child = runtime.stopServer(); serverWasStopped = true; await runtime.waitForProcessExit(child);
-      const result = await runStorageWorker(sender, "restore", { sourcePath: preflight.sourcePath }, { start: 36, end: 100 }); logger.appendLog("desktop.log", `Data restored from: ${result.restoredFrom}`); setTimeout(() => { app.relaunch(); app.quit(); }, 300); return { cancelled: false, ...result };
-    } catch (error) { logger.appendLog("desktop.log", `Data restore failed: ${error instanceof Error ? error.message : "Unknown restore error."}`); if (serverWasStopped) setTimeout(() => { app.relaunch(); app.quit(); }, 500); throw error; }
+      sendStorageProgress(sender, "restore", { percent: 34, message: "正在暂停本地数据服务..." });
+      const result = await runWithPausedLocalServer(
+        runtime,
+        () => runStorageWorker(sender, "restore", { sourcePath: preflight.sourcePath }, { start: 38, end: 88 }),
+        {
+          beforeResume: () => sendStorageProgress(sender, "restore", { percent: 90, message: "数据恢复完成，正在重新连接本地服务..." }),
+          afterResume: () => sendStorageProgress(sender, "restore", { percent: 99, message: "本地服务已恢复，正在刷新页面..." }),
+          beforeRecovery: () => sendStorageProgress(sender, "restore", { percent: 90, message: "恢复未完成，正在重新连接原数据..." }),
+          afterRecovery: () => sendStorageProgress(sender, "restore", { percent: 99, message: "原数据服务已恢复。" })
+        }
+      );
+      logger.appendLog("desktop.log", `Data restored in place from: ${result.restoredFrom}`);
+      return { cancelled: false, ...result };
+    } catch (error) { logger.appendLog("desktop.log", `Data restore failed: ${error instanceof Error ? error.message : "Unknown restore error."}`); throw error; }
   }));
 }
 

@@ -61,7 +61,7 @@ export function FilterBar({
       <div className="filters">
         <input
           name="q"
-          placeholder="搜索球员 / 卡名 / 品牌 / 产品线 / 卡号 / 标签 / 年份 / 评级 / 证书号"
+          placeholder="搜索卡片主体 / 卡名 / 品牌 / 产品线 / 卡号 / 标签 / 年份 / 评级 / 证书号"
           defaultValue={query.q ?? ""}
         />
 
@@ -195,12 +195,17 @@ export function FilterBar({
         </div>
       </details>
 
-      <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.8rem" }}>
-        <button type="submit" className="btn btn-primary">
-          {"搜索 / 筛选"}
-        </button>
-        <a href="/" className="btn btn-secondary">
-          {"清空条件"}
+      <div className="filter-actions" data-testid="home-filter-actions">
+        <div className="filter-main-actions">
+          <button type="submit" className="btn btn-primary">
+            {"搜索 / 筛选"}
+          </button>
+          <a href="/" className="btn btn-secondary">
+            {"清空条件"}
+          </a>
+        </div>
+        <a href="/cards/new" className="btn btn-primary filter-add-card">
+          {"新增卡片"}
         </a>
       </div>
 

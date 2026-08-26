@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { portfolioAnalysisDimensions, type PortfolioAnalysis, type PortfolioFilterInput, type PortfolioScope, type PortfolioSnapshot } from "@/lib/portfolio-analysis";
 import { errorMessage } from "@/lib/feedback-messages";
+import {
+  formatPortfolioCountPercent,
+  formatPortfolioDate as date,
+  formatPortfolioMoney as currency
+} from "@/lib/portfolio-presentation";
 import styles from "./portfolio-analysis.module.css";
 
 type AnalysisResponse = { analysis?: PortfolioAnalysis; snapshot?: PortfolioSnapshot; provider?: string; fallback?: boolean; warning?: string; error?: string };
-
-function percent(count: number, total: number) { return total > 0 ? `${Math.round(count / total * 100)}%` : "--"; }
-function currency(value: number, code: string) { return `${code} ${value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
-function date(value: string | null) { return value ? new Intl.DateTimeFormat("zh-CN").format(new Date(value)) : "暂无"; }
 
 type PortfolioAnalysisButtonProps = {
   cardCount: number;
@@ -73,7 +74,7 @@ export function PortfolioAnalysisButton({ cardCount, query, scope }: PortfolioAn
     {mounted && open ? createPortal(<div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }} role="presentation">
       <section className={styles.modal} role="dialog" aria-modal="true" aria-busy={loading} aria-labelledby="portfolio-analysis-title">
         <header className={styles.modalHeader}><div><span className={styles.kicker}>CARD VAULT INTELLIGENCE</span><h2 id="portfolio-analysis-title">组合分析</h2><p>基于当前首页筛选结果中的 {displayCardCount} 张卡片</p></div><button type="button" className={styles.close} onClick={() => setOpen(false)} aria-label="关闭组合分析">×</button></header>
-        {snapshot ? <><div className={styles.snapshotStrip}><span><small>活跃收藏</small><strong>{snapshot.activeCount} 张</strong></span><span><small>已售 / 目标</small><strong>{snapshot.soldCount} / {snapshot.targetCount} 张</strong></span><span><small>估值覆盖</small><strong>{percent(snapshot.financials.valuationCoverageCount, snapshot.cardCount)}</strong></span><span><small>90 天内估值</small><strong>{snapshot.financials.freshValuationCount} 张</strong></span></div>
+        {snapshot ? <><div className={styles.snapshotStrip}><span><small>活跃收藏</small><strong>{snapshot.activeCount} 张</strong></span><span><small>已售 / 目标</small><strong>{snapshot.soldCount} / {snapshot.targetCount} 张</strong></span><span><small>估值覆盖</small><strong>{formatPortfolioCountPercent(snapshot.financials.valuationCoverageCount, snapshot.cardCount, "--")}</strong></span><span><small>90 天内估值</small><strong>{snapshot.financials.freshValuationCount} 张</strong></span></div>
         <section className={styles.financialOverview} aria-label="财务摘要">{snapshot.financials.currencies.map((item) => <article key={item.currency}><header><strong>{item.currency}</strong><span>{item.valuedCardCount} 张有最新估值</span></header><dl><div><dt>持仓估值</dt><dd>{currency(item.latestValue, item.currency)}</dd></div><div><dt>剩余成本</dt><dd>{currency(item.activeCostBasis, item.currency)}</dd></div><div><dt>已实现盈亏</dt><dd>{currency(item.realizedProfit, item.currency)}</dd></div><div><dt>未实现盈亏</dt><dd>{currency(item.unrealizedDifference, item.currency)}</dd></div></dl></article>)}</section>
         <div className={styles.dataFreshness}><span>最新估值日期：<strong>{date(snapshot.financials.latestValuationAt)}</strong></span><span>超过 180 天：<strong>{snapshot.financials.staleValuationCount} 张</strong></span><span>交易记录覆盖：<strong>{snapshot.financials.transactionCoverageCount}/{snapshot.cardCount}</strong></span></div></> : null}<div className={styles.scope}><strong>本次分析范围</strong><span>{scopeText}</span></div>
         {loading ? <div className={styles.loading}><span /><strong>正在生成五维组合概览</strong><p>AI 正在分析组合结构、财务记录、收藏特征、估值时效和档案完整度。</p></div> : null}

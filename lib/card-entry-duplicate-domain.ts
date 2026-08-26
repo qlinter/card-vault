@@ -41,7 +41,7 @@ export function scoreCardEntryDuplicate(
   if (!certMatches && (!inputPlayer || inputPlayer !== cardPlayer)) return null;
 
   let score = certMatches ? 6 : 3;
-  const matches = certMatches ? ["证书号"] : ["球员姓名"];
+  const matches = certMatches ? ["证书号"] : ["卡片主体"];
   for (const [field, label, weight] of duplicateFields) {
     const inputValue = canonical(input[field]);
     if (inputValue && inputValue === canonical(card[field])) {

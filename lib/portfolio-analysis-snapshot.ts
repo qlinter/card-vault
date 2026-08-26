@@ -1,9 +1,12 @@
 import { isOwnedCollectionStatus } from "./card-stats.ts";
 import { minorMoneyToNumber, normalizeCurrency, selectLatestValuation } from "./financial-history.ts";
+import { portfolioMoneyAmount as moneyAmount, roundPortfolioValue as money } from "./portfolio-number.ts";
+import { assessPortfolioCardQuality, portfolioQualityMetrics } from "./portfolio-quality.ts";
 import {
   allocationBreakdown,
   concentrationDimension,
   createPortfolioPositionMap,
+  monthlyActivitySeries,
   monthlySeries,
   portfolioCardQuantity,
   topPositions,
@@ -12,9 +15,6 @@ import {
 import type { PortfolioAttentionItem, PortfolioCardRecord, PortfolioCurrencySummary, PortfolioScope, PortfolioSnapshot } from "./portfolio-analysis-types.ts";
 
 const portfolioCurrencies = ["CNY", "USD"] as const;
-
-function money(value: number): number { return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100; }
-function moneyAmount(record: { amountMinor: bigint; currency: string }): number { return minorMoneyToNumber(record.amountMinor, normalizeCurrency(record.currency)); }
 
 function blankCurrencySummary(currency: string): PortfolioCurrencySummary {
   return { currency, purchaseAmount: 0, salesAmount: 0, expenseAmount: 0, inventoryExpenseAmount: 0, saleExpenseAmount: 0, netCashInvested: 0, latestValue: 0, valuedCardCount: 0, activeCostBasis: 0, activeLatestValue: 0, activeValuedCardCount: 0, comparableCardCount: 0, comparableCostBasis: 0, comparableValue: 0, realizedCost: 0, realizedProfit: 0, unrealizedDifference: 0, unrealizedReturnRate: null, totalProfit: 0 };
@@ -141,14 +141,27 @@ export function buildPortfolioSnapshot(cards: PortfolioCardRecord[], scope: Port
   const imageCount = cards.reduce((sum, card) => sum + (card.imageCount ?? 0), 0);
   const imageCoverageCount = cards.filter((card) => (card.imageCount ?? 0) > 0).length;
   const publicDescriptionCoverageCount = cards.filter((card) => Boolean(card.publicDescription?.trim())).length;
-  const incompleteCardCount = cards.filter((card) => !card.playerName.trim() || !card.sport.trim() || !card.cardTitle?.trim() || !selectLatestValuation(card.valuations)).length;
-  const attentionItems = [{ type: "missing_valuation", priority: cards.length - valuationCoverageCount > 0 ? "high" : "low", count: cards.length - valuationCoverageCount }, { type: "stale_valuation", priority: staleValuationCount > 0 ? "medium" : "low", count: staleValuationCount }, { type: "missing_transaction", priority: cards.some((card) => card.transactions.length === 0) ? "medium" : "low", count: cards.filter((card) => card.transactions.length === 0).length }, { type: "missing_image", priority: "low", count: cards.length - imageCoverageCount }, { type: "incomplete_data", priority: incompleteCardCount > 0 ? "medium" : "low", count: incompleteCardCount }].filter((item) => item.count > 0) as PortfolioAttentionItem[];
+  const qualityAssessments = cards.map((card) => assessPortfolioCardQuality({
+    playerName: card.playerName,
+    cardTitle: card.cardTitle ?? "",
+    sport: card.sport,
+    imageCount: card.imageCount ?? 0,
+    transactionCount: card.transactions.length,
+    valuations: card.valuations
+  }, asOf));
+  const incompleteCardCount = qualityAssessments.filter((item) => item.issueTypes.includes("incomplete_data")).length;
+  const attentionItems = portfolioQualityMetrics.map((metric) => ({
+    type: metric.type,
+    priority: metric.priority,
+    count: qualityAssessments.filter((item) => item.issueTypes.includes(metric.type)).length
+  })).filter((item) => item.count > 0) as PortfolioAttentionItem[];
+  const activitySeries = monthlyActivitySeries(cards);
   return {
     cardCount: cards.length, activeCount: activeCards.length, soldCount: cards.filter((card) => card.collectionStatus === "sold").length, targetCount: cards.filter((card) => card.collectionStatus === "target").length, playerCount: new Set(cards.map((card) => card.playerName.trim()).filter(Boolean)).size, scope,
     financials: { currencies, transactionCoverageCount: cards.filter((card) => card.transactions.length > 0).length, expenseCoverageCount: cards.filter((card) => card.expenses.length > 0).length, valuationCoverageCount, freshValuationCount, staleValuationCount, latestValuationAt: sortedDates.at(-1)?.toISOString() ?? null, oldestLatestValuationAt: sortedDates[0]?.toISOString() ?? null, valuationSources: [...sourceCounts.entries()].map(([name, count]) => ({ name, count })).sort((left, right) => right.count - left.count || left.name.localeCompare(right.name)) },
     quality: { gradedCount: activeCards.filter((card) => Boolean(card.gradingCompany?.trim() || card.grade?.trim())).length, rookieCount: activeCards.filter((card) => card.isRookie).length, autographCount: activeCards.filter((card) => card.isAutograph).length, patchCount: activeCards.filter((card) => card.isPatch).length, serialNumberedCount: activeCards.filter((card) => card.isSerialNumbered).length, gradingCompanies: allocation.byGradingCompany, grades: allocation.byGrade, autoTypes: allocationBreakdown(activeCards.filter((card) => card.isAutograph), (card) => card.autoType ?? "", positionMap), patchTypes: allocationBreakdown(activeCards.filter((card) => card.isPatch), (card) => card.patchType ?? "", positionMap) },
     sports: groupCards(cards, (card) => card.sport, positionMap).slice(0, 10), players: groupCards(cards, (card) => card.playerName, positionMap).slice(0, 12), statuses: groupCards(cards, (card) => card.collectionStatus, positionMap).slice(0, 10), allocation, concentration,
     coverage: { imageCount, imageCoverageCount, publicDescriptionCoverageCount, coreFieldCompletenessAverage: cards.length > 0 ? money(cards.reduce((sum, card) => sum + (card.playerName && card.sport && card.cardTitle ? 100 : 66.67), 0) / cards.length) : 0, incompleteCardCount },
-    timeSeries: { purchases: monthlySeries(cards, "purchase"), sales: monthlySeries(cards, "sale"), expenses: monthlySeries(cards, "expense"), valuations: monthlySeries(cards, "valuation") }, attentionItems, topPositions: topPositions(cards, asOf, positionMap)
+    timeSeries: { purchases: monthlySeries(cards, "purchase"), sales: monthlySeries(cards, "sale"), expenses: monthlySeries(cards, "expense"), valuations: monthlySeries(cards, "valuation") }, activitySeries, attentionItems, topPositions: topPositions(activeCards, asOf, positionMap)
   };
 }

@@ -1,10 +1,12 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HistoryCurrencySelect, ValuationSourceSelect } from "@/components/financial-history-selects";
+import { defaultInitialQuantityForStatus } from "@/lib/card-quantity";
 
 type InvestmentInputsProps = {
   initialQuantity: string;
+  collectionStatus: string;
   purchasePrice: string;
   gradingFee: string;
   totalCost: string;
@@ -30,6 +32,7 @@ function formatMoneyInput(value: number): string {
 
 export function InvestmentInputs({
   initialQuantity,
+  collectionStatus,
   purchasePrice,
   gradingFee,
   totalCost,
@@ -38,6 +41,11 @@ export function InvestmentInputs({
   valuationDate,
   valuationSource
 }: InvestmentInputsProps) {
+  const [initialQuantityValue, setInitialQuantityValue] = useState(
+    initialQuantity || String(defaultInitialQuantityForStatus(collectionStatus))
+  );
+  const quantityInputRef = useRef<HTMLInputElement>(null);
+  const previousCollectionStatusRef = useRef(collectionStatus);
   const [purchasePriceValue, setPurchasePriceValue] = useState(purchasePrice);
   const [gradingFeeValue, setGradingFeeValue] = useState(gradingFee);
   const [totalCostValue, setTotalCostValue] = useState(totalCost);
@@ -45,6 +53,27 @@ export function InvestmentInputs({
   useEffect(() => {
     setTotalCostValue(formatMoneyInput(parseMoney(purchasePriceValue) + parseMoney(gradingFeeValue)));
   }, [purchasePriceValue, gradingFeeValue]);
+
+  useEffect(() => {
+    const form = quantityInputRef.current?.form;
+    const statusField = form?.elements.namedItem("collectionStatus");
+    if (!(statusField instanceof HTMLSelectElement)) return;
+
+    previousCollectionStatusRef.current = statusField.value;
+    const handleStatusChange = () => {
+      const nextStatus = statusField.value;
+      setInitialQuantityValue((currentValue) => {
+        const previousDefault = String(defaultInitialQuantityForStatus(previousCollectionStatusRef.current));
+        return currentValue === previousDefault
+          ? String(defaultInitialQuantityForStatus(nextStatus))
+          : currentValue;
+      });
+      previousCollectionStatusRef.current = nextStatus;
+    };
+
+    statusField.addEventListener("change", handleStatusChange);
+    return () => statusField.removeEventListener("change", handleStatusChange);
+  }, []);
 
   return (
     <>
@@ -55,7 +84,16 @@ export function InvestmentInputs({
 
       <label className="field">
         <span>初始数量</span>
-        <input name="initialQuantity" type="number" min="0" step="1" defaultValue={initialQuantity || "1"} required />
+        <input
+          ref={quantityInputRef}
+          name="initialQuantity"
+          type="number"
+          min="0"
+          step="1"
+          value={initialQuantityValue}
+          onChange={(event) => setInitialQuantityValue(event.target.value)}
+          required
+        />
       </label>
 
       <label className="field">

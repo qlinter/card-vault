@@ -1,12 +1,12 @@
 # 分享展馆编辑器 2.0
 
-适用版本：`1.1.1`。编辑器沿用 v1.0.14～v1.0.15 建立的数据和交互基础。
+适用版本：`1.2.0`。编辑器沿用 v1.0.14～v1.0.15 建立的数据和交互基础。
 
 ## 目标
 
 编辑器 2.0 将分享集的内容组织、视觉配置和单卡展示从较长的单页表单调整为清晰的编辑工作台。它继续生成完全静态的展馆，不增加浏览器端框架依赖，也不改变公开字段白名单。
 
-## v1.1.1 当前状态
+## v1.2.0 当前状态
 
 - 在保持编辑器行为和数据契约不变的前提下，进一步拆分向导状态、历史记录、草稿恢复、导航，以及内容、视觉、章节和卡片设置面板。
 - 主编辑器现在主要负责面板导航、状态汇总和实时预览组合，便于后续继续扩展视觉或内容能力。
@@ -39,4 +39,4 @@
 
 ## English Summary
 
-In v1.1.1, Share Gallery Editor 2.0 keeps its existing database, Server Action, public-data allowlist, and static export contract. It includes accessible drag ordering, undo/redo, local draft recovery, pre-save cover/background preview, richer composition controls, sandboxed same-origin theme assets, centered vector carousel arrows, and inline card details that cannot navigate the application preview iframe. A future CI enhancement can add stable browser screenshot baselines across every layout and viewport.
+In v1.2.0, Share Gallery Editor 2.0 keeps its existing database, Server Action, public-data allowlist, and static export contract. It includes accessible drag ordering, undo/redo, local draft recovery, pre-save cover/background preview, richer composition controls, sandboxed same-origin theme assets, centered vector carousel arrows, and inline card details that cannot navigate the application preview iframe. A future CI enhancement can add stable browser screenshot baselines across every layout and viewport.

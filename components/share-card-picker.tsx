@@ -136,7 +136,7 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="搜索球员、卡名、年份、品牌、产品线、评级..."
+          placeholder="搜索卡片主体、卡名、年份、品牌、产品线、评级..."
         />
       </label>
 

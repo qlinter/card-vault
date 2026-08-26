@@ -55,7 +55,7 @@ function fallbackActions(snapshot: PortfolioSnapshot): PortfolioAnalysisAction[]
     },
     {
       action: "定期检查头部集中度",
-      reason: `当前头部球员数量占比为 ${snapshot.concentration.player.top1CountShare}%，前三为 ${snapshot.concentration.player.top3CountShare}%。`,
+      reason: `当前头部卡片主体数量占比为 ${snapshot.concentration.player.top1CountShare}%，前三为 ${snapshot.concentration.player.top3CountShare}%。`,
       expectedBenefit: "帮助确认组合结构是否持续符合当前收藏主题。",
       sourcePath: "concentration.player",
     },
@@ -152,10 +152,10 @@ export function buildFallbackPortfolioAnalysis(snapshot: PortfolioSnapshot): Por
     scorecard: {
       structure: {
         score: structureScore,
-        explanation: `头部球员数量占比 ${topPlayerShare}%，前三占比 ${topThreePlayerShare}%。`,
+        explanation: `头部卡片主体数量占比 ${topPlayerShare}%，前三占比 ${topThreePlayerShare}%。`,
         dataSufficiency: structureDataSufficiency,
         evidence: [
-          evidence("concentration.player", "头部球员数量占比", `${topPlayerShare}%`),
+          evidence("concentration.player", "头部卡片主体数量占比", `${topPlayerShare}%`),
         ],
       },
       financialEfficiency: {
@@ -219,7 +219,7 @@ export function buildFallbackPortfolioAnalysis(snapshot: PortfolioSnapshot): Por
         findings: [
           {
             title: "组合集中度",
-            content: `头部球员占比 ${topPlayerShare}%，前三球员合计 ${topThreePlayerShare}%；应结合收藏主题判断集中是否符合预期。`,
+            content: `头部卡片主体占比 ${topPlayerShare}%，前三个主体合计 ${topThreePlayerShare}%；应结合收藏主题判断集中是否符合预期。`,
             confidence: "high",
             dataSufficiency: structureDataSufficiency,
             evidence: [

@@ -170,7 +170,7 @@ export function buildCardData(values: CardFormValues) {
   }
 
   return {
-    playerName: requiredCardText(values.playerName, "球员姓名"),
+    playerName: requiredCardText(values.playerName, "卡片主体"),
     cardTitle: requiredCardText(values.cardTitle, "卡片名称"),
     sport: requiredCardText(values.sport, "运动类型"),
     team: optionalCardText(values.team, "Team"),

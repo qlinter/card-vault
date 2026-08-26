@@ -331,10 +331,72 @@ test("current-version backup restores after creating a safety backup", (t) => {
   assert.equal(card.playerName, "Before Backup");
   assert.equal(valuation.amountMinor, 12345);
   assert.equal(valuation.source, "个人估计");
-  assert.equal(restored.schemaVersion, "1.1.1");
+  assert.equal(restored.schemaVersion, "1.2.0");
   assert.ok(restored.safetyBackupPath);
   assert.equal(fs.existsSync(path.join(restored.safetyBackupPath, "dev.db")), true);
   assert.equal(restored.health.integrity, "ok");
+});
+
+test("backup and restore preserve saved portfolio views and point-in-time snapshots", (t) => {
+  const { root, manager } = createTestManager(t);
+  seedCardVaultData(manager, "Portfolio Backup Player");
+  const sourceDb = new DatabaseSync(manager.getDbPath());
+  const queryJson = JSON.stringify({ sport: "Basketball" });
+  const snapshotJson = JSON.stringify({ cardCount: 1, marker: "portfolio-snapshot" });
+  sourceDb.prepare("INSERT INTO PortfolioSavedView (id, name, queryJson) VALUES (?, ?, ?)")
+    .run("backup-view", "篮球收藏", queryJson);
+  sourceDb.prepare(`INSERT INTO PortfolioSnapshotRecord
+    (id, savedViewId, name, queryJson, snapshotJson, capturedAt)
+    VALUES (?, ?, ?, ?, ?, ?)`)
+    .run("backup-snapshot", "backup-view", "八月快照", queryJson, snapshotJson, "2026-08-25T08:00:00.000Z");
+  sourceDb.close();
+
+  manager.chooseBackupDir(path.join(root, "backups"));
+  const sourceBackup = manager.backupDataFolder();
+  const changedDb = new DatabaseSync(manager.getDbPath());
+  changedDb.prepare("DELETE FROM PortfolioSnapshotRecord WHERE id = ?").run("backup-snapshot");
+  changedDb.prepare("DELETE FROM PortfolioSavedView WHERE id = ?").run("backup-view");
+  changedDb.close();
+
+  const restored = manager.restoreDataFolder(sourceBackup.backupPath);
+  const restoredDb = new DatabaseSync(manager.getDbPath(), { readOnly: true });
+  const view = restoredDb.prepare("SELECT name, queryJson FROM PortfolioSavedView WHERE id = ?").get("backup-view");
+  const snapshot = restoredDb.prepare("SELECT savedViewId, name, queryJson, snapshotJson FROM PortfolioSnapshotRecord WHERE id = ?").get("backup-snapshot");
+  restoredDb.close();
+
+  assert.deepEqual({ ...view }, { name: "篮球收藏", queryJson });
+  assert.deepEqual({ ...snapshot }, {
+    savedViewId: "backup-view",
+    name: "八月快照",
+    queryJson,
+    snapshotJson
+  });
+  assert.equal(restored.health.integrity, "ok");
+});
+
+test("restore upgrades a v1.1.1 backup with v1.2.0 portfolio and rotation fields", (t) => {
+  const { root, manager } = createTestManager(t);
+  seedCardVaultData(manager, "Pre-portfolio Backup Player");
+  manager.chooseBackupDir(path.join(root, "backups"));
+  const sourceBackup = manager.backupDataFolder();
+  const backupDb = new DatabaseSync(path.join(sourceBackup.backupPath, "dev.db"));
+  backupDb.exec("DROP TABLE PortfolioSnapshotRecord; DROP TABLE PortfolioSavedView; ALTER TABLE CardImage DROP COLUMN rotation;");
+  backupDb.close();
+
+  const restored = manager.restoreDataFolder(sourceBackup.backupPath);
+  const restoredDb = new DatabaseSync(manager.getDbPath(), { readOnly: true });
+  const tables = new Set(restoredDb.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((row) => row.name));
+  const imageColumns = new Set(restoredDb.prepare("PRAGMA table_info(CardImage)").all().map((row) => row.name));
+  const card = restoredDb.prepare("SELECT playerName FROM Card WHERE id = ?").get("card-1");
+  restoredDb.close();
+
+  assert.equal(restored.schemaVersion, "1.2.0");
+  assert.equal(restored.health.integrity, "ok");
+  assert.equal(tables.has("PortfolioSavedView"), true);
+  assert.equal(tables.has("PortfolioSnapshotRecord"), true);
+  assert.equal(imageColumns.has("rotation"), true);
+  assert.equal(card.playerName, "Pre-portfolio Backup Player");
+  assert.equal(fs.readdirSync(path.join(manager.getDataDir(), "schema-backups")).length, 1);
 });
 
 test("restore upgrades a v1.1.0 backup and backfills its position data", (t) => {
@@ -370,7 +432,7 @@ test("restore upgrades a v1.1.0 backup and backfills its position data", (t) => 
   const expense = restoredDb.prepare("SELECT context, transactionId FROM CardExpense WHERE id = ?").get("shipping-v110");
   restoredDb.close();
 
-  assert.equal(restored.schemaVersion, "1.1.1");
+  assert.equal(restored.schemaVersion, "1.2.0");
   assert.equal(restored.health.integrity, "ok");
   assert.equal(card.playerName, "v1.1.0 Backup Player");
   assert.equal(card.holdingQuantity, 2);
@@ -417,7 +479,7 @@ test("restore rejects a backup that does not match the current database baseline
 
   assert.throws(
     () => manager.restoreDataFolder(oldBackup.backupPath),
-    /不是 Card Vault v1.1.0 或 1.1.1/
+    /不是 Card Vault v1.1.0、v1.1.1 或 v1.2.0/
   );
   const restoredDb = new DatabaseSync(manager.getDbPath(), { readOnly: true });
   const card = restoredDb.prepare("SELECT playerName FROM Card WHERE id = ?").get("card-1");

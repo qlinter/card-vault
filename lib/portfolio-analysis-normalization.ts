@@ -1,11 +1,14 @@
 import { portfolioScorecardKeys, portfolioSectionKeys } from "./portfolio-analysis-protocol.ts";
 import { displayPortfolioFilterValue, portfolioFilterDefinitions } from "./portfolio-analysis-scope.ts";
 import { emptyAllocation, normalizeConcentration } from "./portfolio-analysis-statistics.ts";
+import { roundPortfolioValue as money } from "./portfolio-number.ts";
 import type {
   PortfolioAnalysis,
   PortfolioAnalysisAction,
   PortfolioAnalysisAttentionItem,
   PortfolioAnalysisSection,
+  PortfolioAllocation,
+  PortfolioAllocationBreakdown,
   PortfolioBreakdown,
   PortfolioCurrencySummary,
   PortfolioDataSufficiency,
@@ -22,10 +25,6 @@ import type {
 const portfolioCurrencies = ["CNY", "USD"] as const;
 const maximumMoney = 1_000_000_000_000;
 const maximumCardCount = 100_000;
-
-function money(value: number): number {
-  return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
-}
 
 function safeText(value: unknown, maxLength = 1_200): string {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
@@ -83,6 +82,46 @@ function normalizeBreakdowns(value: unknown, maxItems: number, maxCount: number)
       };
     })
     .filter((item) => item.name && item.count > 0);
+}
+
+function normalizeAllocationBreakdowns(
+  value: unknown,
+  maxItems: number,
+  maxCount: number
+): PortfolioAllocationBreakdown[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .slice(0, maxItems)
+    .map((item): PortfolioAllocationBreakdown => {
+      const record = objectRecord(item);
+      const values = objectRecord(record.values);
+      const valueShare = objectRecord(record.valueShare);
+      const averageValue = objectRecord(record.averageValue);
+      const normalizeCurrencyValues = (source: Record<string, unknown>, maximum: number) => Object.fromEntries(
+        portfolioCurrencies
+          .filter((currency) => currency in source)
+          .map((currency) => [currency, money(boundedNumber(source[currency], 0, maximum))])
+      );
+      return {
+        name: safeText(record.name, 80),
+        count: boundedCount(record.count, maxCount),
+        values: normalizeCurrencyValues(values, maximumMoney),
+        countShare: money(boundedNumber(record.countShare, 0, 100)),
+        valueShare: normalizeCurrencyValues(valueShare, 100),
+        averageValue: normalizeCurrencyValues(averageValue, maximumMoney),
+        valuedCount: boundedCount(record.valuedCount, maxCount)
+      };
+    })
+    .filter((item) => item.name && item.count > 0);
+}
+
+function normalizeAllocation(value: unknown, cardCount: number): PortfolioAllocation {
+  const record = objectRecord(value);
+  const empty = emptyAllocation();
+  return Object.fromEntries(Object.keys(empty).map((key) => [
+    key,
+    normalizeAllocationBreakdowns(record[key], 100, cardCount)
+  ])) as PortfolioAllocation;
 }
 
 function normalizePortfolioScope(value: unknown): PortfolioScope {
@@ -213,16 +252,16 @@ export function normalizePortfolioSnapshot(value: unknown): PortfolioSnapshot {
       rookieCount: boundedCount(quality.rookieCount, activeCount),
       autographCount: boundedCount(quality.autographCount, activeCount),
       patchCount: boundedCount(quality.patchCount, activeCount),
-      serialNumberedCount: 0,
-      gradingCompanies: [],
-      grades: [],
-      autoTypes: [],
-      patchTypes: [],
+      serialNumberedCount: boundedCount(quality.serialNumberedCount, activeCount),
+      gradingCompanies: normalizeAllocationBreakdowns(quality.gradingCompanies, 50, activeCount),
+      grades: normalizeAllocationBreakdowns(quality.grades, 50, activeCount),
+      autoTypes: normalizeAllocationBreakdowns(quality.autoTypes, 50, activeCount),
+      patchTypes: normalizeAllocationBreakdowns(quality.patchTypes, 50, activeCount),
     },
     sports: normalizeBreakdowns(snapshot.sports, 10, cardCount),
     players: normalizeBreakdowns(snapshot.players, 12, cardCount),
     statuses: normalizeBreakdowns(snapshot.statuses, 10, cardCount),
-    allocation: emptyAllocation(),
+    allocation: normalizeAllocation(snapshot.allocation, cardCount),
     concentration: normalizeConcentration(snapshot.concentration, portfolioCurrencies),
     coverage: {
       imageCount: 0,
@@ -232,6 +271,7 @@ export function normalizePortfolioSnapshot(value: unknown): PortfolioSnapshot {
       incompleteCardCount: cardCount,
     },
     timeSeries: { purchases: [], sales: [], expenses: [], valuations: [] },
+    activitySeries: { purchases: [], grading: [], sales: [] },
     attentionItems: [],
     topPositions: [],
   };

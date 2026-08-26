@@ -130,6 +130,7 @@ model CardImage {
   id        String   @id @default(cuid())
   cardId    String
   path      String
+  rotation  Int      @default(0)
   createdAt DateTime @default(now())
   card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
@@ -276,4 +277,28 @@ model ShareCollectionItem {
   @@index([sectionId])
   @@index([cardId])
   @@index([sortOrder])
+}
+
+model PortfolioSavedView {
+  id        String                    @id @default(cuid())
+  name      String                    @unique
+  queryJson String
+  snapshots PortfolioSnapshotRecord[]
+  createdAt DateTime                  @default(now())
+  updatedAt DateTime                  @updatedAt
+
+  @@index([updatedAt(sort: Desc)])
+}
+
+model PortfolioSnapshotRecord {
+  id            String              @id @default(cuid())
+  savedViewId   String?
+  name          String
+  queryJson     String
+  snapshotJson  String
+  capturedAt    DateTime            @default(now())
+  savedView     PortfolioSavedView? @relation(fields: [savedViewId], references: [id], onDelete: SetNull)
+
+  @@index([savedViewId, capturedAt(sort: Desc)])
+  @@index([capturedAt(sort: Desc)])
 }

@@ -149,6 +149,8 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
   assert.equal(snapshot.quality.autographCount, 1);
   assert.equal(snapshot.quality.patchCount, 1);
   assert.deepEqual(snapshot.scope, { isFiltered: false, criteria: [] });
+  assert.equal(snapshot.attentionItems.find((item) => item.type === "missing_transaction")?.count, 1);
+  assert.equal(snapshot.attentionItems.find((item) => item.type === "stale_valuation")?.count, 1);
 });
 test("portfolio snapshot exposes multidimensional allocation, concentration, coverage, trends, and attention items", () => {
   const asOf = new Date("2026-08-12T00:00:00.000Z");
@@ -232,9 +234,10 @@ test("portfolio snapshot exposes multidimensional allocation, concentration, cov
   assert.equal(snapshot.coverage.imageCount, 3);
   assert.equal(snapshot.coverage.imageCoverageCount, 2);
   assert.equal(snapshot.coverage.publicDescriptionCoverageCount, 1);
-  assert.equal(snapshot.coverage.incompleteCardCount, 1);
+  assert.equal(snapshot.coverage.incompleteCardCount, 0);
   assert.deepEqual(snapshot.timeSeries.purchases.map((item) => item.month), ["2026-01", "2026-02"]);
   assert.equal(snapshot.timeSeries.expenses[0].values.CNY, 5);
+  assert.equal(snapshot.activitySeries.grading[0].values.CNY, 5);
   assert.equal(snapshot.attentionItems.find((item) => item.type === "missing_valuation")?.count, 1);
   assert.equal(snapshot.attentionItems.find((item) => item.type === "missing_image")?.count, 1);
   assert.equal(snapshot.topPositions[0].playerName, "Player A");
@@ -537,7 +540,11 @@ test("portfolio snapshot normalization drops unknown fields and bounds nested va
       valuationSources: [{ name: "个人估计", count: 2 }],
       secret: "drop me"
     },
-    quality: { gradedCount: 1, rookieCount: 2, autographCount: 0, patchCount: 1 },
+    quality: { gradedCount: 1, rookieCount: 2, autographCount: 0, patchCount: 1, serialNumberedCount: 2 },
+    allocation: {
+      byPlayer: [{ name: "Player A", count: 2, values: { CNY: 120 }, countShare: 66.67, valueShare: { CNY: 80 }, averageValue: { CNY: 60 }, valuedCount: 2 }],
+      bySport: [{ name: "Basketball", count: 3, values: { CNY: 150 }, countShare: 100, valueShare: { CNY: 100 }, averageValue: { CNY: 50 }, valuedCount: 3 }]
+    },
     sports: [{ name: "Basketball", count: 3, values: { CNY: 150, EUR: 999 }, extra: "drop me" }],
     players: [{ name: "Player A", count: 2, values: { CNY: 120 } }],
     statuses: [{ name: "holding", count: 3, values: { CNY: 150 } }]
@@ -550,6 +557,16 @@ test("portfolio snapshot normalization drops unknown fields and bounds nested va
   assert.equal(snapshot.financials.currencies[0].unrealizedDifference, 40);
   assert.equal(snapshot.financials.currencies[0].unrealizedReturnRate, 36.36);
   assert.deepEqual(snapshot.sports, [{ name: "Basketball", count: 3, values: { CNY: 150 } }]);
+  assert.equal(snapshot.quality.serialNumberedCount, 2);
+  assert.deepEqual(snapshot.allocation.byPlayer[0], {
+    name: "Player A",
+    count: 2,
+    values: { CNY: 120 },
+    countShare: 66.67,
+    valueShare: { CNY: 80 },
+    averageValue: { CNY: 60 },
+    valuedCount: 2
+  });
   assert.deepEqual(snapshot.scope, {
     isFiltered: true,
     criteria: [{ field: "sport", label: "运动类型", value: "足球" }]

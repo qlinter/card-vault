@@ -11,6 +11,8 @@ export const homeCardInclude = Prisma.validator<Prisma.CardInclude>()({
 });
 
 export const portfolioAnalysisCardSelect = Prisma.validator<Prisma.CardSelect>()({
+  id: true,
+  createdAt: true,
   playerName: true,
   cardTitle: true,
   sport: true,

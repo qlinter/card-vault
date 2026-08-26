@@ -1,5 +1,6 @@
 import { BackButton } from "@/components/back-button";
 import { CardFinancialHistory } from "@/components/card-financial-history";
+import { cardImageRotationStyle } from "@/lib/card-image-rotation";
 import { splitTagString } from "@/lib/card-helpers";
 import { normalizeImagePath } from "@/lib/image-path";
 import { normalizeHttpUrl } from "@/lib/http-url";
@@ -106,7 +107,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
           <h2>图片展示</h2>
           <div className="gallery">
             {card.images.map((image) => (
-              <img key={image.id} src={normalizeImagePath(image.path)} alt={card.cardTitle} />
+              <img key={image.id} src={normalizeImagePath(image.path)} alt={card.cardTitle} style={cardImageRotationStyle(image.rotation)} />
             ))}
           </div>
         </section>
@@ -115,7 +116,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
           <h2>卡片信息</h2>
           <div className="info-grid">
             <div className="info-item">
-              <strong>球员姓名</strong>
+              <strong>卡片主体</strong>
               <span>{valueOrDash(card.playerName)}</span>
             </div>
             <div className="info-item">

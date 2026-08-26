@@ -11,6 +11,7 @@ test("homepage query loads only the latest valuation and omits full financial hi
 
 test("portfolio analysis query retains the history required by the v2 snapshot", () => {
   assert.ok(portfolioAnalysisCardSelect.transactions);
+  assert.equal(portfolioAnalysisCardSelect.id, true);
   assert.ok(portfolioAnalysisCardSelect.expenses);
   assert.ok(portfolioAnalysisCardSelect.valuations);
   assert.ok(portfolioAnalysisCardSelect._count);

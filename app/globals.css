@@ -96,6 +96,36 @@ body {
   box-shadow: 0 8px 18px rgba(16, 19, 26, 0.16);
 }
 
+@media (max-width: 640px) {
+  .topbar-inner {
+    height: 58px;
+  }
+
+  .brand {
+    font-size: 1.25rem;
+  }
+
+  .nav-links {
+    gap: 0.12rem;
+  }
+
+  .nav-links a {
+    padding: 0.4rem 0.45rem;
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .brand {
+    font-size: 1.05rem;
+  }
+
+  .nav-links a {
+    padding-inline: 0.33rem;
+    font-size: 0.74rem;
+  }
+}
+
 .page {
   padding: 1.6rem 0 3.2rem;
   animation: rise 0.4s ease both;
@@ -123,7 +153,6 @@ body:has(.home-page) .topbar {
   background: rgba(255, 255, 255, 0.74);
 }
 
-.home-page > .title-row,
 .home-page .summary-grid .panel,
 .home-page > .panel {
   background: rgba(255, 255, 255, 0.82);
@@ -134,15 +163,13 @@ body:has(.home-page) .topbar {
   background: rgba(255, 255, 255, 0.94);
 }
 
-.home-page > .title-row {
-  border-color: rgba(255, 255, 255, 0.64);
-}
-
+body:has(.portfolio-page),
 body:has(.shares-page),
 body:has(.settings-page) {
   background: #f7fbff;
 }
 
+body:has(.portfolio-page) .site-bg,
 body:has(.shares-page) .site-bg,
 body:has(.settings-page) .site-bg {
   background-size: 100% 100%, 100% 100%, cover;
@@ -157,6 +184,13 @@ body:has(.shares-page) .site-bg {
     url("/shares-bg.webp");
 }
 
+body:has(.portfolio-page) .site-bg {
+  background-image:
+    linear-gradient(90deg, rgba(247, 250, 255, 0.92) 0%, rgba(241, 249, 248, 0.7) 52%, rgba(247, 250, 255, 0.7) 100%),
+    radial-gradient(circle at 78% 18%, rgba(62, 168, 168, 0.15), transparent 32%),
+    linear-gradient(180deg, #f7fbff, #eef3f5);
+}
+
 body:has(.settings-page) .site-bg {
   background-image:
     linear-gradient(90deg, rgba(247, 250, 255, 0.9) 0%, rgba(247, 250, 255, 0.72) 46%, rgba(247, 250, 255, 0.46) 100%),
@@ -164,11 +198,13 @@ body:has(.settings-page) .site-bg {
     url("/settings-bg.webp");
 }
 
+body:has(.portfolio-page) .topbar,
 body:has(.shares-page) .topbar,
 body:has(.settings-page) .topbar {
   background: rgba(255, 255, 255, 0.74);
 }
 
+.portfolio-page > .title-row,
 .shares-page > .title-row,
 .settings-page > .title-row,
 .shares-page > .panel,
@@ -208,6 +244,10 @@ body:has(.settings-page) .topbar {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0.85rem;
   margin: 1rem 0;
+}
+
+.home-page > .summary-grid {
+  margin-top: 0;
 }
 
 .h1 {
@@ -335,11 +375,16 @@ form.panel {
   stroke-linejoin: round;
 }
 
-button.disclosure-button {
+.disclosure-button {
+  display: inline-grid;
+  place-items: center;
   width: 2.1rem;
+  height: 2.1rem;
   min-height: 2.1rem;
   padding: 0;
   border-radius: 999px;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 .entry-queue-import {
@@ -808,10 +853,40 @@ button.disclosure-button {
   width: 100%;
 }
 
+.valuation-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+.valuation-summary-actions .btn {
+  min-height: 34px;
+  padding: 0.42rem 0.7rem;
+  font-size: 0.78rem;
+}
+
 .filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 0.6rem;
+}
+
+.filter-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.8rem;
+}
+
+.filter-main-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.filter-add-card {
+  margin-left: auto;
 }
 
 .cards-grid {
@@ -1004,6 +1079,16 @@ textarea {
   min-width: 0;
 }
 
+select:not([multiple]) {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3 6 5 5 5-5' fill='none' stroke='%235d6975' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 0.78rem 0.78rem;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -1050,6 +1135,64 @@ textarea {
   height: auto;
   border-radius: 12px;
   border: 1px solid rgba(16, 19, 26, 0.12);
+}
+
+.card-image-editor {
+  margin-top: 0.4rem;
+}
+
+.card-image-editor h3 {
+  margin: 0 0 0.7rem;
+}
+
+.card-image-edit-item {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.card-image-preview-frame {
+  display: grid;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  place-items: center;
+  border-radius: 10px;
+  background: #e9edf1;
+}
+
+.card-image-preview-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border: 0;
+  border-radius: 0;
+  transition: transform 160ms ease;
+}
+
+.card-image-edit-item figcaption {
+  overflow: hidden;
+  color: var(--muted-ink);
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-image-rotation-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.card-image-rotation-actions .btn {
+  min-width: 0;
+  min-height: 34px;
+  padding: 0.35rem;
+  font-size: 1.05rem;
 }
 
 .info-grid {
@@ -1436,6 +1579,21 @@ textarea {
 }
 
 @media (max-width: 640px) {
+  .filter-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filter-main-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .filter-main-actions .btn,
+  .filter-add-card {
+    width: 100%;
+  }
+
   .financial-history-heading,
   .financial-timeline-heading { align-items: stretch; flex-direction: column; }
 
@@ -1513,12 +1671,13 @@ textarea {
 .showcase-group-row {
   display: flex;
   flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
   gap: 0.55rem;
 }
 
 .showcase-group-row.is-collapsed {
-  flex-wrap: nowrap;
-  overflow: hidden;
+  display: grid;
 }
 
 .showcase-group-row.is-expanded {
@@ -1530,6 +1689,8 @@ textarea {
   align-items: center;
   gap: 0.4rem;
   flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
   text-decoration: none;
   color: var(--ink);
   background: rgba(16, 19, 26, 0.06);
@@ -1538,9 +1699,22 @@ textarea {
   font-weight: 700;
 }
 
+.showcase-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .showcase-chip-count {
+  flex: 0 0 auto;
   font-size: 0.82rem;
   opacity: 0.75;
+}
+
+.showcase-group-row.is-collapsed .showcase-chip {
+  width: 100%;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .showcase-chip.active {
@@ -1613,12 +1787,21 @@ textarea {
   gap: 1rem;
 }
 
-.showcase-detail-main-image {
+.showcase-detail-main-frame {
+  display: grid;
+  overflow: hidden;
   width: 100%;
   aspect-ratio: 3 / 4;
-  object-fit: contain;
+  place-items: center;
   border-radius: 14px;
   background: #f4f1eb;
+}
+
+.showcase-detail-main-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: transform 160ms ease;
 }
 
 .showcase-detail-thumbs {
@@ -1677,6 +1860,21 @@ textarea {
 .showcase-image-counter {
   font-weight: 800;
   color: var(--slate);
+}
+
+.showcase-image-rotation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.showcase-image-rotation .btn {
+  width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 1.1rem;
 }
 
 .showcase-image-nav {

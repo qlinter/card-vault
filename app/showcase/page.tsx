@@ -1,5 +1,6 @@
 ﻿import Link from "next/link";
 import { ShowcaseGroupFilter } from "@/components/showcase-group-filter";
+import { cardImageRotationStyle } from "@/lib/card-image-rotation";
 import { normalizeImagePath } from "@/lib/image-path";
 import { prisma } from "@/lib/prisma";
 import { buildShowcaseCardHref, normalizeGroupName, toShowcaseWhere } from "@/lib/showcase";
@@ -59,7 +60,7 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
         <div>
           <h1 className="h1">展示</h1>
           <p className="muted">
-            当前展示 {cards.length} 张卡片，来自 {groups.length} 位球员或组合
+            当前展示 {cards.length} 张卡片，来自 {groups.length} 个卡片主体
           </p>
         </div>
       </div>
@@ -68,7 +69,7 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
         <input
           name="q"
           defaultValue={query.q ?? ""}
-          placeholder="搜索球员、Team、系列、年份、标签..."
+          placeholder="搜索卡片主体、Team、系列、年份、标签..."
           className="showcase-search-input"
         />
         {query.group ? <input type="hidden" name="group" value={query.group} /> : null}
@@ -97,6 +98,7 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
                   className="showcase-card-image"
                   src={normalizeImagePath(card.images[0].path)}
                   alt={card.cardTitle}
+                  style={cardImageRotationStyle(card.images[0].rotation)}
                 />
               ) : (
                 <div className="showcase-card-image showcase-placeholder" />

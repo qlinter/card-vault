@@ -3,17 +3,12 @@ import { ensureAiSettings } from "@/lib/ai-settings";
 import { AiUpstreamError, aiProviderName, requestAiChatTextResult } from "@/lib/ai-chat-client";
 import { extractJsonRecord } from "@/lib/ai-response-parsing";
 import { errorMessage } from "@/lib/feedback-messages";
-import { buildCardFilters } from "@/lib/card-helpers";
-import { portfolioAnalysisCardSelect } from "@/lib/card-query-shapes";
-import { prisma } from "@/lib/prisma";
+import { loadPortfolioSnapshot } from "@/lib/portfolio-snapshot-service";
 import {
   buildFallbackPortfolioAnalysis,
   buildPortfolioClientSnapshot,
-  buildPortfolioScope,
-  buildPortfolioSnapshot,
   completePortfolioAnalysis,
   normalizePortfolioAnalysis,
-  normalizePortfolioFilterInput,
   portfolioAnalysisPrompt,
   type PortfolioAnalysis,
   type PortfolioSnapshot
@@ -21,21 +16,10 @@ import {
 
 export const runtime = "nodejs";
 
-const maximumAnalysisCardCount = 5000;
 type AiSettings = ReturnType<typeof ensureAiSettings>;
 
 async function requestedSnapshot(value: unknown): Promise<PortfolioSnapshot> {
-  const query = normalizePortfolioFilterInput(value);
-  const where = buildCardFilters(query);
-  const cardCount = await prisma.card.count({ where });
-  if (cardCount === 0) throw new Error("当前筛选范围内没有可分析的卡片。");
-  if (cardCount > maximumAnalysisCardCount) throw new Error(`当前筛选结果超过 ${maximumAnalysisCardCount} 张，请缩小范围后重试。`);
-
-  const cards = await prisma.card.findMany({ where, select: portfolioAnalysisCardSelect });
-  return buildPortfolioSnapshot(
-    cards.map((card) => ({ ...card, imageCount: card._count.images })),
-    buildPortfolioScope(query)
-  );
+  return (await loadPortfolioSnapshot(value)).snapshot;
 }
 
 function parseAnalysis(rawText: string, snapshot: PortfolioSnapshot): PortfolioAnalysis {

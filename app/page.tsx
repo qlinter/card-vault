@@ -106,20 +106,12 @@ export default async function Home({ searchParams }: HomeProps) {
     details: [card.year, card.team, card.productLine].filter(Boolean).join(" / ") || "未补充更多信息",
     tags: splitTagString(card.tags).slice(0, 4),
     imagePath: card.images[0] ? homeThumbnailPublicPath(card.images[0].path) : null,
+    imageRotation: card.images[0]?.rotation ?? 0,
     href: `/cards/${card.id}?returnTo=${encodeURIComponent(cardListReturnHref)}`
   }));
 
   return (
     <div className="page home-page">
-      <div className="title-row">
-        <div>
-          <h1 className="h1">球星卡收藏</h1>
-        </div>
-        <a href="/cards/new" className="btn btn-primary">
-          {"新增卡片"}
-        </a>
-      </div>
-
       <div className="summary-grid">
         <div className="panel">
           <strong>{"卡片数量"}</strong>
@@ -130,7 +122,10 @@ export default async function Home({ searchParams }: HomeProps) {
         <div className="panel valuation-summary-card">
           <div className="valuation-summary-head">
             <strong>{"总估值"}</strong>
-            <PortfolioAnalysisButton cardCount={cards.length} query={query} scope={portfolioScope} />
+            <div className="valuation-summary-actions">
+              <a className="btn btn-secondary" href={returnSuffix ? `/portfolio?${returnSuffix}` : "/portfolio"}>组合中心</a>
+              <PortfolioAnalysisButton cardCount={cards.length} query={query} scope={portfolioScope} />
+            </div>
           </div>
           <div className="valuation-total-list">
             {valuationCurrencies.length > 0 ? valuationCurrencies.map((currency) => (
@@ -163,7 +158,7 @@ export default async function Home({ searchParams }: HomeProps) {
         patchTypes={patchTypes}
       />
 
-      <HomeCardGrid key={cardListReturnHref} cards={homeCards} />
+      <HomeCardGrid key={cardListReturnHref} cards={homeCards} historyKey={cardListReturnHref} />
 
       {cards.length === 0 ? (
         <div className="panel" style={{ marginTop: "1rem" }}>

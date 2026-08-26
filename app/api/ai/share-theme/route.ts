@@ -201,7 +201,7 @@ function buildPrompt(cards: SanitizedCard[], current: Record<string, unknown>): 
     "description：封面介绍，2-4 句。",
     "themeNarrative：整体收藏叙事，2-4 段，可换行。",
     "themeHighlights：收藏亮点，每行一个亮点。",
-    "groupNotes：按球员、年份、系列或主题给出分组说明，每行一个分组。",
+    "groupNotes：按卡片主体、年份、系列或主题给出分组说明，每行一个分组。",
     "",
     JSON.stringify(
       {

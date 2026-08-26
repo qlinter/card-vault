@@ -10,6 +10,7 @@ import {
   readCardFormValues
 } from "@/lib/card-entry-domain";
 import { createCardEntry } from "@/lib/card-entry-service";
+import { readCardImageRotationRecord, readNewCardImageRotations } from "@/lib/card-image-rotation";
 import { getNextReadyCardEntryQueueItemId } from "@/lib/card-entry-queue-service";
 import {
   maxImagesPerCard,
@@ -37,9 +38,12 @@ export async function createCardFormAction(
   const queueItemId = normalizeCardEntryId(formData.get("queueItemId"));
 
   try {
+    const files = readCardImageFiles(formData);
     const { card, usedQueueItemId } = await createCardEntry({
       values,
-      files: readCardImageFiles(formData),
+      files,
+      newImageRotations: readNewCardImageRotations(formData, files.length),
+      queuedImageRotations: readCardImageRotationRecord(formData, "queuedImageRotations"),
       draftId,
       queueItemId
     });
@@ -93,6 +97,8 @@ export async function updateCardAction(cardId: string, formData: FormData): Prom
     const cardData = buildCardData(values);
     const removeImageIds = formData.getAll("removeImageIds").map((value) => String(value));
     const files = readCardImageFiles(formData);
+    const existingImageRotations = readCardImageRotationRecord(formData, "existingImageRotations");
+    const newImageRotations = readNewCardImageRotations(formData, files.length);
 
     const imagesToRemove = existing.images.filter((image) => removeImageIds.includes(image.id));
     const remainingCount = existing.images.length - imagesToRemove.length + files.length;
@@ -118,9 +124,18 @@ export async function updateCardAction(cardId: string, formData: FormData): Prom
           });
         }
 
+        for (const image of existing.images) {
+          if (!removeImageIds.includes(image.id) && existingImageRotations[image.id] !== undefined) {
+            await transaction.cardImage.update({
+              where: { id: image.id },
+              data: { rotation: existingImageRotations[image.id] }
+            });
+          }
+        }
+
         if (imagePaths.length > 0) {
           await transaction.cardImage.createMany({
-            data: imagePaths.map((pathValue) => ({ cardId, path: pathValue }))
+            data: imagePaths.map((pathValue, index) => ({ cardId, path: pathValue, rotation: newImageRotations[index] ?? 0 }))
           });
         }
       });

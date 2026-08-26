@@ -36,7 +36,7 @@ export type CardRecognitionResult = {
 };
 
 const fieldLabels: Record<CardRecognitionField, string> = {
-  playerName: "球员姓名",
+  playerName: "卡片主体",
   cardTitle: "卡片名称",
   sport: "运动类型",
   team: "Team",

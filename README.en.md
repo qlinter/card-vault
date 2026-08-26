@@ -6,40 +6,30 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 
 ## Current Version
 
-`1.1.1`
+`1.2.0`
 
-### 1.1.1 Highlights
+### 1.2.0 Highlights
 
-- Financial history now supports multiple purchases, partial sales, and currency-isolated moving-average cost accounting.
-- Expense destinations are stated as “add to purchase cost”, “add to grading cost”, or “deduct from sale proceeds”. During the v1.1.0 upgrade, shipping on the purchase date is linked to purchase and all other shipping is linked to grading.
-- Card details present core metrics, cost/value snapshots, cumulative cost composition, and profit composition; overselling is rejected transactionally.
-- The workbench accepts an initial quantity, timelines show transaction quantities, and sale expenses can link to a concrete sale.
-- Fully sold positions switch to Sold automatically and return to Holding after a new purchase.
-- Refund, return, cancellation, and reversal workflows are intentionally excluded. A standalone database snapshot is created before the v1.1.0 upgrade.
-- Backup restore now pauses and reconnects the local service in-app without an exit or restart; legacy migration code is reduced to a fresh v1.1.1 baseline plus the official v1.1.0-to-v1.1.1 upgrade.
-- Home uses derived 640px WebP thumbnails, 24-card incremental rendering, prioritized first-screen images, and a 1/1 filter while leaving collection originals unchanged.
-- Home, Entry Workbench, Financial History, and AI Settings remove redundant helper copy and clarify the template disclosure and “+ Add record” actions.
+- Adds a dedicated Portfolio Center for currency-separated positions, activity trends, reconstructed financial history, true 30/90/180-day valuation changes, valuation sources, and multidimensional collection structure.
+- Saved views retain Home filter scopes, while point-in-time snapshots preserve deterministic statistics for financial and structural comparison against current or live views.
+- Adds top-value and top-cost positions, sold-card review, and an actionable data-quality queue across every collection status; valuations older than 360 days are stale.
+- Portfolio sections support locally persisted drag ordering, charts offer 12-month, 24-month, and full-history ranges, and percentages use no more than two decimal places.
+- Keeps the Portfolio Center entry visible on Home and restores the expanded card count after detail navigation, alongside further copy and hierarchy cleanup.
+- Uses “card subject” for people, teams, and other subjects; fixes collapsed Showcase overflow and adds continuous 90-degree metadata rotation to entry, editing, and Showcase viewing without re-encoding originals.
+- The v1.2.0 database baseline adds saved views, point-in-time snapshots, and image-rotation metadata. v1.1.1 data and backups upgrade once under a pre-upgrade SQLite snapshot.
+- Consolidates portfolio precision, presentation formatting, and data-quality rules; removes the superseded rotation helper; and aligns code, tests, documentation, and release metadata.
 
-### 1.1.0 Highlights
-
-- Card Entry Workbench 2.0 stores text fields in SQLite drafts, restores interrupted work, and supports save-and-view, save-and-continue, and copy-common-fields flows.
-- A collapsible batch queue groups front/back pairs or single images, normalizes orientation and dimensions, and converts queued images to WebP.
-- Queue items isolate failures and support retry, removal, side swapping, continuous navigation, and atomic adoption when a card is saved.
-- Reusable public-field templates and non-blocking duplicate candidates reduce repeated work while preserving active draft and queue context across detail navigation.
-- Batch AI recognition persists review candidates, highlights low-confidence fields, and always requires per-card confirmation before collection data is written.
-- Keyboard actions, invalid-field focus, and consistent back navigation are included, while shared form-control and API-route logic has been consolidated.
-- Three idempotent database migrations upgrade current data and restored legacy backups after creating a pre-migration SQLite snapshot.
-- Built-in gallery backgrounds are restored, carousel arrows are centered, and desktop startup no longer regenerates the Prisma client unnecessarily.
-- Entry, Showcase, Share, and Settings helper copy is streamlined, with consistent disclosure icons, queue-count alignment, and Settings section typography.
+See the [v1.2.0 release notes](./docs/release-v1.2.0.md) for the complete delivered scope.
 
 ## Core Features
 
-- Create, edit, delete, and inspect cards with up to five images per card.
+- Create, edit, delete, and inspect cards with up to five images per card; the card-subject field covers people, teams, and other subjects, while image rotation is stored without re-encoding originals.
 - Browse the home collection through rebuildable 640px WebP thumbnails and incremental card batches while preserving every original image format and quality.
 - Use SQLite drafts, continuous entry, public-field templates, duplicate review, and batch entry with WebP preparation, retry, AI candidate review, and front/back swapping.
-- Search, filter, and sort by player, sport, team, year, product line, grade, autograph, patch, and collection status.
+- Search, filter, and sort by card subject, sport, team, year, product line, grade, autograph, patch, and collection status.
 - Track purchases, sales, grading, other costs, holding quantity, and latest values through transaction, expense, and valuation history.
-- Browse the Showcase by player or group, with collapsible navigation and multi-image card views.
+- Use the Portfolio Center for currency-separated positions, reconstructed financial history, monthly activity, true 30/90/180-day valuation changes, valuation sources, primary and extended collection structures, top-value and top-cost positions, sold-card review, actionable data-quality queues, saved views, point-in-time snapshots, and financial or structural comparisons; content sections can be reordered by drag and retain their local layout.
+- Browse the Showcase by card subject, with collapsible navigation, multi-image card views, and temporary image rotation.
 - Use Azure OpenAI, MiniMax, or multiple named OpenAI Chat Completions-compatible custom providers for AI card recognition, gallery copy, and portfolio analysis.
 - Build editable share galleries with themes, layouts, sections, covers, backgrounds, and per-card presentation overrides.
 - Export a general static sharing bundle or a temporary Cloudflare Drop preview bundle.
@@ -72,12 +62,13 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 | `1.0.19` | Corrected serial-numbered data, added serial-numbered filtering and CNY cost/valuation sorting, and hardened the local service, Electron sandbox, IPC, and quality gates. |
 | `1.1.0` | Delivered Card Entry Workbench 2.0 with draft recovery, continuous entry, batch-image preparation, templates, duplicate review, and confirmation-gated AI candidates. |
 | `1.1.1` | Added position accounting, in-app restore, home thumbnails and incremental rendering, a 1/1 filter, and database/UI consolidation. |
+| `1.2.0` | Completed the Portfolio Center, saved views, point-in-time snapshots, true historical trends and comparison, plus image rotation, card-subject terminology, and Showcase refinements. |
 
 ## Install and Run
 
 ### Installer
 
-Release file: `dist/card-vault-1.1.1-setup.exe`
+Release file: `dist/card-vault-1.2.0-setup.exe`
 
 - Uses an installation wizard and supports a user-selected installation directory.
 - Installing a newer build of the same application normally replaces program files without deleting collection data.
@@ -86,7 +77,7 @@ Release file: `dist/card-vault-1.1.1-setup.exe`
 
 ### Portable Build
 
-Release file: `dist/card-vault-1.1.1-portable.zip`
+Release file: `dist/card-vault-1.2.0-portable.zip`
 
 1. Extract the complete ZIP.
 2. Run `Card Vault.exe` from the extracted directory.
@@ -177,7 +168,7 @@ See [Financial history model](./docs/financial-history-model.md) for storage rul
 - CNY summary fields on each card are recalculated from financial history and support Home sorting; valuation totals and portfolio analysis read financial history directly.
 - Home-page total valuation uses exactly the latest dated valuation for every card in the current filtered result. CNY and USD use matching ISO-code typography, regardless of collection status, without summing older valuation history.
 - Home portfolio analysis summarizes actual transactions, expenses, and latest valuations separately for CNY and USD, including active cost basis, net cash invested, comparable unrealized return, valuation age, and sources without implicit FX conversion or fabricated realized returns.
-- Restore validates SQLite integrity and the current database baseline in staging before replacing current data; older database schemas are no longer upgraded automatically.
+- Restore validates SQLite integrity and the current database baseline in staging before replacing current data. Official v1.1.0 and v1.1.1 backups remain supported through controlled upgrades; earlier schemas must first be upgraded with their corresponding older release.
 
 ## Common Commands
 
@@ -225,15 +216,14 @@ Windows code signing is an optional enhancement and no longer blocks routine pac
 
 ## Roadmap
 
-The next confirmed versions are:
+The roadmap is organized by capability stage without locking version numbers in advance:
 
-1. `v1.3.0`: Collection Portfolio Center and trend analytics.
-2. `v1.4.0`: Share Gallery 3.0.
-3. `v1.5.0`: Batch Data and Migration Center.
-4. `v1.6.0`: Reminders and Collection Planning.
-5. `v2.0.0`: Optional managed publishing and multi-device sync after permanent infrastructure is available.
+1. Share Gallery 3.0.
+2. Batch Data and Migration Center.
+3. Reminders and Collection Planning.
+4. Optional managed publishing and multi-device sync after permanent infrastructure is available.
 
-See the [Card Vault Product Roadmap](./docs/product-roadmap.en.md) for version scope, exclusions, risk controls, and shared release standards.
+See the [Card Vault Product Roadmap](./docs/product-roadmap.en.md) for stage scope, exclusions, risk controls, and shared release standards. The release version is selected during stage closeout.
 
 ## Technology
 

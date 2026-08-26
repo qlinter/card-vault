@@ -1,11 +1,13 @@
 import { Card, CardImage } from "@prisma/client";
 import type { FormEventHandler, Ref } from "react";
 import { AiRecognitionPanel } from "@/components/ai-recognition-panel";
+import { CardImageFields } from "@/components/card-image-fields";
 import { CardEntryDuplicatePanel } from "@/components/card-entry-duplicate-panel";
 import { CardEntryTemplatePanel } from "@/components/card-entry-template-panel";
 import { InvestmentInputs } from "@/components/investment-inputs";
 import { splitTagString, stringifyTags } from "@/lib/card-helpers";
 import { CardFormValues } from "@/lib/card-form-values";
+import { defaultInitialQuantityForStatus } from "@/lib/card-quantity";
 import { normalizeImagePath } from "@/lib/image-path";
 import { encodeReturnTo } from "@/lib/query-params";
 import type { CardEntryRecognitionSummary } from "@/lib/card-entry-queue-domain";
@@ -58,6 +60,7 @@ export function CardForm({
   const defaultAiImageUrls = queuedImages.length > 0
     ? queuedImages.slice(0, 2).map((image) => image.url)
     : card?.images.slice(0, 2).map((image) => normalizeImagePath(image.path)) ?? [];
+  const collectionStatus = pickValue(values?.collectionStatus, card?.collectionStatus ?? "holding");
 
   return (
     <form ref={formRef} action={action} onSubmit={onSubmit} onInvalid={onInvalid} className="panel" encType="multipart/form-data" data-card-entry-form={mode === "create" ? "true" : undefined}>
@@ -79,7 +82,7 @@ export function CardForm({
 
       <div className="form-grid">
         <label className="field">
-          <span>球员姓名 *</span>
+          <span>卡片主体 *</span>
           <input name="playerName" required defaultValue={pickValue(values?.playerName, card?.playerName ?? "")} />
         </label>
 
@@ -205,7 +208,8 @@ export function CardForm({
             </label>
 
             <InvestmentInputs
-              initialQuantity={values?.initialQuantity ?? "1"}
+              initialQuantity={values?.initialQuantity ?? String(defaultInitialQuantityForStatus(collectionStatus))}
+              collectionStatus={collectionStatus}
               purchasePrice={values?.purchasePrice ?? ""}
               gradingFee={values?.gradingFee ?? ""}
               totalCost={values?.totalCost ?? ""}
@@ -234,7 +238,7 @@ export function CardForm({
 
         <label className="field">
           <span>收藏状态</span>
-          <select name="collectionStatus" defaultValue={pickValue(values?.collectionStatus, card?.collectionStatus ?? "holding")}>
+          <select name="collectionStatus" defaultValue={collectionStatus}>
             <option value="holding">持有中</option>
             <option value="listed">在售</option>
             <option value="sold">已售出</option>
@@ -290,54 +294,17 @@ export function CardForm({
           <input name="patchType" placeholder="例如 multi-color / logo patch" defaultValue={pickValue(values?.patchType, card?.patchType ?? "")} />
         </label>
 
-        <label className="field full">
-          <span>
-            {mode === "create"
-              ? queuedImages.length > 0
-                ? `队列已有 ${queuedImages.length} 张图片，可追加至总计 5 张`
-                : "上传图片（1-5 张）*"
-              : "新增图片（可选，单张卡总计最多 5 张）"}
-          </span>
-          <input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple />
-          {mode === "create" ? (
-            <small className="muted">
-              {queuedImages.length > 0
-                ? "队列图片已经持久化；仅本次追加选择的图片在提交失败后需要重新选择。"
-                : "提交失败时，文字和勾选项会保留；图片需要重新选择。"}
-            </small>
-          ) : null}
-        </label>
+        <CardImageFields
+          mode={mode}
+          cardTitle={pickValue(values?.cardTitle, card?.cardTitle ?? "")}
+          existingImages={(card?.images ?? []).map((image) => ({
+            id: image.id,
+            url: normalizeImagePath(image.path),
+            rotation: image.rotation
+          }))}
+          queuedImages={queuedImages}
+        />
       </div>
-
-      {mode === "create" && queuedImages.length > 0 ? (
-        <div className="queued-card-images">
-          <h3>队列预处理图片</h3>
-          <div className="gallery">
-            {queuedImages.map((image) => (
-              <figure key={image.id}>
-                <img src={image.url} alt={`${image.side === "front" ? "正面" : "背面"}：${image.originalName}`} />
-                <figcaption>{image.side === "front" ? "正面" : "背面"}</figcaption>
-              </figure>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {mode === "edit" && card ? (
-        <div style={{ marginTop: "1rem" }}>
-          <h3>现有图片（勾选即删除）</h3>
-          <div className="gallery">
-            {card.images.map((image) => (
-              <label key={image.id} className="field" style={{ fontWeight: 500 }}>
-                <img src={normalizeImagePath(image.path)} alt={card.cardTitle} />
-                <span>
-                  <input type="checkbox" name="removeImageIds" value={image.id} /> 删除此图
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
-      ) : null}
 
       <div className="card-form-actions">
         {mode === "create" ? (

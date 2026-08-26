@@ -111,6 +111,11 @@ export function buildPortfolioClientSnapshot(snapshot: PortfolioSnapshot): Portf
     quality: input.quality,
     allocation: input.allocation,
     timeSeries: input.timeSeries,
+    activitySeries: {
+      purchases: snapshot.activitySeries.purchases.slice(-60),
+      grading: snapshot.activitySeries.grading.slice(-60),
+      sales: snapshot.activitySeries.sales.slice(-60)
+    },
     attentionItems: input.attentionItems,
     topPositions: input.topPositions
   };

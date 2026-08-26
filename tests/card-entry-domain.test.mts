@@ -91,6 +91,6 @@ test("entry intent is allowlisted and domain validation remains centralized", ()
   assert.equal(card.isSerialNumbered, true);
   assert.throws(
     () => buildCardData({ ...emptyCardFormValues, cardTitle: "Card", sport: "Basketball" }),
-    /球员姓名/
+    /卡片主体/
   );
 });

@@ -6,6 +6,10 @@ test("return context accepts home filters and entry workbench drafts", () => {
   assert.equal(normalizeReturnTo("/"), "/");
   assert.equal(normalizeReturnTo("/?sport=Basketball"), "/?sport=Basketball");
   assert.equal(
+    normalizeReturnTo("/portfolio?viewId=view-1&compareLeft=current"),
+    "/portfolio?viewId=view-1&compareLeft=current"
+  );
+  assert.equal(
     normalizeReturnTo("/cards/new?draft=draft-1&queue=queue-1"),
     "/cards/new?draft=draft-1&queue=queue-1"
   );

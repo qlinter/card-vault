@@ -6,6 +6,8 @@ export function normalizeReturnTo(value: string | undefined): string | undefined
   if (
     value === "/" ||
     value?.startsWith("/?") ||
+    value === "/portfolio" ||
+    value?.startsWith("/portfolio?") ||
     value === "/cards/new" ||
     value?.startsWith("/cards/new?")
   ) {

@@ -1,6 +1,8 @@
 import type { Prisma } from "@prisma/client";
 import type { CardFormValues } from "@/lib/card-form-values";
+import type { CardImageRotation } from "@/lib/card-image-rotation";
 import { buildCardData } from "@/lib/card-entry-domain";
+import { parseInitialCardQuantity } from "@/lib/card-quantity";
 import {
   maxImagesPerCard,
   removeCardImageIfExists,
@@ -20,18 +22,6 @@ import { prisma } from "@/lib/prisma";
 function optionalString(value: string): string | null {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
-}
-
-function initialCardQuantity(value: string, collectionStatus: string): number {
-  const quantity = Number(value.trim() || "1");
-  if (!Number.isInteger(quantity) || quantity < 0) throw new Error("初始数量必须是非负整数。");
-  if (["sold", "target"].includes(collectionStatus) && quantity !== 0) {
-    throw new Error("已售出或目标卡的初始数量必须为 0。");
-  }
-  if (!["sold", "target"].includes(collectionStatus) && quantity < 1) {
-    throw new Error("持有、在售或送评中的卡片初始数量至少为 1。");
-  }
-  return quantity;
 }
 
 async function createInitialFinancialHistory(
@@ -104,12 +94,14 @@ async function createInitialFinancialHistory(
 export async function createCardEntry(input: {
   values: CardFormValues;
   files: File[];
+  newImageRotations?: CardImageRotation[];
+  queuedImageRotations?: Record<string, CardImageRotation>;
   draftId?: string;
   queueItemId?: string;
 }) {
-  const { values, files, draftId, queueItemId } = input;
+  const { values, files, newImageRotations = [], queuedImageRotations = {}, draftId, queueItemId } = input;
   const cardData = buildCardData(values);
-  const initialQuantity = initialCardQuantity(values.initialQuantity, cardData.collectionStatus);
+  const initialQuantity = parseInitialCardQuantity(values.initialQuantity, cardData.collectionStatus);
   const queuedItem = queueItemId
     ? await prisma.cardEntryQueueItem.findFirst({
         where: { id: queueItemId, status: "ready" },
@@ -143,18 +135,25 @@ export async function createCardEntry(input: {
       if (queueItemId && !transactionQueueItem) {
         throw new Error("队列项目已在其他录入流程中处理。");
       }
-      const transactionQueuePaths = transactionQueueItem?.images.map((image) => {
+      const transactionQueueImages = transactionQueueItem?.images.map((image) => {
         if (!image.processedPath) throw new Error("队列项目缺少预处理图片。");
-        return image.processedPath;
+        return {
+          path: image.processedPath,
+          rotation: queuedImageRotations[image.id] ?? 0
+        };
       }) ?? [];
       const created = await transaction.card.create({
         data: {
           ...cardData,
           holdingQuantity: initialQuantity,
           images: {
-            create: [...transactionQueuePaths, ...imagePaths].map((pathValue) => ({
-              path: pathValue
-            }))
+            create: [
+              ...transactionQueueImages,
+              ...imagePaths.map((pathValue, index) => ({
+                path: pathValue,
+                rotation: newImageRotations[index] ?? 0
+              }))
+            ]
           }
         }
       });

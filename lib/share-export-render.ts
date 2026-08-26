@@ -137,7 +137,7 @@ function renderHero(data: ExportData, coverImage: string | undefined, coverTitle
       <h1>${escapeHtml(data.title)}</h1>
       ${data.subtitle ? `<p class="subtitle">${escapeHtml(data.subtitle)}</p>` : ""}
       ${paragraphHtml(data.description)}
-      <div class="stats"><span>${data.cards.length} 张卡片</span><span>${playerCount} 位球员或组合</span></div>
+      <div class="stats"><span>${data.cards.length} 张卡片</span><span>${playerCount} 个卡片主体</span></div>
     </div>
     ${coverImage ? `<div class="hero-cover"><img src="${escapeHtml(coverImage)}" alt="${escapeHtml(coverTitle)}" /></div>` : ""}
   </section>`;

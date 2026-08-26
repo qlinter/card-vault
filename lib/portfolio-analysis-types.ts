@@ -6,6 +6,8 @@ export type PortfolioExpenseRecord = PortfolioMoneyRecord & { kind?: string; con
 export type PortfolioValuationRecord = PortfolioMoneyRecord & { valuedAt: Date; createdAt: Date; source: string };
 
 export type PortfolioCardRecord = {
+  id?: string;
+  createdAt?: Date;
   playerName: string;
   cardTitle?: string;
   sport: string;
@@ -67,6 +69,7 @@ export type PortfolioSnapshot = {
   sports: PortfolioBreakdown[]; players: PortfolioBreakdown[]; statuses: PortfolioBreakdown[]; allocation: PortfolioAllocation; concentration: PortfolioConcentration;
   coverage: { imageCount: number; imageCoverageCount: number; publicDescriptionCoverageCount: number; coreFieldCompletenessAverage: number; incompleteCardCount: number };
   timeSeries: { purchases: PortfolioTimeSeriesPoint[]; sales: PortfolioTimeSeriesPoint[]; expenses: PortfolioTimeSeriesPoint[]; valuations: PortfolioTimeSeriesPoint[] };
+  activitySeries: { purchases: PortfolioTimeSeriesPoint[]; grading: PortfolioTimeSeriesPoint[]; sales: PortfolioTimeSeriesPoint[] };
   attentionItems: PortfolioAttentionItem[]; topPositions: PortfolioTopPosition[];
 };
 

@@ -2,7 +2,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 
-const schemaVersion = "1.1.1";
+const schemaVersion = "1.2.0";
+const previousSchemaVersion = "1.1.1";
 const requiredSchema = {
   Card: [
     "id", "playerName", "cardTitle", "sport", "team", "year", "brand", "productLine", "subsetName",
@@ -11,7 +12,7 @@ const requiredSchema = {
     "gradingLink", "visibility", "collectionStatus", "holdingQuantity", "purchaseDate", "purchasePrice", "gradingFee",
     "totalCost", "currentValue", "purchaseSource", "tags", "publicDescription", "notes", "createdAt", "updatedAt"
   ],
-  CardImage: ["id", "cardId", "path", "createdAt"],
+  CardImage: ["id", "cardId", "path", "rotation", "createdAt"],
   CardTransaction: ["id", "cardId", "kind", "amountMinor", "currency", "quantity", "occurredAt", "source", "notes", "provenance", "externalKey", "createdAt", "updatedAt"],
   CardExpense: ["id", "cardId", "kind", "context", "transactionId", "amountMinor", "currency", "occurredAt", "vendor", "notes", "provenance", "externalKey", "createdAt", "updatedAt"],
   CardValuation: ["id", "cardId", "amountMinor", "currency", "valuedAt", "source", "notes", "provenance", "externalKey", "createdAt", "updatedAt"],
@@ -23,13 +24,26 @@ const requiredSchema = {
   CardEntryRecognition: ["id", "itemId", "status", "suggestionJson", "confidenceJson", "attemptCount", "errorMessage", "createdAt", "updatedAt"],
   ShareCollection: ["id", "title", "subtitle", "slug", "theme", "presentationConfig", "description", "themeNarrative", "themeHighlights", "groupNotes", "coverImagePath", "backgroundImagePath", "createdAt", "updatedAt"],
   ShareSection: ["id", "shareCollectionId", "title", "description", "layout", "sortOrder"],
-  ShareCollectionItem: ["id", "shareCollectionId", "cardId", "sectionId", "sortOrder", "displayTitle", "displayDescription"]
+  ShareCollectionItem: ["id", "shareCollectionId", "cardId", "sectionId", "sortOrder", "displayTitle", "displayDescription"],
+  PortfolioSavedView: ["id", "name", "queryJson", "createdAt", "updatedAt"],
+  PortfolioSnapshotRecord: ["id", "savedViewId", "name", "queryJson", "snapshotJson", "capturedAt"]
 };
 
-const v110RequiredSchema = {
+const portfolioTableNames = new Set(["PortfolioSavedView", "PortfolioSnapshotRecord"]);
+const prePortfolioRequiredSchema = Object.fromEntries(
+  Object.entries(requiredSchema).filter(([tableName]) => !portfolioTableNames.has(tableName))
+);
+const preRotationRequiredSchema = {
   ...requiredSchema,
-  Card: requiredSchema.Card.filter((column) => column !== "holdingQuantity"),
-  CardExpense: requiredSchema.CardExpense.filter((column) => !["context", "transactionId"].includes(column))
+  CardImage: requiredSchema.CardImage.filter((column) => column !== "rotation")
+};
+const prePortfolioPreRotationRequiredSchema = Object.fromEntries(
+  Object.entries(preRotationRequiredSchema).filter(([tableName]) => !portfolioTableNames.has(tableName))
+);
+const v110RequiredSchema = {
+  ...prePortfolioPreRotationRequiredSchema,
+  Card: prePortfolioPreRotationRequiredSchema.Card.filter((column) => column !== "holdingQuantity"),
+  CardExpense: prePortfolioPreRotationRequiredSchema.CardExpense.filter((column) => !["context", "transactionId"].includes(column))
 };
 
 function applicationTableNames(db) {
@@ -77,6 +91,7 @@ function createCurrentSchema(db) {
     );
     CREATE TABLE IF NOT EXISTS CardImage (
       id TEXT PRIMARY KEY NOT NULL, cardId TEXT NOT NULL, path TEXT NOT NULL,
+      rotation INTEGER NOT NULL DEFAULT 0 CHECK (rotation IN (0, 90, 180, 270)),
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT CardImage_cardId_fkey FOREIGN KEY (cardId) REFERENCES Card (id) ON DELETE CASCADE ON UPDATE CASCADE
     );
@@ -164,6 +179,15 @@ function createCurrentSchema(db) {
       CONSTRAINT ShareCollectionItem_sectionId_fkey FOREIGN KEY (sectionId) REFERENCES ShareSection (id) ON DELETE SET NULL ON UPDATE CASCADE,
       CONSTRAINT ShareCollectionItem_cardId_fkey FOREIGN KEY (cardId) REFERENCES Card (id) ON DELETE CASCADE ON UPDATE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS PortfolioSavedView (
+      id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, queryJson TEXT NOT NULL,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS PortfolioSnapshotRecord (
+      id TEXT PRIMARY KEY NOT NULL, savedViewId TEXT, name TEXT NOT NULL, queryJson TEXT NOT NULL,
+      snapshotJson TEXT NOT NULL, capturedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT PortfolioSnapshotRecord_savedViewId_fkey FOREIGN KEY (savedViewId) REFERENCES PortfolioSavedView (id) ON DELETE SET NULL ON UPDATE CASCADE
+    );
 
     CREATE INDEX IF NOT EXISTS Card_playerName_idx ON Card(playerName);
     CREATE INDEX IF NOT EXISTS Card_cardTitle_idx ON Card(cardTitle);
@@ -209,6 +233,10 @@ function createCurrentSchema(db) {
     CREATE INDEX IF NOT EXISTS ShareCollectionItem_sectionId_idx ON ShareCollectionItem(sectionId);
     CREATE INDEX IF NOT EXISTS ShareCollectionItem_cardId_idx ON ShareCollectionItem(cardId);
     CREATE INDEX IF NOT EXISTS ShareCollectionItem_sortOrder_idx ON ShareCollectionItem(sortOrder);
+    CREATE UNIQUE INDEX IF NOT EXISTS PortfolioSavedView_name_key ON PortfolioSavedView(name);
+    CREATE INDEX IF NOT EXISTS PortfolioSavedView_updatedAt_idx ON PortfolioSavedView(updatedAt DESC);
+    CREATE INDEX IF NOT EXISTS PortfolioSnapshotRecord_savedViewId_capturedAt_idx ON PortfolioSnapshotRecord(savedViewId, capturedAt DESC);
+    CREATE INDEX IF NOT EXISTS PortfolioSnapshotRecord_capturedAt_idx ON PortfolioSnapshotRecord(capturedAt DESC);
 
     CREATE TRIGGER IF NOT EXISTS CardTransaction_currency_insert_check BEFORE INSERT ON CardTransaction
       WHEN NEW.currency NOT IN ('CNY', 'USD') BEGIN SELECT RAISE(ABORT, 'currency must be CNY or USD'); END;
@@ -239,15 +267,22 @@ function createUpgradeSnapshot(db, dbPath) {
   const backupDirectory = path.join(path.dirname(dbPath), "schema-backups");
   fs.mkdirSync(backupDirectory, { recursive: true });
   const timestamp = new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-");
-  const backupPath = path.join(backupDirectory, `card-vault-before-v1.1.1-${timestamp}.db`);
+  const backupPath = path.join(backupDirectory, `card-vault-before-v1.2.0-${timestamp}.db`);
   db.exec(`VACUUM INTO '${escapedSqlString(backupPath)}';`);
   return backupPath;
+}
+
+function addCardImageRotation(db) {
+  const columns = new Set(db.prepare("PRAGMA table_info(CardImage)").all().map((column) => column.name));
+  if (!columns.has("rotation")) {
+    db.exec("ALTER TABLE CardImage ADD COLUMN rotation INTEGER NOT NULL DEFAULT 0 CHECK (rotation IN (0, 90, 180, 270));");
+  }
 }
 
 function upgradeV110ToV111(db) {
   const refundCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardTransaction WHERE kind = 'refund'").get().count);
   if (refundCount > 0) {
-    throw new Error(`数据库中仍有 ${refundCount} 条退款记录，v1.1.1 不支持自动删除这些业务数据。请先在 v1.1.0 中处理后再升级。`);
+    throw new Error(`数据库中仍有 ${refundCount} 条退款记录，v${schemaVersion} 不支持自动删除这些业务数据。请先在 v1.1.0 中处理后再升级。`);
   }
 
   const sameDayShippingCount = Number(db.prepare(`
@@ -385,21 +420,43 @@ function initializeDatabase(dbPath) {
     let backupPath = null;
     let expenseBackfill = null;
     let upgradeSource = null;
+    let addImageRotation = false;
     if (!initialized) {
       const currentIssues = schemaIssues(db, requiredSchema);
       if (currentIssues.length > 0) {
-        const v110Issues = schemaIssues(db, v110RequiredSchema);
-        if (v110Issues.length > 0) {
-          throw new Error(`数据库不是 Card Vault v1.1.0 或 ${schemaVersion} 支持结构：${v110Issues.join("；")}。`);
+        const preRotationIssues = schemaIssues(db, preRotationRequiredSchema);
+        const prePortfolioIssues = schemaIssues(db, prePortfolioRequiredSchema);
+        const prePortfolioPreRotationIssues = schemaIssues(db, prePortfolioPreRotationRequiredSchema);
+        if (preRotationIssues.length === 0) {
+          backupPath = createUpgradeSnapshot(db, dbPath);
+          upgradeSource = previousSchemaVersion;
+          addImageRotation = true;
+          upgraded = true;
+        } else if (prePortfolioIssues.length === 0) {
+          backupPath = createUpgradeSnapshot(db, dbPath);
+          upgradeSource = previousSchemaVersion;
+          upgraded = true;
+        } else if (prePortfolioPreRotationIssues.length === 0) {
+          backupPath = createUpgradeSnapshot(db, dbPath);
+          upgradeSource = previousSchemaVersion;
+          addImageRotation = true;
+          upgraded = true;
+        } else {
+          const v110Issues = schemaIssues(db, v110RequiredSchema);
+          if (v110Issues.length > 0) {
+            throw new Error(`数据库不是 Card Vault v1.1.0、v${previousSchemaVersion} 或 v${schemaVersion} 支持结构：${v110Issues.join("；")}。`);
+          }
+          backupPath = createUpgradeSnapshot(db, dbPath);
+          expenseBackfill = upgradeV110ToV111(db);
+          upgradeSource = "v1.1.0";
+          addImageRotation = true;
+          upgraded = true;
         }
-        backupPath = createUpgradeSnapshot(db, dbPath);
-        expenseBackfill = upgradeV110ToV111(db);
-        upgradeSource = "v1.1.0";
-        upgraded = true;
       }
     }
     db.exec("BEGIN IMMEDIATE;");
     try {
+      if (addImageRotation) addCardImageRotation(db);
       createCurrentSchema(db);
       db.exec("COMMIT;");
     } catch (error) {

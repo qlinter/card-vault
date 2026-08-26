@@ -48,23 +48,26 @@ export function ShowcaseGroupFilter({ groups, activeGroup, queryText }: Showcase
   }, [activeGroup, expanded, groups]);
 
   return (
-    <section className="showcase-groups" aria-label="球员筛选">
+    <section className="showcase-groups" aria-label="卡片主体筛选">
       <div className="showcase-section-head">
-        <p className="muted">共 {groups.length} 位球员或组合</p>
+        <p className="muted">共 {groups.length} 个卡片主体</p>
         {groups.length > 8 ? (
           <button
             type="button"
             className="btn btn-secondary disclosure-button"
             onClick={() => setExpanded((value) => !value)}
             aria-expanded={expanded}
-            aria-label={expanded ? "收起球员列表" : "展开球员列表"}
-            title={expanded ? "收起球员列表" : "展开球员列表"}
+            aria-label={expanded ? "收起卡片主体列表" : "展开卡片主体列表"}
+            title={expanded ? "收起卡片主体列表" : "展开卡片主体列表"}
           >
             <DisclosureIcon expanded={expanded} />
           </button>
         ) : null}
       </div>
-      <div className={`showcase-group-row${expanded ? " is-expanded" : " is-collapsed"}`}>
+      <div
+        className={`showcase-group-row${expanded ? " is-expanded" : " is-collapsed"}`}
+        style={!expanded ? { gridTemplateColumns: `repeat(${visibleGroups.length + 1}, minmax(0, 1fr))` } : undefined}
+      >
         <Link href={buildGroupHref(undefined, queryText)} className={`showcase-chip${!activeGroup ? " active" : ""}`}>
           全部
         </Link>
@@ -73,8 +76,10 @@ export function ShowcaseGroupFilter({ groups, activeGroup, queryText }: Showcase
             key={group.name}
             href={buildGroupHref(group.name, queryText)}
             className={`showcase-chip${activeGroup === group.name ? " active" : ""}`}
+            title={group.name}
           >
-            {group.name} <span className="showcase-chip-count">{group.count}</span>
+            <span className="showcase-chip-label">{group.name}</span>
+            <span className="showcase-chip-count">{group.count}</span>
           </Link>
         ))}
       </div>

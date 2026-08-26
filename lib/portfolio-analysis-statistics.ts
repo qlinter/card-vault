@@ -1,4 +1,5 @@
-import { minorMoneyToNumber, normalizeCurrency, selectLatestValuation } from "./financial-history.ts";
+import { normalizeCurrency, selectLatestValuation } from "./financial-history.ts";
+import { portfolioMoneyAmount as moneyAmount, roundPortfolioValue as money } from "./portfolio-number.ts";
 import type {
   PortfolioAllocation,
   PortfolioAllocationBreakdown,
@@ -16,14 +17,6 @@ import {
 } from "./position-accounting.ts";
 
 export type PortfolioPositionMap = ReadonlyMap<PortfolioCardRecord, CurrencyPosition[]>;
-
-function money(value: number): number {
-  return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
-}
-
-function moneyAmount(record: PortfolioMoneyRecord): number {
-  return minorMoneyToNumber(record.amountMinor, normalizeCurrency(record.currency));
-}
 
 export function createPortfolioPositionMap(cards: PortfolioCardRecord[]): PortfolioPositionMap {
   return new Map(cards.map((card) => [card, calculatePositions(card)]));
@@ -76,7 +69,14 @@ export function allocationBreakdown(
 export function concentrationDimension(items: PortfolioAllocationBreakdown[]): PortfolioConcentrationDimension {
   const byCurrency = (limit: number): Record<string, number> => {
     const currencies = new Set(items.flatMap((item) => Object.keys(item.valueShare)));
-    return Object.fromEntries([...currencies].map((currency) => [currency, money(items.slice(0, limit).reduce((sum, item) => sum + (item.valueShare[currency] ?? 0), 0))]));
+    return Object.fromEntries([...currencies].map((currency) => [
+      currency,
+      money(items
+        .map((item) => item.valueShare[currency] ?? 0)
+        .sort((left, right) => right - left)
+        .slice(0, limit)
+        .reduce((sum, share) => sum + share, 0))
+    ]));
   };
   const hhiByCurrency: Record<string, number> = {};
   for (const currency of new Set(items.flatMap((item) => Object.keys(item.valueShare)))) {
@@ -129,6 +129,53 @@ export function monthlySeries(cards: PortfolioCardRecord[], kind: "purchase" | "
     }
   }
   return [...groups.values()].sort((left, right) => left.month.localeCompare(right.month));
+}
+
+export function monthlyActivitySeries(cards: PortfolioCardRecord[]): {
+  purchases: PortfolioTimeSeriesPoint[];
+  grading: PortfolioTimeSeriesPoint[];
+  sales: PortfolioTimeSeriesPoint[];
+} {
+  const groups = {
+    purchases: new Map<string, PortfolioTimeSeriesPoint>(),
+    grading: new Map<string, PortfolioTimeSeriesPoint>(),
+    sales: new Map<string, PortfolioTimeSeriesPoint>()
+  };
+
+  const add = (
+    kind: keyof typeof groups,
+    record: PortfolioMoneyRecord,
+    sign = 1
+  ) => {
+    const date = record.occurredAt instanceof Date ? record.occurredAt : record.createdAt;
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return;
+    const month = date.toISOString().slice(0, 7);
+    const point = groups[kind].get(month) ?? { month, count: 0, values: {} };
+    const currency = normalizeCurrency(record.currency);
+    point.count += 1;
+    point.values[currency] = money((point.values[currency] ?? 0) + moneyAmount(record) * sign);
+    groups[kind].set(month, point);
+  };
+
+  for (const card of cards) {
+    for (const transaction of card.transactions) {
+      if (transaction.kind === "purchase") add("purchases", transaction);
+      if (transaction.kind === "sale") add("sales", transaction);
+    }
+    for (const expense of card.expenses) {
+      if (expense.context === "purchase") add("purchases", expense);
+      else if (expense.context === "sale") add("sales", expense, -1);
+      else add("grading", expense);
+    }
+  }
+
+  const sorted = (group: Map<string, PortfolioTimeSeriesPoint>) => [...group.values()]
+    .sort((left, right) => left.month.localeCompare(right.month));
+  return {
+    purchases: sorted(groups.purchases),
+    grading: sorted(groups.grading),
+    sales: sorted(groups.sales)
+  };
 }
 
 export function topPositions(

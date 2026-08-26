@@ -241,7 +241,7 @@ async function main() {
     const readyQueueItem = db.prepare("SELECT id FROM CardEntryQueueItem WHERE batchId = ? AND status = 'ready'").get(batchPayload.batchId);
     const failedQueueItem = db.prepare("SELECT id, errorMessage FROM CardEntryQueueItem WHERE batchId = ? AND status = 'failed'").get(batchPayload.batchId);
     const processedQueueImages = readyQueueItem
-      ? db.prepare("SELECT originalName, processedPath, processedBytes, width, height, side, sortOrder FROM CardEntryQueueImage WHERE itemId = ? ORDER BY sortOrder").all(readyQueueItem.id)
+      ? db.prepare("SELECT id, originalName, processedPath, processedBytes, width, height, side, sortOrder FROM CardEntryQueueImage WHERE itemId = ? ORDER BY sortOrder").all(readyQueueItem.id)
       : [];
     db.close();
     if (
@@ -323,7 +323,9 @@ async function main() {
     if (
       !draftPage.includes('value="E2E Draft Player"') ||
       !draftPage.includes('value="E2E Draft Card"') ||
-      !draftPage.includes("队列预处理图片")
+      !draftPage.includes("队列预处理图片") ||
+      !draftPage.includes('name="queuedImageRotations"') ||
+      !draftPage.includes("向左旋转")
     ) {
       throw new Error("Entry workbench did not restore draft values and queue images together.");
     }
@@ -340,6 +342,8 @@ async function main() {
       description: "创建流程回归测试。"
     });
     createForm.append("images", new Blob([png], { type: "image/png" }), "card.png");
+    createForm.append("queuedImageRotations", JSON.stringify(Object.fromEntries(processedQueueImages.map((image, index) => [image.id, index === 0 ? 90 : 180]))));
+    createForm.append("newImageRotations", JSON.stringify([270]));
 
     const createResponse = await fetch(`${baseUrl}/cards/new`, { method: "POST", body: createForm, redirect: "manual" });
     const createLocation = createResponse.headers.get("location") || "";
@@ -350,7 +354,7 @@ async function main() {
 
     db = new DatabaseSync(dbPath, { readOnly: true });
     const created = db.prepare("SELECT playerName, cardTitle, year, grade, totalCost, holdingQuantity, isSerialNumbered FROM Card WHERE id = ?").get(cardId);
-    const createdImages = db.prepare("SELECT path FROM CardImage WHERE cardId = ? ORDER BY createdAt, rowid").all(cardId);
+    const createdImages = db.prepare("SELECT id, path, rotation FROM CardImage WHERE cardId = ? ORDER BY createdAt, rowid").all(cardId);
     const createdTransaction = db.prepare("SELECT kind, amountMinor, currency, quantity, provenance FROM CardTransaction WHERE cardId = ?").get(cardId);
     const createdExpense = db.prepare("SELECT kind, context, amountMinor, currency, provenance FROM CardExpense WHERE cardId = ?").get(cardId);
     const createdValuation = db.prepare("SELECT amountMinor, currency, source, provenance FROM CardValuation WHERE cardId = ?").get(cardId);
@@ -363,6 +367,7 @@ async function main() {
     }
     if (
       createdImages.length !== 3 ||
+      JSON.stringify(createdImages.map((image) => image.rotation).sort((left, right) => left - right)) !== JSON.stringify([90, 180, 270]) ||
       createdImages.some((image) => !fs.existsSync(path.join(dataDir, "uploads", path.basename(image.path))))
     ) {
       throw new Error("Card create did not atomically adopt queue images and persist the appended upload.");
@@ -386,6 +391,17 @@ async function main() {
     }
 
     const thumbnailHomePage = await fetchPage(baseUrl, "/");
+    if (thumbnailHomePage.includes(">球星卡收藏<")) {
+      throw new Error("Home page still renders the removed collection title row.");
+    }
+    if (
+      !thumbnailHomePage.includes('data-testid="home-filter-actions"') ||
+      !thumbnailHomePage.includes('href="/cards/new"') ||
+      !thumbnailHomePage.includes("filter-add-card") ||
+      !thumbnailHomePage.includes('href="/portfolio">组合中心')
+    ) {
+      throw new Error("Home page did not keep the create-card and Portfolio Center actions available.");
+    }
     const thumbnailPath = thumbnailHomePage.match(/\/thumbnails\/[^"']+\.home\.webp/)?.[0];
     if (!thumbnailPath || thumbnailHomePage.includes('src="/media/')) {
       throw new Error("Home page did not replace original card media with the derived thumbnail route.");
@@ -441,6 +457,9 @@ async function main() {
     }
 
     const editPage = await fetchPage(baseUrl, `/cards/${cardId}/edit`);
+    if (!editPage.includes("卡片主体") || !editPage.includes('name="existingImageRotations"')) {
+      throw new Error("Card edit page is missing the card-subject label or image rotation state.");
+    }
     const editForm = new FormData();
     appendServerActionFields(editForm, editPage);
     appendCardFields(editForm, {
@@ -449,6 +468,8 @@ async function main() {
       grade: "Authentic",
       description: "编辑流程回归测试。"
     });
+    const expectedUpdatedImageRotations = createdImages.map((image, index) => index === 0 ? 0 : image.rotation);
+    editForm.append("existingImageRotations", JSON.stringify(Object.fromEntries(createdImages.map((image, index) => [image.id, expectedUpdatedImageRotations[index]]))));
     const editResponse = await fetch(`${baseUrl}/cards/${cardId}/edit`, { method: "POST", body: editForm, redirect: "manual" });
     const editLocation = editResponse.headers.get("location") || "";
     if (editResponse.status !== 303 || editLocation !== `/cards/${cardId}?success=updated`) {
@@ -458,6 +479,7 @@ async function main() {
     db = new DatabaseSync(dbPath, { readOnly: true });
     const updated = db.prepare("SELECT playerName, cardTitle, grade, publicDescription FROM Card WHERE id = ?").get(cardId);
     const imageCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardImage WHERE cardId = ?").get(cardId).count);
+    const updatedImageRotations = db.prepare("SELECT rotation FROM CardImage WHERE cardId = ? ORDER BY createdAt, rowid").all(cardId).map((image) => image.rotation);
     const historyCount = Number(db.prepare("SELECT (SELECT COUNT(*) FROM CardTransaction WHERE cardId = ?) + (SELECT COUNT(*) FROM CardExpense WHERE cardId = ?) + (SELECT COUNT(*) FROM CardValuation WHERE cardId = ?) AS count").get(cardId, cardId, cardId).count);
     db.close();
     if (updated?.playerName !== "E2E Updated Player" || updated?.grade !== "Authentic" || updated?.publicDescription !== "编辑流程回归测试。") {
@@ -465,6 +487,9 @@ async function main() {
     }
     if (imageCount !== 3) {
       throw new Error("Card edit unexpectedly changed the existing image count.");
+    }
+    if (JSON.stringify(updatedImageRotations) !== JSON.stringify(expectedUpdatedImageRotations)) {
+      throw new Error(`Card edit did not persist image rotations: ${JSON.stringify(updatedImageRotations)}.`);
     }
     if (historyCount !== 3) {
       throw new Error("Ordinary card editing unexpectedly changed financial history.");
@@ -565,6 +590,7 @@ async function main() {
     if (
       !showcaseDetailPage.includes("返回上一页") ||
       !showcaseDetailPage.includes("E2E Updated Card") ||
+      !showcaseDetailPage.includes('aria-label="旋转当前图片"') ||
       !showcaseDetailPage.includes('href="/showcase?group=E2E+Updated+Player&amp;q=Updated"')
     ) {
       throw new Error("Showcase card detail page does not provide filtered-context navigation.");
@@ -590,7 +616,8 @@ async function main() {
     if (
       !filteredHomePage.includes(filteredCardHref) ||
       !filteredHomeText.includes("CNY 360.00") ||
-      !filteredHomeText.includes("估值覆盖 1/1")
+      !filteredHomeText.includes("估值覆盖 1/1") ||
+      !filteredHomePage.includes('href="/portfolio?sport=Basketball&amp;sort=valueDesc"')
     ) {
       throw new Error(`Filtered home page mismatch: link=${filteredHomePage.includes(filteredCardHref)}, amount=${filteredHomeText.includes("CNY 360.00")}, coverage=${filteredHomeText.includes("估值覆盖 1/1")}\n${filteredHomeText.match(/总估值.{0,180}/)?.[0] || "no valuation text"}`);
     }
@@ -726,6 +753,65 @@ async function main() {
     if (!repurchasedDetailPage.includes("总盈亏") || !repurchasedDetailPage.includes("关联 2026-08-11 出售")) {
       throw new Error(`Financial detail does not show total profit or the linked sale expense: ${repurchasedDetailPage.includes("总盈亏")},${repurchasedDetailPage.includes("关联 2026-08-11 出售")}.`);
     }
+    const portfolioPage = await fetchPage(baseUrl, "/portfolio");
+    for (const marker of [
+      "组合中心",
+      "持仓财务",
+      "财务历史趋势",
+      "估值来源",
+      "活动趋势",
+      "评级",
+      "收藏结构",
+      "扩展维度",
+      "卡片属性",
+      "高价值持仓",
+      "高成本持仓",
+      "已售卡片复盘",
+      "数据待完善",
+      "E2E Filtered Player"
+    ]) {
+      if (!portfolioPage.includes(marker)) {
+        throw new Error(`Portfolio center is missing the expected marker: ${marker}`);
+      }
+    }
+    if (!portfolioPage.includes('href="/portfolio"') || !portfolioPage.includes("CNY")) {
+      throw new Error("Portfolio center navigation or currency-separated summary is missing.");
+    }
+    for (const marker of ['aria-label="财务历史趋势时间范围"', 'aria-label="活动趋势时间范围"', 'aria-label="收藏结构维度"', "近12个月", "近24个月", "所有", '/?q=E2E%20Filtered%20Player']) {
+      if (!portfolioPage.includes(marker)) {
+        throw new Error(`Portfolio center interactive controls or filter links are missing: ${marker}`);
+      }
+    }
+    for (const removedCopy of [
+      "CNY 与 USD 分开核算，不进行自动汇率换算。",
+      "展示最近 12 个有记录月份的买入、出售、费用与估值录入金额。",
+      "各折线表示当月新增记录金额，并非历史组合总市值。",
+      "估值占比展示；缺少该币种估值时改用数量占比。",
+      "CNY 估值占比",
+      "拖拽调整栏目</span>",
+      ">恢复默认</button>"
+    ]) {
+      if (portfolioPage.includes(removedCopy)) {
+        throw new Error(`Portfolio center still contains removed helper copy: ${removedCopy}`);
+      }
+    }
+    if (portfolioPage.includes("rotate(-38")) {
+      throw new Error("Portfolio activity month labels are still rendered diagonally.");
+    }
+    if (!portfolioPage.includes('data-horizontal-scroll="disabled"')) {
+      throw new Error("The default 12-month activity chart still requires horizontal scrolling.");
+    }
+    const comparisonDetailsTag = portfolioPage.match(/<details[^>]*comparisonWorkspace[^>]*>/)?.[0];
+    if (!comparisonDetailsTag || /\sopen(?:\s|=|>)/.test(comparisonDetailsTag)) {
+      throw new Error("The view and comparison workspace is missing or not collapsed by default.");
+    }
+    if (!portfolioPage.includes("disclosure-button") || !portfolioPage.includes('aria-label="拖拽调整栏目顺序"')) {
+      throw new Error("Portfolio disclosure or sortable-section controls are missing.");
+    }
+    const portfolioDetailPage = await fetchPage(baseUrl, `/cards/${cardId}?returnTo=${encodeURIComponent("/portfolio")}`);
+    if (!portfolioDetailPage.includes('href="/portfolio"')) {
+      throw new Error("Card detail opened from the portfolio center does not return to the portfolio center.");
+    }
     const analysisResponse = await fetch(`${baseUrl}/api/ai/portfolio-analysis`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -740,7 +826,7 @@ async function main() {
     ) {
       throw new Error(`Portfolio analysis did not build a trusted server-side snapshot before AI configuration validation.\n${JSON.stringify(analysisPayload).slice(0, 500)}`);
     }
-  console.log("Card flow HTTP E2E passed: workbench quantity, home thumbnails, financial overview and charts, linked sale expenses, status transitions, and core card routes.");
+  console.log("Card flow HTTP E2E passed: workbench quantity, home thumbnails, portfolio center, financial overview and charts, linked sale expenses, status transitions, and core card routes.");
   } finally {
     stopServer(serverProcess);
     await removeTempRoot(tempRoot);

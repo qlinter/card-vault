@@ -2,6 +2,12 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const {
+  assertArtifactSize,
+  assertPackagedTreeClean,
+  defaultArtifactLimits,
+  prunePrismaTempEngines
+} = require("./release-bundle-hygiene");
 const { resolveWindowsSigning } = require("./windows-signing");
 
 const rootDir = path.resolve(__dirname, "..");
@@ -100,6 +106,7 @@ function verifyPackagedFiles() {
   if (!prismaSchema.includes("model ShareSection") || !prismaSchema.includes("presentationConfig")) {
     throw new Error("Packaged Prisma Client does not contain the current share collection schema.");
   }
+  assertPackagedTreeClean(appRoot);
   return executablePath;
 }
 
@@ -158,6 +165,8 @@ async function main() {
 
   cleanDistDirectory();
   run("npm.cmd", ["run", "check:release"]);
+  const removedPrismaTemps = prunePrismaTempEngines(path.join(rootDir, "node_modules", ".prisma", "client"));
+  process.stdout.write(`Release dependency cleanup removed ${removedPrismaTemps.length} Prisma temporary engine file(s).\n`);
   run("node", ["scripts/patch-electron-builder-nsis.js"]);
   run("npm.cmd", ["run", "package:win"], { env: resolveBundledNsisToolEnv() });
   const executablePath = verifyPackagedFiles();
@@ -165,6 +174,8 @@ async function main() {
   verifyPackagedHealthEndpoint(executablePath);
   removeArtifact(path.join(unpackedDir, "resources", "app", "logs"));
   createPortableZip();
+  assertArtifactSize(setupPath, defaultArtifactLimits.installer, "Windows installer");
+  assertArtifactSize(zipPath, defaultArtifactLimits.portable, "Portable ZIP");
 
   const [setupHash, zipHash] = await Promise.all([hashFile(setupPath), hashFile(zipPath)]);
   fs.writeFileSync(checksumPath, `${setupHash}  ${path.basename(setupPath)}\n${zipHash}  ${path.basename(zipPath)}\n`, "utf8");

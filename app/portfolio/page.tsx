@@ -1,5 +1,6 @@
 import { PortfolioAnalysisButton } from "@/components/portfolio-analysis";
-import { PortfolioCenter, PortfolioComparisonPanel } from "@/components/portfolio-center";
+import { PortfolioCenter } from "@/components/portfolio-center";
+import { PortfolioComparisonPanel } from "@/components/portfolio-comparison-panel";
 import { PortfolioWorkspaceControls } from "@/components/portfolio-workspace-controls";
 import { DisclosureIcon } from "@/components/disclosure-icon";
 import { errorMessage } from "@/lib/feedback-messages";

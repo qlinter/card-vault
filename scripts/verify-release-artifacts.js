@@ -3,6 +3,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { assertArtifactSize, defaultArtifactLimits } = require("./release-bundle-hygiene");
 
 const rootDir = path.resolve(__dirname, "..");
 const packageJson = require(path.join(rootDir, "package.json"));
@@ -66,9 +67,11 @@ function verifyPortableArchive() {
     `try {`,
     `$exe=$zip.Entries | Where-Object { ($_.FullName -replace '\\\\','/') -eq 'Card Vault.exe' } | Select-Object -First 1`,
     `$package=$zip.Entries | Where-Object { ($_.FullName -replace '\\\\','/') -eq 'resources/app/package.json' } | Select-Object -First 1`,
+    `$forbidden=$zip.Entries | Where-Object { $entryName=($_.FullName -replace '\\\\','/').ToLowerInvariant(); $entryName.StartsWith('resources/app/') -and ($entryName.EndsWith('.map') -or ($entryName.Contains('/node_modules/.prisma/client/') -and $entryName -match '\\.tmp[^/]*$')) }`,
     `$tempExe=[System.IO.Path]::Combine([System.IO.Path]::GetTempPath(),('card-vault-artifact-'+[guid]::NewGuid().ToString('N')+'.exe'))`,
     `if(-not $exe) { throw 'Portable ZIP does not contain Card Vault.exe' }`,
     `if(-not $package) { throw 'Portable ZIP does not contain resources/app/package.json' }`,
+    `if($forbidden) { throw ('Portable ZIP contains forbidden generated files: ' + (($forbidden | Select-Object -First 8 -ExpandProperty FullName) -join ', ')) }`,
     `$reader=[System.IO.StreamReader]::new($package.Open())`,
     `try { $version=($reader.ReadToEnd() | ConvertFrom-Json).version } finally { $reader.Dispose() }`,
     `if($version -ne '${packageJson.version.replace(/'/g, "''")}') { throw "Portable ZIP version $version does not match ${packageJson.version}" }`,
@@ -92,6 +95,8 @@ function main() {
     assert.ok(fs.existsSync(artifact), `发布文件不存在：${artifact}`);
     assert.ok(fs.statSync(artifact).size > 0, `发布文件为空：${artifact}`);
   }
+  assertArtifactSize(setupPath, defaultArtifactLimits.installer, "Windows installer");
+  assertArtifactSize(zipPath, defaultArtifactLimits.portable, "Portable ZIP");
   if (fs.existsSync(unpackedDir)) verifyUnpackedRuntime();
   verifyInstallerVersion();
   verifyPortableArchive();

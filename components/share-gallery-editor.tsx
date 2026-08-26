@@ -9,6 +9,7 @@ import { ShareDesignPreview } from "@/components/share-design-preview";
 import { useShareGalleryEditorState, type ShareGalleryEditorPanel } from "@/components/use-share-gallery-editor-state";
 import { shareLayouts } from "@/lib/share-presentation";
 import { shareThemes } from "@/lib/share-themes";
+import styles from "./share-gallery-editor.module.css";
 
 const editorPanels: Array<{ id: ShareGalleryEditorPanel; label: string; description: string }> = [
   { id: "content", label: "基础内容", description: "标题与展馆介绍" },
@@ -61,7 +62,7 @@ export function ShareGalleryEditor({
   const activeLayout = shareLayouts.find((option) => option.id === presentation.layout);
 
   return (
-    <div className="share-editor-v2">
+    <div className={styles.editor}>
       <header className="panel share-editor-v2-header">
         <div>
           <span className="share-editor-v2-kicker">GALLERY EDITOR 2.0</span>

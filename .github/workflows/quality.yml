@@ -22,3 +22,12 @@ jobs:
       - run: npm ci
       - run: npm run audit:prod
       - run: npm run check:release
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: card-vault-ui-regression-${{ github.sha }}
+          path: |
+            test-results
+            playwright-report
+          if-no-files-found: ignore
+          retention-days: 7

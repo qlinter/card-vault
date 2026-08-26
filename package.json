@@ -20,7 +20,9 @@
     "test:card": "node scripts/test-card-flow.js",
     "test:share": "node scripts/test-share-flow.js",
     "test:security": "node scripts/test-local-session-flow.js",
-    "check:release": "npm run prisma:generate && npm run check:encoding && npm run check:metadata && npm run lint && npm run typecheck && npm run test:coverage && next build --webpack && npm run test:security && npm run test:card && npm run test:share",
+    "test:ui": "playwright test",
+    "test:ui:update": "playwright test --update-snapshots",
+    "check:release": "npm run prisma:generate && npm run check:encoding && npm run check:metadata && npm run lint && npm run typecheck && npm run test:coverage && next build --webpack && npm run test:security && npm run test:card && npm run test:share && npm run test:ui",
     "audit:prod": "npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org",
     "typecheck": "tsc --noEmit",
     "clean:cache": "node scripts/clean-cache.js",
@@ -46,6 +48,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
+    "@playwright/test": "^1.62.1",
     "@types/node": "^22.15.17",
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.4",
@@ -79,11 +82,15 @@
         "from": "node_modules/.prisma",
         "to": "node_modules/.prisma",
         "filter": [
-          "**/*"
+          "**/*",
+          "!**/*.tmp*",
+          "!**/*.map"
         ]
       },
       ".next/**/*",
       "!.next/cache/**/*",
+      "!.next/**/*.map",
+      "!node_modules/**/*.map",
       "app/**/*",
       "components/**/*",
       "electron/**/*",

@@ -22,6 +22,8 @@ jobs:
       - run: npm ci
       - run: npm run audit:prod
       - run: npm run check:release
+        env:
+          CARD_VAULT_UI_SCREENSHOT_MODE: capture
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

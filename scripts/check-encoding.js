@@ -11,6 +11,8 @@ const ignoredDirs = new Set([
   "node_modules",
   "dist",
   "coverage",
+  "playwright-report",
+  "test-results",
   "logs",
   "backups"
 ]);

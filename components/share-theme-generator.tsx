@@ -58,7 +58,7 @@ function fieldLabel(field: ShareThemeField): string {
 
 export function ShareThemeGenerator({ cards, currentValues, onApplySuggestion }: ShareThemeGeneratorProps) {
   const [overwrite, setOverwrite] = useState(false);
-  const [status, setStatus] = useState<string>("选择卡片后，可用 AI 生成展馆文案。");
+  const [status, setStatus] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
   async function generateTheme() {
@@ -106,7 +106,6 @@ export function ShareThemeGenerator({ cards, currentValues, onApplySuggestion }:
     <section className="share-ai-panel">
       <div>
         <strong>AI 生成主题</strong>
-        <p className="muted">基于已选卡片生成中文展馆标题、封面介绍、收藏叙事和分组说明。</p>
       </div>
       <div className="share-ai-actions">
         <label className="inline-check">
@@ -117,7 +116,7 @@ export function ShareThemeGenerator({ cards, currentValues, onApplySuggestion }:
           {loading ? "生成中..." : "生成主题"}
         </button>
       </div>
-      <p className="muted">{status}</p>
+      {status ? <p className="muted" role="status">{status}</p> : null}
     </section>
   );
 }

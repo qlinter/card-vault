@@ -27,10 +27,7 @@ export function ShareSectionEditor({
   return (
     <section className="panel share-section">
       <div className="share-section-head">
-        <div>
-          <h2>展馆章节</h2>
-          <p className="muted">用章节组织叙事和卡片。每张卡片最多归入一个章节，未分组卡片仍会出现在完整卡组中。</p>
-        </div>
+        <h2>展馆章节</h2>
         <button type="button" className="btn btn-secondary" onClick={onAdd}>
           新增章节
         </button>

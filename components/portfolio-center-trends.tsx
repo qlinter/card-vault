@@ -133,7 +133,7 @@ export function PortfolioFinancialHistorySection({ points, currencies }: { point
   const [range, setRange] = useState<PortfolioTrendRange>(12);
   return <section className={styles.section}>
     <header className={styles.sectionHeader}>
-      <div><span>FINANCIAL HISTORY</span><h2>财务历史趋势</h2></div>
+      <div><h2>财务历史趋势</h2></div>
       <select className={styles.rangeSelect} aria-label="财务历史趋势时间范围" value={range} onChange={(event) => setRange(event.target.value === "all" ? "all" : Number(event.target.value) as 12 | 24)}>
         <option value={12}>近12个月</option><option value={24}>近24个月</option><option value="all">所有</option>
       </select>
@@ -148,7 +148,7 @@ export function PortfolioActivityTrendSection({ snapshot, currencies, asOfMonth 
   const [range, setRange] = useState<PortfolioTrendRange>(12);
   return <section className={styles.section}>
     <header className={styles.sectionHeader}>
-      <div><span>ACTIVITY TREND</span><h2>活动趋势</h2></div>
+      <div><h2>活动趋势</h2></div>
       <select className={styles.rangeSelect} aria-label="活动趋势时间范围" value={range} onChange={(event) => setRange(event.target.value === "all" ? "all" : Number(event.target.value) as 12 | 24)}>
         <option value={12}>近12个月</option><option value={24}>近24个月</option><option value="all">所有</option>
       </select>

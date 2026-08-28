@@ -10,6 +10,8 @@ import { useShareEditorHistory } from "@/components/use-share-editor-history";
 import { useShareEditorState, type ShareEditorInitialValues } from "@/components/use-share-editor-state";
 import { useShareWizardNavigation } from "@/components/use-share-wizard-navigation";
 import { moveId, normalizeCardOrder, reorderIds, type ShareEditorSnapshot } from "@/lib/share-editor-state";
+import { applyShareGalleryTemplate } from "@/lib/share-templates";
+import { toggleFeaturedCardId } from "@/lib/share-presentation";
 import type { ShareSectionDraft } from "@/lib/share-sections";
 
 type ShareCollectionWizardProps = {
@@ -22,10 +24,10 @@ type ShareCollectionWizardProps = {
 };
 
 const steps = [
-  { id: 0, title: "选择球星卡", helper: "先挑选本次分享要展示的卡片。" },
-  { id: 1, title: "AI 生成", helper: "基于已选卡片生成展馆主题文案。" },
-  { id: 2, title: "内容修改", helper: "调整标题、封面介绍、叙事和单卡展示覆盖。" },
-  { id: 3, title: "确认保存", helper: "检查卡片数量和隐私提示，然后保存分享集。" }
+  { id: 0, title: "选择球星卡" },
+  { id: 1, title: "AI 生成" },
+  { id: 2, title: "内容修改" },
+  { id: 3, title: "确认保存" }
 ] as const;
 
 function ShareSubmitButton() {
@@ -59,7 +61,10 @@ export function ShareCollectionWizard({ action, draftId, cards, aiCards, initial
     const nextIds = selected ? (editor.selectedIds.includes(cardId) ? editor.selectedIds : [...editor.selectedIds, cardId]) : editor.selectedIds.filter((id) => id !== cardId);
     editor.setSelectedIds(nextIds);
     editor.setDrafts((current) => normalizeCardOrder(nextIds, current));
-    if (!selected) editor.setSections((current) => current.map((section) => ({ ...section, cardIds: section.cardIds.filter((id) => id !== cardId) })));
+    if (!selected) {
+      editor.setSections((current) => current.map((section) => ({ ...section, cardIds: section.cardIds.filter((id) => id !== cardId) })));
+      editor.setPresentation((current) => ({ ...current, featuredCardIds: current.featuredCardIds.filter((id) => id !== cardId) }));
+    }
   }
 
   function updateDraft(cardId: string, patch: Partial<ShareCardDraft>) {
@@ -117,6 +122,14 @@ export function ShareCollectionWizard({ action, draftId, cards, aiCards, initial
     editor.setSections((current) => current.map((section) => ({ ...section, cardIds: section.id === sectionId ? (assigned ? [...new Set([...section.cardIds, cardId])] : section.cardIds.filter((id) => id !== cardId)) : assigned ? section.cardIds.filter((id) => id !== cardId) : section.cardIds })));
   }
 
+  function changeFeaturedCard(cardId: string, featured: boolean) {
+    history.recordHistory();
+    editor.setPresentation((current) => ({
+      ...current,
+      featuredCardIds: toggleFeaturedCardId(current.featuredCardIds, cardId, featured)
+    }));
+  }
+
   function handleNextClick(event: MouseEvent<HTMLButtonElement>) { event.preventDefault(); goNext(); }
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     if (activeStep < steps.length - 1) { event.preventDefault(); goNext(); return; }
@@ -127,14 +140,14 @@ export function ShareCollectionWizard({ action, draftId, cards, aiCards, initial
 
   return <form action={action} className="share-form" onSubmit={handleSubmit} noValidate>
     {editor.selectedIds.map((cardId) => <input key={cardId} type="hidden" name="cardIds" value={cardId} />)}
-    <input type="hidden" name="layout" value={editor.presentation.layout} /><input type="hidden" name="backgroundPositionX" value={editor.presentation.backgroundPosition.x} /><input type="hidden" name="backgroundPositionY" value={editor.presentation.backgroundPosition.y} /><input type="hidden" name="panelOpacity" value={editor.presentation.panelOpacity} /><input type="hidden" name="typography" value={editor.presentation.typography} /><input type="hidden" name="density" value={editor.presentation.density} /><input type="hidden" name="imageFit" value={editor.presentation.imageFit} /><input type="hidden" name="textScale" value={editor.presentation.textScale} /><input type="hidden" name="sectionsJson" value={JSON.stringify(editor.sections)} />
+    <input type="hidden" name="templateId" value={editor.presentation.templateId} /><input type="hidden" name="layout" value={editor.presentation.layout} /><input type="hidden" name="backgroundPositionX" value={editor.presentation.backgroundPosition.x} /><input type="hidden" name="backgroundPositionY" value={editor.presentation.backgroundPosition.y} /><input type="hidden" name="panelOpacity" value={editor.presentation.panelOpacity} /><input type="hidden" name="typography" value={editor.presentation.typography} /><input type="hidden" name="density" value={editor.presentation.density} /><input type="hidden" name="imageFit" value={editor.presentation.imageFit} /><input type="hidden" name="textScale" value={editor.presentation.textScale} /><input type="hidden" name="featuredCardIdsJson" value={JSON.stringify(editor.presentation.featuredCardIds)} /><input type="hidden" name="sectionsJson" value={JSON.stringify(editor.sections)} />
     {error ? <p className="note-error">{error}</p> : null}{message ? <p className="note-error">{message}</p> : null}
     {persistence.recoverableDraft ? <section className="panel share-draft-recovery" role="status"><div><strong>检测到未完成的本机草稿</strong><p className="muted">{persistence.draftStatus}，恢复后仍可使用撤销返回当前已保存内容。</p></div><div><button type="button" className="btn btn-primary" onClick={persistence.restoreDraft}>恢复草稿</button><button type="button" className="btn btn-secondary" onClick={persistence.discardDraft}>放弃草稿</button></div></section> : null}
     <div className="share-wizard-header panel"><div className="share-wizard-steps" aria-label="分享集创建步骤">{steps.map((step) => <button key={step.id} type="button" className={`share-wizard-step${activeStep === step.id ? " active" : ""}`} aria-current={activeStep === step.id ? "step" : undefined} onClick={(event) => { event.preventDefault(); goToStep(step.id); }}><span>{step.id + 1}</span>{step.title}</button>)}</div><div className="share-wizard-actions"><button type="button" className="btn btn-secondary" onClick={goPrevious} disabled={activeStep === 0}>上一步</button>{activeStep < steps.length - 1 ? <button type="button" className="btn btn-primary" onClick={handleNextClick}>下一步</button> : <ShareSubmitButton />}<a href="/shares" className="btn btn-secondary">返回分享</a></div></div>
-    <section className="panel share-wizard-current"><p className="muted">第 {activeStep + 1} 步</p><h2>{steps[activeStep].title}</h2><p className="muted">{steps[activeStep].helper}</p><p className="muted">当前已选择 {editor.selectedIds.length} 张卡片</p></section>
+    <section className="panel share-wizard-current"><p className="muted">第 {activeStep + 1} 步</p><h2>{steps[activeStep].title}</h2><p className="muted">当前已选择 {editor.selectedIds.length} 张卡片</p></section>
     <div className={activeStep === 0 ? "" : "share-step-hidden"}><ShareCardPicker cards={cards} selectedIds={editor.selectedIds} drafts={editor.drafts} onSelectionChange={updateSelection} onDraftChange={updateDraft} /></div>
     <div className={activeStep === 1 ? "" : "share-step-hidden"}><ShareThemeGenerator cards={editor.selectedAiCards} currentValues={editor.themeValues} onApplySuggestion={applySuggestion} /></div>
-    <div className={activeStep === 2 ? "" : "share-step-hidden"}><ShareGalleryEditor theme={editor.theme} presentation={editor.presentation} values={editor.themeValues} sections={editor.sections} cards={editor.selectedCards} drafts={editor.drafts} coverMode={editor.coverMode} initialCoverImagePath={editor.initialCoverImagePath} initialBackgroundImagePath={editor.initialBackgroundImagePath} canUndo={history.canUndo} canRedo={history.canRedo} draftStatus={persistence.draftStatus} onUndo={history.undo} onRedo={history.redo} onThemeChange={(nextTheme) => { history.recordHistory(); editor.setTheme(nextTheme); }} onPresentationChange={(updater) => { history.recordHistory(); editor.setPresentation(updater); }} onThemeFieldChange={updateThemeField} onCoverModeChange={(mode) => { history.recordHistory(); editor.setCoverMode(mode); }} onAddSection={addSection} onUpdateSection={updateSection} onRemoveSection={removeSection} onMoveSection={moveSection} onReorderSection={reorderSection} onAssignSectionCard={assignSectionCard} onDraftChange={updateDraft} onMoveCard={moveCard} onReorderCard={reorderCard} /></div>
-    <div className={activeStep === 3 ? "" : "share-step-hidden"}><section className="panel share-section"><div className="share-section-head"><div><h2>确认保存</h2><p className="muted">保存前确认本次分享集包含的卡片。导出包不会包含价格、成本、购买渠道和备注。</p></div><span className="muted">{editor.selectedIds.length} 张卡片</span></div>{editor.selectedCardLabels.length ? <ol className="share-confirm-list">{editor.selectedCardLabels.map((label) => <li key={label}>{label}</li>)}</ol> : <p className="muted">还没有选择卡片。</p>}<div className="share-form-actions"><ShareSubmitButton /><button type="button" className="btn btn-secondary" onClick={() => setActiveStep(0)}>返回选卡</button></div></section></div>
+    <div className={activeStep === 2 ? "" : "share-step-hidden"}><ShareGalleryEditor theme={editor.theme} presentation={editor.presentation} values={editor.themeValues} sections={editor.sections} cards={editor.selectedCards} drafts={editor.drafts} coverMode={editor.coverMode} initialCoverImagePath={editor.initialCoverImagePath} initialBackgroundImagePath={editor.initialBackgroundImagePath} canUndo={history.canUndo} canRedo={history.canRedo} draftStatus={persistence.draftStatus} onUndo={history.undo} onRedo={history.redo} onThemeChange={(nextTheme) => { history.recordHistory(); editor.setTheme(nextTheme); }} onPresentationChange={(updater) => { history.recordHistory(); editor.setPresentation(updater); }} onFeaturedCardChange={changeFeaturedCard} onTemplateApply={(templateId) => { history.recordHistory(); editor.setPresentation(applyShareGalleryTemplate(editor.presentation, templateId)); }} onThemeFieldChange={updateThemeField} onCoverModeChange={(mode) => { history.recordHistory(); editor.setCoverMode(mode); }} onAddSection={addSection} onUpdateSection={updateSection} onRemoveSection={removeSection} onMoveSection={moveSection} onReorderSection={reorderSection} onAssignSectionCard={assignSectionCard} onDraftChange={updateDraft} onMoveCard={moveCard} onReorderCard={reorderCard} /></div>
+    <div className={activeStep === 3 ? "" : "share-step-hidden"}><section className="panel share-section"><div className="share-section-head"><h2>确认保存</h2><span className="muted">{editor.selectedIds.length} 张卡片</span></div>{editor.selectedCardLabels.length ? <ol className="share-confirm-list">{editor.selectedCardLabels.map((label) => <li key={label}>{label}</li>)}</ol> : <p className="muted">还没有选择卡片。</p>}<div className="share-form-actions"><ShareSubmitButton /><button type="button" className="btn btn-secondary" onClick={() => setActiveStep(0)}>返回选卡</button></div></section></div>
   </form>;
 }

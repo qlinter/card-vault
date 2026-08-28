@@ -10,7 +10,7 @@ import { prepareImageUpload } from "@/lib/image-upload";
 import { prisma } from "@/lib/prisma";
 import { exportShareCollection, ShareExportMode } from "@/lib/share-export";
 import { getShareBackgroundsDir, getShareCoversDir } from "@/lib/storage-paths";
-import { createSharePresentation, serializeSharePresentation } from "@/lib/share-presentation";
+import { createSharePresentation, sanitizeSharePresentationCards, serializeSharePresentation } from "@/lib/share-presentation";
 import { parseShareSectionDrafts } from "@/lib/share-sections";
 import { normalizeShareTheme } from "@/lib/share-themes";
 import { errorMessage } from "@/lib/feedback-messages";
@@ -104,7 +104,7 @@ function selectedCardIds(formData: FormData): string[] {
     });
 }
 
-async function collectionData(formData: FormData) {
+async function collectionData(formData: FormData, cardIds: string[]) {
   const title = toOptionalString(formData.get("title"));
   if (!title) {
     throw new Error("请填写分享集标题。");
@@ -122,11 +122,12 @@ async function collectionData(formData: FormData) {
     }
 
     const backgroundUpload = formData.get("backgroundImage");
+    const clearBackgroundImage = formData.get("clearBackgroundImage") === "on";
     let backgroundImagePath =
-      formData.get("clearBackgroundImage") === "on"
+      clearBackgroundImage
         ? null
         : toOptionalString(formData.get("existingBackgroundImagePath"));
-    if (backgroundUpload instanceof File && backgroundUpload.size > 0) {
+    if (!clearBackgroundImage && backgroundUpload instanceof File && backgroundUpload.size > 0) {
       backgroundImagePath = await saveBackgroundUpload(backgroundUpload);
       uploadedPaths.push(backgroundImagePath);
     }
@@ -136,7 +137,8 @@ async function collectionData(formData: FormData) {
         title,
         theme: normalizeShareTheme(formData.get("theme")),
         presentationConfig: serializeSharePresentation(
-          createSharePresentation({
+          sanitizeSharePresentationCards(createSharePresentation({
+            templateId: formData.get("templateId"),
             layout: formData.get("layout"),
             backgroundPositionX: formData.get("backgroundPositionX"),
             backgroundPositionY: formData.get("backgroundPositionY"),
@@ -144,8 +146,9 @@ async function collectionData(formData: FormData) {
             typography: formData.get("typography"),
             density: formData.get("density"),
             imageFit: formData.get("imageFit"),
-            textScale: formData.get("textScale")
-          })
+            textScale: formData.get("textScale"),
+            featuredCardIds: formData.get("featuredCardIdsJson")
+          }), cardIds)
         ),
         subtitle: toOptionalString(formData.get("subtitle")),
         description: toOptionalString(formData.get("description")),
@@ -218,7 +221,7 @@ export async function createShareCollectionAction(formData: FormData): Promise<v
       throw new Error("请至少选择一张卡片。");
     }
 
-    const collection = await collectionData(formData);
+    const collection = await collectionData(formData, cardIds);
     const data = collection.data;
     uploadedPaths = collection.uploadedPaths;
     const slug = await uniqueSlug(data.title);
@@ -254,7 +257,7 @@ export async function updateShareCollectionAction(shareId: string, formData: For
       throw new Error("请至少选择一张卡片。");
     }
 
-    const collection = await collectionData(formData);
+    const collection = await collectionData(formData, cardIds);
     const data = collection.data;
     uploadedPaths = collection.uploadedPaths;
     const slug = await uniqueSlug(data.title, shareId);
@@ -335,7 +338,7 @@ export async function exportShareCollectionAction(shareId: string, formData: For
     }
 
     const result = await exportShareCollection(collection, mode);
-    redirectPath = `/shares/${shareId}/export?success=${mode}&path=${encodeURIComponent(result.folderPath)}&zip=${encodeURIComponent(result.zipPath)}&report=${encodeURIComponent(result.reportPath)}&cards=${result.cardCount}&images=${result.imageCount}&files=${result.fileCount}&bytes=${result.totalBytes}&warnings=${result.warningCount}`;
+    redirectPath = `/shares/${shareId}/export?success=${mode}&path=${encodeURIComponent(result.folderPath)}&zip=${encodeURIComponent(result.zipPath)}&report=${encodeURIComponent(result.reportPath)}&diff=${encodeURIComponent(result.diffPath)}&cards=${result.cardCount}&images=${result.imageCount}&files=${result.fileCount}&bytes=${result.totalBytes}&warnings=${result.warningCount}&first=${result.diff.isFirstExport ? "1" : "0"}&added=${result.diff.added}&removed=${result.diff.removed}&changed=${result.diff.changed}`;
   } catch (error) {
     const message = errorMessage(error, "导出失败，请稍后重试。");
     redirectPath = `/shares/${shareId}/export?error=${encodeURIComponent(message)}`;

@@ -7,9 +7,9 @@ type AboutSettingsProps = {
 };
 
 const releaseHighlights = [
-  "新增录入工作台 2.0：SQLite 草稿、连续录入、公共字段模板和批量图片 WebP 队列。",
-  "新增疑似重复卡提示和需逐卡确认的 AI 候选，并保留详情往返时的草稿与队列上下文。",
-  "修复分享主题背景、轮播箭头居中和桌面启动重复生成 Prisma 客户端的问题。"
+  "新增中英文界面切换，并完成主要页面的全英文覆盖与重复标题清理。",
+  "完成分享展馆升级：统一展馆样式、响应式预览、重点卡故事、图片优化和导出质量检查。",
+  "Windows 发布支持无证书生成完整产物；配置可信凭据后自动签名并校验时间戳。"
 ];
 
 export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
@@ -47,7 +47,7 @@ export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
 
           {showReleaseNotes ? (
             <div className="about-release-notes" role="region" aria-label={`Card Vault v${defaultVersion} 更新说明`}>
-              <div><h3>v{defaultVersion} 主要更新</h3><small>2026-08-21</small></div>
+              <div><h3>v{defaultVersion} 主要更新</h3><small>2026-08-28</small></div>
               <ul>{releaseHighlights.map((item) => <li key={item}>{item}</li>)}</ul>
             </div>
           ) : null}

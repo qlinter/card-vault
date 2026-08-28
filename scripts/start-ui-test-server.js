@@ -35,19 +35,19 @@ function seedDatabase() {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     insertCard.run(
-      "ui-card-1", "Jordan Lee", "2024 Championship Rookie Auto", "篮球", "Shanghai Meteors",
+      "ui-card-1", "Jordan Lee", "2024 Championship Rookie Auto", "Basketball", "Shanghai Meteors",
       "2024", "Aurora", "Championship", "Teal /99", 1, "08", "/99", 1, 1,
-      "PSA", "10", "public", "holding", 2, "核心收藏,新秀", "视觉回归公开描述。", "UI fixture"
+      "PSA", "10", "public", "holding", 2, "Core Collection,Rookie", "Public description for visual regression.", "UI fixture"
     );
     insertCard.run(
-      "ui-card-2", "Alex Morgan", "2023 Spotlight Patch", "足球", "Bay City FC",
+      "ui-card-2", "Alex Morgan", "2023 Spotlight Patch", "Football", "Bay City FC",
       "2023", "Spotlight", "Icons", "Gold", 0, null, null, 0, 0,
-      null, null, "public", "holding", 1, "Patch,精选", "用于响应式截图的第二张卡片。", "UI fixture"
+      null, null, "public", "holding", 1, "Patch,Featured", "Second card for responsive screenshots.", "UI fixture"
     );
     insertCard.run(
-      "ui-card-3", "Racing Team 27", "2022 Victory Lap", "赛车", "Team 27",
+      "ui-card-3", "Racing Team 27", "2022 Victory Lap", "Motorsport", "Team 27",
       "2022", "Velocity", "Victory Lap", "Silver /50", 1, "21", "/50", 0, 0,
-      "BGS", "9.5", "private", "sold", 0, "已售", "用于已售复盘。", "UI fixture"
+      "BGS", "9.5", "private", "sold", 0, "Sold", "Used for sold-card review.", "UI fixture"
     );
 
     const insertImage = db.prepare("INSERT INTO CardImage (id, cardId, path, rotation) VALUES (?, ?, ?, ?)");
@@ -82,20 +82,20 @@ function seedDatabase() {
       INSERT INTO ShareCollection (id, title, subtitle, slug, theme, presentationConfig, description, themeNarrative, themeHighlights)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
-      "ui-share-1", "2026 精选收藏展馆", "Card Vault 视觉回归基线", "ui-gallery",
+      "ui-share-1", "2026 Featured Collection", "Card Vault Visual Baseline", "ui-gallery",
       "archive", '{"version":1,"layout":"archive","backgroundPosition":{"x":48,"y":50},"panelOpacity":18,"fontStyle":"editorial","density":"balanced","imageFit":"contain"}',
-      "以本地优先方式整理的年度精选。", "三张卡片构成一条关于新秀、赛场与速度的收藏叙事。", "新秀签名\n经典 Patch\n限量赛车卡"
+      "An annual selection organized with a local-first workflow.", "Three cards tell a collection story about rookies, competition, and speed.", "Rookie autograph\nClassic patch\nLimited motorsport card"
     );
     db.prepare(`
       INSERT INTO ShareSection (id, shareCollectionId, title, description, layout, sortOrder)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run("ui-section-1", "ui-share-1", "年度焦点", "视觉回归使用的固定章节。", "editorial", 0);
+    `).run("ui-section-1", "ui-share-1", "Annual Focus", "Fixed section for visual regression.", "editorial", 0);
     const insertShareItem = db.prepare(`
       INSERT INTO ShareCollectionItem (id, shareCollectionId, cardId, sectionId, sortOrder, displayTitle, displayDescription)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    insertShareItem.run("ui-item-1", "ui-share-1", "ui-card-1", "ui-section-1", 0, "年度新秀签名", "核心收藏与年度主视觉。" );
-    insertShareItem.run("ui-item-2", "ui-share-1", "ui-card-2", "ui-section-1", 1, "Spotlight Patch", "来自足球收藏的层次变化。" );
+    insertShareItem.run("ui-item-1", "ui-share-1", "ui-card-1", "ui-section-1", 0, "Rookie Autograph of the Year", "Core collection and annual key visual." );
+    insertShareItem.run("ui-item-2", "ui-share-1", "ui-card-2", "ui-section-1", 1, "Spotlight Patch", "A layered variation from the football collection." );
   } finally {
     db.close();
   }

@@ -3,6 +3,7 @@ import { readFile, stat } from "fs/promises";
 import path from "path";
 import { listRelativeFiles } from "./file-tree.ts";
 import type { ExportData } from "./share-export-types.ts";
+import { auditExportHtmlAccessibility } from "./share-accessibility.ts";
 
 export const cloudflareStaticAssetFileLimit = 20_000;
 export const cloudflareStaticAssetMaxBytes = 25 * 1024 * 1024;
@@ -96,6 +97,16 @@ function localReferences(html: string): string[] {
       }
     }
   }
+  const srcsetPattern = /\bsrcset\s*=\s*["']([^"']+)["']/gi;
+  let srcsetMatch: RegExpExecArray | null;
+  while ((srcsetMatch = srcsetPattern.exec(html))) {
+    for (const candidate of srcsetMatch[1].split(",")) {
+      const reference = candidate.trim().split(/\s+/, 1)[0];
+      if (reference && !reference.startsWith("data:") && !/^[a-z][a-z\d+.-]*:\/\//i.test(reference)) {
+        references.push(reference.split(/[?#]/, 1)[0]);
+      }
+    }
+  }
   return references;
 }
 
@@ -143,6 +154,7 @@ export async function validateExportDirectory(
       continue;
     }
     const html = await readFile(fullPath, "utf8");
+    issues.push(...auditExportHtmlAccessibility(relativePath, html));
     for (const reference of localReferences(html)) {
       const target = path.resolve(path.dirname(fullPath), reference);
       if (!isInsideRoot(root, target)) {

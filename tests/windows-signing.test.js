@@ -2,12 +2,17 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { resolveWindowsSigning } = require("../scripts/windows-signing");
 
-test("Windows release remains available without signing credentials", () => {
+test("Windows release packaging remains available without signing credentials", () => {
   const signing = resolveWindowsSigning({});
   assert.equal(signing.mode, "unsigned");
   assert.equal(signing.winOptions.forceCodeSigning, false);
   assert.equal(signing.winOptions.signAndEditExecutable, true);
   assert.equal(signing.winOptions.signExecutable, false);
+});
+
+test("legacy signing-required flags no longer block unsigned releases", () => {
+  const signing = resolveWindowsSigning({ CARD_VAULT_REQUIRE_SIGNING: "1" });
+  assert.equal(signing.mode, "unsigned");
 });
 
 test("PFX signing uses SHA-256 and RFC 3161 timestamps", () => {

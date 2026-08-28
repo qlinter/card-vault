@@ -1,10 +1,13 @@
 "use client";
 
 import type { ShareGalleryCardsPanelProps } from "@/components/share-gallery-editor-types";
+import { maxShareFeaturedCards } from "@/lib/share-presentation";
 
 export function ShareGalleryCardsPanel({
   cards,
   drafts,
+  presentation,
+  onFeaturedCardChange,
   onDraftChange,
   onMoveCard,
   onReorderCard,
@@ -14,10 +17,7 @@ export function ShareGalleryCardsPanel({
   return (
     <section className="panel share-section share-editor-v2-panel">
       <div className="share-section-head">
-        <div>
-          <h2>单卡展示编辑</h2>
-          <p className="muted">设置对外展示标题、描述和顺序；留空时使用卡片原始公开信息。</p>
-        </div>
+        <h2>单卡展示编辑</h2>
         <span className="muted">{cards.length} 张卡片</span>
       </div>
       <div className="share-item-editor">
@@ -27,6 +27,8 @@ export function ShareGalleryCardsPanel({
             displayTitle: card.displayTitle,
             displayDescription: card.displayDescription
           };
+          const isFeatured = presentation.featuredCardIds.includes(card.id);
+          const featuredLimitReached = !isFeatured && presentation.featuredCardIds.length >= maxShareFeaturedCards;
           return (
             <article
               key={card.id}
@@ -52,8 +54,8 @@ export function ShareGalleryCardsPanel({
                 <strong>{card.playerName}</strong>
                 <p className="muted">{card.cardTitle}</p>
                 <div className="share-keyboard-order" aria-label={`${card.playerName} 排序`}>
-                  <button type="button" className="icon-btn" title="上移卡片" onClick={() => onMoveCard(card.id, -1)} disabled={cards[0]?.id === card.id}>←</button>
-                  <button type="button" className="icon-btn" title="下移卡片" onClick={() => onMoveCard(card.id, 1)} disabled={cards.at(-1)?.id === card.id}>→</button>
+                  <button type="button" className="icon-btn" title="上移卡片" onClick={() => onMoveCard(card.id, -1)} disabled={cards[0]?.id === card.id}>↑</button>
+                  <button type="button" className="icon-btn" title="下移卡片" onClick={() => onMoveCard(card.id, 1)} disabled={cards.at(-1)?.id === card.id}>↓</button>
                 </div>
               </div>
               <label className="field share-sort-field">
@@ -65,12 +67,21 @@ export function ShareGalleryCardsPanel({
                 <input value={draft.displayTitle} placeholder={card.cardTitle} onChange={(event) => onDraftChange(card.id, { displayTitle: event.target.value })} />
               </label>
               <label className="field full">
-                <span>展示描述</span>
+                <span>卡片故事（公开）</span>
                 <textarea
                   value={draft.displayDescription}
-                  placeholder={card.publicDescription || "留空时使用卡片公开描述"}
+                  placeholder={card.publicDescription || "写下这张卡为何重要；留空时使用卡片公开描述"}
                   onChange={(event) => onDraftChange(card.id, { displayDescription: event.target.value })}
                 />
+              </label>
+              <label className="share-featured-toggle full">
+                <input
+                  type="checkbox"
+                  checked={isFeatured}
+                  disabled={featuredLimitReached}
+                  onChange={(event) => onFeaturedCardChange(card.id, event.target.checked)}
+                />
+                <strong>设为重点卡</strong>
               </label>
             </article>
           );

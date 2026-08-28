@@ -5,6 +5,8 @@ const root = path.resolve(__dirname, "..");
 const targets = [
   ".next/cache",
   "logs",
+  "playwright-report",
+  "test-results",
   "tsconfig.tsbuildinfo",
   "e2e-server.log",
   "e2e-server-error.log"

@@ -6,7 +6,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: [".desktop-user-data/**", ".next/**", ".npm-cache/**", "coverage/**", "dist/**", "node_modules/**", "public/**", "data/**", "logs/**"]
+    ignores: [".desktop-user-data/**", ".next/**", ".npm-cache/**", "coverage/**", "dist/**", "node_modules/**", "playwright-report/**", "test-results/**", "tests/.ui-test-runtime/**", "public/**", "data/**", "logs/**"]
   },
   { ...js.configs.recommended, files: ["**/*.{js,mjs}"] },
   ...tseslint.configs.recommended.map((config) => ({ ...config, files: ["**/*.{ts,tsx,mts}"] })),

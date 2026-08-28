@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import type { ShareCardDraft, SharePickerCard } from "@/components/share-card-picker";
 import type { ShareThemeValues } from "@/components/share-theme-generator";
 import { normalizeImagePath } from "@/lib/image-path";
 import { sharePreviewSandboxPolicy } from "@/lib/share-preview-policy";
+import { getSharePreviewDevice, sharePreviewDevices, type SharePreviewDeviceId } from "@/lib/share-preview-devices";
 import { renderPreviewDocument } from "@/lib/share-export-render";
 import type { ExportData } from "@/lib/share-export-types";
 import type { SharePresentation } from "@/lib/share-presentation";
@@ -32,7 +33,8 @@ export function ShareDesignPreview({
   coverImagePath,
   backgroundImagePath
 }: ShareDesignPreviewProps) {
-  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  const [previewMode, setPreviewMode] = useState<SharePreviewDeviceId>("desktop");
+  const previewDevice = getSharePreviewDevice(previewMode);
   const document = useMemo(() => {
     const exportCards = cards.map((card) => {
       const draft = drafts[card.id];
@@ -61,7 +63,14 @@ export function ShareDesignPreview({
         grade: card.grade,
         certNumber: card.certNumber,
         href: `#card-${card.id}`,
-        images: card.imagePath ? [normalizeImagePath(card.imagePath)] : []
+        images: card.imagePath ? [{
+          src: normalizeImagePath(card.imagePath),
+          thumbnailSrc: normalizeImagePath(card.imagePath),
+          width: 0,
+          height: 0,
+          rotation: card.imageRotation,
+          sourceRotation: card.imageRotation
+        }] : []
       };
     });
     const data: ExportData = {
@@ -73,7 +82,8 @@ export function ShareDesignPreview({
       themeNarrative: values.themeNarrative || null,
       themeHighlights: values.themeHighlights || null,
       groupNotes: values.groupNotes || null,
-      coverImage: coverImagePath ? normalizeImagePath(coverImagePath) : exportCards.find((card) => card.images.length > 0)?.images[0] ?? null,
+      coverImage: coverImagePath ? normalizeImagePath(coverImagePath) : exportCards.find((card) => card.images.length > 0)?.images[0]?.src ?? null,
+      coverRotation: coverImagePath ? 0 : exportCards.find((card) => card.images.length > 0)?.images[0]?.rotation ?? 0,
       backgroundImage: backgroundImagePath ? normalizeImagePath(backgroundImagePath) : shareThemeBackgroundPath(theme),
       generatedAt: new Date(0).toISOString(),
       mode: "static",
@@ -84,29 +94,26 @@ export function ShareDesignPreview({
   }, [backgroundImagePath, cards, coverImagePath, drafts, presentation, sections, theme, values]);
 
   return (
-    <aside className={`share-live-preview is-${previewMode}`}>
+    <aside
+      className={`share-live-preview is-${previewMode}`}
+      style={{ "--share-preview-width": `${previewDevice.width}px` } as CSSProperties}
+      data-preview-device={previewMode}
+    >
       <div className="share-live-preview-head">
-        <div>
-          <strong>实时预览</strong>
-          <span className="muted">与静态导出共用渲染器</span>
-        </div>
+        <strong>实时预览</strong>
         <div className="share-preview-modes" role="group" aria-label="预览设备">
-          <button
-            type="button"
-            className={previewMode === "desktop" ? "active" : ""}
-            aria-pressed={previewMode === "desktop"}
-            onClick={() => setPreviewMode("desktop")}
-          >
-            桌面
-          </button>
-          <button
-            type="button"
-            className={previewMode === "mobile" ? "active" : ""}
-            aria-pressed={previewMode === "mobile"}
-            onClick={() => setPreviewMode("mobile")}
-          >
-            手机
-          </button>
+          {sharePreviewDevices.map((device) => (
+            <button
+              key={device.id}
+              type="button"
+              className={previewMode === device.id ? "active" : ""}
+              aria-pressed={previewMode === device.id}
+              aria-label={`${device.label}预览，${device.width} 像素`}
+              onClick={() => setPreviewMode(device.id)}
+            >
+              {device.label}
+            </button>
+          ))}
         </div>
       </div>
       <iframe title="分享展馆实时预览" srcDoc={document} sandbox={sharePreviewSandboxPolicy} />

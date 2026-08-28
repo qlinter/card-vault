@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { assertArtifactSize, defaultArtifactLimits } = require("./release-bundle-hygiene");
+const { inspectAuthenticodeSignature, verifyAuthenticodeSignature } = require("./authenticode");
 
 const rootDir = path.resolve(__dirname, "..");
 const packageJson = require(path.join(rootDir, "package.json"));
@@ -58,7 +59,7 @@ function verifyWindowsExecutableVersion(filePath, label) {
   runPowerShell(command);
 }
 
-function verifyPortableArchive() {
+function verifyPortableArchive(signingMode) {
   if (process.platform !== "win32") return;
   const command = [
     "$ErrorActionPreference='Stop'",
@@ -80,6 +81,11 @@ function verifyPortableArchive() {
     `if($info.ProductName -ne '${packageJson.productName.replace(/'/g, "''")}') { throw 'Portable executable product name is incorrect' }`,
     `if($info.FileVersion -ne '${packageJson.version.replace(/'/g, "''")}') { throw 'Portable executable file version is incorrect' }`,
     `if(@('${packageJson.version.replace(/'/g, "''")}','${packageJson.version.replace(/'/g, "''")}.0') -notcontains $info.ProductVersion) { throw 'Portable executable product version is incorrect' }`,
+    `Import-Module (Join-Path $PSHOME 'Modules\\Microsoft.PowerShell.Security\\Microsoft.PowerShell.Security.psd1') -Force`,
+    `$signature=Get-AuthenticodeSignature -LiteralPath $tempExe`,
+    signingMode === "signed"
+      ? `if($signature.Status -ne 'Valid' -or -not $signature.SignerCertificate -or -not $signature.TimeStamperCertificate) { throw ('Portable executable Authenticode signature is invalid: ' + $signature.Status) }`
+      : `if($signature.Status -ne 'NotSigned') { throw ('Portable executable has an unexpected Authenticode status: ' + $signature.Status) }`,
     `} finally { $zip.Dispose(); if($tempExe -and (Test-Path -LiteralPath $tempExe)) { Remove-Item -LiteralPath $tempExe -Force } }`
   ].join("; ");
   runPowerShell(command);
@@ -99,12 +105,29 @@ function main() {
   assertArtifactSize(zipPath, defaultArtifactLimits.portable, "Portable ZIP");
   if (fs.existsSync(unpackedDir)) verifyUnpackedRuntime();
   verifyInstallerVersion();
-  verifyPortableArchive();
+  const installerSignature = inspectAuthenticodeSignature(setupPath, "Windows installer");
+  const detectedSigningMode = installerSignature?.Status === "Valid"
+    ? "signed"
+    : installerSignature?.Status === "NotSigned"
+      ? "unsigned"
+      : "invalid";
+  const expectedSigningMode = process.env.CARD_VAULT_EXPECTED_SIGNING_MODE || detectedSigningMode;
+  assert.notEqual(detectedSigningMode, "invalid", `安装包签名状态无效：${installerSignature?.Status || "Unknown"}`);
+  assert.equal(detectedSigningMode, expectedSigningMode, `安装包签名状态与预期不一致：${detectedSigningMode}`);
+  if (detectedSigningMode === "signed") {
+    verifyAuthenticodeSignature(setupPath, "Windows installer", {
+      publisher: process.env.CARD_VAULT_AZURE_SIGN_PUBLISHER || process.env.CARD_VAULT_SIGNING_SUBJECT || ""
+    });
+  }
+  verifyPortableArchive(detectedSigningMode);
   assert.ok(fs.existsSync(checksumPath), `校验清单不存在：${checksumPath}`);
   const checksums = fs.readFileSync(checksumPath, "utf8");
   assert.match(checksums, new RegExp(`${hashFile(setupPath)}\\s+${escapeRegExp(path.basename(setupPath))}`));
   assert.match(checksums, new RegExp(`${hashFile(zipPath)}\\s+${escapeRegExp(path.basename(zipPath))}`));
-  process.stdout.write(`Release artifacts verified for v${packageJson.version}.\n`);
+  process.stdout.write(`Release artifacts verified for v${packageJson.version} (${detectedSigningMode}).\n`);
+  if (detectedSigningMode === "unsigned") {
+    process.stdout.write("Warning: Windows may show Unknown Publisher or SmartScreen warnings for these unsigned artifacts.\n");
+  }
   process.stdout.write(`${path.basename(setupPath)}  SHA256 ${hashFile(setupPath)}\n`);
   process.stdout.write(`${path.basename(zipPath)}  SHA256 ${hashFile(zipPath)}\n`);
 }

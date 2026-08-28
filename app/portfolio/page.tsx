@@ -62,7 +62,7 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
       {comparisonError ? <p className="note-error">{comparisonError}</p> : null}
       <details className={`${styles.portfolioZone} ${styles.comparisonWorkspace}`}>
         <summary className={`${styles.zoneHeader} ${styles.zoneSummary}`}>
-          <div><span>VIEW &amp; COMPARE</span><h2>视图与比较</h2></div>
+          <div><h2>视图与比较</h2></div>
           <span className="btn btn-secondary disclosure-button" aria-hidden="true">
             <DisclosureIcon expanded={false} />
           </span>
@@ -82,7 +82,7 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
 
       <section className={styles.portfolioZone} aria-labelledby="portfolio-current-title">
         <header className={styles.zoneHeader}>
-          <div><span>CURRENT PORTFOLIO</span><h2 id="portfolio-current-title">当前组合数据</h2></div>
+          <div><h2 id="portfolio-current-title">当前组合数据</h2></div>
         </header>
         <PortfolioCenter
           snapshot={result.snapshot}

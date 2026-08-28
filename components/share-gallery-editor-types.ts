@@ -1,6 +1,7 @@
 import type { ShareCardDraft, SharePickerCard } from "@/components/share-card-picker";
 import type { ShareThemeField, ShareThemeValues } from "@/components/share-theme-generator";
 import type { SharePresentation } from "@/lib/share-presentation";
+import type { ShareGalleryTemplateId } from "@/lib/share-templates";
 import type { ShareSectionDraft } from "@/lib/share-sections";
 import type { ShareThemeId } from "@/lib/share-themes";
 
@@ -21,6 +22,8 @@ export type ShareGalleryEditorProps = {
   onRedo: () => void;
   onThemeChange: (theme: ShareThemeId) => void;
   onPresentationChange: (updater: (current: SharePresentation) => SharePresentation) => void;
+  onFeaturedCardChange: (cardId: string, featured: boolean) => void;
+  onTemplateApply: (templateId: ShareGalleryTemplateId) => void;
   onThemeFieldChange: (field: ShareThemeField, value: string) => void;
   onCoverModeChange: (mode: "auto" | "custom") => void;
   onAddSection: () => void;
@@ -45,10 +48,15 @@ export type ShareGalleryVisualPanelProps = Pick<
   | "initialBackgroundImagePath"
   | "onThemeChange"
   | "onPresentationChange"
+  | "onTemplateApply"
   | "onCoverModeChange"
 > & {
   setCoverPreviewUrl: (value: string) => void;
   setBackgroundPreviewUrl: (value: string) => void;
+  backgroundFileSelected: boolean;
+  setBackgroundFileSelected: (value: boolean) => void;
+  backgroundCleared: boolean;
+  setBackgroundCleared: (value: boolean) => void;
   previewFile: (file: File | undefined, setUrl: (value: string) => void) => void;
 };
 
@@ -68,6 +76,8 @@ export type ShareGalleryCardsPanelProps = Pick<
   ShareGalleryEditorProps,
   | "cards"
   | "drafts"
+  | "presentation"
+  | "onFeaturedCardChange"
   | "onDraftChange"
   | "onMoveCard"
   | "onReorderCard"

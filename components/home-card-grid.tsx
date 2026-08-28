@@ -8,6 +8,8 @@ import {
   restoreHomeGridVisibleCount,
   saveHomeGridVisibleCount
 } from "@/lib/home-card-grid-state";
+import { useLanguage } from "@/components/language-provider";
+import { formatHomeLoadMoreLabel } from "@/lib/ui-locale";
 
 export type HomeCardGridItem = {
   id: string;
@@ -26,6 +28,7 @@ type HomeCardGridProps = {
 };
 
 export function HomeCardGrid({ cards, historyKey }: HomeCardGridProps) {
+  const { locale } = useLanguage();
   const [visibleCount, setVisibleCount] = useState(initialHomeCardCount);
   const visibleCards = cards.slice(0, visibleCount);
   const remainingCount = Math.max(cards.length - visibleCards.length, 0);
@@ -92,7 +95,7 @@ export function HomeCardGrid({ cards, historyKey }: HomeCardGridProps) {
             data-testid="home-load-more"
             onClick={showMoreCards}
           >
-            显示更多（剩余 {remainingCount}）
+            {formatHomeLoadMoreLabel(locale, remainingCount)}
           </button>
         </div>
       ) : null}

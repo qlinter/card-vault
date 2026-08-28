@@ -80,6 +80,7 @@ async function submitShareEdit(baseUrl, editPage) {
     density: "compact",
     imageFit: "contain",
     textScale: "large",
+    featuredCardIdsJson: JSON.stringify(["e2e-card-1"]),
     coverMode: "auto",
     subtitle: "编辑后副标题",
     description: "编辑后简介。",
@@ -137,10 +138,11 @@ function seedDatabase(dbPath, dataDir) {
       "holding",
       "用于分享流程回归测试的公开描述。"
     );
-    db.prepare("INSERT INTO CardImage (id, cardId, path) VALUES (?, ?, ?)").run(
+    db.prepare("INSERT INTO CardImage (id, cardId, path, rotation) VALUES (?, ?, ?, ?)").run(
       "e2e-image-1",
       "e2e-card-1",
-      "/media/e2e-card.png"
+      "/media/e2e-card.png",
+      90
     );
     db.prepare(`
       INSERT INTO ShareCollection (id, title, subtitle, slug, theme, presentationConfig, description, themeNarrative)
@@ -209,9 +211,20 @@ async function main() {
     assertIncludes(newSharePage, "新建分享集", "新建分享集页面");
     assertIncludes(newSharePage, "选择球星卡", "分享向导第一步");
     assertIncludes(newSharePage, "内容修改", "分享向导内容修改步骤");
-    assertIncludes(newSharePage, "沉浸舞台", "沉浸舞台版式");
-    assertIncludes(newSharePage, "典藏档案", "典藏档案版式");
-    assertIncludes(newSharePage, "竞技主场", "竞技主场版式");
+    for (const removedCopy of [
+      "先挑选本次分享要展示的卡片。",
+      "基于已选卡片生成中文展馆标题、封面介绍、收藏叙事和分组说明。",
+      "保存前确认本次分享集包含的卡片。导出包不会包含价格、成本、购买渠道和备注。",
+      "展馆版式"
+    ]) {
+      if (newSharePage.includes(removedCopy)) {
+        throw new Error(`Share editor still contains removed copy: ${removedCopy}`);
+      }
+    }
+    assertIncludes(newSharePage, "展馆样式", "整合后的展馆样式入口");
+    assertIncludes(newSharePage, "藏家聚光", "藏家聚光样式");
+    assertIncludes(newSharePage, "典藏志", "典藏志样式");
+    assertIncludes(newSharePage, "主场阵容", "主场阵容样式");
     assertIncludes(newSharePage, "足球赛场", "运动主题选项");
     assertIncludes(newSharePage, "F1 维修区", "F1 主题选项");
     assertIncludes(newSharePage, "蓝黑军团-1", "Team 主题选项");
@@ -221,10 +234,11 @@ async function main() {
     assertIncludes(newSharePage, "视觉设计", "编辑器 2.0 视觉分区");
     assertIncludes(newSharePage, "桌面", "编辑器 2.0 桌面预览");
     assertIncludes(newSharePage, "手机", "编辑器 2.0 手机预览");
+    assertIncludes(newSharePage, "平板", "编辑器 3.0 平板预览");
     assertIncludes(newSharePage, "撤销", "编辑器 2.0 撤销入口");
     assertIncludes(newSharePage, "重做", "编辑器 2.0 重做入口");
     assertIncludes(newSharePage, "字体风格", "编辑器 2.0 排版选项");
-    assertIncludes(newSharePage, "文字大小", "编辑器 2.0 字号选项");
+    assertIncludes(newSharePage, "文字面板不透明度", "编辑器 3.0 文字面板选项");
     assertIncludes(newSharePage, "内容密度", "编辑器 2.0 密度选项");
     assertIncludes(newSharePage, "图片构图", "编辑器 2.0 图片构图选项");
 
@@ -320,8 +334,13 @@ async function main() {
       "robots.txt",
       "publish-manifest.json",
       "CHECK-REPORT.md",
+      "EXPORT-DIFF.md",
       "README-Cloudflare-Drop.md",
-      "cards/e2e-e2e.html"
+      "cards/e2e-e2e.html",
+      "sections/page-1.html",
+      "subjects/e2e.html",
+      "assets/images/1-1-e2e-card.webp",
+      "assets/images/1-1-e2e-card-thumb.webp"
     ]) {
       if (!fs.existsSync(path.join(exportFolder, relativePath))) {
         throw new Error(`Cloudflare export is missing ${relativePath}.`);
@@ -331,6 +350,12 @@ async function main() {
       throw new Error("Cloudflare export did not create a ZIP archive.");
     }
     const manifest = JSON.parse(fs.readFileSync(path.join(exportFolder, "publish-manifest.json"), "utf8"));
+    if (manifest.formatVersion !== 3 || typeof manifest.collectionKey !== "string" || manifest.collectionKey.length !== 20 || manifest.sectionPageCount !== 1 || manifest.subjectPageCount !== 1 || manifest.imagePolicy?.format !== "webp") {
+      throw new Error("Cloudflare export manifest does not describe the Gallery 3.0 page and image policy.");
+    }
+    if (manifest.accessibility?.passed !== true || manifest.diffSummary?.firstExport !== true) {
+      throw new Error("Cloudflare export manifest does not describe accessibility and version-diff checks.");
+    }
     if (manifest.temporaryPublishing?.provider !== "cloudflare-drop" || manifest.temporaryPublishing?.expiresAfterMinutes !== 60) {
       throw new Error("Cloudflare export manifest does not describe the temporary publishing boundary.");
     }
@@ -339,7 +364,17 @@ async function main() {
       throw new Error("Cloudflare export manifest unexpectedly retains URL or claim data.");
     }
     assertIncludes(fs.readFileSync(path.join(exportFolder, "CHECK-REPORT.md"), "utf8"), "结果：通过", "发布前检查报告");
-    assertIncludes(fs.readFileSync(path.join(exportFolder, "index.html"), "utf8"), "noindex, nofollow, noarchive", "临时发布 noindex");
+    assertIncludes(fs.readFileSync(path.join(exportFolder, "EXPORT-DIFF.md"), "utf8"), "首次导出，无历史版本", "版本差异报告");
+    const exportedData = JSON.parse(fs.readFileSync(path.join(exportFolder, "assets", "data.json"), "utf8"));
+    if (exportedData.cards[0]?.images[0]?.sourceRotation !== 90 || exportedData.cards[0]?.images[0]?.rotation !== 0) {
+      throw new Error("Cloudflare export did not apply the persisted card-image rotation.");
+    }
+    const exportedIndex = fs.readFileSync(path.join(exportFolder, "index.html"), "utf8");
+    assertIncludes(exportedIndex, "noindex, nofollow, noarchive", "临时发布 noindex");
+    assertIncludes(exportedIndex, 'href="sections/page-1.html"', "章节独立页入口");
+    assertIncludes(exportedIndex, 'href="subjects/e2e.html"', "卡片主体专题页入口");
+    assertIncludes(exportedIndex, "srcset=", "响应式图片来源");
+    assertIncludes(exportedIndex, "重点卡故事", "重点卡故事");
 
     console.log("Share flow HTTP E2E passed: list, new, edit save, preview, and validated Cloudflare Drop export.");
   } finally {

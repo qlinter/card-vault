@@ -47,7 +47,7 @@ export function PortfolioComparisonPanel({ comparison }: { comparison: Portfolio
   return (
     <section className={styles.section}>
       <header className={styles.sectionHeader}>
-        <div><span>COMPARISON</span><h2>组合比较</h2></div>
+        <div><h2>组合比较</h2></div>
       </header>
       <div className={styles.comparisonSources}>
         <div><span>基准</span><strong>{comparison.left.label}</strong><small>{compactDateTime(comparison.left.capturedAt)}</small></div>
@@ -74,7 +74,7 @@ export function PortfolioComparisonPanel({ comparison }: { comparison: Portfolio
       </div>
       {structures.length > 0 ? <div className={styles.structureComparison}>
         <header>
-          <div><span>STRUCTURE CHANGE</span><h3>结构变化</h3></div>
+          <div><h3>结构变化</h3></div>
           {currencies.length > 0 ? <div className={styles.currencySwitch} role="group" aria-label="结构比较币种">
             {currencies.map((currency) => <button key={currency} type="button" className={structureCurrency === currency ? styles.active : undefined} onClick={() => setStructureCurrency(currency)}>{currency}</button>)}
           </div> : null}

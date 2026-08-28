@@ -1,0 +1,42 @@
+name: Windows Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-release:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      WIN_CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+      WIN_CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+      CARD_VAULT_AZURE_SIGN_ENDPOINT: ${{ secrets.CARD_VAULT_AZURE_SIGN_ENDPOINT }}
+      CARD_VAULT_AZURE_SIGN_ACCOUNT: ${{ secrets.CARD_VAULT_AZURE_SIGN_ACCOUNT }}
+      CARD_VAULT_AZURE_SIGN_PROFILE: ${{ secrets.CARD_VAULT_AZURE_SIGN_PROFILE }}
+      CARD_VAULT_AZURE_SIGN_PUBLISHER: ${{ secrets.CARD_VAULT_AZURE_SIGN_PUBLISHER }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      CARD_VAULT_UI_SCREENSHOT_MODE: capture
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run audit:prod
+      - name: Build and verify Windows artifacts
+        run: npm run release:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: card-vault-windows-${{ github.sha }}
+          path: |
+            dist/card-vault-*-setup.exe
+            dist/card-vault-*-portable.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14

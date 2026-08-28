@@ -1,6 +1,6 @@
 {
   "name": "card-vault",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "packageManager": "npm@11.9.0",
   "engines": {
@@ -13,6 +13,7 @@
   "scripts": {
     "build": "next build --webpack",
     "check:encoding": "node scripts/check-encoding.js",
+    "check:docs": "node scripts/check-docs.js",
     "check:metadata": "node scripts/check-release-metadata.js",
     "lint": "eslint . --max-warnings=0",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/*.test.mts tests/*.test.js",
@@ -22,7 +23,7 @@
     "test:security": "node scripts/test-local-session-flow.js",
     "test:ui": "playwright test",
     "test:ui:update": "playwright test --update-snapshots",
-    "check:release": "npm run prisma:generate && npm run check:encoding && npm run check:metadata && npm run lint && npm run typecheck && npm run test:coverage && next build --webpack && npm run test:security && npm run test:card && npm run test:share && npm run test:ui",
+    "check:release": "npm run prisma:generate && npm run check:encoding && npm run check:docs && npm run check:metadata && npm run lint && npm run typecheck && npm run test:coverage && next build --webpack && npm run test:security && npm run test:card && npm run test:share && npm run test:ui",
     "audit:prod": "npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org",
     "typecheck": "tsc --noEmit",
     "clean:cache": "node scripts/clean-cache.js",

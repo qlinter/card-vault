@@ -45,7 +45,7 @@ function resolveWindowsSigning(env = process.env) {
   if (!certificateLink && !certificateSubjectName && !certificateSha1) {
     return {
       mode: "unsigned",
-      description: "unsigned development release",
+      description: "unsigned release (Windows may show Unknown Publisher or SmartScreen warnings)",
       winOptions: {
         forceCodeSigning: false,
         signAndEditExecutable: true,

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LanguageSwitch } from "@/components/language-switch";
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -21,6 +22,7 @@ export function SiteHeader() {
           <Link href="/shares" className={isActive("/shares") ? "active" : undefined}>分享</Link>
           <Link href="/settings" className={isActive("/settings") ? "active" : undefined}>设置</Link>
         </nav>
+        <LanguageSwitch />
       </div>
     </header>
   );

@@ -12,6 +12,8 @@ import {
   renderCardPage,
   renderIndex,
   renderNotFound,
+  renderSectionPage,
+  renderSubjectPage,
   siteCss,
   siteJs
 } from "@/lib/share-export-render";
@@ -24,8 +26,14 @@ import {
 } from "@/lib/share-export-types";
 import { getShareBackgroundsDir, getShareCoversDir, getUploadsDir, resolveDataDir } from "@/lib/storage-paths";
 import { normalizeShareTheme, shareThemeBackgroundPath } from "@/lib/share-themes";
-import { parseSharePresentation } from "@/lib/share-presentation";
+import { parseSharePresentation, sanitizeSharePresentationCards } from "@/lib/share-presentation";
 import { normalizeShareSectionLayout } from "@/lib/share-sections";
+import {
+  createShareExportImageVariants,
+  shareExportBackgroundMaxWidth,
+  shareExportImageMaxEdge,
+  shareExportThumbnailMaxEdge
+} from "@/lib/share-export-images";
 import { slugify } from "@/lib/slugify";
 import { createZipArchive } from "@/lib/zip-archive";
 import {
@@ -34,6 +42,12 @@ import {
   validateExportDirectory,
   validatePublicExportData
 } from "@/lib/share-export-validation";
+import { auditShareAccessibility } from "@/lib/share-accessibility";
+import {
+  compareShareExportData,
+  findPreviousShareExportData,
+  renderShareExportDiffReport
+} from "@/lib/share-export-diff";
 
 export type { ShareExportMode } from "@/lib/share-export-types";
 
@@ -42,6 +56,18 @@ function safeFileName(value: string): string {
   const name = slugify(parsed.name);
   const extension = parsed.ext.toLowerCase() || ".jpg";
   return `${name}${extension}`;
+}
+
+function uniquePageHref(directory: string, value: string, index: number, used: Set<string>): string {
+  const base = slugify(value, "") || `page-${index + 1}`;
+  let slug = base;
+  let duplicateIndex = 2;
+  while (used.has(slug)) {
+    slug = `${base}-${duplicateIndex}`;
+    duplicateIndex += 1;
+  }
+  used.add(slug);
+  return `${directory}/${slug}.html`;
 }
 
 function imageSourcePath(imagePath: string): string {
@@ -67,9 +93,13 @@ export async function exportShareCollection(
   const assetsDir = path.join(folderPath, "assets");
   const imageDir = path.join(assetsDir, "images");
   const cardsDir = path.join(folderPath, "cards");
+  const sectionsDir = path.join(folderPath, "sections");
+  const subjectsDir = path.join(folderPath, "subjects");
 
   await mkdir(imageDir, { recursive: true });
   await mkdir(cardsDir, { recursive: true });
+  await mkdir(sectionsDir, { recursive: true });
+  await mkdir(subjectsDir, { recursive: true });
 
   const cards: ExportCard[] = [];
   const issues: ShareExportIssue[] = [];
@@ -90,7 +120,7 @@ export async function exportShareCollection(
       duplicateIndex += 1;
     }
     cardFileNames.add(cardSlug);
-    const images: string[] = [];
+    const images: ExportCard["images"] = [];
 
     for (const [imageIndex, image] of card.images.entries()) {
       const source = imageSourcePath(image.path);
@@ -103,11 +133,36 @@ export async function exportShareCollection(
         continue;
       }
 
-      const fileName = `${cardIndex + 1}-${imageIndex + 1}-${safeFileName(path.basename(image.path))}`;
-      const relativePath = `assets/images/${fileName}`;
-      await fs.promises.copyFile(source, path.join(imageDir, fileName));
-      images.push(relativePath);
-      imageCount += 1;
+      const sourceStem = slugify(path.parse(path.basename(image.path)).name) || "card-image";
+      const baseName = `${cardIndex + 1}-${imageIndex + 1}-${sourceStem}`;
+      try {
+        const optimized = await createShareExportImageVariants({
+          sourcePath: source,
+          targetDirectory: imageDir,
+          baseName,
+          rotation: image.rotation
+        });
+        images.push(optimized.image);
+        imageCount += optimized.fileCount;
+      } catch {
+        const fileName = `${baseName}-${safeFileName(path.basename(image.path))}`;
+        const relativePath = `assets/images/${fileName}`;
+        await fs.promises.copyFile(source, path.join(imageDir, fileName));
+        images.push({
+          src: relativePath,
+          thumbnailSrc: relativePath,
+          width: 0,
+          height: 0,
+          rotation: image.rotation,
+          sourceRotation: image.rotation
+        });
+        imageCount += 1;
+        issues.push({
+          level: "warning",
+          code: "image-optimization-fallback",
+          message: `${card.playerName} / ${card.cardTitle} 的图片无法优化，已保留原文件。`
+        });
+      }
     }
 
     cards.push(
@@ -122,10 +177,14 @@ export async function exportShareCollection(
   if (collection.coverImagePath?.startsWith("/share-covers/")) {
     const source = coverSourcePath(collection.coverImagePath);
     if (fs.existsSync(source)) {
-      const fileName = `cover-${safeFileName(path.basename(collection.coverImagePath))}`;
-      coverImage = `assets/images/${fileName}`;
-      await fs.promises.copyFile(source, path.join(imageDir, fileName));
-      imageCount += 1;
+      const optimized = await createShareExportImageVariants({
+        sourcePath: source,
+        targetDirectory: imageDir,
+        baseName: "cover",
+        thumbnail: false
+      });
+      coverImage = optimized.image.src;
+      imageCount += optimized.fileCount;
     } else {
       issues.push({ level: "warning", code: "missing-cover", message: "自定义封面文件不存在，已改用卡片图片或占位内容。" });
     }
@@ -134,10 +193,17 @@ export async function exportShareCollection(
   if (collection.backgroundImagePath?.startsWith("/share-backgrounds/")) {
     const source = backgroundSourcePath(collection.backgroundImagePath);
     if (fs.existsSync(source)) {
-      const fileName = `background-${safeFileName(path.basename(collection.backgroundImagePath))}`;
-      backgroundImage = `assets/images/${fileName}`;
-      await fs.promises.copyFile(source, path.join(imageDir, fileName));
-      imageCount += 1;
+      const optimized = await createShareExportImageVariants({
+        sourcePath: source,
+        targetDirectory: imageDir,
+        baseName: "background",
+        thumbnail: false,
+        maxWidth: shareExportBackgroundMaxWidth,
+        maxHeight: 1600,
+        quality: 80
+      });
+      backgroundImage = optimized.image.src;
+      imageCount += optimized.fileCount;
     } else {
       issues.push({ level: "warning", code: "missing-background", message: "自定义背景文件不存在，导出包将使用主题底色。" });
     }
@@ -145,48 +211,105 @@ export async function exportShareCollection(
     const themeBackground = shareThemeBackgroundPath(theme);
     const source = path.join(process.cwd(), "public", themeBackground.replace(/^\/+/, ""));
     if (fs.existsSync(source)) {
-      const fileName = `theme-background-${safeFileName(path.basename(themeBackground))}`;
-      backgroundImage = `assets/images/${fileName}`;
-      await fs.promises.copyFile(source, path.join(imageDir, fileName));
-      imageCount += 1;
+      const optimized = await createShareExportImageVariants({
+        sourcePath: source,
+        targetDirectory: imageDir,
+        baseName: "theme-background",
+        thumbnail: false,
+        maxWidth: shareExportBackgroundMaxWidth,
+        maxHeight: 1600,
+        quality: 80
+      });
+      backgroundImage = optimized.image.src;
+      imageCount += optimized.fileCount;
     }
+  }
+
+  const sectionPageNames = new Set<string>();
+  const subjectPageNames = new Set<string>();
+  const subjectsByName = new Map<string, string[]>();
+  for (const card of cards) {
+    subjectsByName.set(card.playerName, [...(subjectsByName.get(card.playerName) ?? []), card.id]);
   }
 
   const data: ExportData = {
     title: collection.title,
     theme,
-    presentation: parseSharePresentation(collection.presentationConfig),
+    presentation: sanitizeSharePresentationCards(
+      parseSharePresentation(collection.presentationConfig),
+      cards.map((card) => card.id)
+    ),
     subtitle: collection.subtitle,
     description: collection.description,
     themeNarrative: collection.themeNarrative,
     themeHighlights: collection.themeHighlights,
     groupNotes: collection.groupNotes,
     coverImage,
+    coverRotation: 0,
     backgroundImage,
     generatedAt: new Date().toISOString(),
     mode,
-    sections: collection.sections.map((section) => ({
+    sections: collection.sections.map((section, index) => ({
       id: section.id,
       title: section.title,
       description: section.description ?? "",
       layout: normalizeShareSectionLayout(section.layout),
-      cardIds: sortedItems.filter((item) => item.sectionId === section.id).map((item) => item.cardId)
+      cardIds: sortedItems.filter((item) => item.sectionId === section.id).map((item) => item.cardId),
+      href: uniquePageHref("sections", section.title, index, sectionPageNames)
+    })),
+    subjects: [...subjectsByName.entries()].map(([name, cardIds], index) => ({
+      name,
+      cardIds,
+      href: uniquePageHref("subjects", name, index, subjectPageNames)
     })),
     cards
   };
 
   issues.push(...validatePublicExportData(data));
+  const accessibilityIssues = auditShareAccessibility(data);
+  issues.push(...accessibilityIssues);
+  const collectionKey = createHash("sha256").update(collection.id).digest("hex").slice(0, 20);
+  const previousData = await findPreviousShareExportData(exportRoot, {
+    slug: collection.slug,
+    mode,
+    collectionKey
+  });
+  const diff = compareShareExportData(data, previousData);
   const publicData = JSON.stringify(data, null, 2);
   const manifest = {
     format: "card-vault-share",
-    formatVersion: 1,
+    formatVersion: 3,
     appVersion: packageJson.version,
     title: data.title,
     slug: collection.slug,
+    collectionKey,
     mode,
     generatedAt: data.generatedAt,
     cardCount: cards.length,
     imageCount,
+    sectionPageCount: data.sections.length,
+    subjectPageCount: data.subjects?.length ?? 0,
+    imagePolicy: {
+      format: "webp",
+      cardMaxEdge: shareExportImageMaxEdge,
+      thumbnailMaxEdge: shareExportThumbnailMaxEdge,
+      backgroundMaxWidth: shareExportBackgroundMaxWidth
+    },
+    accessibility: {
+      passed: !accessibilityIssues.some((issue) => issue.level === "error"),
+      errors: accessibilityIssues.filter((issue) => issue.level === "error").length,
+      warnings: accessibilityIssues.filter((issue) => issue.level === "warning").length
+    },
+    diffSummary: {
+      firstExport: diff.isFirstExport,
+      previousGeneratedAt: diff.previousGeneratedAt,
+      addedCards: diff.addedCardIds.length,
+      removedCards: diff.removedCardIds.length,
+      changedCards: diff.changedCardIds.length,
+      contentChanged: diff.contentChanged,
+      presentationChanged: diff.presentationChanged,
+      sectionsChanged: diff.sectionsChanged
+    },
     publicDataSha256: createHash("sha256").update(publicData).digest("hex"),
     temporaryPublishing: mode === "drop" ? { provider: "cloudflare-drop", expiresAfterMinutes: 60 } : null
   };
@@ -197,6 +320,8 @@ export async function exportShareCollection(
   await writeFile(path.join(folderPath, "index.html"), renderIndex(data), "utf8");
   await writeFile(path.join(folderPath, "404.html"), renderNotFound(data), "utf8");
   await writeFile(path.join(folderPath, "publish-manifest.json"), JSON.stringify(manifest, null, 2), "utf8");
+  const diffPath = path.join(folderPath, "EXPORT-DIFF.md");
+  await writeFile(diffPath, renderShareExportDiffReport(diff, data), "utf8");
 
   if (mode === "drop") {
     await writeFile(path.join(folderPath, "README-Cloudflare-Drop.md"), dropReadme(data), "utf8");
@@ -208,6 +333,12 @@ export async function exportShareCollection(
 
   for (const card of cards) {
     await writeFile(path.join(folderPath, card.href), renderCardPage(data, card), "utf8");
+  }
+  for (const section of data.sections) {
+    if (section.href) await writeFile(path.join(folderPath, section.href), renderSectionPage(data, section), "utf8");
+  }
+  for (const subject of data.subjects ?? []) {
+    await writeFile(path.join(folderPath, subject.href), renderSubjectPage(data, subject), "utf8");
   }
 
   const reportPath = path.join(folderPath, "CHECK-REPORT.md");
@@ -239,10 +370,17 @@ export async function exportShareCollection(
     folderPath,
     zipPath,
     reportPath,
+    diffPath,
     cardCount: cards.length,
     imageCount,
     fileCount: validation.fileCount,
     totalBytes: validation.totalBytes,
-    warningCount: validation.issues.filter((issue) => issue.level === "warning").length
+    warningCount: validation.issues.filter((issue) => issue.level === "warning").length,
+    diff: {
+      isFirstExport: diff.isFirstExport,
+      added: diff.addedCardIds.length,
+      removed: diff.removedCardIds.length,
+      changed: diff.changedCardIds.length
+    }
   };
 }

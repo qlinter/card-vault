@@ -6,23 +6,23 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 
 ## Current Version
 
-`1.2.0`
+`1.2.1`
 
-### 1.2.0 Highlights
+### 1.2.1 Highlights
 
-- Adds a dedicated Portfolio Center for currency-separated positions, activity trends, reconstructed financial history, true 30/90/180-day valuation changes, valuation sources, and multidimensional collection structure.
-- Saved views retain Home filter scopes, while point-in-time snapshots preserve deterministic statistics for financial and structural comparison against current or live views.
-- Adds top-value and top-cost positions, sold-card review, and an actionable data-quality queue across every collection status; valuations older than 360 days are stale.
-- Portfolio sections support locally persisted drag ordering, charts offer 12-month, 24-month, and full-history ranges, and percentages use no more than two decimal places.
-- Keeps the Portfolio Center entry visible on Home and restores the expanded card count after detail navigation, alongside further copy and hierarchy cleanup.
-- Uses “card subject” for people, teams, and other subjects; fixes collapsed Showcase overflow and adds continuous 90-degree metadata rotation to entry, editing, and Showcase viewing without re-encoding originals.
-- The v1.2.0 database baseline adds saved views, point-in-time snapshots, and image-rotation metadata. v1.1.1 data and backups upgrade once under a pre-upgrade SQLite snapshot.
-- Consolidates portfolio precision, presentation formatting, and data-quality rules; removes the superseded rotation helper; and aligns code, tests, documentation, and release metadata.
+- Adds a complete Chinese/English interface switch, including a fully English mode and consolidated single-language headings.
+- Consolidates Share Gallery into a four-step workflow with one Gallery Style control, independent themes, editable content, custom cover/background images, featured stories, and responsive preview.
+- Improves static export and large-gallery behavior with image normalization, concurrent loading, cache limits, and publication-quality checks.
+- Enlarges standalone preview so the complete gallery is centered and visible instead of appearing as a small canvas in the upper-left corner.
+- Allows complete unsigned Windows releases when no certificate is available, while automatically signing and validating timestamps whenever trusted credentials are configured.
+- Removes duplicate code, obsolete copy, dead styles, and historical documentation forks, while adding a canonical documentation index and documentation validation.
+- Keeps the database baseline at `1.2.0`; this release does not migrate or rewrite user data.
 
-See the [v1.2.0 release notes](./docs/release-v1.2.0.md) for the complete delivered scope.
+See the [v1.2.1 release notes](./docs/release-v1.2.1.md) for the complete delivered scope.
 
 ## Core Features
 
+- Switch the interface live between Chinese and fully English; the selected language persists locally.
 - Create, edit, delete, and inspect cards with up to five images per card; the card-subject field covers people, teams, and other subjects, while image rotation is stored without re-encoding originals.
 - Browse the home collection through rebuildable 640px WebP thumbnails and incremental card batches while preserving every original image format and quality.
 - Use SQLite drafts, continuous entry, public-field templates, duplicate review, and batch entry with WebP preparation, retry, AI candidate review, and front/back swapping.
@@ -31,7 +31,7 @@ See the [v1.2.0 release notes](./docs/release-v1.2.0.md) for the complete delive
 - Use the Portfolio Center for currency-separated positions, reconstructed financial history, monthly activity, true 30/90/180-day valuation changes, valuation sources, primary and extended collection structures, top-value and top-cost positions, sold-card review, actionable data-quality queues, saved views, point-in-time snapshots, and financial or structural comparisons; content sections can be reordered by drag and retain their local layout.
 - Browse the Showcase by card subject, with collapsible navigation, multi-image card views, and temporary image rotation.
 - Use Azure OpenAI, MiniMax, or multiple named OpenAI Chat Completions-compatible custom providers for AI card recognition, gallery copy, and portfolio analysis.
-- Build editable share galleries with themes, layouts, sections, covers, backgrounds, and per-card presentation overrides.
+- Build editable share galleries with gallery styles, independent themes, sections, covers, backgrounds, and per-card presentation overrides.
 - Export a general static sharing bundle or a temporary Cloudflare Drop preview bundle.
 - Store data in local SQLite, move the active data path, configure separate backups, inspect health, and restore in-app.
 - Distribute self-contained Windows installer and portable ZIP builds that do not require Node.js.
@@ -63,21 +63,22 @@ See the [v1.2.0 release notes](./docs/release-v1.2.0.md) for the complete delive
 | `1.1.0` | Delivered Card Entry Workbench 2.0 with draft recovery, continuous entry, batch-image preparation, templates, duplicate review, and confirmation-gated AI candidates. |
 | `1.1.1` | Added position accounting, in-app restore, home thumbnails and incremental rendering, a 1/1 filter, and database/UI consolidation. |
 | `1.2.0` | Completed the Portfolio Center, saved views, point-in-time snapshots, true historical trends and comparison, plus image rotation, card-subject terminology, and Showcase refinements. |
+| `1.2.1` | Added bilingual UI, consolidated Share Gallery and preview/export improvements, optional Windows signing, and unified code and product documentation. |
 
 ## Install and Run
 
 ### Installer
 
-Release file: `dist/card-vault-1.2.0-setup.exe`
+Release file: `dist/card-vault-1.2.1-setup.exe`
 
 - Uses an installation wizard and supports a user-selected installation directory.
 - Installing a newer build of the same application normally replaces program files without deleting collection data.
-- Releases can be generated without a signing certificate, but Windows may display an unknown-publisher or SmartScreen warning.
-- When OV/EV credentials or Microsoft Artifact Signing are configured, the build signs automatically; a new OV certificate may still need time to build SmartScreen reputation.
+- Without a certificate, the release pipeline can generate unsigned artifacts; Windows will likely show Unknown Publisher or SmartScreen warnings.
+- With a trusted OV/EV certificate or Microsoft Artifact Signing, the pipeline signs and validates the installer, executable, and timestamp automatically.
 
 ### Portable Build
 
-Release file: `dist/card-vault-1.2.0-portable.zip`
+Release file: `dist/card-vault-1.2.1-portable.zip`
 
 1. Extract the complete ZIP.
 2. Run `Card Vault.exe` from the extracted directory.
@@ -147,16 +148,17 @@ Use the in-app backup workflow when moving to another computer. Copying only the
 ## Share Galleries
 
 - Share collections are independent from the local Showcase and contain only explicitly selected cards.
-- Editor 2.0 separates Content, Visual, Sections, and per-card presentation into focused workspaces while retaining a continuously updated preview.
-- Live preview switches between desktop and mobile widths; preview, static export, and Cloudflare Drop packages continue to share one renderer.
-- Titles, introductions, narratives, sections, themes, layouts, covers, backgrounds, and per-card overrides remain editable.
+- Share creation keeps four steps: Select Cards, AI Generation, Edit Content, and Confirm & Save. The editor combines templates and layouts into Gallery Style, with Collector Spotlight, Archive Journal, and Arena Lineup as the initial styles.
+- Live preview switches among desktop, tablet, and mobile widths; preview, static export, and Cloudflare Drop packages continue to share one renderer.
+- Titles, introductions, narratives, sections, gallery styles, independent themes, covers, backgrounds, and per-card overrides remain editable.
 - General, Sport, and Team themes include their background assets and use the same renderer in preview, static exports, and Cloudflare Drop packages.
 - Multi-image controls use centered vector arrows; the in-app preview permits same-origin theme assets while continuing to isolate forms and top-level navigation.
+- Static exports generate WebP display/thumbnail variants plus section and subject pages; large galleries use a 24-card featured carousel and a full collection browser revealed in 48-card segments.
 - Static export uses a strict public-field allowlist and excludes prices, costs, purchase sources, private notes, AI keys, and local paths.
 - Cloudflare Drop packages validate broken references, private fields, file count, and per-file size, and include noindex metadata, a 404 page, a content manifest, and one-hour preview guidance.
 - Card Vault does not retain temporary Drop URLs or claim links; permanent publishing, update, revoke, and online verification remain future work.
 
-See [Share Gallery Editor 2.0](./docs/share-editor-2.0.md) for its boundaries, delivered phase, and planned iterations.
+See the canonical [Share Gallery specification](./docs/share-gallery.md) for the workflow, protocol, preview, export, and compatibility rules. The [documentation index](./docs/README.md) defines document responsibilities and maintenance standards.
 See [Cloudflare Drop temporary publishing](./docs/cloudflare-drop-publishing.md) for the package checks and privacy boundaries.
 See [Financial history model](./docs/financial-history-model.md) for storage rules, constraints, and current summary behavior.
 
@@ -179,6 +181,7 @@ See [Financial history model](./docs/financial-history-model.md) for storage rul
 | `npm run lint` | Check JavaScript, TypeScript, React Hooks, and JSX accessibility rules. |
 | `npm run check:encoding` | Check UTF-8 and known Chinese mojibake patterns. |
 | `npm run check:metadata` | Verify version, lockfile, README, and release-note consistency. |
+| `npm run check:docs` | Verify documentation links, canonical specifications, and synchronized roadmap status. |
 | `npm test` | Run the core automated test suite. |
 | `npm run test:coverage` | Run automated tests with coverage thresholds. |
 | `npm run audit:prod` | Check production dependencies for high-severity advisories. |
@@ -186,8 +189,9 @@ See [Financial history model](./docs/financial-history-model.md) for storage rul
 | `npm run test:share` | Verify share create, edit save, preview, and export flows. |
 | `npm run test:security` | Verify desktop local-session tokens, Host/Origin enforcement, and security headers. |
 | `npm run check:release` | Run all pre-release checks without creating distributions. |
-| `npm run release:win` | Verify and create the installer and portable ZIP. |
-| `npm run verify:release-artifacts` | Verify the installer, portable ZIP, and SHA-256 manifest. |
+| `npm run package:win` | Build a Windows installer for quick local testing. |
+| `npm run release:win` | Run all gates and create the installer, portable ZIP, and SHA-256 manifest; sign automatically when credentials exist. |
+| `npm run verify:release-artifacts` | Verify the installer, portable ZIP, signing mode, versions, and SHA-256 manifest. |
 | `npm run clean:cache` | Remove regenerable caches and logs. |
 
 ## Git and Generated Files
@@ -202,7 +206,7 @@ GitHub should primarily contain source code, documentation, and configuration. `
 
 Whether to track `dist` is a repository policy choice. Publishing the installer and portable ZIP through GitHub Releases usually keeps the source repository smaller and clearer.
 
-Windows code signing is an optional enhancement and no longer blocks routine packaging. See the [Windows Code Signing Guide](./docs/windows-code-signing.md) for PFX, certificate-store/EV, and Microsoft Artifact Signing setup. Never store certificate files or passwords in the repository or `.env`.
+Windows code signing is optional; unsigned releases produce more prominent system security warnings. See the [Windows Code Signing Guide](./docs/windows-code-signing.md) for unsigned releases, PFX, certificate-store/EV, Microsoft Artifact Signing, and GitHub Actions setup. Never store certificate files or passwords in the repository or `.env`.
 
 ## Project Structure
 
@@ -211,17 +215,17 @@ Windows code signing is an optional enhancement and no longer blocks routine pac
 - `lib/`: database, AI, image, statistics, and export logic.
 - `electron/`: desktop main process, preload bridge, storage, and AI configuration.
 - `prisma/`: database schema.
-- `scripts/`: database baseline, checking, E2E, and release scripts.
+- `scripts/`: database baseline, code/documentation checks, E2E, and release scripts.
 - `tests/`: business-rule, data-safety, and export regression tests.
+- `docs/`: canonical product specifications, roadmap, operating guides, and release history.
 
 ## Roadmap
 
 The roadmap is organized by capability stage without locking version numbers in advance:
 
-1. Share Gallery 3.0.
-2. Batch Data and Migration Center.
-3. Reminders and Collection Planning.
-4. Optional managed publishing and multi-device sync after permanent infrastructure is available.
+1. Batch Data and Migration Center.
+2. Reminders and Collection Planning.
+3. Optional managed publishing and multi-device sync after permanent infrastructure is available.
 
 See the [Card Vault Product Roadmap](./docs/product-roadmap.en.md) for stage scope, exclusions, risk controls, and shared release standards. The release version is selected during stage closeout.
 

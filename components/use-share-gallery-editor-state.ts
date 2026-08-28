@@ -6,6 +6,8 @@ export function useShareGalleryEditorState() {
   const [activePanel, setActivePanel] = useState<ShareGalleryEditorPanel>("content");
   const [coverPreviewUrl, setCoverPreviewUrl] = useState("");
   const [backgroundPreviewUrl, setBackgroundPreviewUrl] = useState("");
+  const [backgroundFileSelected, setBackgroundFileSelected] = useState(false);
+  const [backgroundCleared, setBackgroundCleared] = useState(false);
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
 
   function previewFile(file: File | undefined, setUrl: (value: string) => void) {
@@ -25,6 +27,10 @@ export function useShareGalleryEditorState() {
     setCoverPreviewUrl,
     backgroundPreviewUrl,
     setBackgroundPreviewUrl,
+    backgroundFileSelected,
+    setBackgroundFileSelected,
+    backgroundCleared,
+    setBackgroundCleared,
     draggedCardId,
     setDraggedCardId,
     previewFile

@@ -3,7 +3,7 @@ import { SharePickerCard } from "@/components/share-card-picker";
 import { ShareCollectionWizard } from "@/components/share-collection-wizard";
 import { ShareThemeCard } from "@/components/share-theme-generator";
 import { normalizeShareTheme } from "@/lib/share-themes";
-import { parseSharePresentation } from "@/lib/share-presentation";
+import { parseSharePresentation, sanitizeSharePresentationCards } from "@/lib/share-presentation";
 import { fallbackShareSections, type ShareSectionDraft } from "@/lib/share-sections";
 
 type CardOption = Card & { images: CardImage[] };
@@ -68,6 +68,7 @@ function toPickerCard(card: CardOption, item: (ShareCollectionItem & { card: Car
     visibility: card.visibility,
     tags: card.tags,
     imagePath: card.images[0]?.path ?? null,
+    imageRotation: card.images[0]?.rotation ?? 0,
     selected: Boolean(item),
     sortOrder: item?.sortOrder ?? 0,
     displayTitle: item?.displayTitle ?? "",
@@ -92,7 +93,10 @@ export function ShareCollectionForm({ action, cards, share, error }: ShareCollec
     return a.playerName.localeCompare(b.playerName);
   });
   const pickerCards = sortedCards.map((card) => toPickerCard(card, selected.get(card.id)));
-  const presentation = parseSharePresentation(share?.presentationConfig);
+  const presentation = sanitizeSharePresentationCards(
+    parseSharePresentation(share?.presentationConfig),
+    share?.items.map((item) => item.cardId) ?? []
+  );
   const sectionItems = new Map<string, string[]>();
   for (const item of share?.items ?? []) {
     if (item.sectionId) {

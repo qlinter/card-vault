@@ -108,7 +108,6 @@ function SortablePortfolioItem({ id, activeId, axis, order, children, onDragStar
 function EmptyPortfolio({ returnTo }: { returnTo: string }) {
   return (
     <section className={`${styles.emptyPortfolio} panel`}>
-      <span>PORTFOLIO</span>
       <h2>还没有可汇总的收藏</h2>
       <p>录入第一张卡片后，这里会自动生成财务摘要、结构分布和数据质量清单。</p>
       <Link className="btn btn-primary" href={`/cards/new?returnTo=${encodeURIComponent(returnTo)}`}>新增卡片</Link>
@@ -120,7 +119,7 @@ function ValuationChanges({ changes }: { changes: PortfolioValuationChange[] }) 
   return (
     <section className={styles.section}>
       <header className={styles.sectionHeader}>
-        <div><span>VALUATION CHANGE</span><h2>估值变化</h2></div>
+        <div><h2>估值变化</h2></div>
       </header>
       <div className={styles.valuationChangeGrid}>
         {changes.map((change) => (
@@ -237,7 +236,7 @@ export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, fina
       >
       <section className={styles.section}>
         <header className={styles.sectionHeader}>
-          <div><span>FINANCIAL POSITION</span><h2>持仓财务</h2></div>
+          <div><h2>持仓财务</h2></div>
         </header>
         <div className={styles.currencyGrid}>
           {currencies.map((item) => (
@@ -344,7 +343,7 @@ export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, fina
         >
         <section className={styles.section}>
           <header className={styles.sectionHeader}>
-            <div><span>TOP POSITIONS</span><h2>高价值持仓</h2></div>
+            <div><h2>高价值持仓</h2></div>
           </header>
           <div className={styles.positionList}>
             {snapshot.topPositions.filter((item) => item.latestValue > 0).slice(0, 8).map((item, index) => (
@@ -384,7 +383,7 @@ export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, fina
         >
         <section className={styles.section}>
           <header className={styles.sectionHeader}>
-            <div><span>HIGH COST</span><h2>高成本持仓</h2></div>
+            <div><h2>高成本持仓</h2></div>
           </header>
           <div className={styles.positionList}>
             {[...new Set(highCostPositions.map((item) => item.currency))].map((currency) => (
@@ -416,7 +415,7 @@ export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, fina
         >
         <section className={styles.section}>
           <header className={styles.sectionHeader}>
-            <div><span>SOLD REVIEW</span><h2>已售卡片复盘</h2></div>
+            <div><h2>已售卡片复盘</h2></div>
           </header>
           <div className={styles.positionList}>
             {[...new Set(soldReviews.map((item) => item.currency))].map((currency) => (

@@ -27,9 +27,14 @@ export default async function ExportSharePage({ params, searchParams }: ExportSh
   const folderPath = toScalar(query.path);
   const zipPath = toScalar(query.zip);
   const reportPath = toScalar(query.report);
+  const diffPath = toScalar(query.diff);
   const fileCount = Number.parseInt(toScalar(query.files) ?? "", 10);
   const totalBytes = Number.parseInt(toScalar(query.bytes) ?? "", 10);
   const warningCount = Number.parseInt(toScalar(query.warnings) ?? "", 10);
+  const isFirstExport = toScalar(query.first) === "1";
+  const addedCount = Number.parseInt(toScalar(query.added) ?? "", 10);
+  const removedCount = Number.parseInt(toScalar(query.removed) ?? "", 10);
+  const changedCount = Number.parseInt(toScalar(query.changed) ?? "", 10);
 
   return (
     <div className="page shares-page">
@@ -59,6 +64,12 @@ export default async function ExportSharePage({ params, searchParams }: ExportSh
           <p>文件夹：{folderPath}</p>
           <p>压缩包：{zipPath}</p>
           <p>检查报告：{reportPath}</p>
+          <p>版本差异：{diffPath}</p>
+          {isFirstExport ? (
+            <p>这是该模式的首次导出，已建立后续版本比较基准。</p>
+          ) : Number.isFinite(addedCount) && Number.isFinite(removedCount) && Number.isFinite(changedCount) ? (
+            <p>相对上次同模式导出：新增 {addedCount} 张、移除 {removedCount} 张、修改 {changedCount} 张。</p>
+          ) : null}
           {Number.isFinite(fileCount) && Number.isFinite(totalBytes) ? (
             <p>发布前检查已通过：{fileCount} 个文件，合计 {formatBytes(totalBytes)}。</p>
           ) : null}
@@ -77,6 +88,7 @@ export default async function ExportSharePage({ params, searchParams }: ExportSh
           <div>
             <h2>生成分享包</h2>
             <p className="muted">两种分享包包含相同的展馆网页，请根据使用场景选择附加配置。</p>
+            <p className="muted">导出会自动生成 WebP 展示图和缩略图，创建章节页与卡片主体专题页，并执行可访问性检查和版本差异比较。</p>
           </div>
 
           <fieldset className="share-export-options">

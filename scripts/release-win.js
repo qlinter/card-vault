@@ -9,6 +9,7 @@ const {
   prunePrismaTempEngines
 } = require("./release-bundle-hygiene");
 const { resolveWindowsSigning } = require("./windows-signing");
+const { inspectAuthenticodeSignature, verifyAuthenticodeSignature } = require("./authenticode");
 
 const rootDir = path.resolve(__dirname, "..");
 const packageJson = require(path.join(rootDir, "package.json"));
@@ -168,8 +169,24 @@ async function main() {
   const removedPrismaTemps = prunePrismaTempEngines(path.join(rootDir, "node_modules", ".prisma", "client"));
   process.stdout.write(`Release dependency cleanup removed ${removedPrismaTemps.length} Prisma temporary engine file(s).\n`);
   run("node", ["scripts/patch-electron-builder-nsis.js"]);
-  run("npm.cmd", ["run", "package:win"], { env: resolveBundledNsisToolEnv() });
+  run("npm.cmd", ["run", "package:win"], {
+    env: resolveBundledNsisToolEnv()
+  });
   const executablePath = verifyPackagedFiles();
+  if (signing.mode === "unsigned") {
+    for (const [filePath, label] of [[executablePath, "Card Vault.exe"], [setupPath, "Windows installer"]]) {
+      const signature = inspectAuthenticodeSignature(filePath, label);
+      if (signature?.Status !== "NotSigned") {
+        throw new Error(`${label} has an unexpected Authenticode status: ${signature?.Status || "Unknown"}.`);
+      }
+    }
+    process.stdout.write("Unsigned artifacts verified. Windows may show Unknown Publisher or SmartScreen warnings.\n");
+  } else {
+    const publisher = process.env.CARD_VAULT_AZURE_SIGN_PUBLISHER || process.env.CARD_VAULT_SIGNING_SUBJECT || "";
+    const executableSignature = verifyAuthenticodeSignature(executablePath, "Card Vault.exe", { publisher });
+    const installerSignature = verifyAuthenticodeSignature(setupPath, "Windows installer", { publisher });
+    process.stdout.write(`Verified signer: ${installerSignature?.Subject || executableSignature?.Subject}\n`);
+  }
   smokeTestPackagedRuntime(executablePath);
   verifyPackagedHealthEndpoint(executablePath);
   removeArtifact(path.join(unpackedDir, "resources", "app", "logs"));
@@ -184,9 +201,11 @@ async function main() {
   removeArtifact(path.join(distDir, "latest.yml"));
   removeArtifact(path.join(distDir, "builder-debug.yml"));
   removeArtifact(path.join(distDir, "builder-effective-config.yaml"));
-  run("node", ["scripts/verify-release-artifacts.js"]);
+  run("node", ["scripts/verify-release-artifacts.js"], {
+    env: { CARD_VAULT_EXPECTED_SIGNING_MODE: signing.mode === "unsigned" ? "unsigned" : "signed" }
+  });
 
-  process.stdout.write("\nWindows release completed.\n");
+  process.stdout.write(`\nWindows ${signing.mode === "unsigned" ? "unsigned " : "signed "}release completed.\n`);
   process.stdout.write(`${path.basename(setupPath)}  SHA256 ${setupHash}\n`);
   process.stdout.write(`${path.basename(zipPath)}  SHA256 ${zipHash}\n`);
   process.stdout.write(`${path.basename(checksumPath)} written.\n`);

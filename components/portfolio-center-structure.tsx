@@ -85,7 +85,7 @@ function AttributeCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
 export function PortfolioValuationSources({ snapshot }: { snapshot: PortfolioSnapshot }) {
   const total = snapshot.financials.valuationSources.reduce((sum, item) => sum + item.count, 0);
   return <section className={styles.section}>
-    <header className={styles.sectionHeader}><div><span>VALUATION SOURCES</span><h2>估值来源</h2></div></header>
+    <header className={styles.sectionHeader}><div><h2>估值来源</h2></div></header>
     <div className={styles.sourceList}>
       {snapshot.financials.valuationSources.map((item) => {
         const share = total > 0 ? item.count / total * 100 : 0;
@@ -101,7 +101,7 @@ export function PortfolioStructureSection({ snapshot, currencies }: { snapshot: 
   const [currency, setCurrency] = useState(currencies.includes("CNY") ? "CNY" : currencies[0] ?? "CNY");
   return <section className={styles.section}>
     <header className={styles.sectionHeader}>
-      <div><span>CONCENTRATION</span><h2>收藏结构</h2></div>
+      <div><h2>收藏结构</h2></div>
       <div className={styles.structureControls}>
         <select className={styles.rangeSelect} aria-label="收藏结构维度" value={mode} onChange={(event) => setMode(event.target.value as StructureMode)}>
           <option value="primary">主要维度</option><option value="extended">扩展维度</option><option value="attributes">卡片属性</option>

@@ -44,8 +44,12 @@ export type ShareDensity = (typeof shareDensityOptions)[number]["id"];
 export type ShareImageFit = (typeof shareImageFitOptions)[number]["id"];
 export type ShareTextScale = (typeof shareTextScaleOptions)[number]["id"];
 
+export const shareTemplateIds = ["custom", "collector-spotlight", "archive-journal", "arena-lineup"] as const;
+export type ShareTemplateId = (typeof shareTemplateIds)[number];
+
 export type SharePresentation = {
-  version: 1;
+  version: 3;
+  templateId: ShareTemplateId;
   layout: ShareLayoutId;
   backgroundPosition: {
     x: number;
@@ -56,17 +60,22 @@ export type SharePresentation = {
   density: ShareDensity;
   imageFit: ShareImageFit;
   textScale: ShareTextScale;
+  featuredCardIds: string[];
 };
 
+export const maxShareFeaturedCards = 6;
+
 export const defaultSharePresentation: SharePresentation = {
-  version: 1,
+  version: 3,
+  templateId: "custom",
   layout: "stage",
   backgroundPosition: { x: 50, y: 50 },
-  panelOpacity: 14,
+  panelOpacity: 48,
   typography: "modern",
   density: "comfortable",
   imageFit: "cover",
-  textScale: "standard"
+  textScale: "standard",
+  featuredCardIds: []
 };
 
 const layoutIds = new Set<string>(shareLayouts.map((layout) => layout.id));
@@ -74,6 +83,7 @@ const typographyIds = new Set<string>(shareTypographyOptions.map((option) => opt
 const densityIds = new Set<string>(shareDensityOptions.map((option) => option.id));
 const imageFitIds = new Set<string>(shareImageFitOptions.map((option) => option.id));
 const textScaleIds = new Set<string>(shareTextScaleOptions.map((option) => option.id));
+const templateIds = new Set<string>(shareTemplateIds);
 
 function boundedNumber(value: unknown, fallback: number, min: number, max: number): number {
   const number = typeof value === "number" ? value : Number(value);
@@ -86,6 +96,38 @@ export function normalizeShareLayout(value: unknown): ShareLayoutId {
 
 function normalizeChoice<T extends string>(value: unknown, choices: Set<string>, fallback: T): T {
   return typeof value === "string" && choices.has(value) ? (value as T) : fallback;
+}
+
+function normalizeFeaturedCardIds(value: unknown): string[] {
+  let candidate = value;
+  if (typeof value === "string" && value.trim()) {
+    try {
+      candidate = JSON.parse(value);
+    } catch {
+      candidate = [];
+    }
+  }
+  if (!Array.isArray(candidate)) return [];
+  return [...new Set(candidate.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0))]
+    .slice(0, maxShareFeaturedCards);
+}
+
+export function toggleFeaturedCardId(ids: readonly string[], cardId: string, featured: boolean): string[] {
+  const current = normalizeFeaturedCardIds(ids);
+  if (!featured) return current.filter((id) => id !== cardId);
+  if (current.includes(cardId) || current.length >= maxShareFeaturedCards) return current;
+  return [...current, cardId];
+}
+
+export function sanitizeSharePresentationCards(
+  presentation: SharePresentation,
+  allowedCardIds: readonly string[]
+): SharePresentation {
+  const allowed = new Set(allowedCardIds);
+  return {
+    ...presentation,
+    featuredCardIds: presentation.featuredCardIds.filter((cardId) => allowed.has(cardId))
+  };
 }
 
 export function parseSharePresentation(value: unknown): SharePresentation {
@@ -104,21 +146,24 @@ export function parseSharePresentation(value: unknown): SharePresentation {
     : {};
 
   return {
-    version: 1,
+    version: 3,
+    templateId: normalizeChoice(record.templateId, templateIds, defaultSharePresentation.templateId),
     layout: normalizeShareLayout(record.layout),
     backgroundPosition: {
       x: boundedNumber(position.x, defaultSharePresentation.backgroundPosition.x, 0, 100),
       y: boundedNumber(position.y, defaultSharePresentation.backgroundPosition.y, 0, 100)
     },
-    panelOpacity: boundedNumber(record.panelOpacity, defaultSharePresentation.panelOpacity, 4, 55),
+    panelOpacity: boundedNumber(record.panelOpacity, defaultSharePresentation.panelOpacity, 10, 90),
     typography: normalizeChoice(record.typography, typographyIds, defaultSharePresentation.typography),
     density: normalizeChoice(record.density, densityIds, defaultSharePresentation.density),
     imageFit: normalizeChoice(record.imageFit, imageFitIds, defaultSharePresentation.imageFit),
-    textScale: normalizeChoice(record.textScale, textScaleIds, defaultSharePresentation.textScale)
+    textScale: normalizeChoice(record.textScale, textScaleIds, defaultSharePresentation.textScale),
+    featuredCardIds: normalizeFeaturedCardIds(record.featuredCardIds)
   };
 }
 
 export function createSharePresentation(input: {
+  templateId?: unknown;
   layout: unknown;
   backgroundPositionX: unknown;
   backgroundPositionY: unknown;
@@ -127,8 +172,10 @@ export function createSharePresentation(input: {
   density?: unknown;
   imageFit?: unknown;
   textScale?: unknown;
+  featuredCardIds?: unknown;
 }): SharePresentation {
   return parseSharePresentation({
+    templateId: input.templateId,
     layout: input.layout,
     backgroundPosition: {
       x: input.backgroundPositionX,
@@ -138,7 +185,8 @@ export function createSharePresentation(input: {
     typography: input.typography,
     density: input.density,
     imageFit: input.imageFit,
-    textScale: input.textScale
+    textScale: input.textScale,
+    featuredCardIds: input.featuredCardIds
   });
 }
 

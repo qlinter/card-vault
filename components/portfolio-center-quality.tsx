@@ -10,7 +10,7 @@ export function PortfolioQualitySection({ snapshot, qualityCards, returnTo }: {
 }) {
   const issueCounts = new Map(snapshot.attentionItems.map((item) => [item.type, item.count]));
   return <section className={styles.section}>
-    <header className={styles.sectionHeader}><div><span>DATA QUALITY</span><h2>数据待完善</h2></div></header>
+    <header className={styles.sectionHeader}><div><h2>数据待完善</h2></div></header>
     <div className={styles.qualitySummary}>
       {portfolioQualityMetrics.map((metric) => <button type="button" className={styles.qualityMetric} key={metric.type} aria-label={`${metric.label}：${metric.definition}`}>
         <strong>{issueCounts.get(metric.type) ?? 0}</strong>{metric.label}<small className={styles.qualityDefinition} role="tooltip">{metric.definition}</small>

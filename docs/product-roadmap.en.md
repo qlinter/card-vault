@@ -1,6 +1,6 @@
 # Card Vault Product Roadmap
 
-Last confirmed: 2026-08-26.
+Last confirmed: 2026-08-28.
 
 This document records Card Vault's long-term product direction. It is organized by capability stage rather than preassigned version numbers. Actual release versions are chosen from completed scope, workload, and data risk while preserving the agreed principles and overall sequence.
 
@@ -33,7 +33,7 @@ Development follows four connected tracks:
 | Completed (released in `v1.1.0`) | Card Entry Workbench 2.0 | Faster continuous entry, batch preparation, and duplicate review. |
 | Completed (released in `v1.1.1`) | Positions and Returns | Quantities, multiple purchases, partial sales, and traceable returns. |
 | Completed (released in `v1.2.0`) | Portfolio Center | Trends, concentration, data quality, saved views, and point-in-time comparison. |
-| Later stage | Share Gallery 3.0 | Better output quality, responsive presentation, and large-gallery performance. |
+| Completed (consolidated in `v1.2.1`) | Share Gallery | Better output quality, responsive presentation, and large-gallery performance. |
 | Later stage | Batch Data and Migration Center | Import, bulk edit, export, deduplication, and computer migration reports. |
 | Later stage | Reminders and Collection Planning | Local reminders, wish lists, budgets, and maintenance queues. |
 | Long-term direction | Optional Online Services | Managed publishing, permissions, and multi-device sync when infrastructure is ready. |
@@ -90,9 +90,11 @@ The roadmap's core Portfolio Center scope and final closeout are complete and sh
 
 2026-08-26 experience refinement: renamed the player-name field to card subject across entry, validation, and recognition so team-based cards read naturally; fixed collapsed Showcase group overflow and added direction-preserving, continuous 90-degree rotation for entry, editing, and Showcase viewing without re-encoding original images.
 
-## Later Stage — Share Gallery 3.0
+## Completed — Share Gallery
 
-Prioritize finished-output quality over adding more controls. Add a template library, desktop/tablet/mobile previews, image optimization, gallery and topic pages, card stories, typography and cover safety checks, accessibility checks, QR codes, export-difference summaries, lazy loading or pagination for large galleries, and visual regression baselines. Keep Cloudflare Drop manual and temporary; do not store its one-hour URL or claim link.
+Completed on 2026-08-28 and consolidated into `v1.2.1`. The delivered scope combines templates and layouts into Gallery Style while keeping themes independent, removes redundant four-step helper copy, provides desktop/tablet/mobile and full-canvas standalone previews, generates optimized WebP media plus section/subject/card pages, supports featured-card stories and segmented large galleries, audits privacy and accessibility before export, writes version-difference summaries, and maintains desktop/mobile visual baselines.
+
+The current behavior, presentation protocol, compatibility rules, and publishing boundary are maintained in the single [Share Gallery specification](./share-gallery.md). Cloudflare Drop remains manual and temporary; the app stores neither its URL nor claim link. QR codes are not a current product objective. Permanent publishing, update, revoke, and analytics remain deferred until long-term infrastructure exists.
 
 ## Later Stage — Batch Data and Migration Center
 

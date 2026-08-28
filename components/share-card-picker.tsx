@@ -24,6 +24,7 @@ export type SharePickerCard = {
   publicDescription: string | null;
   tags: string | null;
   imagePath: string | null;
+  imageRotation: number;
   selected: boolean;
   sortOrder: number;
   displayTitle: string;
@@ -121,10 +122,7 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
   return (
     <section className="panel share-section">
       <div className="share-section-head">
-        <div>
-          <h2>选择卡片</h2>
-          <p className="muted">只会导出你勾选的卡片。价格、成本、购买渠道和备注不会进入分享包。</p>
-        </div>
+        <h2>选择卡片</h2>
         <span className="muted">
           共 {cards.length} 张可选 / 当前显示 {visibleCount} 张
         </span>
@@ -179,13 +177,14 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
                       <label className="share-card-select">
                         <input
                           type="checkbox"
+                          aria-label={`选择 ${card.playerName} / ${card.cardTitle}`}
                           checked={selectedSet.has(card.id)}
                           onChange={(event) => onSelectionChange(card.id, event.target.checked)}
                         />
                         {card.imagePath ? (
                           <img src={normalizeImagePath(card.imagePath)} alt={card.cardTitle} />
                         ) : (
-                          <div className="share-card-placeholder" />
+                          <div className="share-card-placeholder" role="img" aria-label={`${card.cardTitle} 暂无图片`} />
                         )}
                       </label>
                       <div className="share-card-option-body">
@@ -214,10 +213,10 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
                             />
                           </label>
                           <label className="field">
-                            <span>展示描述</span>
+                            <span>卡片故事（公开）</span>
                             <textarea
                               value={draft.displayDescription}
-                              placeholder={value(card.publicDescription) || "默认使用卡片展示描述"}
+                              placeholder={value(card.publicDescription) || "写下这张卡为何重要；留空时使用卡片公开描述"}
                               onChange={(event) => onDraftChange(card.id, { displayDescription: event.target.value })}
                             />
                           </label>

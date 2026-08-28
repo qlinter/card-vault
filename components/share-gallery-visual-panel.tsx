@@ -4,11 +4,10 @@ import type { ShareGalleryVisualPanelProps } from "@/components/share-gallery-ed
 import {
   shareDensityOptions,
   shareImageFitOptions,
-  shareLayouts,
-  shareTextScaleOptions,
   shareTypographyOptions,
   type SharePresentation
 } from "@/lib/share-presentation";
+import { shareGalleryTemplates } from "@/lib/share-templates";
 import { shareThemes, type ShareThemeId } from "@/lib/share-themes";
 
 const themeCategories = [...new Set(shareThemes.map((theme) => theme.category))];
@@ -21,40 +20,56 @@ export function ShareGalleryVisualPanel({
   initialBackgroundImagePath,
   onThemeChange,
   onPresentationChange,
+  onTemplateApply,
   onCoverModeChange,
   setCoverPreviewUrl,
   setBackgroundPreviewUrl,
+  backgroundFileSelected,
+  setBackgroundFileSelected,
+  backgroundCleared,
+  setBackgroundCleared,
   previewFile
 }: ShareGalleryVisualPanelProps) {
-  const activeTheme = shareThemes.find((option) => option.id === theme);
-
   return (
     <section className="panel share-section share-editor-v2-panel">
       <div className="share-section-head">
         <div>
           <h2>视觉设计</h2>
-          <p className="muted">调整展馆结构、视觉主题、背景焦点和内容面板。</p>
+        </div>
+      </div>
+      <div className="field full share-template-library">
+        <div className="share-template-library-head">
+          <strong>展馆样式</strong>
+          {presentation.templateId === "custom" ? <span className="share-template-custom-badge">自定义</span> : null}
+        </div>
+        <div className="share-template-options" aria-label="展馆样式">
+          {shareGalleryTemplates.map((template) => {
+            const active = presentation.templateId === template.id;
+            return (
+              <button
+                key={template.id}
+                type="button"
+                className={`share-template-option template-${template.id}${active ? " active" : ""}`}
+                aria-pressed={active}
+                data-template-id={template.id}
+                onClick={() => onTemplateApply(template.id)}
+              >
+                <span className="share-template-thumbnail" aria-hidden="true">
+                  <i className="template-cover" />
+                  <i className="template-copy" />
+                  <i className="template-cards" />
+                </span>
+                <span className="share-template-copy">
+                  <strong>{template.label}</strong>
+                  <small>{template.description}</small>
+                  <em>{active ? "已选择" : "选择样式"}</em>
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
       <div className="form-grid">
-        <div className="field full">
-          <span>展馆版式</span>
-          <div className="share-layout-options" role="radiogroup" aria-label="展馆版式">
-            {shareLayouts.map((layout) => (
-              <button
-                key={layout.id}
-                type="button"
-                role="radio"
-                aria-checked={presentation.layout === layout.id}
-                className={`share-layout-option${presentation.layout === layout.id ? " active" : ""}`}
-                onClick={() => onPresentationChange((current) => ({ ...current, layout: layout.id }))}
-              >
-                <strong>{layout.label}</strong>
-                <span>{layout.description}</span>
-              </button>
-            ))}
-          </div>
-        </div>
         <label className="field full">
           <span>展馆主题</span>
           <select name="theme" value={theme} onChange={(event) => onThemeChange(event.target.value as ShareThemeId)}>
@@ -66,7 +81,6 @@ export function ShareGalleryVisualPanel({
               </optgroup>
             ))}
           </select>
-          <p className="muted">{activeTheme?.description}</p>
         </label>
         <div className="field full share-visual-controls">
           <span>背景与文字面板</span>
@@ -97,11 +111,12 @@ export function ShareGalleryVisualPanel({
             />
           </label>
           <label>
-            <span>文字面板透明度 {presentation.panelOpacity}%</span>
+            <span>文字面板不透明度 {presentation.panelOpacity}%</span>
             <input
               type="range"
-              min="4"
-              max="55"
+              aria-label="文字面板不透明度"
+              min="10"
+              max="90"
               value={presentation.panelOpacity}
               onChange={(event) => onPresentationChange((current) => ({ ...current, panelOpacity: Number(event.target.value) }))}
             />
@@ -111,51 +126,54 @@ export function ShareGalleryVisualPanel({
           <span>排版与构图</span>
           <label>
             <span>字体风格</span>
-            <select value={presentation.typography} onChange={(event) => onPresentationChange((current) => ({ ...current, typography: event.target.value as SharePresentation["typography"] }))}>
+            <select aria-label="字体风格" value={presentation.typography} onChange={(event) => onPresentationChange((current) => ({ ...current, typography: event.target.value as SharePresentation["typography"] }))}>
               {shareTypographyOptions.map((option) => <option value={option.id} key={option.id}>{option.label}</option>)}
             </select>
           </label>
           <label>
-            <span>文字大小</span>
-            <select value={presentation.textScale} onChange={(event) => onPresentationChange((current) => ({ ...current, textScale: event.target.value as SharePresentation["textScale"] }))}>
-              {shareTextScaleOptions.map((option) => <option value={option.id} key={option.id}>{option.label}</option>)}
-            </select>
-          </label>
-          <label>
             <span>内容密度</span>
-            <select value={presentation.density} onChange={(event) => onPresentationChange((current) => ({ ...current, density: event.target.value as SharePresentation["density"] }))}>
+            <select aria-label="内容密度" value={presentation.density} onChange={(event) => onPresentationChange((current) => ({ ...current, density: event.target.value as SharePresentation["density"] }))}>
               {shareDensityOptions.map((option) => <option value={option.id} key={option.id}>{option.label}</option>)}
             </select>
           </label>
           <label>
             <span>图片构图</span>
-            <select value={presentation.imageFit} onChange={(event) => onPresentationChange((current) => ({ ...current, imageFit: event.target.value as SharePresentation["imageFit"] }))}>
+            <select aria-label="图片构图" value={presentation.imageFit} onChange={(event) => onPresentationChange((current) => ({ ...current, imageFit: event.target.value as SharePresentation["imageFit"] }))}>
               {shareImageFitOptions.map((option) => <option value={option.id} key={option.id}>{option.label}</option>)}
             </select>
           </label>
         </div>
-        <label className="field full">
-          <span>分享集背景图</span>
+        <div className="field full">
+          <label htmlFor="share-background-image">分享集背景图</label>
           <div className="share-background-upload">
             <input type="hidden" name="existingBackgroundImagePath" value={initialBackgroundImagePath} />
             <input
+              id="share-background-image"
               name="backgroundImage"
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              onChange={(event) => previewFile(event.target.files?.[0], setBackgroundPreviewUrl)}
+              onChange={(event) => {
+                setBackgroundFileSelected(Boolean(event.target.files?.[0]));
+                setBackgroundCleared(false);
+                previewFile(event.target.files?.[0], setBackgroundPreviewUrl);
+              }}
             />
-            {initialBackgroundImagePath ? (
+            {initialBackgroundImagePath || backgroundFileSelected ? (
               <>
-                <p className="muted">未重新上传时，将继续使用当前背景图。</p>
                 <label className="inline-check">
-                  <input type="checkbox" name="clearBackgroundImage" />
-                  清除当前背景图
+                  <input
+                    type="checkbox"
+                    name="clearBackgroundImage"
+                    checked={backgroundCleared}
+                    onChange={(event) => setBackgroundCleared(event.target.checked)}
+                  />
+                  {initialBackgroundImagePath ? "清除当前背景图" : "取消已选择的背景图"}
                 </label>
               </>
-            ) : <p className="muted">可上传一张横版图片作为分享展馆背景。未上传时使用主题背景。</p>}
+            ) : null}
           </div>
-        </label>
-        <label className="field full">
+        </div>
+        <div className="field full">
           <span>封面图</span>
           <div className="share-cover-options">
             <label className="inline-check">
@@ -175,11 +193,10 @@ export function ShareGalleryVisualPanel({
                   accept="image/jpeg,image/png,image/webp"
                   onChange={(event) => previewFile(event.target.files?.[0], setCoverPreviewUrl)}
                 />
-                {initialCoverImagePath ? <p className="muted">未重新上传时，将继续使用当前自定义封面。</p> : null}
               </div>
             ) : null}
           </div>
-        </label>
+        </div>
       </div>
     </section>
   );

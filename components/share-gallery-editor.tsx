@@ -8,14 +8,15 @@ import { ShareGalleryVisualPanel } from "@/components/share-gallery-visual-panel
 import { ShareDesignPreview } from "@/components/share-design-preview";
 import { useShareGalleryEditorState, type ShareGalleryEditorPanel } from "@/components/use-share-gallery-editor-state";
 import { shareLayouts } from "@/lib/share-presentation";
+import { shareGalleryTemplates } from "@/lib/share-templates";
 import { shareThemes } from "@/lib/share-themes";
 import styles from "./share-gallery-editor.module.css";
 
-const editorPanels: Array<{ id: ShareGalleryEditorPanel; label: string; description: string }> = [
-  { id: "content", label: "基础内容", description: "标题与展馆介绍" },
-  { id: "visual", label: "视觉设计", description: "版式、主题与图片" },
-  { id: "sections", label: "展馆章节", description: "叙事结构与分组" },
-  { id: "cards", label: "单卡展示", description: "顺序与展示覆盖" }
+const editorPanels: Array<{ id: ShareGalleryEditorPanel; label: string }> = [
+  { id: "content", label: "基础内容" },
+  { id: "visual", label: "视觉设计" },
+  { id: "sections", label: "展馆章节" },
+  { id: "cards", label: "单卡展示" }
 ];
 
 export function ShareGalleryEditor({
@@ -35,6 +36,8 @@ export function ShareGalleryEditor({
   onRedo,
   onThemeChange,
   onPresentationChange,
+  onFeaturedCardChange,
+  onTemplateApply,
   onThemeFieldChange,
   onCoverModeChange,
   onAddSection,
@@ -54,26 +57,30 @@ export function ShareGalleryEditor({
     backgroundPreviewUrl,
     setCoverPreviewUrl,
     setBackgroundPreviewUrl,
+    backgroundFileSelected,
+    setBackgroundFileSelected,
+    backgroundCleared,
+    setBackgroundCleared,
     draggedCardId,
     setDraggedCardId,
     previewFile
   } = useShareGalleryEditorState();
   const activeTheme = shareThemes.find((option) => option.id === theme);
   const activeLayout = shareLayouts.find((option) => option.id === presentation.layout);
+  const activeStyle = shareGalleryTemplates.find((option) => option.id === presentation.templateId);
 
   return (
     <div className={styles.editor}>
       <header className="panel share-editor-v2-header">
         <div>
-          <span className="share-editor-v2-kicker">GALLERY EDITOR 2.0</span>
           <h2>分享展馆编辑工作台</h2>
-          <p className="muted">分区编辑内容、视觉、章节与单卡展示，右侧同步呈现最终静态展馆。</p>
         </div>
         <div className="share-editor-v2-summary" aria-label="当前展馆摘要">
-          <span><small>版式</small><strong>{activeLayout?.label ?? presentation.layout}</strong></span>
+          <span><small>样式</small><strong>{activeStyle?.label ?? activeLayout?.label ?? presentation.layout}</strong></span>
           <span><small>主题</small><strong>{activeTheme?.label ?? theme}</strong></span>
           <span><small>章节</small><strong>{sections.length}</strong></span>
           <span><small>卡片</small><strong>{cards.length}</strong></span>
+          <span><small>重点卡</small><strong>{presentation.featuredCardIds.length}</strong></span>
         </div>
         <div className="share-editor-history" aria-label="编辑历史">
           <button type="button" className="btn btn-secondary" onClick={onUndo} disabled={!canUndo}>撤销</button>
@@ -92,7 +99,6 @@ export function ShareGalleryEditor({
             onClick={() => setActivePanel(panel.id)}
           >
             <strong>{panel.label}</strong>
-            <span>{panel.description}</span>
           </button>
         ))}
       </nav>
@@ -115,9 +121,14 @@ export function ShareGalleryEditor({
               initialBackgroundImagePath={initialBackgroundImagePath}
               onThemeChange={onThemeChange}
               onPresentationChange={onPresentationChange}
+              onTemplateApply={onTemplateApply}
               onCoverModeChange={onCoverModeChange}
               setCoverPreviewUrl={setCoverPreviewUrl}
               setBackgroundPreviewUrl={setBackgroundPreviewUrl}
+              backgroundFileSelected={backgroundFileSelected}
+              setBackgroundFileSelected={setBackgroundFileSelected}
+              backgroundCleared={backgroundCleared}
+              setBackgroundCleared={setBackgroundCleared}
               previewFile={previewFile}
             />
           </div>
@@ -137,6 +148,8 @@ export function ShareGalleryEditor({
             <ShareGalleryCardsPanel
               cards={cards}
               drafts={drafts}
+              presentation={presentation}
+              onFeaturedCardChange={onFeaturedCardChange}
               onDraftChange={onDraftChange}
               onMoveCard={onMoveCard}
               onReorderCard={onReorderCard}
@@ -154,7 +167,7 @@ export function ShareGalleryEditor({
           cards={cards}
           drafts={drafts}
           coverImagePath={coverMode === "custom" ? coverPreviewUrl || initialCoverImagePath : ""}
-          backgroundImagePath={backgroundPreviewUrl || initialBackgroundImagePath}
+          backgroundImagePath={backgroundCleared ? "" : backgroundPreviewUrl || initialBackgroundImagePath}
         />
       </div>
     </div>

@@ -30,7 +30,14 @@ test("share editor draft recovery drops unavailable cards and normalizes present
       drafts: { a: { sortOrder: "9", displayTitle: "恢复标题", displayDescription: "恢复说明" } },
       themeValues: { title: "恢复展馆" },
       theme: "archive",
-      presentation: { layout: "arena", typography: "editorial", density: "compact", imageFit: "contain", textScale: "large" },
+      presentation: {
+        layout: "arena",
+        typography: "editorial",
+        density: "compact",
+        imageFit: "contain",
+        textScale: "large",
+        featuredCardIds: ["a", "missing"]
+      },
       sections: [{ id: "one", title: "章节", layout: "grid", cardIds: ["a", "missing"] }],
       coverMode: "custom"
     }
@@ -43,5 +50,6 @@ test("share editor draft recovery drops unavailable cards and normalizes present
   assert.equal(draft.snapshot.presentation.density, "compact");
   assert.equal(draft.snapshot.presentation.imageFit, "contain");
   assert.equal(draft.snapshot.presentation.textScale, "large");
+  assert.deepEqual(draft.snapshot.presentation.featuredCardIds, ["a"]);
   assert.deepEqual(draft.snapshot.sections[0].cardIds, ["a"]);
 });

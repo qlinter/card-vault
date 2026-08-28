@@ -1,6 +1,6 @@
 import type { ShareCardDraft } from "../components/share-card-picker.tsx";
 import type { ShareThemeValues } from "../components/share-theme-generator.tsx";
-import { parseSharePresentation, type SharePresentation } from "./share-presentation.ts";
+import { parseSharePresentation, sanitizeSharePresentationCards, type SharePresentation } from "./share-presentation.ts";
 import { normalizeShareSectionLayout, type ShareSectionDraft } from "./share-sections.ts";
 import { normalizeShareTheme, type ShareThemeId } from "./share-themes.ts";
 
@@ -107,7 +107,7 @@ export function parseShareEditorDraft(value: string, allowedCardIds: readonly st
           groupNotes: text(values.groupNotes)
         },
         theme: normalizeShareTheme(snapshot.theme),
-        presentation: parseSharePresentation(snapshot.presentation),
+        presentation: sanitizeSharePresentationCards(parseSharePresentation(snapshot.presentation), selectedIds),
         sections,
         coverMode: snapshot.coverMode === "custom" ? "custom" : "auto"
       }

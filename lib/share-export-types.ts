@@ -5,6 +5,15 @@ import type { ShareThemeId } from "@/lib/share-themes";
 
 export type ShareExportMode = "static" | "drop";
 
+export type ExportImage = {
+  src: string;
+  thumbnailSrc: string;
+  width: number;
+  height: number;
+  rotation?: number;
+  sourceRotation?: number;
+};
+
 export type ShareCollectionWithItems = ShareCollection & {
   sections: ShareSection[];
   items: Array<
@@ -39,7 +48,7 @@ export type ExportCard = {
   grade: string | null;
   certNumber: string | null;
   href: string;
-  images: string[];
+  images: ExportImage[];
 };
 
 export type ExportSection = {
@@ -48,12 +57,19 @@ export type ExportSection = {
   description: string;
   layout: ShareSectionLayout;
   cardIds: string[];
+  href?: string;
+};
+
+export type ExportSubject = {
+  name: string;
+  href: string;
+  cardIds: string[];
 };
 
 export type ExportCardInput = {
   item: ShareCollectionWithItems["items"][number];
   href: string;
-  images: string[];
+  images: ExportImage[];
 };
 
 export type ExportData = {
@@ -66,10 +82,12 @@ export type ExportData = {
   themeHighlights: string | null;
   groupNotes: string | null;
   coverImage: string | null;
+  coverRotation?: number;
   backgroundImage: string | null;
   generatedAt: string;
   mode: ShareExportMode;
   sections: ExportSection[];
+  subjects?: ExportSubject[];
   cards: ExportCard[];
 };
 
@@ -77,9 +95,16 @@ export type ShareExportResult = {
   folderPath: string;
   zipPath: string;
   reportPath: string;
+  diffPath: string;
   cardCount: number;
   imageCount: number;
   fileCount: number;
   totalBytes: number;
   warningCount: number;
+  diff: {
+    isFirstExport: boolean;
+    added: number;
+    removed: number;
+    changed: number;
+  };
 };

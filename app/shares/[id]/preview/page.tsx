@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { toPublicExportCard } from "@/lib/share-export-data";
 import { renderPreviewDocument } from "@/lib/share-export-render";
 import type { ExportData } from "@/lib/share-export-types";
-import { parseSharePresentation } from "@/lib/share-presentation";
+import { parseSharePresentation, sanitizeSharePresentationCards } from "@/lib/share-presentation";
 import { sharePreviewSandboxPolicy } from "@/lib/share-preview-policy";
 import { normalizeShareSectionLayout } from "@/lib/share-sections";
 import { normalizeShareTheme, shareThemeBackgroundPath } from "@/lib/share-themes";
@@ -31,7 +31,8 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
     notFound();
   }
 
-  const fallbackCover = share.items.find((item) => item.card.images.length > 0)?.card.images[0]?.path ?? null;
+  const fallbackCoverImage = share.items.find((item) => item.card.images.length > 0)?.card.images[0] ?? null;
+  const fallbackCover = fallbackCoverImage?.path ?? null;
   const coverImagePath = share.coverImagePath?.startsWith("/share-covers/") ? share.coverImagePath : fallbackCover;
   const theme = normalizeShareTheme(share.theme);
   const customBackground = share.backgroundImagePath?.startsWith("/share-backgrounds/")
@@ -41,19 +42,27 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
     toPublicExportCard({
       item,
       href: `#card-${item.cardId}`,
-      images: item.card.images.map((image) => normalizeImagePath(image.path))
+      images: item.card.images.map((image) => ({
+        src: normalizeImagePath(image.path),
+        thumbnailSrc: normalizeImagePath(image.path),
+        width: 0,
+        height: 0,
+        rotation: image.rotation,
+        sourceRotation: image.rotation
+      }))
     })
   );
   const data: ExportData = {
     title: share.title,
     theme,
-    presentation: parseSharePresentation(share.presentationConfig),
+    presentation: sanitizeSharePresentationCards(parseSharePresentation(share.presentationConfig), share.items.map((item) => item.cardId)),
     subtitle: share.subtitle,
     description: share.description,
     themeNarrative: share.themeNarrative,
     themeHighlights: share.themeHighlights,
     groupNotes: share.groupNotes,
     coverImage: coverImagePath ? normalizeImagePath(coverImagePath) : null,
+    coverRotation: share.coverImagePath?.startsWith("/share-covers/") ? 0 : fallbackCoverImage?.rotation ?? 0,
     backgroundImage: customBackground ?? shareThemeBackgroundPath(theme),
     generatedAt: new Date().toISOString(),
     mode: "static",
@@ -71,7 +80,6 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
     <div className="page share-unified-preview-page">
       <div className="title-row">
         <div>
-          <p className="muted">应用预览与导出使用同一套展馆渲染器</p>
           <h1 className="h1">{share.title}</h1>
         </div>
         <div className="title-actions">

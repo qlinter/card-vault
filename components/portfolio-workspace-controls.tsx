@@ -57,7 +57,7 @@ export function PortfolioWorkspaceControls({
   return (
     <section className={`${styles.section} ${styles.workspaceSection}`}>
       <header className={styles.sectionHeader}>
-        <div><span>WORKSPACE</span><h2>保存与比较设置</h2></div>
+        <div><h2>保存与比较设置</h2></div>
       </header>
 
       <nav className={styles.viewTabs} aria-label="收藏视图">

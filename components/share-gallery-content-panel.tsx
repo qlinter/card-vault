@@ -6,10 +6,7 @@ export function ShareGalleryContentPanel({ values, onThemeFieldChange }: ShareGa
   return (
     <section className="panel share-section share-editor-v2-panel">
       <div className="share-section-head">
-        <div>
-          <h2>基础内容</h2>
-          <p className="muted">建立访客首先看到的标题、定位和封面介绍。</p>
-        </div>
+        <h2>基础内容</h2>
       </div>
       <div className="form-grid">
         <label className="field">

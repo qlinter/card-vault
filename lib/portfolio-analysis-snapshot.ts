@@ -14,13 +14,15 @@ import {
 } from "./portfolio-analysis-statistics.ts";
 import type { PortfolioAttentionItem, PortfolioCardRecord, PortfolioCurrencySummary, PortfolioScope, PortfolioSnapshot } from "./portfolio-analysis-types.ts";
 
+type CompleteSummary = { [K in keyof PortfolioCurrencySummary]: K extends "unrealizedReturnRate" ? PortfolioCurrencySummary[K] : NonNullable<PortfolioCurrencySummary[K]> };
+
 const portfolioCurrencies = ["CNY", "USD"] as const;
 
-function blankCurrencySummary(currency: string): PortfolioCurrencySummary {
+function blankCurrencySummary(currency: string): CompleteSummary {
   return { currency, purchaseAmount: 0, salesAmount: 0, expenseAmount: 0, inventoryExpenseAmount: 0, saleExpenseAmount: 0, netCashInvested: 0, latestValue: 0, valuedCardCount: 0, activeCostBasis: 0, activeLatestValue: 0, activeValuedCardCount: 0, comparableCardCount: 0, comparableCostBasis: 0, comparableValue: 0, realizedCost: 0, realizedProfit: 0, unrealizedDifference: 0, unrealizedReturnRate: null, totalProfit: 0 };
 }
 
-function currencySummary(map: Map<string, PortfolioCurrencySummary>, currencyValue: string): PortfolioCurrencySummary {
+function currencySummary(map: Map<string, CompleteSummary>, currencyValue: string): CompleteSummary {
   const currency = normalizeCurrency(currencyValue);
   const current = map.get(currency) ?? blankCurrencySummary(currency);
   map.set(currency, current);
@@ -51,7 +53,7 @@ function groupCards(
 export function buildPortfolioSnapshot(cards: PortfolioCardRecord[], scope: PortfolioScope = { isFiltered: false, criteria: [] }, asOf = new Date()): PortfolioSnapshot {
   const positionMap = createPortfolioPositionMap(cards);
   const activeCards = cards.filter((card) => isOwnedCollectionStatus(card.collectionStatus) && (card.holdingQuantity ?? 1) > 0);
-  const summaries = new Map<string, PortfolioCurrencySummary>();
+  const summaries = new Map<string, CompleteSummary>();
   const sourceCounts = new Map<string, number>();
   const latestDates: Date[] = [];
   let valuationCoverageCount = 0;
@@ -107,7 +109,7 @@ export function buildPortfolioSnapshot(cards: PortfolioCardRecord[], scope: Port
         summary.activeLatestValue += value;
         summary.activeValuedCardCount += 1;
       }
-      if (position && position.remainingQuantity > 0 && position.remainingCostMinor > BigInt(0)) {
+      if (position && position.remainingQuantity > 0 && position.costComplete) {
         summary.comparableCardCount += 1;
         summary.comparableCostBasis += minorMoneyToNumber(position.remainingCostMinor, currency);
         summary.comparableValue += value;

@@ -21,6 +21,7 @@
   purchaseDate: string;
   initialQuantity: string;
   purchasePrice: string;
+  secondaryPurchasePrice: string;
   gradingFee: string;
   totalCost: string;
   currentValue: string;
@@ -61,6 +62,7 @@ export const emptyCardFormValues: CardFormValues = {
   purchaseDate: "",
   initialQuantity: "1",
   purchasePrice: "",
+  secondaryPurchasePrice: "",
   gradingFee: "",
   totalCost: "",
   currentValue: "",
@@ -77,4 +79,3 @@ export const emptyCardFormValues: CardFormValues = {
   isPatch: false,
   patchType: ""
 };
-

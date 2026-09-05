@@ -53,6 +53,45 @@ function seedCardVaultData(manager, playerName = "Card Vault Player") {
   db.close();
 }
 
+test("backup refuses a database/media race and removes the incomplete backup", (t) => {
+  const { root, manager } = createTestManager(t);
+  seedCardVaultData(manager);
+  const backupRoot = path.join(root, "race-backups");
+  manager.chooseBackupDir(backupRoot);
+  let injected = false;
+  assert.throws(() => manager.backupDataFolder((progress) => {
+    if (injected || progress.percent < 62) return;
+    injected = true;
+    fs.writeFileSync(path.join(manager.getUploadsDir(), "late.jpg"), "late image");
+    const db = new DatabaseSync(manager.getDbPath());
+    try { db.prepare("INSERT INTO CardImage (id, cardId, path) VALUES (?, ?, ?)").run("late", "card-1", "/media/late.jpg"); }
+    finally { db.close(); }
+  }), /备份验证失败/);
+  assert.equal(injected, true);
+  const backupFiles = fs.readdirSync(backupRoot, { recursive: true });
+  assert.equal(backupFiles.some((name) => name.endsWith("dev.db")), false);
+});
+
+test("backup and restore preserve mixed payments and manual rate revisions", (t) => {
+  const { root, manager } = createTestManager(t);
+  seedCardVaultData(manager);
+  manager.chooseBackupDir(path.join(root, "finance-backups"));
+  const db = new DatabaseSync(manager.getDbPath());
+  db.prepare("INSERT INTO FinancialSettings (id, reportingCurrency) VALUES ('default', 'USD')").run();
+  db.prepare("INSERT INTO ExchangeRate (id, effectiveDate, rateMicros, source, revision) VALUES ('fx', '2026-01-01', 7123456, 'Manual', 2)").run();
+  db.prepare("INSERT INTO CardTransaction (id, cardId, kind, amountMinor, currency, quantity, occurredAt, provenance, paymentsJson, amountKnown) VALUES ('mixed', 'card-1', 'purchase', 10000, 'USD', 2, '2026-01-01', 'manual', ?, 0)").run('[{"currency":"CNY","amountMinor":"5000"}]');
+  db.close();
+  const backup = manager.backupDataFolder();
+  manager.restoreDataFolder(backup.backupPath);
+  const restored = new DatabaseSync(manager.getDbPath(), { readOnly: true });
+  try {
+    assert.equal(restored.prepare("SELECT reportingCurrency FROM FinancialSettings").get().reportingCurrency, "USD");
+    assert.equal(restored.prepare("SELECT rateMicros FROM ExchangeRate").get().rateMicros, 7123456);
+    assert.equal(restored.prepare("SELECT amountKnown FROM CardTransaction WHERE id='mixed'").get().amountKnown, 0);
+    assert.equal(JSON.parse(restored.prepare("SELECT paymentsJson FROM CardTransaction WHERE id='mixed'").get().paymentsJson)[0].amountMinor, "5000");
+  } finally { restored.close(); }
+});
+
 test("storage migration includes share backgrounds", (t) => {
   const { root, manager } = createTestManager(t);
   seedData(manager);
@@ -331,7 +370,7 @@ test("current-version backup restores after creating a safety backup", (t) => {
   assert.equal(card.playerName, "Before Backup");
   assert.equal(valuation.amountMinor, 12345);
   assert.equal(valuation.source, "个人估计");
-  assert.equal(restored.schemaVersion, "1.2.0");
+  assert.equal(restored.schemaVersion, "1.3.0");
   assert.ok(restored.safetyBackupPath);
   assert.equal(fs.existsSync(path.join(restored.safetyBackupPath, "dev.db")), true);
   assert.equal(restored.health.integrity, "ok");
@@ -390,7 +429,7 @@ test("restore upgrades a v1.1.1 backup with v1.2.0 portfolio and rotation fields
   const card = restoredDb.prepare("SELECT playerName FROM Card WHERE id = ?").get("card-1");
   restoredDb.close();
 
-  assert.equal(restored.schemaVersion, "1.2.0");
+  assert.equal(restored.schemaVersion, "1.3.0");
   assert.equal(restored.health.integrity, "ok");
   assert.equal(tables.has("PortfolioSavedView"), true);
   assert.equal(tables.has("PortfolioSnapshotRecord"), true);
@@ -432,7 +471,7 @@ test("restore upgrades a v1.1.0 backup and backfills its position data", (t) => 
   const expense = restoredDb.prepare("SELECT context, transactionId FROM CardExpense WHERE id = ?").get("shipping-v110");
   restoredDb.close();
 
-  assert.equal(restored.schemaVersion, "1.2.0");
+  assert.equal(restored.schemaVersion, "1.3.0");
   assert.equal(restored.health.integrity, "ok");
   assert.equal(card.playerName, "v1.1.0 Backup Player");
   assert.equal(card.holdingQuantity, 2);
@@ -479,7 +518,7 @@ test("restore rejects a backup that does not match the current database baseline
 
   assert.throws(
     () => manager.restoreDataFolder(oldBackup.backupPath),
-    /不是 Card Vault v1.1.0、v1.1.1 或 v1.2.0/
+    /不是 Card Vault v1.1.0、v1.1.1、v1.2.0 或 v1.3.0/
   );
   const restoredDb = new DatabaseSync(manager.getDbPath(), { readOnly: true });
   const card = restoredDb.prepare("SELECT playerName FROM Card WHERE id = ?").get("card-1");

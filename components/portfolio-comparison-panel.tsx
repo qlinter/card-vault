@@ -9,6 +9,7 @@ import {
   formatSignedPortfolioMoney as signedMoney
 } from "@/lib/portfolio-presentation";
 import styles from "./portfolio-center.module.css";
+import { FinancialReportNote } from "./financial-report-note";
 
 export function PortfolioComparisonPanel({ comparison }: { comparison: PortfolioComparison }) {
   const currencies = [...new Set([
@@ -56,19 +57,20 @@ export function PortfolioComparisonPanel({ comparison }: { comparison: Portfolio
       <div className={styles.comparisonCounts}>
         {countRows.map(([label, left, right]) => <div key={label}><span>{label}</span><strong>{left} → {right}</strong><small>{right - left >= 0 ? "+" : ""}{right - left}</small></div>)}
       </div>
+      <details><summary>核算依据</summary>{[comparison.left, comparison.right].map((point, index) => <div key={index}><strong>{point.label}</strong><FinancialReportNote accounting={point.accounting} /></div>)}</details>
       <div className={styles.comparisonCurrencyGrid}>
         {currencies.map((currency) => {
           const left = comparison.left.currencies.find((item) => item.currency === currency);
           const right = comparison.right.currencies.find((item) => item.currency === currency);
           const rows = [
-            ["组合估值", left?.latestValue ?? 0, right?.latestValue ?? 0],
-            ["剩余成本", left?.activeCostBasis ?? 0, right?.activeCostBasis ?? 0],
-            ["已实现盈亏", left?.realizedProfit ?? 0, right?.realizedProfit ?? 0],
-            ["总盈亏", left?.totalProfit ?? 0, right?.totalProfit ?? 0]
+            ["组合估值", left?.latestValue ?? null, right?.latestValue ?? null],
+            ["剩余成本", left?.activeCostBasis ?? null, right?.activeCostBasis ?? null],
+            ["已实现盈亏", left?.realizedProfit ?? null, right?.realizedProfit ?? null],
+            ["总盈亏", left?.totalProfit ?? null, right?.totalProfit ?? null]
           ] as const;
           return <article key={currency}><h3>{currency}</h3>{rows.map(([label, leftValue, rightValue]) => {
-            const difference = rightValue - leftValue;
-            return <div key={label}><span>{label}</span><strong>{money(leftValue, currency)} → {money(rightValue, currency)}</strong><small className={difference >= 0 ? styles.positive : styles.negative}>{signedMoney(difference, currency)}</small></div>;
+            const difference = rightValue === null || leftValue === null ? null : rightValue - leftValue;
+            return <div key={label}><span>{label}</span><strong>{money(leftValue, currency)} → {money(rightValue, currency)}</strong><small className={(difference ?? 0) >= 0 ? styles.positive : styles.negative}>{signedMoney(difference, currency)}</small></div>;
           })}</article>;
         })}
       </div>

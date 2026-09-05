@@ -1,13 +1,15 @@
 ﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
-import { HistoryCurrencySelect, ValuationSourceSelect } from "@/components/financial-history-selects";
+import { ValuationSourceSelect } from "@/components/financial-history-selects";
+import { useLanguage } from "./language-provider";
 import { defaultInitialQuantityForStatus } from "@/lib/card-quantity";
 
 type InvestmentInputsProps = {
   initialQuantity: string;
   collectionStatus: string;
   purchasePrice: string;
+  secondaryPurchasePrice: string;
   gradingFee: string;
   totalCost: string;
   currentValue: string;
@@ -34,6 +36,7 @@ export function InvestmentInputs({
   initialQuantity,
   collectionStatus,
   purchasePrice,
+  secondaryPurchasePrice,
   gradingFee,
   totalCost,
   currentValue,
@@ -41,6 +44,9 @@ export function InvestmentInputs({
   valuationDate,
   valuationSource
 }: InvestmentInputsProps) {
+  const { locale } = useLanguage();
+  const text = (zh: string, en: string) => locale === "en" ? en : zh;
+  const [currencyValue, setCurrencyValue] = useState(currency || "CNY");
   const [initialQuantityValue, setInitialQuantityValue] = useState(
     initialQuantity || String(defaultInitialQuantityForStatus(collectionStatus))
   );
@@ -79,7 +85,7 @@ export function InvestmentInputs({
     <>
       <label className="field">
         <span>币种</span>
-        <HistoryCurrencySelect name="historyCurrency" defaultValue={currency || "CNY"} />
+        <select name="historyCurrency" value={currencyValue} onChange={(event) => setCurrencyValue(event.target.value)}><option value="CNY">CNY</option><option value="USD">USD</option></select>
       </label>
 
       <label className="field">
@@ -118,8 +124,14 @@ export function InvestmentInputs({
         />
       </label>
 
+      <label className="field" data-i18n-skip>
+        <span>{text("另一币种购买金额（可选）", "Additional purchase payment (optional)")} · {currencyValue === "CNY" ? "USD" : "CNY"}</span>
+        <input name="secondaryPurchasePrice" inputMode="decimal" defaultValue={secondaryPurchasePrice} />
+        <small>{text("两项为同一次购入的付款组成，数量仅计算一次。全部留空表示成本未知；赠品请填 0。", "Both amounts belong to one purchase; quantity is counted once. Leave both blank for unknown cost; enter 0 for a gift.")}</small>
+      </label>
+
       <label className="field">
-        <span>总投入</span>
+        <span data-i18n-skip>{text("主币种投入小计", "Primary currency subtotal")} · {currencyValue}</span>
         <input name="totalCost" type="text" inputMode="decimal" value={totalCostValue} readOnly />
       </label>
 

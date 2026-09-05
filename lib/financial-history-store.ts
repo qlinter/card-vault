@@ -20,6 +20,8 @@ export type CreateTransactionInput = {
   amount: string | number;
   currency?: string;
   quantity?: number;
+  secondaryAmount?: string | number | null;
+  amountKnown?: boolean;
   occurredAt: Date;
   source?: string | null;
   notes?: string | null;
@@ -56,8 +58,15 @@ export type UpdateTransactionInput = Omit<CreateTransactionInput, "cardId" | "pr
 export type UpdateExpenseInput = Omit<CreateExpenseInput, "cardId" | "provenance" | "externalKey">;
 export type UpdateValuationInput = Omit<CreateValuationInput, "cardId" | "provenance" | "externalKey">;
 
-export async function createCardTransaction(client: HistoryClient, input: CreateTransactionInput) {
+function paymentData(input: CreateTransactionInput | UpdateTransactionInput) {
   const money = moneyValue(input);
+  const secondary = input.secondaryAmount === undefined || input.secondaryAmount === null || input.secondaryAmount === "" ? null
+    : moneyValue({ amount: input.secondaryAmount, currency: money.currency === "CNY" ? "USD" : "CNY" });
+  return { ...money, amountKnown: input.amountKnown !== false, paymentsJson: secondary ? JSON.stringify([{ currency: secondary.currency, amountMinor: String(secondary.amountMinor) }]) : null };
+}
+
+export async function createCardTransaction(client: HistoryClient, input: CreateTransactionInput) {
+  const money = paymentData(input);
   const quantity = input.quantity ?? 1;
   if (!Number.isInteger(quantity) || quantity <= 0) {
     throw new Error("交易数量必须是正整数。");
@@ -118,15 +127,15 @@ export async function updateCardTransaction(
   recordId: string,
   input: UpdateTransactionInput
 ) {
-  const money = moneyValue(input);
+  const money = paymentData(input);
   const kind = assertTransactionKind(input.kind);
   const quantity = input.quantity ?? 1;
   if (!Number.isInteger(quantity) || quantity <= 0) {
     throw new Error("交易数量必须是正整数。");
   }
   const linkedExpense = await client.cardExpense.findFirst({ where: { transactionId: recordId } });
-  if (linkedExpense && (kind !== "sale" || linkedExpense.currency !== money.currency)) {
-    throw new Error("该出售记录已关联费用，不能改为买入或更换币种。请先修改关联费用。");
+  if (linkedExpense && kind !== "sale") {
+    throw new Error("该出售记录已关联费用，不能改为买入。请先修改关联费用。");
   }
   const result = await client.cardTransaction.updateMany({
     where: { id: recordId, cardId },
@@ -200,17 +209,17 @@ async function resolveExpenseTransactionId(
   client: HistoryClient,
   cardId: string,
   context: ExpenseContext,
-  currency: string,
+  _currency: string,
   transactionIdValue: string | null | undefined
 ): Promise<string | null> {
   const transactionId = normalizeOptionalHistoryText(transactionIdValue);
   if (context !== "sale") return null;
   if (!transactionId) throw new Error("出售相关费用必须关联一笔具体出售记录。");
   const transaction = await client.cardTransaction.findFirst({
-    where: { id: transactionId, cardId, kind: "sale", currency },
+    where: { id: transactionId, cardId, kind: "sale" },
     select: { id: true }
   });
-  if (!transaction) throw new Error("关联的出售记录不存在，或与费用币种不一致。");
+  if (!transaction) throw new Error("关联的出售记录不存在。");
   return transaction.id;
 }
 

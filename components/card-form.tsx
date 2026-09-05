@@ -211,6 +211,7 @@ export function CardForm({
               initialQuantity={values?.initialQuantity ?? String(defaultInitialQuantityForStatus(collectionStatus))}
               collectionStatus={collectionStatus}
               purchasePrice={values?.purchasePrice ?? ""}
+              secondaryPurchasePrice={values?.secondaryPurchasePrice ?? ""}
               gradingFee={values?.gradingFee ?? ""}
               totalCost={values?.totalCost ?? ""}
               currentValue={values?.currentValue ?? ""}

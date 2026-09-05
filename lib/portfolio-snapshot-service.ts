@@ -4,7 +4,6 @@ import { buildCardFilters } from "./card-helpers";
 import { portfolioAnalysisCardSelect } from "./card-query-shapes";
 import {
   buildPortfolioScope,
-  buildPortfolioSnapshot,
   normalizePortfolioFilterInput,
   type PortfolioSnapshot
 } from "./portfolio-analysis";
@@ -24,6 +23,8 @@ import {
 } from "./portfolio-insights";
 import { getSavedPortfolioView, getStoredPortfolioSnapshot } from "./portfolio-persistence";
 import type { PortfolioFilterInput } from "./portfolio-analysis";
+import { loadFinancialSettings } from "./financial-settings";
+import { buildReportingPortfolio } from "./portfolio-reporting";
 
 export const maximumPortfolioCardCount = 5000;
 
@@ -64,12 +65,9 @@ export async function loadPortfolioSnapshot(
 
   const asOf = new Date();
   const cards = await queryPortfolioCards(where);
-  const portfolioCards = cards.map((card) => ({ ...card, imageCount: card._count.images }));
-  const snapshot = buildPortfolioSnapshot(
-    portfolioCards,
-    buildPortfolioScope(query),
-    asOf
-  );
+  const config = await loadFinancialSettings();
+  const { snapshot, cards: portfolioCards } = buildReportingPortfolio(
+    cards.map((card) => ({ ...card, imageCount: card._count.images })), buildPortfolioScope(query), config, asOf);
   const qualityCards = buildPortfolioQualityCards(cards.map((card) => ({
     id: card.id,
     playerName: card.playerName,
@@ -102,6 +100,9 @@ async function loadComparisonPoint(
   if (token.startsWith("snapshot:")) {
     const stored = await getStoredPortfolioSnapshot(token.slice(9));
     if (!stored) throw new Error("用于比较的时间点快照不存在或已删除。");
+    if (!stored.snapshot.accounting || stored.snapshot.accounting.version !== current.snapshot.accounting?.version || stored.snapshot.accounting.currency !== current.snapshot.accounting?.currency) {
+      throw new Error("快照的核算版本或报表币种不同，不能直接比较。请使用相同口径重新保存快照。");
+    }
     return buildPortfolioComparisonPoint(stored.snapshot, `快照：${stored.record.name}`, new Date(stored.record.capturedAt));
   }
   throw new Error("组合比较来源无效。");

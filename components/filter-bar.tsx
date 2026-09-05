@@ -105,10 +105,10 @@ export function FilterBar({
           <option value="newest">{"最新录入"}</option>
           <option value="yearAsc">{"年份升序"}</option>
           <option value="yearDesc">{"年份降序"}</option>
-          <option value="costCnyAsc">{"CNY 总投入升序"}</option>
-          <option value="costCnyDesc">{"CNY 总投入降序"}</option>
-          <option value="valueCnyAsc">{"CNY 估值升序"}</option>
-          <option value="valueCnyDesc">{"CNY 估值降序"}</option>
+          <option value="costCnyAsc">{"报表币种剩余成本升序"}</option>
+          <option value="costCnyDesc">{"报表币种剩余成本降序"}</option>
+          <option value="valueCnyAsc">{"报表币种持仓估值升序"}</option>
+          <option value="valueCnyDesc">{"报表币种持仓估值降序"}</option>
         </select>
       </div>
 

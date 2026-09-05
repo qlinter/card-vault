@@ -143,7 +143,7 @@ async function main() {
         throw new Error(`Settings page still contains removed helper copy: ${removedCopy}`);
       }
     }
-    if (!settingsPage.includes('aria-label="展开 AI 设置"') || settingsPage.includes("已配置 Azure OpenAI")) {
+    if (!settingsPage.includes('aria-label="展开 AI"') || settingsPage.includes("已配置 Azure OpenAI")) {
       throw new Error("Settings disclosure control does not use the expected compact icon presentation.");
     }
 

@@ -1,18 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PortfolioSnapshot, PortfolioTimeSeriesPoint } from "@/lib/portfolio-analysis";
 import type { PortfolioFinancialHistoryPoint } from "@/lib/portfolio-insights";
 import { formatPortfolioMoney as money } from "@/lib/portfolio-presentation";
-import { portfolioTrendLabelIndexes, portfolioTrendMonths, type PortfolioTrendRange } from "@/lib/portfolio-trend";
+import { portfolioTrendChartWidth, portfolioTrendLabelIndexes, portfolioTrendMonths, type PortfolioTrendRange } from "@/lib/portfolio-trend";
+import { useLanguage } from "./language-provider";
 import styles from "./portfolio-center.module.css";
 
-type TrendKind = "purchases" | "grading" | "sales";
-type ChartSeries = { key: string; label: string; color: string; values: number[] };
+type TrendKind = "purchases" | "sales";
+type ChartSeries = { key: string; label: string; color: string; values: Array<number | null>; counts?: number[]; countUnit?: "cards" | "records" };
 
 const trendMeta: Record<TrendKind, { label: string; color: string }> = {
   purchases: { label: "买入", color: "#277f7f" },
-  grading: { label: "评级", color: "#8a63d2" },
   sales: { label: "出售", color: "#d9531e" }
 };
 
@@ -28,73 +28,78 @@ function trendValues(points: PortfolioTimeSeriesPoint[], months: string[], curre
   return months.map((month) => byMonth.get(month) ?? 0);
 }
 
-function polyline(values: number[], minimum: number, maximum: number, left: number, width: number): string {
-  const height = 190;
-  const valueRange = maximum - minimum || 1;
-  return values.map((value, index) => {
-    const x = left + (values.length > 1 ? index / (values.length - 1) * width : width / 2);
-    const y = height - (value - minimum) / valueRange * (height - 22) - 11;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(" ");
-}
-
 function compactAmount(value: number): string {
   return new Intl.NumberFormat("zh-CN", { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
-function LineChart({ months, series, currency, ariaLabel, emptyLabel }: {
+function LineChart({ months, series, currency, ariaLabel, emptyLabel, coverage }: {
   months: string[];
   series: ChartSeries[];
   currency: string;
   ariaLabel: string;
   emptyLabel: string;
+  coverage?: Array<{ active: number; valued: number; costKnown: number } | undefined>;
 }) {
+  const { locale } = useLanguage();
+  const container = useRef<HTMLDivElement>(null);
+  const [availableWidth, setAvailableWidth] = useState(720);
+  useEffect(() => {
+    const element = container.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => setAvailableWidth(Math.max(1, entry.contentRect.width)));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [months.length]);
   const [hoveredMonth, setHoveredMonth] = useState<string | null>(null);
-  const maximum = Math.max(0, ...series.flatMap((item) => item.values));
-  const minimum = Math.min(0, ...series.flatMap((item) => item.values));
-  const valueRange = maximum - minimum || 1;
-  const chartWidth = months.length <= 12 ? 720 : months.length * 62;
-  const horizontallyScrollable = months.length > 12;
+  const upperBound = Math.max(0, ...series.flatMap((item) => item.values.filter((value): value is number => value !== null)));
+  const minimum = Math.min(0, ...series.flatMap((item) => item.values.filter((value): value is number => value !== null)));
+  const maximum = upperBound === minimum ? upperBound + 1 : upperBound;
+  const valueRange = maximum - minimum;
+  const chartWidth = portfolioTrendChartWidth(months.length, availableWidth);
+  const horizontallyScrollable = chartWidth > availableWidth;
   const left = 72;
   const right = 48;
   const plotWidth = chartWidth - left - right;
-  const plotHeight = 190;
+  const plotHeight = 224;
   const xAt = (index: number) => left + (months.length > 1 ? index / (months.length - 1) * plotWidth : plotWidth / 2);
   const yAt = (value: number) => plotHeight - (value - minimum) / valueRange * (plotHeight - 22) - 11;
-  const hoveredIndex = hoveredMonth ? months.indexOf(hoveredMonth) : -1;
+  const hoveredIndex = hoveredMonth ? months.indexOf(hoveredMonth) : months.length - 1;
+  const counts = coverage?.[hoveredIndex];
+  const hitWidth = months.length > 1 ? plotWidth / (months.length - 1) : plotWidth;
   const monthLabelIndexes = new Set(portfolioTrendLabelIndexes(months.length, plotWidth));
 
-  if (months.length === 0 || (maximum === 0 && minimum === 0)) {
+  if (months.length === 0 || !series.some((item) => item.values.some((value) => value !== null))) {
     return <div className={styles.chartEmpty}>{emptyLabel}</div>;
   }
 
   return (
-    <div className={styles.chartWrap}>
+    <div className={styles.chartWrap} ref={container}>
       <div className={styles.legend}>
         {series.map((item) => <span key={item.key}><i style={{ background: item.color }} />{item.label}</span>)}
       </div>
       <div className={`${styles.chartTooltip}${hoveredIndex < 0 ? ` ${styles.chartTooltipIdle}` : ""}`} role="status">
         {hoveredIndex >= 0 ? <>
-          <strong>{hoveredMonth}</strong>
-          {series.map((item) => <span key={item.key}><i style={{ background: item.color }} />{item.label} {money(item.values[hoveredIndex], currency)}</span>)}
+          <strong>{months[hoveredIndex]}</strong>
+          {series.map((item) => <span key={item.key}><i style={{ background: item.color }} />{item.label} {money(item.values[hoveredIndex], currency)}{item.counts ? <span data-i18n-skip>{` · ${item.counts[hoveredIndex]} ${locale === "en" ? item.countUnit : item.countUnit === "cards" ? "张" : "笔"}`}</span> : null}</span>)}
+          {counts ? <span data-i18n-skip>{locale === "en" ? `Valuation coverage ${counts.valued}/${counts.active} · Complete costs ${counts.costKnown}/${counts.active}` : `估值覆盖 ${counts.valued}/${counts.active} · 成本完整 ${counts.costKnown}/${counts.active}`}</span> : null}
         </> : null}
       </div>
       <div className={styles.chartScroller} data-horizontal-scroll={horizontallyScrollable ? "enabled" : "disabled"} onMouseLeave={() => setHoveredMonth(null)}>
-        <svg className={styles.chart} viewBox={`0 0 ${chartWidth} 246`} style={{ minWidth: horizontallyScrollable ? chartWidth : "100%" }} role="img" aria-label={ariaLabel}>
+        <svg className={styles.chart} viewBox={`0 0 ${chartWidth} 270`} style={{ width: chartWidth, height: 270 }} role="img" aria-label={ariaLabel}>
           {[0, 1, 2, 3, 4].map((line) => {
             const value = maximum - valueRange * line / 4;
             const y = 11 + line * ((plotHeight - 22) / 4);
             return <g key={line}><line x1={left} x2={chartWidth - right} y1={y} y2={y} /><text x={left - 10} y={y + 4} textAnchor="end">{compactAmount(value)}</text></g>;
           })}
-          {series.map((item) => <polyline key={item.key} points={polyline(item.values, minimum, maximum, left, plotWidth)} stroke={item.color} />)}
+          {series.map((item) => <path key={item.key} d={item.values.map((value, index) => value === null ? "" : `${index === 0 || item.values[index - 1] === null ? "M" : "L"}${xAt(index)},${yAt(value)}`).join(" ")} fill="none" strokeWidth="2" stroke={item.color} />)}
           {hoveredIndex >= 0 ? <line className={styles.hoverLine} x1={xAt(hoveredIndex)} x2={xAt(hoveredIndex)} y1="11" y2={plotHeight - 11} /> : null}
-          {series.map((item) => item.values.map((value, index) => (
+          {series.map((item) => item.values.map((value, index) => value === null ? null : (
             <circle key={`${item.key}-${months[index]}`} className={styles.dataPoint} cx={xAt(index)} cy={yAt(value)} r={hoveredIndex === index ? 4.5 : 3} fill={item.color} />
           )))}
           {months.map((month, index) => (
             <g key={month}>
-              <rect className={styles.hoverTarget} x={xAt(index) - 24} y="0" width="48" height={plotHeight} tabIndex={0} role="button" aria-label={`${month} 月度数据`} onMouseEnter={() => setHoveredMonth(month)} onFocus={() => setHoveredMonth(month)} />
-              {monthLabelIndexes.has(index) ? <text x={xAt(index)} y="225" textAnchor="middle">{month}</text> : null}
+              <rect className={styles.hoverTarget} x={xAt(index) - hitWidth / 2} y="0" width={hitWidth} height={plotHeight} tabIndex={0} role="button" aria-label={`${month} 月度数据`} onClick={() => setHoveredMonth(month)} onMouseEnter={() => setHoveredMonth(month)} onFocus={() => setHoveredMonth(month)} />
+              {monthLabelIndexes.has(index) ? <text x={xAt(index)} y="258" textAnchor="middle">{month}</text> : null}
             </g>
           ))}
         </svg>
@@ -104,11 +109,13 @@ function LineChart({ months, series, currency, ariaLabel, emptyLabel }: {
 }
 
 function TrendChart({ snapshot, currency, range, asOfMonth }: { snapshot: PortfolioSnapshot; currency: string; range: PortfolioTrendRange; asOfMonth: string }) {
-  const months = useMemo(() => portfolioTrendMonths(snapshot.activitySeries, range, asOfMonth), [asOfMonth, range, snapshot.activitySeries]);
+  const months = useMemo(() => portfolioTrendMonths({ purchases: snapshot.activitySeries.purchases, sales: snapshot.activitySeries.sales }, range, asOfMonth), [asOfMonth, range, snapshot.activitySeries]);
   const series = (Object.keys(trendMeta) as TrendKind[]).map((kind) => ({
     key: kind,
     label: trendMeta[kind].label,
     color: trendMeta[kind].color,
+    counts: months.map((month) => snapshot.activitySeries[kind].find((point) => point.month === month)?.count ?? 0),
+    countUnit: "cards" as const,
     values: trendValues(snapshot.activitySeries[kind], months, currency)
   }));
   return <LineChart months={months} series={series} currency={currency} ariaLabel={`${currency} 月度活动趋势`} emptyLabel={`暂无 ${currency} 月度财务记录。`} />;
@@ -123,10 +130,10 @@ function FinancialHistoryChart({ points, currency, range }: { points: PortfolioF
     color: meta.color,
     values: visiblePoints.map((point) => {
       const item = point.currencies.find((entry) => entry.currency === currency);
-      return item?.[key as keyof typeof financialTrendMeta] ?? 0;
+      return item ? item[key as keyof typeof financialTrendMeta] : null;
     })
   }));
-  return <LineChart months={months} series={series} currency={currency} ariaLabel={`${currency} 组合财务历史趋势`} emptyLabel={`暂无 ${currency} 可重建的财务历史。`} />;
+  return <LineChart months={months} series={series} currency={currency} coverage={visiblePoints.map((point) => point.coverage?.find((item) => item.currency === currency))} ariaLabel={`${currency} 组合财务历史趋势`} emptyLabel={`暂无 ${currency} 可重建的财务历史。`} />;
 }
 
 export function PortfolioFinancialHistorySection({ points, currencies }: { points: PortfolioFinancialHistoryPoint[]; currencies: string[] }) {

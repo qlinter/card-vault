@@ -98,7 +98,7 @@ test("连续财务历史按月末重建估值、剩余成本及已实现和未�
   })], new Date("2026-04-30T12:00:00.000Z"));
 
   assert.deepEqual(history.map((point) => [point.month, point.currencies[0]]), [
-    ["2026-01", { currency: "CNY", portfolioValue: 0, remainingCost: 220, realizedProfit: 0, unrealizedProfit: 0 }],
+    ["2026-01", { currency: "CNY", portfolioValue: null, remainingCost: 220, realizedProfit: 0, unrealizedProfit: null }],
     ["2026-02", { currency: "CNY", portfolioValue: 200, remainingCost: 220, realizedProfit: 0, unrealizedProfit: -20 }],
     ["2026-03", { currency: "CNY", portfolioValue: 100, remainingCost: 110, realizedProfit: 40, unrealizedProfit: -10 }],
     ["2026-04", { currency: "CNY", portfolioValue: 140, remainingCost: 110, realizedProfit: 40, unrealizedProfit: 30 }]
@@ -155,4 +155,38 @@ test("比较点保留分币种价值、成本与收益", () => {
   assert.equal(point.capturedAt, "2026-08-25T00:00:00.000Z");
   assert.equal(point.structures.find((item) => item.key === "player")?.items[0].name, "Player A");
   assert.equal(point.structures.find((item) => item.key === "cardType")?.items.length, 4);
+});
+
+test("财务历史从业务月份开始并解释估值缺失，后来的报价不倒填", () => {
+  const history = buildPortfolioFinancialHistory([card({
+    createdAt: new Date("2016-01-01"),
+    transactions: [{ kind: "purchase", amountMinor: 10000n, currency: "CNY", quantity: 1, occurredAt: new Date("2025-07-30") }],
+    valuations: [{ amountMinor: 12000n, currency: "CNY", valuedAt: new Date("2026-03-13"), createdAt: new Date("2026-03-13"), source: "手工" }]
+  })], new Date("2026-03-31"));
+  assert.equal(history[0].month, "2025-07");
+  const october = history.find(point => point.month === "2025-10")!;
+  assert.deepEqual(october.coverage, [{ currency: "CNY", active: 1, valued: 0, costKnown: 1 }]);
+  assert.equal(october.currencies[0].portfolioValue, null);
+  assert.equal(october.currencies[0].unrealizedProfit, null);
+  assert.deepEqual(history.at(-1)!.coverage, [{ currency: "CNY", active: 1, valued: 1, costKnown: 1 }]);
+});
+
+test("历史部分估值只扣除对应持仓成本，未报价的成本不变成亏损", () => {
+  const quoted = card({
+    transactions: [{ kind: "purchase", amountMinor: 10000n, currency: "CNY", quantity: 2, occurredAt: new Date("2026-01-01") }],
+    valuations: [{ amountMinor: 7000n, currency: "CNY", valuedAt: new Date("2026-02-01"), createdAt: new Date("2026-02-01"), source: "个人估计" }]
+  });
+  const unquoted = card({ transactions: [{ kind: "purchase", amountMinor: 90000n, currency: "CNY", quantity: 1, occurredAt: new Date("2026-01-01") }], valuations: [] });
+  for (const cards of [[quoted, unquoted], [unquoted, quoted]]) {
+    const history = buildPortfolioFinancialHistory(cards, new Date("2026-02-28"));
+    assert.equal(history[0].currencies[0].portfolioValue, null);
+    assert.equal(history[1].currencies[0].portfolioValue, 140);
+    assert.equal(history[1].currencies[0].remainingCost, 1000);
+    assert.equal(history[1].currencies[0].unrealizedProfit, 40);
+    assert.deepEqual(history[1].coverage, [{ currency: "CNY", active: 2, valued: 1, costKnown: 2 }]);
+  }
+  quoted.transactions[0].amountKnown = false;
+  const last = buildPortfolioFinancialHistory([quoted, unquoted], new Date("2026-02-28")).at(-1)!;
+  assert.equal(last.currencies[0].portfolioValue, 140);
+  assert.equal(last.currencies[0].unrealizedProfit, null);
 });

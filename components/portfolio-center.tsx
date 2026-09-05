@@ -31,6 +31,7 @@ import { PortfolioQualitySection } from "./portfolio-center-quality";
 import { PortfolioStructureSection, PortfolioValuationSources } from "./portfolio-center-structure";
 import { PortfolioActivityTrendSection, PortfolioFinancialHistorySection } from "./portfolio-center-trends";
 import styles from "./portfolio-center.module.css";
+import { FinancialReportNote } from "./financial-report-note";
 
 type PortfolioCenterProps = {
   snapshot: PortfolioSnapshot;
@@ -244,16 +245,21 @@ export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, fina
               <header><strong>{item.currency}</strong><span>{item.activeValuedCardCount} 张持仓有估值</span></header>
               <div className={styles.primaryValue}><span>持仓估值</span><strong>{money(item.activeLatestValue, item.currency)}</strong></div>
               <dl>
+                <div><dt>累计买入金额</dt><dd>{money(item.purchaseAmount, item.currency)}</dd></div>
+                <div><dt>累计费用</dt><dd>{money(item.expenseAmount, item.currency)}</dd></div>
+                <div><dt>净现金投入</dt><dd>{signedMoney(item.netCashInvested, item.currency)}</dd></div>
+                <div><dt>累计出售金额</dt><dd>{money(item.salesAmount, item.currency)}</dd></div>
                 <div><dt>剩余成本</dt><dd>{money(item.activeCostBasis, item.currency)}</dd></div>
-                <div><dt>已实现盈亏</dt><dd className={item.realizedProfit >= 0 ? styles.positive : styles.negative}>{signedMoney(item.realizedProfit, item.currency)}</dd></div>
-                <div><dt>未实现盈亏</dt><dd className={item.unrealizedDifference >= 0 ? styles.positive : styles.negative}>{signedMoney(item.unrealizedDifference, item.currency)}</dd></div>
-                <div><dt>总盈亏</dt><dd className={item.totalProfit >= 0 ? styles.positive : styles.negative}>{signedMoney(item.totalProfit, item.currency)}</dd></div>
+                <div><dt>已实现盈亏</dt><dd className={(item.realizedProfit ?? 0) >= 0 ? styles.positive : styles.negative}>{signedMoney(item.realizedProfit, item.currency)}</dd></div>
+                <div><dt>总盈亏</dt><dd className={(item.totalProfit ?? 0) >= 0 ? styles.positive : styles.negative}>{signedMoney(item.totalProfit, item.currency)}</dd></div>
+                <div><dt>未实现盈亏</dt><dd className={(item.unrealizedDifference ?? 0) >= 0 ? styles.positive : styles.negative}>{signedMoney(item.unrealizedDifference, item.currency)}</dd></div>
                 <div><dt>未实现回报率</dt><dd className={(item.unrealizedReturnRate ?? 0) >= 0 ? styles.positive : styles.negative}>{formatPercentage(item.unrealizedReturnRate, { fractionDigits: 2, signed: true })}</dd></div>
               </dl>
             </article>
           ))}
           {currencies.length === 0 ? <div className={styles.chartEmpty}>暂无财务记录。</div> : null}
         </div>
+        <FinancialReportNote accounting={snapshot.accounting} showBasis={false} showRates={false} />
       </section>
       </SortablePortfolioItem>
 
@@ -388,7 +394,6 @@ export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, fina
           <div className={styles.positionList}>
             {[...new Set(highCostPositions.map((item) => item.currency))].map((currency) => (
               <div className={styles.positionCurrencyGroup} key={currency}>
-                <h3>{currency}</h3>
                 {highCostPositions.filter((item) => item.currency === currency).slice(0, 8).map((item, index) => (
                   <Link href={`/cards/${item.cardId}?returnTo=${encodeURIComponent(returnTo)}`} key={`${item.cardId}-${item.currency}`}>
                     <span>{String(index + 1).padStart(2, "0")}</span>
@@ -426,7 +431,7 @@ export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, fina
                     <span>{item.soldAt ? shortDate(item.soldAt) : "待补"}</span>
                     <div><strong>{item.playerName}</strong><small>{item.cardTitle} · {item.soldQuantity} 张</small></div>
                     <div>
-                      <strong className={item.realizedProfit >= 0 ? styles.positive : styles.negative}>{item.needsSaleRecord ? "缺少出售记录" : signedMoney(item.realizedProfit, item.currency)}</strong>
+                      <strong className={(item.realizedProfit ?? 0) >= 0 ? styles.positive : styles.negative}>{item.needsSaleRecord ? "缺少出售记录" : signedMoney(item.realizedProfit, item.currency)}</strong>
                       <small>回报率 {formatPercentage(item.realizedReturnRate, { fractionDigits: 2, signed: true })}</small>
                     </div>
                   </Link>

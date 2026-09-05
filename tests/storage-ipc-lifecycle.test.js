@@ -80,6 +80,12 @@ test("backup restore IPC never relaunches or quits Electron", () => {
   assert.match(restoreHandler, /runWithPausedLocalServer/);
 });
 
+test("manual backup IPC runs its worker only while the local service is paused", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "electron", "ipc", "storage-ipc.js"), "utf8");
+  const handler = source.slice(source.indexOf('trustedHandle("card-vault:backup-data-folder"'), source.indexOf('trustedHandle("card-vault:inspect-data-folder"'));
+  assert.match(handler, /runWithPausedLocalServer\(runtime, \(\) => runStorageWorker\(sender, "backup"/);
+});
+
 test("progress notification errors cannot block service reconnection", async () => {
   const events = [];
   const runtime = runtimeStub(events);

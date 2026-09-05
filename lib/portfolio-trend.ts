@@ -24,7 +24,8 @@ export function portfolioTrendMonths(
 
   const latestRecordedMonth = recordedMonths.at(-1) ?? recordedMonths[0];
   const lastMonth = asOfMonth && asOfMonth > latestRecordedMonth ? asOfMonth : latestRecordedMonth;
-  const firstMonth = range === "all" ? recordedMonths[0] : monthOffset(lastMonth, -(range - 1));
+  const requestedFirst = range === "all" ? recordedMonths[0] : monthOffset(lastMonth, -(range - 1));
+  const firstMonth = requestedFirst < recordedMonths[0] ? recordedMonths[0] : requestedFirst;
   return monthSequence(firstMonth, lastMonth);
 }
 
@@ -45,4 +46,8 @@ export function portfolioTrendLabelIndexes(
   if (lastIndex - indexes[indexes.length - 1] < step * 0.75 && indexes.length > 1) indexes.pop();
   indexes.push(lastIndex);
   return indexes;
+}
+
+export function portfolioTrendChartWidth(monthCount: number, availableWidth: number): number {
+  return Math.max(availableWidth, 120 + Math.max(0, monthCount - 1) * 14);
 }

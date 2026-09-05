@@ -1,7 +1,9 @@
 "use client";
 
 import type { CardExpense, CardTransaction, CardValuation } from "@prisma/client";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useLanguage } from "./language-provider";
+import { reportingHistory, type FinancialConfig } from "@/lib/financial-reporting";
 import { formatMinorMoney } from "@/lib/financial-history";
 import { positionEventLabels } from "@/lib/financial-history-presentation";
 import {
@@ -12,6 +14,9 @@ import {
 } from "@/lib/position-accounting";
 
 type PositionOverviewProps = {
+  config: FinancialConfig;
+  holdingQuantity: number;
+  collectionStatus: string;
   transactions: CardTransaction[];
   expenses: CardExpense[];
   valuations: CardValuation[];
@@ -221,21 +226,18 @@ function PositionPanel({ position, series }: { position: CurrencyPosition; serie
 }
 
 export function FinancialPositionOverview(props: PositionOverviewProps) {
-  const positions = useMemo(() => calculatePositions(props), [props]);
-  const [activeCurrency, setActiveCurrency] = useState(positions[0]?.currency ?? "CNY");
-  if (positions.length === 0) return <p className="financial-empty muted">尚无财务记录。可从下方新增第一条记录。</p>;
-  const activePosition = positions.find((position) => position.currency === activeCurrency) ?? positions[0];
-  const series = calculateCurrencyPositionSeries(props, activePosition.currency);
+  const { locale } = useLanguage();
+  const text = (zh: string, en: string) => locale === "en" ? en : zh;
+  const report = useMemo(() => reportingHistory(props, props.config), [props]);
+  const positions = calculatePositions(report);
+  const activePosition = positions[0];
+  const series = calculateCurrencyPositionSeries(report, props.config.reportingCurrency);
   return (
     <div className="financial-overview">
-      <div className="financial-currency-tabs" role="tablist" aria-label="财务币种">
-        {positions.map((position) => (
-          <button key={position.currency} type="button" role="tab" aria-selected={position.currency === activePosition.currency} onClick={() => setActiveCurrency(position.currency)}>
-            {position.currency}
-          </button>
-        ))}
-      </div>
-      <PositionPanel position={activePosition} series={series} />
+      <section data-i18n-skip>
+        {!activePosition || report.costMissing.length > 0 ? <p>{text("持仓估值", "Holding value")}: {activePosition?.currentValueMinor != null ? formatMinorMoney(activePosition.currentValueMinor, props.config.reportingCurrency) : "—"}</p> : null}
+      </section>
+      {activePosition && report.costMissing.length === 0 ? <PositionPanel position={activePosition} series={series} /> : null}
     </div>
   );
 }

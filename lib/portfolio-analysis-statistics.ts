@@ -116,6 +116,7 @@ export function monthlySeries(cards: PortfolioCardRecord[], kind: "purchase" | "
   for (const card of cards) {
     const records = kind === "valuation" ? card.valuations : kind === "expense" ? card.expenses : card.transactions.filter((item) => item.kind === kind);
     for (const record of records) {
+      if ("available" in record && record.available === false) continue;
       const date: Date | undefined = "valuedAt" in record
         ? (record.valuedAt instanceof Date ? record.valuedAt : undefined)
         : (record.occurredAt instanceof Date ? record.occurredAt : undefined);
@@ -145,27 +146,28 @@ export function monthlyActivitySeries(cards: PortfolioCardRecord[]): {
   const add = (
     kind: keyof typeof groups,
     record: PortfolioMoneyRecord,
-    sign = 1
+    sign = 1,
+    quantity = 0
   ) => {
     const date = record.occurredAt instanceof Date ? record.occurredAt : record.createdAt;
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) return;
     const month = date.toISOString().slice(0, 7);
     const point = groups[kind].get(month) ?? { month, count: 0, values: {} };
     const currency = normalizeCurrency(record.currency);
-    point.count += 1;
+    point.count += quantity;
     point.values[currency] = money((point.values[currency] ?? 0) + moneyAmount(record) * sign);
     groups[kind].set(month, point);
   };
 
   for (const card of cards) {
     for (const transaction of card.transactions) {
-      if (transaction.kind === "purchase") add("purchases", transaction);
-      if (transaction.kind === "sale") add("sales", transaction);
+      if (transaction.kind === "purchase") add("purchases", transaction, 1, transaction.quantity ?? 1);
+      if (transaction.kind === "sale") add("sales", transaction, 1, transaction.quantity ?? 1);
     }
     for (const expense of card.expenses) {
       if (expense.context === "purchase") add("purchases", expense);
       else if (expense.context === "sale") add("sales", expense, -1);
-      else add("grading", expense);
+      else add("grading", expense, 1, 1);
     }
   }
 
@@ -183,7 +185,7 @@ export function topPositions(
   asOf: Date,
   positions: PortfolioPositionMap
 ): PortfolioTopPosition[] {
-  return cards.map((card) => {
+  return cards.filter((card) => selectLatestValuation(card.valuations) !== null).map((card) => {
     const valuation = selectLatestValuation(card.valuations);
     const fields = [card.playerName, card.cardTitle, card.sport, card.team, card.year, card.brand, card.productLine, card.subsetName, card.parallel, card.cardNumber];
     const fieldCompleteness = money(fields.filter((field) => Boolean(String(field ?? "").trim())).length / fields.length * 100);

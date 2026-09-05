@@ -12,6 +12,39 @@ function temporaryDatabase(t) {
   return path.join(root, "dev.db");
 }
 
+test("financial schema preserves manual FX history and initializes idempotently", (t) => {
+  const dbPath = temporaryDatabase(t);
+  initializeDatabase(dbPath);
+  const db = new DatabaseSync(dbPath);
+  try {
+    db.prepare("INSERT INTO ExchangeRate (id, effectiveDate, rateMicros, source, revision) VALUES ('one', '2026-01-01', 7000000, 'manual', 1)").run();
+    assert.throws(() => db.prepare("INSERT INTO ExchangeRate (id, effectiveDate, rateMicros, source, revision) VALUES ('duplicate', '2026-01-01', 7100000, 'manual', 1)").run(), /UNIQUE/);
+    assert.throws(() => db.prepare("INSERT INTO ExchangeRate (id, effectiveDate, rateMicros, source, revision) VALUES ('invalid', '2026-01-02', 0, 'manual', 1)").run(), /CHECK/);
+  } finally { db.close(); }
+  assert.equal(initializeDatabase(dbPath).upgraded, false);
+  const check = new DatabaseSync(dbPath, { readOnly: true });
+  try { assert.equal(check.prepare("SELECT rateMicros FROM ExchangeRate").get().rateMicros, 7000000); } finally { check.close(); }
+});
+
+test("supported 1.2.0 finance initialization preserves facts and marks historical zero costs incomplete", (t) => {
+  const dbPath = temporaryDatabase(t);
+  initializeDatabase(dbPath);
+  const db = new DatabaseSync(dbPath);
+  db.exec("DROP TABLE ExchangeRate; DROP TABLE FinancialSettings; ALTER TABLE CardTransaction DROP COLUMN paymentsJson; ALTER TABLE CardTransaction DROP COLUMN amountKnown;");
+  db.prepare("INSERT INTO Card (id, playerName, cardTitle, sport) VALUES ('finance', 'A', 'B', 'Basketball')").run();
+  db.prepare("INSERT INTO CardTransaction (id, cardId, kind, amountMinor, currency, quantity, occurredAt, provenance) VALUES ('opening', 'finance', 'purchase', 0, 'USD', 2, '2026-01-01', 'initial_card_entry')").run();
+  db.close();
+  const result = initializeDatabase(dbPath);
+  assert.equal(result.upgradeSource, "1.2.0");
+  assert.ok(fs.existsSync(result.backupPath));
+  const after = new DatabaseSync(dbPath, { readOnly: true });
+  try {
+    const record = after.prepare("SELECT amountMinor, currency, quantity, amountKnown FROM CardTransaction").get();
+    assert.deepEqual({ ...record }, { amountMinor: 0, currency: "USD", quantity: 2, amountKnown: 0 });
+  } finally { after.close(); }
+  assert.equal(initializeDatabase(dbPath).upgraded, false);
+});
+
 test("current baseline initializes the complete schema without migration metadata", (t) => {
   const dbPath = temporaryDatabase(t);
   const result = initializeDatabase(dbPath);

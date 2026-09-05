@@ -1,4 +1,8 @@
 const exactTranslations: Record<string, string> = {
+  "展开 AI": "Expand AI",
+  "收起 AI": "Collapse AI",
+  "累计费用": "Total Expenses",
+  "净现金投入": "Net Cash Invested",
   "首页": "Home",
   "展示": "Showcase",
   "当前展示": "Showing",
@@ -671,7 +675,17 @@ const exactTranslations: Record<string, string> = {
   "CNY 总投入升序": "CNY Investment Ascending",
   "CNY 总投入降序": "CNY Investment Descending",
   "CNY 估值升序": "CNY Value Ascending",
-  "CNY 估值降序": "CNY Value Descending"
+  "CNY 估值降序": "CNY Value Descending",
+  "报表币种剩余成本升序": "Remaining Cost Ascending (Reporting Currency)",
+  "报表币种剩余成本降序": "Remaining Cost Descending (Reporting Currency)",
+  "报表币种持仓估值升序": "Holding Value Ascending (Reporting Currency)",
+  "报表币种持仓估值降序": "Holding Value Descending (Reporting Currency)",
+  "财务设置": "Financial Settings",
+  "核算依据": "Accounting basis",
+  "暂无 CNY 月度财务记录。": "No CNY monthly financial records.",
+  "暂无 USD 月度财务记录。": "No USD monthly financial records.",
+  "暂无 CNY 可重建的财务历史。": "No reconstructable CNY financial history.",
+  "暂无 USD 可重建的财务历史。": "No reconstructable USD financial history."
 };
 
 const phraseTranslations: Array<[string, string]> = [

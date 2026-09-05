@@ -2,6 +2,7 @@
 
 import type { CardExpense, CardTransaction, CardValuation } from "@prisma/client";
 import { useState } from "react";
+import { paymentComponents, type FinancialConfig } from "@/lib/financial-reporting";
 import {
   addExpenseAction,
   addTransactionAction,
@@ -23,6 +24,9 @@ import {
 } from "@/lib/financial-history-presentation";
 
 type FinancialHistoryProps = {
+  config: FinancialConfig;
+  holdingQuantity: number;
+  collectionStatus: string;
   cardId: string;
   returnTo?: string;
   transactions: CardTransaction[];
@@ -56,14 +60,14 @@ function recordTitle(item: TimelineItem): string {
 }
 
 function recordAmount(item: TimelineItem): string {
-  const amount = formatMinorMoney(item.record.amountMinor, item.record.currency);
+  const amount = item.type === "transaction" ? paymentComponents(item.record).map((payment) => formatMinorMoney(payment.amountMinor, payment.currency)).join(" + ") : formatMinorMoney(item.record.amountMinor, item.record.currency);
   if (item.type === "valuation") return amount;
   if (item.type === "transaction" && item.record.kind === "sale") return `+${amount}`;
   return `−${amount}`;
 }
 
 function recordImpact(item: TimelineItem): string {
-  const amount = formatMinorMoney(item.record.amountMinor, item.record.currency);
+  const amount = item.type === "transaction" ? paymentComponents(item.record).map((payment) => formatMinorMoney(payment.amountMinor, payment.currency)).join(" + ") : formatMinorMoney(item.record.amountMinor, item.record.currency);
   if (item.type === "transaction") {
     return item.record.kind === "sale"
       ? `持仓 −${item.record.quantity} 张 · 出售收入 +${amount}`
@@ -179,7 +183,7 @@ export function CardFinancialHistory(props: FinancialHistoryProps) {
         </div>
       </div>
       <AddRecord cardId={props.cardId} returnTo={props.returnTo} transactions={props.transactions} isOpen={isAddingRecord} onClose={() => setIsAddingRecord(false)} />
-      <FinancialPositionOverview transactions={props.transactions} expenses={props.expenses} valuations={props.valuations} />
+      <FinancialPositionOverview transactions={props.transactions} expenses={props.expenses} valuations={props.valuations} config={props.config} holdingQuantity={props.holdingQuantity} collectionStatus={props.collectionStatus} />
       <div className="financial-timeline">
         <div className="financial-timeline-heading">
           <h3>历史记录</h3>

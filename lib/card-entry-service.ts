@@ -32,16 +32,17 @@ async function createInitialFinancialHistory(
   quantity: number
 ) {
   const purchaseAmount = optionalString(values.purchasePrice);
+  const secondaryAmount = optionalString(values.secondaryPurchasePrice ?? "");
   const gradingAmount = optionalString(values.gradingFee);
   const valuationAmount = optionalString(values.currentValue);
   const purchaseDate = optionalCardDate(values.purchaseDate, "购买日期");
   const valuationDate = optionalCardDate(values.valuationDate, "估值日期");
   const currency = normalizeCurrency(optionalString(values.historyCurrency));
   const valuationSource = optionalString(values.valuationSource);
-  if ((purchaseAmount || gradingAmount || quantity > 1) && !purchaseDate) {
+  if ((purchaseAmount || secondaryAmount || gradingAmount || quantity > 1) && !purchaseDate) {
     throw new Error("填写购买价格、评级费用或多张初始数量时，必须填写购买日期。");
   }
-  if (purchaseAmount && quantity === 0) throw new Error("初始数量为 0 时不能填写购买价格。");
+  if ((purchaseAmount || secondaryAmount) && quantity === 0) throw new Error("初始数量为 0 时不能填写购买价格。");
   if (valuationAmount && !valuationDate) {
     throw new Error("填写初始估值时，必须填写估值日期。");
   }
@@ -49,14 +50,16 @@ async function createInitialFinancialHistory(
     throw new Error("填写初始估值时，必须注明估值来源。");
   }
 
-  if (purchaseDate && quantity > 0 && (purchaseAmount || quantity > 1)) {
+  if (quantity > 0) {
     await createCardTransaction(transaction, {
       cardId,
       kind: "purchase",
       amount: purchaseAmount ?? "0",
+      secondaryAmount,
+      amountKnown: purchaseAmount !== null || secondaryAmount !== null,
       currency,
       quantity,
-      occurredAt: purchaseDate,
+      occurredAt: purchaseDate ?? new Date(),
       source: optionalString(values.purchaseSource),
       provenance: "initial_card_entry"
     });

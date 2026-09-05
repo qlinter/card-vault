@@ -42,6 +42,7 @@ export function buildPortfolioAnalysisInput(snapshot: PortfolioSnapshot) {
   ) as PortfolioAllocation;
 
   return {
+    accounting: snapshot.accounting ? { ...snapshot.accounting, missing: snapshot.accounting.missing.slice(0, 20), rates: snapshot.accounting.rates.slice(-40) } : undefined,
     cardCount: snapshot.cardCount,
     activeCount: snapshot.activeCount,
     soldCount: snapshot.soldCount,
@@ -134,7 +135,7 @@ export function portfolioAnalysisPrompt(snapshot: PortfolioSnapshot, mode: Portf
     "你是 Card Vault 的收藏卡组合分析助手。仅依据输入的统计数据进行收藏管理评估。",
     "不得虚构行情、成交、未来价格或卡片细节；不得承诺收益或给出明确买卖指令。",
     `当前版本输出五维组合概览：${dimensionFocus}。`,
-    "不要把财务记录覆盖描述成真实投资效率，不要把收藏特征描述成客观品质，也不要在缺少外部成交数据时断言真实流动性。不同币种必须分开分析。",
+    "不要把财务记录覆盖描述成真实投资效率，不要把收藏特征描述成客观品质，也不要在缺少外部成交数据时断言真实流动性。遵循 accounting 的核算版本和报表币种：实物数量独立于币种，双币种报价是同一资产的替代估值，不能相加。null 表示资料不完整，绝不解释为零或据此计算收益。accounting.missing 标明缺失项；已有估值只代表有报价部分的资产。没有 accounting 的旧快照按原币分别解读。",
     "allocation 只提供各维度头部项目，未展示项目仍计入 cardCount；不得把头部项目数量当作完整分类数。",
     "concentration 用于结构判断；不得把用户主动筛选条件误判为风险。没有可靠时序或市场成交数据时，明确说明无法判断。",
     ...portfolioScopeInstructions(snapshot.scope),

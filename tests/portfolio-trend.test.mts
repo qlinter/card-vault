@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { portfolioTrendLabelIndexes, portfolioTrendMonths } from "../lib/portfolio-trend.ts";
+import { portfolioTrendChartWidth, portfolioTrendLabelIndexes, portfolioTrendMonths } from "../lib/portfolio-trend.ts";
 import type { PortfolioSnapshot } from "../lib/portfolio-analysis-types.ts";
 
 function timeSeries(): PortfolioSnapshot["timeSeries"] {
@@ -45,4 +45,16 @@ test("活动趋势月份标签按宽度间隔显示并保留首尾", () => {
   assert.deepEqual(indexes, [0, 2, 4, 6, 8, 11]);
   assert.equal(indexes[0], 0);
   assert.equal(indexes.at(-1), 11);
+});
+
+test("所有范围不会在实际最早数据之前添加月份", () => {
+  for (const range of [12, 24, "all"] as const) {
+    assert.deepEqual(portfolioTrendMonths({ purchases: [{ month: "2026-01", count: 1, values: { CNY: 100 } }] }, range, "2026-03"), ["2026-01", "2026-02", "2026-03"]);
+  }
+});
+test("图表先利用可用宽度，只有数据点过密时才滚动", () => {
+  assert.equal(portfolioTrendChartWidth(24, 1100), 1100);
+  assert.equal(portfolioTrendChartWidth(12, 300), 300);
+  assert.ok(portfolioTrendChartWidth(24, 300) > 300);
+  assert.ok(portfolioTrendChartWidth(120, 1100) > 1100);
 });

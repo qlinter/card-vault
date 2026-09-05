@@ -11,7 +11,8 @@ const pages = [
   { name: "portfolio", path: "/portfolio", ready: ".portfolio-page" },
   { name: "share-editor", path: "/shares/ui-share-1/edit", ready: ".shares-page" },
   { name: "share-preview", path: "/shares/ui-share-1/preview", ready: ".share-unified-preview-page" },
-  { name: "settings", path: "/settings", ready: ".settings-page" }
+  { name: "settings", path: "/settings", ready: ".settings-page" },
+  { name: "finance-rules", path: "/settings/finance-rules", ready: ".finance-rules-page" }
 ];
 
 const englishAuditPages = [
@@ -76,7 +77,8 @@ test.describe("English interface", () => {
         await expect(page.locator(".share-design-workspace")).toBeVisible();
       }
       if (target.name === "settings") {
-        await page.getByRole("button", { name: "Expand AI Settings" }).click();
+        await page.getByRole("button", { name: "Expand AI" }).click();
+        await page.getByRole("button", { name: "Expand Finance" }).click();
         await page.getByTestId("about-settings").locator("button.about-toggle").click();
         await page.getByRole("button", { name: "Release Notes" }).click();
       }
@@ -111,12 +113,21 @@ test.describe("English interface", () => {
     await page.goto("/", { waitUntil: "networkidle" });
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.getByRole("link", { name: "Home", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Switch to Chinese" }).click();
+    await page.getByRole("button", { name: "Choose language" }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.getByRole("menuitemradio", { name: "English" })).toHaveAttribute("aria-checked", "true");
+    await page.getByRole("menuitemradio", { name: "English" }).press("Escape");
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Choose language" })).toBeFocused();
+    await page.getByRole("button", { name: "Choose language" }).click();
+    await page.getByRole("menuitemradio", { name: "简体中文" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
     await expect(page.getByRole("link", { name: "首页", exact: true })).toBeVisible();
     await page.reload({ waitUntil: "networkidle" });
     await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
-    await page.getByRole("button", { name: "切换到英文" }).click();
+    await page.getByRole("button", { name: "选择语言" }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+    await page.getByRole("menuitemradio", { name: "English" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.getByRole("link", { name: "Home", exact: true })).toBeVisible();
   });

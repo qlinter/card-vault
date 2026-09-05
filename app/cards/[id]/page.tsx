@@ -5,6 +5,7 @@ import { splitTagString } from "@/lib/card-helpers";
 import { normalizeImagePath } from "@/lib/image-path";
 import { normalizeHttpUrl } from "@/lib/http-url";
 import { prisma } from "@/lib/prisma";
+import { loadFinancialSettings } from "@/lib/financial-settings";
 import { notFound } from "next/navigation";
 import { encodeReturnTo, normalizeReturnTo, toScalar } from "@/lib/query-params";
 import { cardSuccessMessages, resolveSuccessMessage } from "@/lib/feedback-messages";
@@ -58,6 +59,7 @@ function collectionStatusText(value: string): string {
 
 export default async function CardDetailPage({ params, searchParams }: DetailProps) {
   const { id } = await params;
+  const financialConfig = await loadFinancialSettings();
   const query = await searchParams;
   const success = resolveSuccessMessage(toScalar(query.success), cardSuccessMessages, { passthroughUnknown: true });
   const error = toScalar(query.error);
@@ -228,7 +230,11 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
         </section>
       </div>
 
-      <CardFinancialHistory
+        <CardFinancialHistory
+          key={card.updatedAt.toISOString()}
+        config={financialConfig}
+        holdingQuantity={card.holdingQuantity}
+        collectionStatus={card.collectionStatus}
         cardId={card.id}
         returnTo={returnTo}
         transactions={card.transactions}

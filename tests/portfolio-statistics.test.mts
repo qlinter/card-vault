@@ -26,8 +26,8 @@ test("活动趋势按买入、评级和出售归集相关费用", () => {
     isAutograph: false,
     isPatch: false,
     transactions: [
-      { kind: "purchase", amountMinor: 10000n, currency: "CNY", occurredAt: new Date("2026-01-02") },
-      { kind: "sale", amountMinor: 20000n, currency: "CNY", occurredAt: new Date("2026-03-02") }
+      { kind: "purchase", quantity: 3, amountMinor: 10000n, currency: "CNY", occurredAt: new Date("2026-01-02") },
+      { kind: "sale", quantity: 2, amountMinor: 20000n, currency: "CNY", occurredAt: new Date("2026-03-02") }
     ],
     expenses: [
       { context: "purchase", amountMinor: 1000n, currency: "CNY", occurredAt: new Date("2026-01-03") },
@@ -38,7 +38,7 @@ test("活动趋势按买入、评级和出售归集相关费用", () => {
   };
 
   const activity = monthlyActivitySeries([card]);
-  assert.deepEqual(activity.purchases, [{ month: "2026-01", count: 2, values: { CNY: 110 } }]);
+  assert.deepEqual(activity.purchases, [{ month: "2026-01", count: 3, values: { CNY: 110 } }]);
   assert.deepEqual(activity.grading, [{ month: "2026-02", count: 1, values: { CNY: 20 } }]);
   assert.deepEqual(activity.sales, [{ month: "2026-03", count: 2, values: { CNY: 185 } }]);
 });

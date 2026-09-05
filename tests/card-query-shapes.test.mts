@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { homeCardInclude, portfolioAnalysisCardSelect } from "../lib/card-query-shapes.ts";
 
-test("homepage query loads only the latest valuation and omits full financial history", () => {
-  assert.equal("transactions" in homeCardInclude, false);
-  assert.equal("expenses" in homeCardInclude, false);
-  assert.equal(homeCardInclude.valuations.take, 1);
+test("homepage query retains currency alternatives and payment history for unified reporting", () => {
+  assert.equal("transactions" in homeCardInclude, true);
+  assert.equal("expenses" in homeCardInclude, true);
+  assert.equal("take" in homeCardInclude.valuations, false);
   assert.deepEqual(homeCardInclude.valuations.orderBy, [{ valuedAt: "desc" }, { createdAt: "desc" }]);
 });
 

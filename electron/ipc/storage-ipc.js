@@ -36,7 +36,19 @@ function registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, log
       const backup = storage.chooseBackupDir(result.filePaths[0]); logger.appendLog("desktop.log", `Backup path updated to: ${backup.path}`); return { cancelled: false, path: backup.path };
     } catch (error) { logger.appendLog("desktop.log", `Backup path update failed: ${error instanceof Error ? error.message : "Unknown backup path error."}`); throw error; }
   });
-  trustedHandle("card-vault:backup-data-folder", async (event) => withStorageOperation(event, "backup", async (sender) => { try { const result = await runStorageWorker(sender, "backup"); logger.appendLog("desktop.log", `Data folder backup created: ${result.backupPath}`); return result; } catch (error) { logger.appendLog("desktop.log", `Data folder backup failed: ${error instanceof Error ? error.message : "Unknown backup error."}`); throw error; } }));
+  trustedHandle("card-vault:backup-data-folder", async (event) => withStorageOperation(event, "backup", async (sender) => {
+    sendStorageProgress(sender, "backup", { percent: 1, message: "正在暂停数据写入，准备一致性备份..." });
+    try {
+      const result = await runWithPausedLocalServer(runtime, () => runStorageWorker(sender, "backup", {}, { start: 5, end: 90 }), {
+        beforeResume: () => sendStorageProgress(sender, "backup", { percent: 95, message: "备份已验证，正在恢复数据服务..." })
+      });
+      logger.appendLog("desktop.log", `Data folder backup created: ${result.backupPath}`);
+      return result;
+    } catch (error) {
+      logger.appendLog("desktop.log", `Data folder backup failed: ${error instanceof Error ? error.message : "Unknown backup error."}`);
+      throw error;
+    }
+  }));
   trustedHandle("card-vault:check-data-health", async (event) => withStorageOperation(event, "health", async (sender) => { try { const result = await runStorageWorker(sender, "health"); logger.appendLog("desktop.log", `Data health check completed: ${result.ok ? "ok" : "issues found"}.`); return result; } catch (error) { logger.appendLog("desktop.log", `Data health check failed: ${error instanceof Error ? error.message : "Unknown data health error."}`); throw error; } }));
   trustedHandle("card-vault:show-orphan-file-in-folder", async (event, file) => {
     try {

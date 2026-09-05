@@ -53,7 +53,7 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
     <div className="page portfolio-page">
       <div className="title-row">
         <div>
-          <h1 className="h1">组合中心</h1>
+          <h1 className="h1">组合</h1>
         </div>
         <PortfolioAnalysisButton cardCount={result.snapshot.cardCount} query={query} scope={result.snapshot.scope} />
       </div>

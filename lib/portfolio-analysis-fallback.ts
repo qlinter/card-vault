@@ -83,7 +83,7 @@ function fallbackActions(snapshot: PortfolioSnapshot): PortfolioAnalysisAction[]
 export function buildFallbackPortfolioAnalysis(snapshot: PortfolioSnapshot): PortfolioAnalysis {
   const activeCount = Math.max(snapshot.activeCount, 1);
   const valuationCoverage = ratio(snapshot.financials.valuationCoverageCount, snapshot.cardCount);
-  const transactionCoverage = ratio(snapshot.financials.transactionCoverageCount, snapshot.cardCount);
+  const transactionCoverage = ratio(Math.min(snapshot.financials.transactionCoverageCount, snapshot.cardCount - (snapshot.accounting?.incompleteCardCount ?? 0)), snapshot.cardCount);
   const freshCoverage = ratio(snapshot.financials.freshValuationCount, snapshot.cardCount);
   const imageCoverage = ratio(snapshot.coverage.imageCoverageCount, snapshot.cardCount);
   const topPlayerShare = snapshot.concentration.player.top1CountShare;

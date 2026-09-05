@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { copyDataFilesForBackup, createDatabaseSnapshot } = require("./database-snapshot");
 const { mapProgress, reportProgress } = require("./progress");
+const { inspectDataFolder } = require("./health");
 
 function dateFolderName(date = new Date()) { return [String(date.getFullYear()), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-"); }
 function timeSuffix(date = new Date()) { return [String(date.getHours()).padStart(2, "0"), String(date.getMinutes()).padStart(2, "0"), String(date.getSeconds()).padStart(2, "0")].join(""); }
@@ -41,6 +42,10 @@ function createBackupService({ config, repairDataLayout }) {
       const targetDbPath = path.join(targetDataDir, "dev.db");
       fs.rmSync(targetDbPath, { force: true });
       createDatabaseSnapshot(sourceDbPath, targetDbPath, mapProgress(onProgress, 62, 96));
+      const health = inspectDataFolder(targetDataDir);
+      if (health.integrity !== "ok" || health.missingFiles.length > 0) {
+        throw new Error(`备份验证失败：数据库异常或有 ${health.missingFiles.length} 个引用文件缺失。请检查数据健康后重试。`);
+      }
     } catch (error) { fs.rmSync(targetDataDir, { recursive: true, force: true }); throw error; }
     reportProgress(onProgress, 100, "备份完成。");
     return { backupRoot: backupDir, datePath: dateDir, backupPath: targetDataDir };

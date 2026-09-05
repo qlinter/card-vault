@@ -71,6 +71,8 @@ model CardTransaction {
   amountMinor BigInt
   currency    String   @default("CNY")
   quantity    Int      @default(1)
+  paymentsJson String?
+  amountKnown Boolean  @default(true)
   occurredAt  DateTime
   source      String?
   notes       String?
@@ -83,6 +85,23 @@ model CardTransaction {
   @@index([cardId, occurredAt(sort: Desc)])
   @@index([kind])
   @@index([occurredAt(sort: Desc)])
+}
+
+model FinancialSettings {
+  id String @id @default("default")
+  reportingCurrency String @default("CNY")
+}
+
+model ExchangeRate {
+  id String @id @default(cuid())
+  effectiveDate String
+  rateMicros BigInt
+  source String
+  revision Int
+  createdAt DateTime @default(now())
+
+  @@unique([effectiveDate, revision])
+  @@index([effectiveDate])
 }
 
 model CardExpense {

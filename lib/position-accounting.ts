@@ -1,6 +1,9 @@
 import { normalizeCurrency, selectLatestValuation } from "./financial-history.ts";
+import { paymentComponents } from "./financial-reporting.ts";
 
 export type PositionTransaction = {
+  paymentsJson?: string | null;
+  amountKnown?: boolean;
   kind: string;
   amountMinor: bigint;
   currency: string;
@@ -10,6 +13,7 @@ export type PositionTransaction = {
 };
 
 export type PositionExpense = {
+  amountKnown?: boolean;
   context?: string;
   amountMinor: bigint;
   currency: string;
@@ -18,6 +22,7 @@ export type PositionExpense = {
 };
 
 export type PositionValuation = {
+  available?: boolean;
   amountMinor: bigint;
   currency: string;
   valuedAt: Date;
@@ -25,6 +30,8 @@ export type PositionValuation = {
 };
 
 export type CurrencyPosition = {
+  costComplete: boolean;
+  profitComplete: boolean;
   currency: string;
   purchasedQuantity: number;
   soldQuantity: number;
@@ -57,6 +64,7 @@ export type PositionSeriesPoint = {
 };
 
 type PositionHistory = {
+  holdingQuantity?: number;
   transactions: readonly PositionTransaction[];
   expenses: readonly PositionExpense[];
   valuations?: readonly PositionValuation[];
@@ -88,12 +96,12 @@ function allocateAverageCost(totalCost: bigint, totalQuantity: number, soldQuant
 }
 
 function currencyEvents(history: PositionHistory, currency: string): InventoryEvent[] {
-  const transactions = history.transactions.filter((row) => normalizeCurrency(row.currency) === currency);
+  const transactions = history.transactions;
   const expenses = history.expenses.filter((row) => normalizeCurrency(row.currency) === currency);
   return [
     ...transactions.map((row): InventoryEvent => ({
       type: row.kind === "sale" ? "sale" : "purchase",
-      amountMinor: row.amountMinor,
+      amountMinor: paymentComponents(row).filter((payment) => payment.currency === currency).reduce((sum, payment) => sum + payment.amountMinor, 0n),
       quantity: row.quantity ?? 1,
       occurredAt: accountingDate(row.occurredAt, row.createdAt),
       createdAt: row.createdAt
@@ -105,7 +113,7 @@ function currencyEvents(history: PositionHistory, currency: string): InventoryEv
       createdAt: row.createdAt
     })),
     ...(history.valuations ?? [])
-      .filter((row) => normalizeCurrency(row.currency) === currency)
+      .filter((row) => row.available !== false && normalizeCurrency(row.currency) === currency)
       .map((row): InventoryEvent => ({
         type: "valuation",
         amountMinor: row.amountMinor,
@@ -147,7 +155,7 @@ function applyInventoryEvent(
 
 export function calculateCurrencyPositionSeries(history: PositionHistory, currencyValue: string): PositionSeriesPoint[] {
   const currency = normalizeCurrency(currencyValue);
-  const state = { purchasedQuantity: 0, remainingQuantity: 0, remainingCostMinor: BigInt(0), realizedCostMinor: BigInt(0) };
+  const state = { purchasedQuantity: 0, remainingQuantity: history.transactions.length === 0 ? Math.max(0, history.holdingQuantity ?? 0) : 0, remainingCostMinor: BigInt(0), realizedCostMinor: BigInt(0) };
   return currencyEvents(history, currency).map((event) => {
     applyInventoryEvent(state, event);
     return {
@@ -173,7 +181,7 @@ export function calculateCurrencyPosition(history: PositionHistory, currencyValu
 
   let purchasedQuantity = 0;
   let soldQuantity = 0;
-  let remainingQuantity = 0;
+  let remainingQuantity = history.transactions.length === 0 ? Math.max(0, history.holdingQuantity ?? 0) : 0;
   let purchaseAmountMinor = BigInt(0);
   let inventoryExpenseMinor = BigInt(0);
   let remainingCostMinor = BigInt(0);
@@ -213,9 +221,14 @@ export function calculateCurrencyPosition(history: PositionHistory, currencyValu
     .reduce((sum, row) => sum + row.amountMinor, BigInt(0));
   const netSaleAmountMinor = grossSaleAmountMinor - saleExpenseMinor;
   const latest = selectLatestValuation(history.valuations ?? [], currency);
+  const costComplete = history.transactions.some((row) => row.kind === "purchase")
+    && history.transactions.every((row) => row.amountKnown !== false)
+    && history.expenses.every((row) => row.amountKnown !== false);
+  const profitComplete = costComplete && history.transactions.every((row) => paymentComponents(row).every((payment) => payment.currency === currency || payment.amountMinor === 0n))
+    && history.expenses.every((row) => row.currency === currency || row.amountMinor === 0n);
   const latestUnitValueMinor = latest?.amountMinor ?? null;
   const currentValueMinor = latestUnitValueMinor === null ? null : latestUnitValueMinor * BigInt(remainingQuantity);
-  const unrealizedProfitMinor = currentValueMinor === null ? null : currentValueMinor - remainingCostMinor;
+  const unrealizedProfitMinor = !profitComplete || currentValueMinor === null ? null : currentValueMinor - remainingCostMinor;
   const realizedProfitMinor = netSaleAmountMinor - realizedCostMinor;
   const purchaseExpenseMinor = expenses
     .filter((row) => row.context === "purchase")
@@ -225,6 +238,8 @@ export function calculateCurrencyPosition(history: PositionHistory, currencyValu
     .reduce((sum, row) => sum + row.amountMinor, BigInt(0));
 
   return {
+    costComplete,
+    profitComplete,
     currency,
     purchasedQuantity,
     soldQuantity,
@@ -245,13 +260,13 @@ export function calculateCurrencyPosition(history: PositionHistory, currencyValu
     latestUnitValueMinor,
     currentValueMinor,
     unrealizedProfitMinor,
-    totalProfitMinor: unrealizedProfitMinor === null ? null : realizedProfitMinor + unrealizedProfitMinor
+    totalProfitMinor: !profitComplete ? null : remainingQuantity === 0 ? realizedProfitMinor : unrealizedProfitMinor === null ? null : realizedProfitMinor + unrealizedProfitMinor
   };
 }
 
 export function calculatePositions(history: PositionHistory): CurrencyPosition[] {
   const currencies = new Set([
-    ...history.transactions.map((row) => normalizeCurrency(row.currency)),
+    ...history.transactions.flatMap((row) => paymentComponents(row).map((payment) => payment.currency)),
     ...history.expenses.map((row) => normalizeCurrency(row.currency)),
     ...(history.valuations ?? []).map((row) => normalizeCurrency(row.currency))
   ]);
@@ -272,8 +287,7 @@ export function resolvePositionCollectionStatus(
   history: Pick<PositionHistory, "transactions" | "expenses">
 ): string {
   if (history.transactions.length === 0) return currentStatus;
-  const remainingQuantity = calculatePositions(history)
-    .reduce((sum, position) => sum + position.remainingQuantity, 0);
+  const remainingQuantity = calculatePositions(history)[0]?.remainingQuantity ?? 0;
   const hasPurchase = history.transactions.some((transaction) => transaction.kind === "purchase");
   const hasSale = history.transactions.some((transaction) => transaction.kind === "sale");
   if (remainingQuantity === 0 && hasPurchase && hasSale) return "sold";

@@ -19,10 +19,10 @@ function cardExistedAt(card: PortfolioCardRecord, at: Date): boolean {
   return hasBusinessRecord || !(card.createdAt instanceof Date) || card.createdAt.getTime() <= at.getTime();
 }
 
-function historicalQuantity(card: PortfolioCardRecord, currency: string, at: Date): number {
+function historicalQuantity(card: PortfolioCardRecord, _currency: string, at: Date): number {
   if (card.collectionStatus === "target") return 0;
   const transactions = card.transactions.filter((transaction) =>
-    normalizeCurrency(transaction.currency) === currency && recordDate(transaction).getTime() <= at.getTime()
+    recordDate(transaction).getTime() <= at.getTime()
   );
   if (transactions.length > 0) {
     return Math.max(0, transactions.reduce((quantity, transaction) =>
@@ -73,21 +73,21 @@ export type PortfolioValuationChange = {
 
 export type PortfolioFinancialHistoryCurrency = {
   currency: string;
-  portfolioValue: number;
-  remainingCost: number;
-  realizedProfit: number;
-  unrealizedProfit: number;
+  portfolioValue: number | null;
+  remainingCost: number | null;
+  realizedProfit: number | null;
+  unrealizedProfit: number | null;
 };
 
 export type PortfolioFinancialHistoryPoint = {
   month: string;
   capturedAt: string;
   currencies: PortfolioFinancialHistoryCurrency[];
+  coverage: Array<{ currency: string; active: number; valued: number; costKnown: number }>;
 };
 
 function historicalRecordDates(card: PortfolioCardRecord): Date[] {
   return [
-    ...(card.createdAt instanceof Date ? [card.createdAt] : []),
     ...card.transactions.map(recordDate),
     ...card.expenses.map(recordDate),
     ...card.valuations.map((valuation) => valuation.valuedAt)
@@ -122,6 +122,7 @@ export function buildPortfolioFinancialHistory(
   return months.map((month) => {
     const at = monthCutoff(month, asOf);
     const totals = new Map<string, PortfolioFinancialHistoryCurrency>();
+    const coverage = new Map<string, { currency: string; active: number; valued: number; costKnown: number }>();
     for (const card of cards) {
       if (!cardExistedAt(card, at)) continue;
       const transactions = card.transactions.filter((record) => recordDate(record).getTime() <= at.getTime());
@@ -129,7 +130,7 @@ export function buildPortfolioFinancialHistory(
       const valuations = card.valuations.filter((record) => record.valuedAt.getTime() <= at.getTime());
       const positions = calculatePositions({ transactions, expenses, valuations });
       for (const position of positions) {
-        const fallbackQuantity = transactions.length === 0 && isOwnedCollectionStatus(card.collectionStatus)
+        const fallbackQuantity = card.transactions.length === 0 && isOwnedCollectionStatus(card.collectionStatus)
           ? Math.max(0, card.holdingQuantity ?? 1)
           : 0;
         const quantity = position.purchasedQuantity > 0 || position.soldQuantity > 0
@@ -153,16 +154,27 @@ export function buildPortfolioFinancialHistory(
           realizedProfit: 0,
           unrealizedProfit: 0
         };
-        current.portfolioValue = money(current.portfolioValue + portfolioValue);
-        current.remainingCost = money(current.remainingCost + remainingCost);
-        current.realizedProfit = money(current.realizedProfit + realizedProfit);
-        current.unrealizedProfit = money(current.unrealizedProfit + unrealizedProfit);
+        current.portfolioValue = money((current.portfolioValue ?? 0) + portfolioValue);
+        current.remainingCost = current.remainingCost === null || !position.costComplete ? null : money(current.remainingCost + remainingCost);
+        current.realizedProfit = current.realizedProfit === null || !position.profitComplete ? null : money(current.realizedProfit + realizedProfit);
+        // Only quoted holdings contribute to this historical, potentially partial return.
+        if (quantity > 0 && latestValuation) current.unrealizedProfit = current.unrealizedProfit === null || !position.profitComplete ? null : money(current.unrealizedProfit + unrealizedProfit);
         totals.set(position.currency, current);
+        const counts = coverage.get(position.currency) ?? { currency: position.currency, active: 0, valued: 0, costKnown: 0 };
+        if (quantity > 0) { counts.active++; if (latestValuation) counts.valued++; if (position.costComplete) counts.costKnown++; }
+        coverage.set(position.currency, counts);
+      }
+    }
+    for (const [currency, counts] of coverage) {
+      if (counts.active > 0 && counts.valued === 0) {
+        const total = totals.get(currency)!;
+        total.portfolioValue = total.unrealizedProfit = null;
       }
     }
     return {
       month,
       capturedAt: at.toISOString(),
+      coverage: [...coverage.values()],
       currencies: [...totals.values()].sort((left, right) => left.currency.localeCompare(right.currency))
     };
   });
@@ -235,7 +247,7 @@ export function buildPortfolioPositionReviews(cards: PortfolioCardRecord[]): {
     const positions = calculatePositions(card);
     if (isOwnedCollectionStatus(card.collectionStatus)) {
       for (const position of positions) {
-        if (position.remainingQuantity <= 0 || position.remainingCostMinor <= BigInt(0)) continue;
+        if (!position.costComplete || position.remainingQuantity <= 0 || position.remainingCostMinor <= BigInt(0)) continue;
         highCostPositions.push({
           cardId: card.id ?? "",
           playerName: card.playerName,
@@ -270,6 +282,7 @@ export function buildPortfolioPositionReviews(cards: PortfolioCardRecord[]): {
       continue;
     }
     for (const position of soldPositions) {
+      if (!position.profitComplete) continue;
       const soldAt = saleTransactions
         .filter((transaction) => normalizeCurrency(transaction.currency) === position.currency)
         .map(recordDate)
@@ -314,6 +327,7 @@ export function buildPortfolioPositionReviews(cards: PortfolioCardRecord[]): {
 }
 
 export type PortfolioComparisonPoint = {
+  accounting?: PortfolioSnapshot["accounting"];
   label: string;
   capturedAt: string;
   scope: PortfolioScope;
@@ -325,9 +339,9 @@ export type PortfolioComparisonPoint = {
   currencies: Array<{
     currency: string;
     latestValue: number;
-    activeCostBasis: number;
-    realizedProfit: number;
-    totalProfit: number;
+    activeCostBasis: number | null;
+    realizedProfit: number | null;
+    totalProfit: number | null;
   }>;
   structures: Array<{
     key: string;
@@ -375,6 +389,7 @@ export function buildPortfolioComparisonPoint(
     ["cardType", "卡片属性", cardTypeItems]
   ];
   return {
+    accounting: snapshot.accounting,
     label,
     capturedAt: capturedAt.toISOString(),
     scope: snapshot.scope,

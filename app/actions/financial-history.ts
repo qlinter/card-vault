@@ -40,7 +40,7 @@ function optionalText(formData: FormData, name: string): string | null {
 function requiredDate(formData: FormData, name: string): Date {
   const raw = requiredText(formData, name, "日期");
   const date = new Date(`${raw}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime())) throw new Error("日期无效。");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw) || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== raw) throw new Error("日期无效。");
   return date;
 }
 
@@ -56,6 +56,8 @@ function transactionInput(formData: FormData): UpdateTransactionInput {
     amount: requiredText(formData, "amount", "金额"),
     currency: requiredText(formData, "currency", "币种"),
     quantity: positiveInteger(formData, "quantity"),
+    secondaryAmount: optionalText(formData, "secondaryAmount"),
+    amountKnown: formData.get("amountUnknown") !== "on",
     occurredAt: requiredDate(formData, "occurredAt"),
     source: optionalText(formData, "source"),
     notes: optionalText(formData, "notes")
@@ -107,6 +109,7 @@ function finishHistoryMutation(cardId: string, success: string, returnTo?: strin
   revalidatePath("/");
   revalidatePath(`/cards/${cardId}`);
   revalidatePath("/showcase");
+  revalidatePath("/portfolio");
   revalidatePath(`/showcase/cards/${cardId}`);
   const preservedReturnTo = normalizeReturnTo(returnTo);
   const returnQuery = preservedReturnTo ? `&returnTo=${encodeURIComponent(preservedReturnTo)}` : "";
@@ -120,7 +123,7 @@ function finishHistoryMutation(cardId: string, success: string, returnTo?: strin
 export async function addTransactionAction(cardId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
     await mutateHistory(cardId, (transaction) =>
-      createCardTransaction(transaction, { cardId, ...transactionInput(formData) })
+      createCardTransaction(transaction, { cardId, ...transactionInput(formData), externalKey: optionalText(formData, "submissionId") })
     );
   } catch (error) {
     finishHistoryMutation(cardId, "", returnTo, error);
@@ -131,7 +134,7 @@ export async function addTransactionAction(cardId: string, returnTo: string | un
 export async function addExpenseAction(cardId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
     await mutateHistory(cardId, (transaction) =>
-      createCardExpense(transaction, { cardId, ...expenseInput(formData) })
+      createCardExpense(transaction, { cardId, ...expenseInput(formData), externalKey: optionalText(formData, "submissionId") })
     );
   } catch (error) {
     finishHistoryMutation(cardId, "", returnTo, error);
@@ -142,7 +145,7 @@ export async function addExpenseAction(cardId: string, returnTo: string | undefi
 export async function addValuationAction(cardId: string, returnTo: string | undefined, formData: FormData): Promise<void> {
   try {
     await mutateHistory(cardId, (transaction) =>
-      createCardValuation(transaction, { cardId, ...valuationInput(formData) })
+      createCardValuation(transaction, { cardId, ...valuationInput(formData), externalKey: optionalText(formData, "submissionId") })
     );
   } catch (error) {
     finishHistoryMutation(cardId, "", returnTo, error);

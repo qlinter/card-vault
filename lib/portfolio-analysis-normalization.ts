@@ -170,27 +170,27 @@ function normalizeCurrencySummaries(value: unknown, cardCount: number): Portfoli
 
       return {
         currency,
-        purchaseAmount: money(boundedNumber(record.purchaseAmount, 0, maximumMoney)),
-        salesAmount: money(boundedNumber(record.salesAmount, 0, maximumMoney)),
-        expenseAmount: money(boundedNumber(record.expenseAmount, 0, maximumMoney)),
-        inventoryExpenseAmount: money(boundedNumber(record.inventoryExpenseAmount, 0, maximumMoney)),
-        saleExpenseAmount: money(boundedNumber(record.saleExpenseAmount, 0, maximumMoney)),
-        netCashInvested: money(boundedNumber(record.netCashInvested, -maximumMoney, maximumMoney)),
+        purchaseAmount: record.purchaseAmount === null ? null : money(boundedNumber(record.purchaseAmount, 0, maximumMoney)),
+        salesAmount: record.salesAmount === null ? null : money(boundedNumber(record.salesAmount, 0, maximumMoney)),
+        expenseAmount: record.expenseAmount === null ? null : money(boundedNumber(record.expenseAmount, 0, maximumMoney)),
+        inventoryExpenseAmount: record.inventoryExpenseAmount === null ? null : money(boundedNumber(record.inventoryExpenseAmount, 0, maximumMoney)),
+        saleExpenseAmount: record.saleExpenseAmount === null ? null : money(boundedNumber(record.saleExpenseAmount, 0, maximumMoney)),
+        netCashInvested: record.netCashInvested === null ? null : money(boundedNumber(record.netCashInvested, -maximumMoney, maximumMoney)),
         latestValue: money(boundedNumber(record.latestValue, 0, maximumMoney)),
         valuedCardCount: boundedCount(record.valuedCardCount, cardCount),
-        activeCostBasis: money(boundedNumber(record.activeCostBasis, 0, maximumMoney)),
+        activeCostBasis: record.activeCostBasis === null ? null : money(boundedNumber(record.activeCostBasis, 0, maximumMoney)),
         activeLatestValue: money(boundedNumber(record.activeLatestValue, 0, maximumMoney)),
         activeValuedCardCount: boundedCount(record.activeValuedCardCount, cardCount),
         comparableCardCount: boundedCount(record.comparableCardCount, cardCount),
-        comparableCostBasis,
+        comparableCostBasis: record.comparableCostBasis === null ? null : comparableCostBasis,
         comparableValue,
-        realizedCost: money(boundedNumber(record.realizedCost, 0, maximumMoney)),
-        realizedProfit: money(boundedNumber(record.realizedProfit, -maximumMoney, maximumMoney)),
-        unrealizedDifference,
-        unrealizedReturnRate: comparableCostBasis > 0
+        realizedCost: record.realizedCost === null ? null : money(boundedNumber(record.realizedCost, 0, maximumMoney)),
+        realizedProfit: record.realizedProfit === null ? null : money(boundedNumber(record.realizedProfit, -maximumMoney, maximumMoney)),
+        unrealizedDifference: record.unrealizedDifference === null ? null : unrealizedDifference,
+        unrealizedReturnRate: record.unrealizedDifference !== null && comparableCostBasis > 0
           ? money(unrealizedDifference / comparableCostBasis * 100)
           : null,
-        totalProfit: money(boundedNumber(record.totalProfit, -maximumMoney, maximumMoney)),
+        totalProfit: record.totalProfit === null ? null : money(boundedNumber(record.totalProfit, -maximumMoney, maximumMoney)),
       };
     })
     .filter((item): item is PortfolioCurrencySummary => item !== null);
@@ -209,6 +209,18 @@ function normalizeValuationSources(value: unknown, cardCount: number): Portfolio
       };
     })
     .filter((item) => item.name && item.count > 0);
+}
+
+function normalizeAccounting(value: unknown, cardCount: number): PortfolioSnapshot["accounting"] {
+  if (value === undefined) return undefined;
+  const record = objectRecord(value);
+  if (typeof record.version !== "string" || !portfolioCurrencies.includes(record.currency as "CNY" | "USD") || !Array.isArray(record.rates)) throw new Error("快照财务口径无效。");
+  const rates = record.rates.map((entry) => {
+    const rate = objectRecord(entry);
+    if (typeof rate.rateMicros !== "string" || !/^[1-9]\d{0,11}$/.test(rate.rateMicros) || typeof rate.effectiveDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(rate.effectiveDate)) throw new Error("快照汇率记录无效。");
+    return { id: safeText(rate.id, 100), effectiveDate: rate.effectiveDate, rateMicros: rate.rateMicros, revision: boundedCount(rate.revision, 1000000), source: safeText(rate.source, 200) };
+  });
+  return { version: safeText(record.version, 100), currency: String(record.currency), incompleteCardCount: boundedCount(record.incompleteCardCount, cardCount), missing: Array.isArray(record.missing) ? record.missing.map((reason) => safeText(reason, 500)) : [], rates };
 }
 
 export function normalizePortfolioSnapshot(value: unknown): PortfolioSnapshot {
@@ -230,6 +242,7 @@ export function normalizePortfolioSnapshot(value: unknown): PortfolioSnapshot {
   const quality = objectRecord(snapshot.quality);
 
   return {
+    accounting: normalizeAccounting(snapshot.accounting, cardCount),
     cardCount,
     activeCount,
     soldCount: boundedCount(snapshot.soldCount, cardCount),

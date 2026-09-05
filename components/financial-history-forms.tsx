@@ -1,7 +1,10 @@
 "use client";
 
 import type { CardExpense, CardTransaction, CardValuation } from "@prisma/client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useFormStatus } from "react-dom";
+import { paymentComponents } from "@/lib/financial-reporting";
+import { useLanguage } from "./language-provider";
 import { HistoryCurrencySelect, ValuationSourceSelect } from "@/components/financial-history-selects";
 import { formatMinorMoney } from "@/lib/financial-history";
 import {
@@ -32,7 +35,14 @@ function CurrencyField({ value = "CNY" }: { value?: string }) {
 }
 
 function FormMarker({ value }: { value?: string }) {
-  return value ? <input type="hidden" name="recordMarker" value={value} /> : null;
+  const [submissionId, setSubmissionId] = useState("");
+  useEffect(() => { setSubmissionId(crypto.randomUUID()); }, []);
+  return <>{value ? <input type="hidden" name="recordMarker" value={value} /> : null}<input type="hidden" name="submissionId" value={submissionId} /></>;
+}
+
+function HistorySubmit({ editing, label }: { editing: boolean; label: string }) {
+  const { pending } = useFormStatus();
+  return <button className={editing ? "btn btn-secondary" : "btn btn-primary"} type="submit" disabled={pending}>{label}</button>;
 }
 
 export function TransactionForm({
@@ -41,17 +51,23 @@ export function TransactionForm({
   marker,
   record
 }: SharedFormProps & { record?: CardTransaction }) {
+  const { locale } = useLanguage();
+  const text = (zh: string, en: string) => locale === "en" ? en : zh;
+  const [currency, setCurrency] = useState(record?.currency ?? "CNY");
+  const secondary = record ? paymentComponents(record)[1] : null;
   return (
     <form action={action} className="financial-form">
       <FormMarker value={marker} />
       <label className="field"><span>类型</span><select name="kind" defaultValue={record?.kind ?? "purchase"}><option value="purchase">购入</option><option value="sale">售出</option></select></label>
       <label className="field"><span>金额</span><input name="amount" inputMode="decimal" defaultValue={record ? amountInput(record.amountMinor, record.currency) : undefined} required /></label>
-      <CurrencyField value={record?.currency === "USD" ? "USD" : "CNY"} />
+      <label className="field"><span>币种</span><select name="currency" value={currency} onChange={(event) => setCurrency(event.target.value)}><option value="CNY">CNY</option><option value="USD">USD</option></select></label>
+      <label className="field" data-i18n-skip><span>{text("另一币种付款 / 收款（可选）", "Additional payment / receipt (optional)")} · {currency === "CNY" ? "USD" : "CNY"}</span><input name="secondaryAmount" inputMode="decimal" defaultValue={secondary ? amountInput(secondary.amountMinor, secondary.currency) : ""} /></label>
+      <label className="field" data-i18n-skip><span><input type="checkbox" name="amountUnknown" defaultChecked={record?.amountKnown === false} /> {text("金额尚不完整（已知零成本请勿勾选）", "Amount incomplete (leave unchecked for a known zero cost)")}</span></label>
       <label className="field"><span>数量</span><input name="quantity" type="number" min="1" defaultValue={record?.quantity ?? 1} required /></label>
       <label className="field"><span>日期</span><input name="occurredAt" type="date" defaultValue={formatHistoryDateInput(record?.occurredAt)} required /></label>
       <label className="field"><span>渠道 / 来源</span><input name="source" defaultValue={record?.source ?? ""} /></label>
       <label className="field full"><span>备注</span><textarea name="notes" defaultValue={record?.notes ?? ""} /></label>
-      <button className={record ? "btn btn-secondary" : "btn btn-primary"} type="submit">{submitLabel}</button>
+      <HistorySubmit editing={Boolean(record)} label={submitLabel} />
     </form>
   );
 }
@@ -101,7 +117,7 @@ export function ExpenseForm({
       <label className="field"><span>服务方</span><input name="vendor" defaultValue={record?.vendor ?? ""} /></label>
       {context === "sale" ? <SaleTransactionField transactions={transactions} value={record?.transactionId} /> : null}
       <label className="field full"><span>备注</span><textarea name="notes" defaultValue={record?.notes ?? ""} /></label>
-      <button className={record ? "btn btn-secondary" : "btn btn-primary"} type="submit">{submitLabel}</button>
+      <HistorySubmit editing={Boolean(record)} label={submitLabel} />
     </form>
   );
 }
@@ -120,7 +136,7 @@ export function ValuationForm({
       <label className="field"><span>估值日期</span><input name="valuedAt" type="date" defaultValue={formatHistoryDateInput(record?.valuedAt)} required /></label>
       <label className="field"><span>估值来源 *</span><ValuationSourceSelect name="source" defaultValue={record?.source ?? "个人估计"} required /></label>
       <label className="field full"><span>备注</span><textarea name="notes" defaultValue={record?.notes ?? ""} /></label>
-      <button className={record ? "btn btn-secondary" : "btn btn-primary"} type="submit">{submitLabel}</button>
+      <HistorySubmit editing={Boolean(record)} label={submitLabel} />
     </form>
   );
 }

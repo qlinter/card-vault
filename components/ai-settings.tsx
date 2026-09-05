@@ -307,10 +307,10 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
         className="ai-settings-toggle"
         onClick={() => setIsOpen((value) => !value)}
         aria-expanded={isOpen}
-        aria-label={isOpen ? "收起 AI 设置" : "展开 AI 设置"}
+        aria-label={isOpen ? "收起 AI" : "展开 AI"}
       >
         <span>
-          <strong>AI 设置</strong>
+          <strong>AI</strong>
         </span>
         <DisclosureIcon expanded={isOpen} />
       </button>

@@ -50,6 +50,12 @@ function seedDatabase() {
       "BGS", "9.5", "private", "sold", 0, "Sold", "Used for sold-card review.", "UI fixture"
     );
 
+    // Stable creation dates keep newest-first screenshots independent of seed timing.
+    const setCreatedAt = db.prepare("UPDATE Card SET createdAt=? WHERE id=?");
+    for (const [index, day] of ["2026-08-22", "2026-08-21", "2026-08-20"].entries()) {
+      setCreatedAt.run(day + "T00:00:00.000Z", "ui-card-" + (index + 1));
+    }
+
     const insertImage = db.prepare("INSERT INTO CardImage (id, cardId, path, rotation) VALUES (?, ?, ?, ?)");
     insertImage.run("ui-image-1", "ui-card-1", "/media/ui-card-1.webp", 0);
     insertImage.run("ui-image-2", "ui-card-2", "/media/ui-card-2.webp", 0);

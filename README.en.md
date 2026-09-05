@@ -6,19 +6,18 @@ Card Vault is a local-first sports-card collection manager for cataloging, organ
 
 ## Current Version
 
-`1.2.1`
+`1.3.0`
 
-### 1.2.1 Highlights
+### 1.3.0 Highlights
 
-- Adds a complete Chinese/English interface switch, including a fully English mode and consolidated single-language headings.
-- Consolidates Share Gallery into a four-step workflow with one Gallery Style control, independent themes, editable content, custom cover/background images, featured stories, and responsive preview.
-- Improves static export and large-gallery behavior with image normalization, concurrent loading, cache limits, and publication-quality checks.
-- Enlarges standalone preview so the complete gallery is centered and visible instead of appearing as a small canvas in the upper-left corner.
-- Allows complete unsigned Windows releases when no certificate is available, while automatically signing and validating timestamps whenever trusted credentials are configured.
-- Removes duplicate code, obsolete copy, dead styles, and historical documentation forks, while adding a canonical documentation index and documentation validation.
-- Keeps the database baseline at `1.2.0`; this release does not migrate or rewrite user data.
+- One physical holding with mixed CNY/USD transaction components and cross-currency sales.
+- Independent primary currency and manual exchange rate settings; effective dates are required, notes are optional, and rate history can be edited or deleted.
+- Consistent home, detail, portfolio, trends, and frozen snapshots; missing costs, FX, and quotes remain explicitly incomplete.
+- Backups pause the local service and validate database/media consistency.
+- A globe button opens a language menu; desktop navigation aligns right.
+- Database baseline 1.3.0. This source update does not include newly packaged Windows installers.
 
-See the [v1.2.1 release notes](./docs/release-v1.2.1.md) for the complete delivered scope.
+See the [v1.3.0 release notes](./docs/release-v1.3.0.md) for the complete delivered scope.
 
 ## Core Features
 
@@ -28,7 +27,7 @@ See the [v1.2.1 release notes](./docs/release-v1.2.1.md) for the complete delive
 - Use SQLite drafts, continuous entry, public-field templates, duplicate review, and batch entry with WebP preparation, retry, AI candidate review, and front/back swapping.
 - Search, filter, and sort by card subject, sport, team, year, product line, grade, autograph, patch, and collection status.
 - Track purchases, sales, grading, other costs, holding quantity, and latest values through transaction, expense, and valuation history.
-- Use the Portfolio Center for currency-separated positions, reconstructed financial history, monthly activity, true 30/90/180-day valuation changes, valuation sources, primary and extended collection structures, top-value and top-cost positions, sold-card review, actionable data-quality queues, saved views, point-in-time snapshots, and financial or structural comparisons; content sections can be reordered by drag and retain their local layout.
+- Use the Portfolio Center for positions in the primary currency, reconstructed financial history, monthly activity, true 30/90/180-day valuation changes, valuation sources, primary and extended collection structures, top-value and top-cost positions, sold-card review, actionable data-quality queues, saved views, point-in-time snapshots, and financial or structural comparisons; content sections can be reordered by drag and retain their local layout.
 - Browse the Showcase by card subject, with collapsible navigation, multi-image card views, and temporary image rotation.
 - Use Azure OpenAI, MiniMax, or multiple named OpenAI Chat Completions-compatible custom providers for AI card recognition, gallery copy, and portfolio analysis.
 - Build editable share galleries with gallery styles, independent themes, sections, covers, backgrounds, and per-card presentation overrides.
@@ -64,12 +63,13 @@ See the [v1.2.1 release notes](./docs/release-v1.2.1.md) for the complete delive
 | `1.1.1` | Added position accounting, in-app restore, home thumbnails and incremental rendering, a 1/1 filter, and database/UI consolidation. |
 | `1.2.0` | Completed the Portfolio Center, saved views, point-in-time snapshots, true historical trends and comparison, plus image rotation, card-subject terminology, and Showcase refinements. |
 | `1.2.1` | Added bilingual UI, consolidated Share Gallery and preview/export improvements, optional Windows signing, and unified code and product documentation. |
+| `1.3.0` | Unified mixed payments, physical positions, manual FX, reporting, frozen snapshots, and consistent backups. |
 
 ## Install and Run
 
 ### Installer
 
-Release file: `dist/card-vault-1.2.1-setup.exe`
+Release file: `dist/card-vault-1.3.0-setup.exe`
 
 - Uses an installation wizard and supports a user-selected installation directory.
 - Installing a newer build of the same application normally replaces program files without deleting collection data.
@@ -78,7 +78,7 @@ Release file: `dist/card-vault-1.2.1-setup.exe`
 
 ### Portable Build
 
-Release file: `dist/card-vault-1.2.1-portable.zip`
+Release file: `dist/card-vault-1.3.0-portable.zip`
 
 1. Extract the complete ZIP.
 2. Run `Card Vault.exe` from the extracted directory.
@@ -166,10 +166,10 @@ See [Financial history model](./docs/financial-history-model.md) for storage rul
 
 - Initial card entry creates separate purchase, grading-expense, and valuation records.
 - Editing card metadata never overwrites financial history; transactions, expenses, and valuations are maintained on the card detail page.
-- The detail page provides separate CNY/USD summaries, a unified timeline, record correction, and deletion. Valuation sources are limited to Personal estimate, Recent sale, or Platform quote.
-- CNY summary fields on each card are recalculated from financial history and support Home sorting; valuation totals and portfolio analysis read financial history directly.
-- Home-page total valuation uses exactly the latest dated valuation for every card in the current filtered result. CNY and USD use matching ISO-code typography, regardless of collection status, without summing older valuation history.
-- Home portfolio analysis summarizes actual transactions, expenses, and latest valuations separately for CNY and USD, including active cost basis, net cash invested, comparable unrealized return, valuation age, and sources without implicit FX conversion or fabricated realized returns.
+- The detail page retains original CNY/USD cost components and calculates complete costs and returns in the primary currency, with a unified timeline, record correction, and deletion.
+- Home sorting, valuation totals, and portfolio analysis use financial history and dated manual exchange rates; legacy card summary fields remain for compatibility.
+- Home total valuation uses remaining quantities and prioritizes direct quotes in the primary currency. Alternative quotes use the manual rate effective on their valuation date. Historical quotes are not added together, and valuation coverage is shown.
+- Portfolio analysis aggregates transactions, expenses, and valuations in the primary currency using dated manual exchange rates. Missing data remain unavailable with an explanation; returns are never fabricated.
 - Restore validates SQLite integrity and the current database baseline in staging before replacing current data. Official v1.1.0 and v1.1.1 backups remain supported through controlled upgrades; earlier schemas must first be upgraded with their corresponding older release.
 
 ## Common Commands

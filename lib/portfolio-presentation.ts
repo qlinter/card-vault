@@ -15,11 +15,12 @@ const dateTimeFormat = new Intl.DateTimeFormat("zh-CN", {
   hour12: false
 });
 
-export function formatPortfolioMoney(value: number, currency: string): string {
-  return `${currency} ${moneyFormat.format(value)}`;
+export function formatPortfolioMoney(value: number | null, currency: string): string {
+  return value === null ? "—" : `${currency} ${moneyFormat.format(value)}`;
 }
 
-export function formatSignedPortfolioMoney(value: number, currency: string): string {
+export function formatSignedPortfolioMoney(value: number | null, currency: string): string {
+  if (value === null) return "—";
   const sign = value > 0 ? "+" : value < 0 ? "−" : "";
   return `${currency} ${sign}${moneyFormat.format(Math.abs(value))}`;
 }

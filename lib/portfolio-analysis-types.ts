@@ -1,9 +1,9 @@
 import type { PortfolioScorecardKey, PortfolioSectionKey } from "./portfolio-analysis-protocol.ts";
 
 export type PortfolioMoneyRecord = { amountMinor: bigint; currency: string; occurredAt?: Date; createdAt?: Date };
-export type PortfolioTransactionRecord = PortfolioMoneyRecord & { kind: string; quantity?: number };
-export type PortfolioExpenseRecord = PortfolioMoneyRecord & { kind?: string; context?: string };
-export type PortfolioValuationRecord = PortfolioMoneyRecord & { valuedAt: Date; createdAt: Date; source: string };
+export type PortfolioTransactionRecord = PortfolioMoneyRecord & { kind: string; quantity?: number; paymentsJson?: string | null; amountKnown?: boolean };
+export type PortfolioExpenseRecord = PortfolioMoneyRecord & { kind?: string; context?: string; amountKnown?: boolean };
+export type PortfolioValuationRecord = PortfolioMoneyRecord & { valuedAt: Date; createdAt: Date; source: string; available?: boolean };
 
 export type PortfolioCardRecord = {
   id?: string;
@@ -40,7 +40,7 @@ export type PortfolioCardRecord = {
 
 export type PortfolioBreakdown = { name: string; count: number; values: Record<string, number> };
 export type PortfolioCurrencySummary = {
-  currency: string; purchaseAmount: number; salesAmount: number; expenseAmount: number; inventoryExpenseAmount: number; saleExpenseAmount: number; netCashInvested: number; latestValue: number; valuedCardCount: number; activeCostBasis: number; activeLatestValue: number; activeValuedCardCount: number; comparableCardCount: number; comparableCostBasis: number; comparableValue: number; realizedCost: number; realizedProfit: number; unrealizedDifference: number; unrealizedReturnRate: number | null; totalProfit: number;
+  currency: string; purchaseAmount: number | null; salesAmount: number | null; expenseAmount: number | null; inventoryExpenseAmount: number | null; saleExpenseAmount: number | null; netCashInvested: number | null; latestValue: number; valuedCardCount: number; activeCostBasis: number | null; activeLatestValue: number; activeValuedCardCount: number; comparableCardCount: number; comparableCostBasis: number | null; comparableValue: number; realizedCost: number | null; realizedProfit: number | null; unrealizedDifference: number | null; unrealizedReturnRate: number | null; totalProfit: number | null;
 };
 export type PortfolioSourceBreakdown = { name: string; count: number };
 export type PortfolioAllocationBreakdown = PortfolioBreakdown & { countShare: number; valueShare: Record<string, number>; averageValue: Record<string, number>; valuedCount: number };
@@ -63,6 +63,7 @@ export type PortfolioAnalysisAttentionItem = { priority: "high" | "medium" | "lo
 export type PortfolioAnalysisAction = { priority: number; action: string; reason: string; expectedBenefit: string; sourcePath: string | null };
 
 export type PortfolioSnapshot = {
+  accounting?: { version: string; currency: string; incompleteCardCount: number; missing: string[]; rates: Array<{ id: string; effectiveDate: string; rateMicros: string; revision: number; source: string }> };
   cardCount: number; activeCount: number; soldCount: number; targetCount: number; playerCount: number; scope: PortfolioScope;
   financials: { currencies: PortfolioCurrencySummary[]; transactionCoverageCount: number; expenseCoverageCount: number; valuationCoverageCount: number; freshValuationCount: number; staleValuationCount: number; latestValuationAt: string | null; oldestLatestValuationAt: string | null; valuationSources: PortfolioSourceBreakdown[] };
   quality: { gradedCount: number; rookieCount: number; autographCount: number; patchCount: number; serialNumberedCount: number; gradingCompanies: PortfolioAllocationBreakdown[]; grades: PortfolioAllocationBreakdown[]; autoTypes: PortfolioAllocationBreakdown[]; patchTypes: PortfolioAllocationBreakdown[] };

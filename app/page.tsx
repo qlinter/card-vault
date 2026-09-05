@@ -10,6 +10,9 @@ import { buildPortfolioScope } from "@/lib/portfolio-analysis";
 import { prisma } from "@/lib/prisma";
 import { toScalar } from "@/lib/query-params";
 import { commonSuccessMessages, resolveSuccessMessage } from "@/lib/feedback-messages";
+import { loadFinancialSettings } from "@/lib/financial-settings";
+import { reportingHistory } from "@/lib/financial-reporting";
+import { calculateCurrencyPosition } from "@/lib/position-accounting";
 
 type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -86,7 +89,20 @@ export default async function Home({ searchParams }: HomeProps) {
 
   const successMessage = resolveSuccessMessage(toScalar(params.success), commonSuccessMessages, { passthroughUnknown: true });
   const errorMessage = toScalar(params.error);
-  const valuationTotals = calculateLatestValuationTotals(cards);
+  const config = await loadFinancialSettings();
+  const reports = new Map(cards.map((card) => [card.id, reportingHistory({ ...card, holdingQuantity: card.collectionStatus === "target" || card.collectionStatus === "sold" ? 0 : card.holdingQuantity }, config)]));
+  const valuationTotals = calculateLatestValuationTotals([...reports.values()]);
+  if (/^(?:price|costCny|valueCny)(?:Asc|Desc)$/.test(query.sort ?? "")) {
+    const values = new Map([...reports].map(([id, report]) => {
+      const position = calculateCurrencyPosition(report, config.reportingCurrency);
+      return [id, query.sort?.startsWith("value") ? position.currentValueMinor : position.costComplete ? position.remainingCostMinor : null];
+    }));
+    cards.sort((left, right) => {
+      const a = values.get(left.id) ?? null, b = values.get(right.id) ?? null;
+      if (a === null || b === null) return a === b ? 0 : a === null ? 1 : -1;
+      return (a < b ? -1 : a > b ? 1 : 0) * (query.sort?.endsWith("Desc") ? -1 : 1);
+    });
+  }
   const valuationCurrencies = Object.keys(valuationTotals.totals).sort((left, right) => {
     if (left === "CNY") return -1;
     if (right === "CNY") return 1;
@@ -123,7 +139,7 @@ export default async function Home({ searchParams }: HomeProps) {
           <div className="valuation-summary-head">
             <strong>{"总估值"}</strong>
             <div className="valuation-summary-actions">
-              <a className="btn btn-secondary" href={returnSuffix ? `/portfolio?${returnSuffix}` : "/portfolio"}>组合中心</a>
+              <a className="btn btn-secondary" href={returnSuffix ? `/portfolio?${returnSuffix}` : "/portfolio"}>组合</a>
               <PortfolioAnalysisButton cardCount={cards.length} query={query} scope={portfolioScope} />
             </div>
           </div>
@@ -132,10 +148,11 @@ export default async function Home({ searchParams }: HomeProps) {
               <p className="h1 valuation-total-item" key={currency}>
                 {formatMinorMoneyGrouped(valuationTotals.totals[currency], currency)}
               </p>
-            )) : <p className="h1 valuation-total-item">CNY 0.00</p>}
+            )) : <p className="h1 valuation-total-item">—</p>}
           </div>
           <small className="muted valuation-coverage">
             估值覆盖 {valuationTotals.valuedCardCount}/{cards.length}
+            {" · "}{config.reportingCurrency}
           </small>
         </div>
       </div>

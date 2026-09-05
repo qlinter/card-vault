@@ -1,6 +1,6 @@
 # Card Vault Product Roadmap
 
-Last confirmed: 2026-08-28.
+Last confirmed: 2026-09-05.
 
 This document records Card Vault's long-term product direction. It is organized by capability stage rather than preassigned version numbers. Actual release versions are chosen from completed scope, workload, and data risk while preserving the agreed principles and overall sequence.
 
@@ -25,6 +25,80 @@ Development follows four connected tracks:
 - Do not combine a high-risk data migration with a major UI redesign in one development batch or formal release.
 - Keep Cloudflare Drop as a manual temporary publishing channel until permanent infrastructure exists.
 - Feature growth must preserve the established backup, recovery, local-session security, test-coverage, and repeatable-release baseline.
+
+## Current Improvement Priorities (2026-09-05)
+
+The review confirmed improvements to backup consistency, translation boundaries, database pagination, and visual regression checks. Multi-currency accounting now ranks ahead of performance and bulk features. Previously released capabilities still have remaining limitations.
+
+| Order | Work | Status and acceptance focus |
+| --- | --- | --- |
+| 1 | Database and media backup consistency | Pending; concurrent card creation, edits, and deletion must not produce missing media in a backup reported as complete. |
+| 2 | Multi-currency quantities, costs, valuations, and returns | Unified implementation has passed verification: physical quantities, original payments, manual FX settings, and all financial views share one reporting basis; see the [financial model](./financial-history-model.md). |
+| 3 | Translation boundaries | Pending; protect user content first, then replace document-wide DOM translation incrementally. |
+| 4 | Quality gates | Apply throughout development. Local lint and language interaction tests run again; fixed-environment visual comparisons and behavioral regressions for the first three items remain to be completed. |
+| 5 | Language icon and navigation | Source updated in this batch: the globe opens a menu to select Simplified Chinese or English, with right-aligned desktop navigation and separate rows on narrow screens. The financial work is delivered as a separate unified batch; no new release package has been built. |
+| 6 | Large-collection performance | Pending; database pagination and separate list/statistics queries, measured with 1,000/5,000/10,000 cards. |
+| 7 | Frequent management workflows | Later batches; simpler entry, table view, bulk edits, CSV/XLSX import/export, and recovery from accidental changes. |
+| 8 | Gallery visuals and advanced capabilities | Later batches; improve card prominence and readability before reminders and optional online services. |
+
+The icon and navigation are independent, low-risk changes delivered early. Backup integrity and financial correctness remain the highest priorities. Pending items stay pending until implemented and verified; release versions are not preassigned.
+
+## Confirmed Financial Plan: One Unified Development Batch
+
+Status: the unified batch is implemented and verified. The requirements and internal acceptance steps below remain the agreed batch scope. The language menu and navigation have passed targeted verification and are not scheduled again. The user will replace the legacy database used by the launcher; do not add an upgrade path for that database. Future financial schema changes must use the actual database baseline present at implementation time, without clearing or overwriting existing collections.
+
+Fix backup consistency first, then deliver the schema, accounting engine, manual FX settings, entry workflows, all financial views, and release verification in one unified financial batch. The six work items below describe internal dependencies, not separate deliverables. Do not enable partial functionality, split the work into multiple financial releases, or wait for a new start instruction after each item. Test throughout implementation and accept the entire batch together; any unfinished item keeps the batch incomplete.
+
+### Prerequisite: Consistent Backups and the Development Baseline
+
+Restrict and drain writes across cards, finances, shares, and the image queue while capturing a consistent database/media backup. Validate media references, resume writes on failure, and exercise concurrent creation, replacement, deletion, queue processing, and restore with isolated fixtures. Confirm the active data path and schema through metadata and retain a complete safety backup. Acceptance: no backup with missing referenced media is reported as complete; restored records and media agree.
+
+### Internal Work 1: Specify Business Rules and Acceptance Examples
+
+Define a transaction's single quantity change and multiple payment/receipt components, distinguishing mixed payment for one card from separate purchases of several cards. Specify reporting currency, quote selection, FX dates, rounding, same-day ordering, late expenses, corrections, and sold-state behavior. Start with manually entered and confirmed FX rates, retaining currency pair, direction, date, and source; automated rates remain out of scope.
+
+The proposed default reporting currency is CNY with USD selectable. Prefer the latest direct quote in that currency; convert another quote only with explicit valuation FX evidence, otherwise report it as unvalued. These are the implemented defaults for this batch. Show valuation and calculable-return coverage; missing cost, receipt, or required FX evidence yields an incomplete result rather than zero. Acceptance examples cover cross-currency expenses and sales, mixed payment, multiple physical cards, partial sales, quotes on different dates, missing FX, and holdings without transaction history.
+
+### Internal Work 2: Separate Quantity Events from Monetary Components
+
+Store the card, purchase/sale type, quantity change, and business date on the transaction, with related payment/receipt components in original currencies and minor units. Link expenses to holdings or transactions; retain independent quotes and traceable FX evidence. Distinguish unknown cost from known zero cost rather than treating every historical zero as a free acquisition.
+
+Design backup, transactional schema changes, rollback, and version markers for the actual baseline. Preserve existing transaction meanings and flag ambiguous mixed-currency history instead of merging quantities automatically. Acceptance: mixed payment changes quantity once, original money and media links survive, reruns do not duplicate records, and unknown schemas fail explicitly.
+
+### Internal Work 3: Unified Positions and Original-Currency Costs
+
+Implement one quantity ledger and oversell validation independent of receipt currency. Capitalize purchase/grading expenses as original-currency components, allocate each component by moving average, and absorb rounding remainder on the final sale. Deduct sale expenses from proceeds and preserve original-currency cash flows; replay business history after corrections or deletion. Acceptance: quantities are not duplicated, foreign-currency fees are retained, remaining plus allocated costs reconcile by currency, and cross-currency/partial sales calculate correctly.
+
+### Internal Work 4: FX Management in Settings, Quotes, and Returns
+
+Put all manual rate entry and maintenance in Settings → Financial Settings → Exchange Rates, alongside reporting currency, rate dates, sources, and history. Show the direction explicitly as “1 USD = … CNY” instead of asking for two independent reciprocal rates. Financial pages only display the applied evidence or missing-rate explanation and a link to Settings; transaction forms do not duplicate rate inputs.
+
+Store rates in the local database and include them in backup/restore rather than browser preferences alone. New records do not overwrite saved historical evidence. Corrections retain traceable revisions and identify affected calculations; saved historical snapshots remain unchanged. Automated rate retrieval stays outside this batch.
+
+Attach both currency quotes to the same physical quantity without adding them as separate assets. Convert historical costs using the evidence for each cost event, receipts using sale-event evidence, and valuations using an explicit quote/date policy. Today's FX must not overwrite historical costs. Preserve the original-currency ledger; separate investment-versus-FX attribution is outside the first release.
+
+Expose complete/incomplete calculation status and missing evidence. Produce complete returns and return rates only when all required inputs exist. Store algorithm version, quote, and FX evidence in snapshots rather than silently rewriting them later. Fixed acceptance example: CNY 1,000 purchase plus USD 20 grading at a confirmed 7 CNY/USD cost rate gives CNY 1,140 cost and CNY 360 unrealized profit against a direct CNY 1,500 quote. Removing the required FX evidence makes the complete return unavailable.
+
+### Internal Work 5: Unify Entry and Every Financial View
+
+Support one transaction with multiple payment/receipt components, clear expense destinations, and quotes. Resolve FX evidence for the applicable date from Settings, linking there for missing rates instead of adding transaction-form rate inputs. Show unified quantity, original-currency costs, alternative quotes, and missing return inputs. Use explicit translation keys for new interface text and protect user-authored content from document-wide translation.
+
+Home, portfolio totals, allocation, historical trends, comparisons, sorting, stored snapshots, and AI summaries must consume the same financial output. Keep old snapshot methodology versions; explain incompatible comparisons rather than inventing comparable differences. Keep private finances outside public share exports. Acceptance: matching scope, date, reporting currency, and coverage produce matching values across pages, with entry and correction usable in both languages and narrow layouts.
+
+### Internal Work 6: Integrated Regression and One Complete Financial Release
+
+Complete domain, transaction, backup/restore, HTTP, and UI regressions, including interruption, rollback, duplicate submissions, and baseline-data preservation. Reconcile representative anonymized history and resolve ambiguity before enabling complete returns. Validate installer/portable runtime, metadata, checksums, and release documentation. Retain rollback copies and publish financial changes separately from major visual redesigns or bulk imports.
+
+End-to-end acceptance includes entering FX in Settings, mixed-currency transactions/expenses, partial sale, reconciliation across home/details/portfolio, and backup/restore. Also verify corrected or missing FX, stable historical snapshots, and bilingual/narrow-screen Settings interaction.
+
+### After Financial Stabilization
+
+1. Finish internationalization of remaining pages and fixed-environment visual comparisons; all new work follows those requirements from the start.
+2. Add database pagination, separate statistics queries, and large-collection benchmarks.
+3. Improve entry and table views, then bulk edits, CSV/XLSX import/export, and recovery from accidental changes.
+4. Improve gallery readability, then reminders; online services remain conditional on infrastructure.
+
+Do not preassign release numbers or dates. Estimate effort once business and data boundaries are clear, preserving unified completion and acceptance. Authoritative accounting rules remain in the [financial model](./financial-history-model.md); this roadmap records implementation dependencies and acceptance order.
 
 ## Stage Overview
 

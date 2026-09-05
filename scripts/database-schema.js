@@ -2,9 +2,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 
-const schemaVersion = "1.2.0";
+const schemaVersion = "1.3.0";
 const previousSchemaVersion = "1.1.1";
-const requiredSchema = {
+const v120RequiredSchema = {
   Card: [
     "id", "playerName", "cardTitle", "sport", "team", "year", "brand", "productLine", "subsetName",
     "parallel", "cardNumber", "isSerialNumbered", "serialNumber", "serialRange", "isRookie",
@@ -29,13 +29,19 @@ const requiredSchema = {
   PortfolioSnapshotRecord: ["id", "savedViewId", "name", "queryJson", "snapshotJson", "capturedAt"]
 };
 
+const requiredSchema = {
+  ...v120RequiredSchema,
+  CardTransaction: [...v120RequiredSchema.CardTransaction, "paymentsJson", "amountKnown"],
+  FinancialSettings: ["id", "reportingCurrency"],
+  ExchangeRate: ["id", "effectiveDate", "rateMicros", "source", "revision", "createdAt"]
+};
 const portfolioTableNames = new Set(["PortfolioSavedView", "PortfolioSnapshotRecord"]);
 const prePortfolioRequiredSchema = Object.fromEntries(
-  Object.entries(requiredSchema).filter(([tableName]) => !portfolioTableNames.has(tableName))
+  Object.entries(v120RequiredSchema).filter(([tableName]) => !portfolioTableNames.has(tableName))
 );
 const preRotationRequiredSchema = {
-  ...requiredSchema,
-  CardImage: requiredSchema.CardImage.filter((column) => column !== "rotation")
+  ...v120RequiredSchema,
+  CardImage: v120RequiredSchema.CardImage.filter((column) => column !== "rotation")
 };
 const prePortfolioPreRotationRequiredSchema = Object.fromEntries(
   Object.entries(preRotationRequiredSchema).filter(([tableName]) => !portfolioTableNames.has(tableName))
@@ -267,7 +273,7 @@ function createUpgradeSnapshot(db, dbPath) {
   const backupDirectory = path.join(path.dirname(dbPath), "schema-backups");
   fs.mkdirSync(backupDirectory, { recursive: true });
   const timestamp = new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-");
-  const backupPath = path.join(backupDirectory, `card-vault-before-v1.2.0-${timestamp}.db`);
+  const backupPath = path.join(backupDirectory, `card-vault-before-v${schemaVersion}-${timestamp}.db`);
   db.exec(`VACUUM INTO '${escapedSqlString(backupPath)}';`);
   return backupPath;
 }
@@ -427,7 +433,11 @@ function initializeDatabase(dbPath) {
         const preRotationIssues = schemaIssues(db, preRotationRequiredSchema);
         const prePortfolioIssues = schemaIssues(db, prePortfolioRequiredSchema);
         const prePortfolioPreRotationIssues = schemaIssues(db, prePortfolioPreRotationRequiredSchema);
-        if (preRotationIssues.length === 0) {
+        if (schemaIssues(db, v120RequiredSchema).length === 0) {
+          backupPath = createUpgradeSnapshot(db, dbPath);
+          upgradeSource = "1.2.0";
+          upgraded = true;
+        } else if (preRotationIssues.length === 0) {
           backupPath = createUpgradeSnapshot(db, dbPath);
           upgradeSource = previousSchemaVersion;
           addImageRotation = true;
@@ -444,7 +454,7 @@ function initializeDatabase(dbPath) {
         } else {
           const v110Issues = schemaIssues(db, v110RequiredSchema);
           if (v110Issues.length > 0) {
-            throw new Error(`数据库不是 Card Vault v1.1.0、v${previousSchemaVersion} 或 v${schemaVersion} 支持结构：${v110Issues.join("；")}。`);
+            throw new Error(`数据库不是 Card Vault v1.1.0、v${previousSchemaVersion}、v1.2.0 或 v${schemaVersion} 支持结构：${v110Issues.join("；")}。`);
           }
           backupPath = createUpgradeSnapshot(db, dbPath);
           expenseBackfill = upgradeV110ToV111(db);
@@ -458,6 +468,19 @@ function initializeDatabase(dbPath) {
     try {
       if (addImageRotation) addCardImageRotation(db);
       createCurrentSchema(db);
+      const transactionColumns = new Set(db.prepare("PRAGMA table_info(CardTransaction)").all().map((column) => column.name));
+      if (!transactionColumns.has("paymentsJson")) db.exec("ALTER TABLE CardTransaction ADD COLUMN paymentsJson TEXT;");
+      if (!transactionColumns.has("amountKnown")) {
+        db.exec("ALTER TABLE CardTransaction ADD COLUMN amountKnown BOOLEAN NOT NULL DEFAULT 1 CHECK(amountKnown IN (0,1));");
+        if (!initialized) db.exec("UPDATE CardTransaction SET amountKnown = 0 WHERE amountMinor = 0;");
+      }
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS FinancialSettings (id TEXT PRIMARY KEY NOT NULL, reportingCurrency TEXT NOT NULL DEFAULT 'CNY' CHECK(reportingCurrency IN ('CNY','USD')));
+        CREATE TABLE IF NOT EXISTS ExchangeRate (id TEXT PRIMARY KEY NOT NULL, effectiveDate TEXT NOT NULL, rateMicros INTEGER NOT NULL CHECK(typeof(rateMicros) = 'integer' AND rateMicros > 0), source TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision > 0), createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
+        CREATE UNIQUE INDEX IF NOT EXISTS ExchangeRate_effectiveDate_revision_key ON ExchangeRate(effectiveDate, revision);
+        CREATE INDEX IF NOT EXISTS ExchangeRate_effectiveDate_idx ON ExchangeRate(effectiveDate);
+      `);
+      validateCurrentSchema(db);
       db.exec("COMMIT;");
     } catch (error) {
       db.exec("ROLLBACK;");

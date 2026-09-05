@@ -127,6 +127,7 @@ export type HistoryMoneyEntry = {
 export type HistoryTotals = Record<string, bigint>;
 
 export type DatedValuation = {
+  available?: boolean;
   valuedAt: Date;
   createdAt: Date;
   currency: string;
@@ -149,7 +150,7 @@ export function selectLatestValuation<T extends DatedValuation>(
     }
   }
 
-  return latest;
+  return latest?.available === false ? null : latest;
 }
 
 export function sumHistoryMoney(entries: readonly HistoryMoneyEntry[]): HistoryTotals {

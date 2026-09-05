@@ -1,18 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import { useLanguage } from "./language-provider";
 
 type AboutSettingsProps = {
   defaultVersion: string;
 };
 
-const releaseHighlights = [
-  "新增中英文界面切换，并完成主要页面的全英文覆盖与重复标题清理。",
-  "完成分享展馆升级：统一展馆样式、响应式预览、重点卡故事、图片优化和导出质量检查。",
-  "Windows 发布支持无证书生成完整产物；配置可信凭据后自动签名并校验时间戳。"
-];
 
 export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
+  const { locale } = useLanguage();
+  const releaseHighlights = locale === "en" ? [
+    "Mixed CNY/USD payments and cross-currency sales share one physical holding.",
+    "Settings now manage reporting currency and manual FX dates, sources, and revisions.",
+    "Financial views share one calculation; snapshots preserve their FX evidence and incomplete data remains unavailable.",
+    "Backups pause local writes and validate referenced media. The globe opens a language menu."
+  ] : [
+    "支持 CNY/USD 混合付款和跨币出售，同一实物数量只计算一次。",
+    "设置中管理报表币种、人工汇率、生效日期、来源和历史修订。",
+    "财务页面统一核算，快照保留汇率依据，资料缺失时明确标为不完整。",
+    "备份暂停本地写入并校验媒体引用；地球按钮打开语言菜单。"
+  ];
   const [expanded, setExpanded] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
 
@@ -48,7 +56,7 @@ export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
           {showReleaseNotes ? (
             <div className="about-release-notes" role="region" aria-label={`Card Vault v${defaultVersion} 更新说明`}>
               <div><h3>v{defaultVersion} 主要更新</h3><small>2026-08-28</small></div>
-              <ul>{releaseHighlights.map((item) => <li key={item}>{item}</li>)}</ul>
+              <ul data-i18n-skip>{releaseHighlights.map((item) => <li key={item}>{item}</li>)}</ul>
             </div>
           ) : null}
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText, UiElement } from "@/components/ui-text";
 import { useState } from "react";
 import type { PortfolioComparison } from "@/lib/portfolio-insights";
 import { formatPercentage } from "@/lib/percentage-format";
@@ -48,16 +49,16 @@ export function PortfolioComparisonPanel({ comparison }: { comparison: Portfolio
   return (
     <section className={styles.section}>
       <header className={styles.sectionHeader}>
-        <div><h2>组合比较</h2></div>
+        <div><h2><UiText text={"组合比较"} /></h2></div>
       </header>
       <div className={styles.comparisonSources}>
-        <div><span>基准</span><strong>{comparison.left.label}</strong><small>{compactDateTime(comparison.left.capturedAt)}</small></div>
-        <div><span>对象</span><strong>{comparison.right.label}</strong><small>{compactDateTime(comparison.right.capturedAt)}</small></div>
+        <div><span><UiText text={"基准"} /></span><strong>{comparison.left.label}</strong><small>{compactDateTime(comparison.left.capturedAt)}</small></div>
+        <div><span><UiText text={"对象"} /></span><strong>{comparison.right.label}</strong><small>{compactDateTime(comparison.right.capturedAt)}</small></div>
       </div>
       <div className={styles.comparisonCounts}>
-        {countRows.map(([label, left, right]) => <div key={label}><span>{label}</span><strong>{left} → {right}</strong><small>{right - left >= 0 ? "+" : ""}{right - left}</small></div>)}
+        {countRows.map(([label, left, right]) => <div key={label}><span><UiText text={label} /></span><strong>{left} → {right}</strong><small>{right - left >= 0 ? "+" : ""}{right - left}</small></div>)}
       </div>
-      <details><summary>核算依据</summary>{[comparison.left, comparison.right].map((point, index) => <div key={index}><strong>{point.label}</strong><FinancialReportNote accounting={point.accounting} /></div>)}</details>
+      <details><summary><UiText text={"核算依据"} /></summary>{[comparison.left, comparison.right].map((point, index) => <div key={index}><strong>{point.label}</strong><FinancialReportNote accounting={point.accounting} /></div>)}</details>
       <div className={styles.comparisonCurrencyGrid}>
         {currencies.map((currency) => {
           const left = comparison.left.currencies.find((item) => item.currency === currency);
@@ -70,16 +71,16 @@ export function PortfolioComparisonPanel({ comparison }: { comparison: Portfolio
           ] as const;
           return <article key={currency}><h3>{currency}</h3>{rows.map(([label, leftValue, rightValue]) => {
             const difference = rightValue === null || leftValue === null ? null : rightValue - leftValue;
-            return <div key={label}><span>{label}</span><strong>{money(leftValue, currency)} → {money(rightValue, currency)}</strong><small className={(difference ?? 0) >= 0 ? styles.positive : styles.negative}>{signedMoney(difference, currency)}</small></div>;
+            return <div key={label}><span><UiText text={label} /></span><strong>{money(leftValue, currency)} → {money(rightValue, currency)}</strong><small className={(difference ?? 0) >= 0 ? styles.positive : styles.negative}>{signedMoney(difference, currency)}</small></div>;
           })}</article>;
         })}
       </div>
       {structures.length > 0 ? <div className={styles.structureComparison}>
         <header>
-          <div><h3>结构变化</h3></div>
-          {currencies.length > 0 ? <div className={styles.currencySwitch} role="group" aria-label="结构比较币种">
+          <div><h3><UiText text={"结构变化"} /></h3></div>
+          {currencies.length > 0 ? <UiElement as="div" uiAttributes={["aria-label"]} className={styles.currencySwitch} role="group" aria-label="结构比较币种">
             {currencies.map((currency) => <button key={currency} type="button" className={structureCurrency === currency ? styles.active : undefined} onClick={() => setStructureCurrency(currency)}>{currency}</button>)}
-          </div> : null}
+          </UiElement> : null}
         </header>
         <div className={styles.structureComparisonGrid}>
           {structures.map((structure) => <article key={structure.key}>

@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText, UiElement } from "@/components/ui-text";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PortfolioSnapshot, PortfolioTimeSeriesPoint } from "@/lib/portfolio-analysis";
 import type { PortfolioFinancialHistoryPoint } from "@/lib/portfolio-insights";
@@ -40,7 +41,7 @@ function LineChart({ months, series, currency, ariaLabel, emptyLabel, coverage }
   emptyLabel: string;
   coverage?: Array<{ active: number; valued: number; costKnown: number } | undefined>;
 }) {
-  const { locale } = useLanguage();
+  const { locale, t } = useLanguage();
   const container = useRef<HTMLDivElement>(null);
   const [availableWidth, setAvailableWidth] = useState(720);
   useEffect(() => {
@@ -69,23 +70,23 @@ function LineChart({ months, series, currency, ariaLabel, emptyLabel, coverage }
   const monthLabelIndexes = new Set(portfolioTrendLabelIndexes(months.length, plotWidth));
 
   if (months.length === 0 || !series.some((item) => item.values.some((value) => value !== null))) {
-    return <div className={styles.chartEmpty}>{emptyLabel}</div>;
+    return <div className={styles.chartEmpty}><UiText text={emptyLabel} /></div>;
   }
 
   return (
     <div className={styles.chartWrap} ref={container}>
       <div className={styles.legend}>
-        {series.map((item) => <span key={item.key}><i style={{ background: item.color }} />{item.label}</span>)}
+        {series.map((item) => <span key={item.key}><i style={{ background: item.color }} /><UiText text={item.label} /></span>)}
       </div>
       <div className={`${styles.chartTooltip}${hoveredIndex < 0 ? ` ${styles.chartTooltipIdle}` : ""}`} role="status">
         {hoveredIndex >= 0 ? <>
           <strong>{months[hoveredIndex]}</strong>
-          {series.map((item) => <span key={item.key}><i style={{ background: item.color }} />{item.label} {money(item.values[hoveredIndex], currency)}{item.counts ? <span data-i18n-skip>{` · ${item.counts[hoveredIndex]} ${locale === "en" ? item.countUnit : item.countUnit === "cards" ? "张" : "笔"}`}</span> : null}</span>)}
+          {series.map((item) => <span key={item.key}><i style={{ background: item.color }} /><UiText text={item.label} /> {money(item.values[hoveredIndex], currency)}{item.counts ? <span data-i18n-skip>{` · ${item.counts[hoveredIndex]} ${locale === "en" ? item.countUnit : item.countUnit === "cards" ? "张" : "笔"}`}</span> : null}</span>)}
           {counts ? <span data-i18n-skip>{locale === "en" ? `Valuation coverage ${counts.valued}/${counts.active} · Complete costs ${counts.costKnown}/${counts.active}` : `估值覆盖 ${counts.valued}/${counts.active} · 成本完整 ${counts.costKnown}/${counts.active}`}</span> : null}
         </> : null}
       </div>
       <div className={styles.chartScroller} data-horizontal-scroll={horizontallyScrollable ? "enabled" : "disabled"} onMouseLeave={() => setHoveredMonth(null)}>
-        <svg className={styles.chart} viewBox={`0 0 ${chartWidth} 270`} style={{ width: chartWidth, height: 270 }} role="img" aria-label={ariaLabel}>
+        <svg className={styles.chart} viewBox={`0 0 ${chartWidth} 270`} style={{ width: chartWidth, height: 270 }} role="img" aria-label={t(ariaLabel)}>
           {[0, 1, 2, 3, 4].map((line) => {
             const value = maximum - valueRange * line / 4;
             const y = 11 + line * ((plotHeight - 22) / 4);
@@ -98,7 +99,7 @@ function LineChart({ months, series, currency, ariaLabel, emptyLabel, coverage }
           )))}
           {months.map((month, index) => (
             <g key={month}>
-              <rect className={styles.hoverTarget} x={xAt(index) - hitWidth / 2} y="0" width={hitWidth} height={plotHeight} tabIndex={0} role="button" aria-label={`${month} 月度数据`} onClick={() => setHoveredMonth(month)} onMouseEnter={() => setHoveredMonth(month)} onFocus={() => setHoveredMonth(month)} />
+              <UiElement as="rect" uiMessages={{"aria-label": {text:"{0} 月度数据",values:[month],translateValues:[]}}} className={styles.hoverTarget} x={xAt(index) - hitWidth / 2} y="0" width={hitWidth} height={plotHeight} tabIndex={0} role="button"  onClick={() => setHoveredMonth(month)} onMouseEnter={() => setHoveredMonth(month)} onFocus={() => setHoveredMonth(month)} />
               {monthLabelIndexes.has(index) ? <text x={xAt(index)} y="258" textAnchor="middle">{month}</text> : null}
             </g>
           ))}
@@ -140,10 +141,10 @@ export function PortfolioFinancialHistorySection({ points, currencies }: { point
   const [range, setRange] = useState<PortfolioTrendRange>(12);
   return <section className={styles.section}>
     <header className={styles.sectionHeader}>
-      <div><h2>财务历史趋势</h2></div>
-      <select className={styles.rangeSelect} aria-label="财务历史趋势时间范围" value={range} onChange={(event) => setRange(event.target.value === "all" ? "all" : Number(event.target.value) as 12 | 24)}>
-        <option value={12}>近12个月</option><option value={24}>近24个月</option><option value="all">所有</option>
-      </select>
+      <div><h2><UiText text={"财务历史趋势"} /></h2></div>
+      <UiElement as="select" uiAttributes={["aria-label"]} className={styles.rangeSelect} aria-label="财务历史趋势时间范围" value={range} onChange={(event) => setRange(event.target.value === "all" ? "all" : Number(event.target.value) as 12 | 24)}>
+        <option value={12}><UiText text={"近12个月"} /></option><option value={24}><UiText text={"近24个月"} /></option><option value="all"><UiText text={"所有"} /></option>
+      </UiElement>
     </header>
     <div className={styles.trendGrid}>
       {(currencies.length ? currencies : ["CNY"]).map((currency) => <article key={currency} className={styles.chartCard}><h3>{currency}</h3><FinancialHistoryChart points={points} currency={currency} range={range} /></article>)}
@@ -155,10 +156,10 @@ export function PortfolioActivityTrendSection({ snapshot, currencies, asOfMonth 
   const [range, setRange] = useState<PortfolioTrendRange>(12);
   return <section className={styles.section}>
     <header className={styles.sectionHeader}>
-      <div><h2>活动趋势</h2></div>
-      <select className={styles.rangeSelect} aria-label="活动趋势时间范围" value={range} onChange={(event) => setRange(event.target.value === "all" ? "all" : Number(event.target.value) as 12 | 24)}>
-        <option value={12}>近12个月</option><option value={24}>近24个月</option><option value="all">所有</option>
-      </select>
+      <div><h2><UiText text={"活动趋势"} /></h2></div>
+      <UiElement as="select" uiAttributes={["aria-label"]} className={styles.rangeSelect} aria-label="活动趋势时间范围" value={range} onChange={(event) => setRange(event.target.value === "all" ? "all" : Number(event.target.value) as 12 | 24)}>
+        <option value={12}><UiText text={"近12个月"} /></option><option value={24}><UiText text={"近24个月"} /></option><option value="all"><UiText text={"所有"} /></option>
+      </UiElement>
     </header>
     <div className={styles.trendGrid}>
       {(currencies.length ? currencies : ["CNY"]).map((currency) => <article key={currency} className={styles.chartCard}><h3>{currency}</h3><TrendChart snapshot={snapshot} currency={currency} range={range} asOfMonth={asOfMonth} /></article>)}

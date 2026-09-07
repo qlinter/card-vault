@@ -134,3 +134,16 @@ test("missing valuation FX does not hide known purchase cost or realized results
   assert.equal(result.snapshot.financials.currencies[0].realizedProfit, 0);
   assert.equal(result.snapshot.financials.currencies[0].totalProfit, null);
 });
+
+test("incomplete card references keep distinct IDs and combine cost and valuation issues", () => {
+  const missing = { ...card(), transactions: [], expenses: [], valuations: [] };
+  const result = buildReportingPortfolio([{ ...missing, id: "first" }, { ...missing, id: "second" }, { ...card(), id: "complete" }], { isFiltered: false, criteria: [] }, config, at("2026-09-07"));
+  assert.equal(result.snapshot.accounting?.incompleteCardCount, 2);
+  assert.deepEqual(result.incompleteCards.map(row => row.id), ["first", "second"]);
+  for (const item of result.incompleteCards) {
+    assert.equal(item.playerName, "A");
+    assert.equal(item.cardTitle, "B");
+    assert.ok(item.reasons.some(reason => reason.startsWith("COST")));
+    assert.ok(item.reasons.includes("VALUATION"));
+  }
+});

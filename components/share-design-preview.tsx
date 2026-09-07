@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText, UiElement } from "@/components/ui-text";
 import { useMemo, useState, type CSSProperties } from "react";
 import type { ShareCardDraft, SharePickerCard } from "@/components/share-card-picker";
 import type { ShareThemeValues } from "@/components/share-theme-generator";
@@ -100,23 +101,23 @@ export function ShareDesignPreview({
       data-preview-device={previewMode}
     >
       <div className="share-live-preview-head">
-        <strong>实时预览</strong>
-        <div className="share-preview-modes" role="group" aria-label="预览设备">
+        <strong><UiText text={"实时预览"} /></strong>
+        <UiElement as="div" uiAttributes={["aria-label"]} className="share-preview-modes" role="group" aria-label="预览设备">
           {sharePreviewDevices.map((device) => (
-            <button
+            <UiElement as="button" uiMessages={{"aria-label": {text:"{0}预览，{1} 像素",values:[device.label,device.width],translateValues:[0]}}}
               key={device.id}
               type="button"
               className={previewMode === device.id ? "active" : ""}
               aria-pressed={previewMode === device.id}
-              aria-label={`${device.label}预览，${device.width} 像素`}
+
               onClick={() => setPreviewMode(device.id)}
             >
-              {device.label}
-            </button>
+              <UiText text={device.label} />
+            </UiElement>
           ))}
-        </div>
+        </UiElement>
       </div>
-      <iframe title="分享展馆实时预览" srcDoc={document} sandbox={sharePreviewSandboxPolicy} />
+      <UiElement as="iframe" uiAttributes={["title"]} title="分享展馆实时预览" srcDoc={document} sandbox={sharePreviewSandboxPolicy} />
     </aside>
   );
 }

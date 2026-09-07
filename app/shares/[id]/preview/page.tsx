@@ -1,3 +1,4 @@
+import { UiText, UiElement } from "@/components/ui-text";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { normalizeImagePath } from "@/lib/image-path";
@@ -83,19 +84,13 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
           <h1 className="h1">{share.title}</h1>
         </div>
         <div className="title-actions">
-          <Link className="btn btn-secondary" href="/shares">
-            返回分享
-          </Link>
-          <Link className="btn btn-secondary" href={`/shares/${share.id}/edit`}>
-            编辑
-          </Link>
-          <Link className="btn btn-primary" href={`/shares/${share.id}/export`}>
-            导出
-          </Link>
+          <Link className="btn btn-secondary" href="/shares"><UiText text={"返回分享"} /></Link>
+          <Link className="btn btn-secondary" href={`/shares/${share.id}/edit`}><UiText text={"编辑"} /></Link>
+          <Link className="btn btn-secondary" href={`/shares/${share.id}/export`}><UiText text={"导出"} /></Link>
         </div>
       </div>
       <div className="share-preview-frame-shell">
-        <iframe title={`${share.title} 展馆预览`} srcDoc={renderPreviewDocument(data)} sandbox={sharePreviewSandboxPolicy} />
+        <UiElement as="iframe" title="Gallery preview" uiMessages={{"title": {text:"{0} 展馆预览",values:[share.title],translateValues:[]}}}  srcDoc={renderPreviewDocument(data)} sandbox={sharePreviewSandboxPolicy} />
       </div>
     </div>
   );

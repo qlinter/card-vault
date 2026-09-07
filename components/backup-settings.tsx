@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText } from "@/components/ui-text";
 import { useEffect, useState } from "react";
 import { OperationProgress } from "@/components/operation-progress";
 import { useDesktopStorageProgress } from "@/components/use-desktop-storage-progress";
@@ -120,25 +121,25 @@ export function BackupSettings() {
     <section className="panel settings-section">
       <div className="title-row" style={{ marginBottom: "0.4rem" }}>
         <div>
-          <h2>备份与恢复</h2>
+          <h2><UiText text={"备份与恢复"} /></h2>
         </div>
         <div className="backup-actions">
           <button type="button" className="btn btn-secondary" onClick={handleChooseDirectory} disabled={busy}>
-            {busyAction === "choose" ? "选择中..." : "设置备份路径"}
+            {busyAction === "choose" ? <UiText text={"选择中..."} /> : <UiText text={"设置备份路径"} />}
           </button>
           <button type="button" className="btn btn-primary" onClick={handleBackup} disabled={busy}>
-            {busyAction === "backup" ? "备份中..." : "一键备份"}
+            {busyAction === "backup" ? <UiText text={"备份中..."} /> : <UiText text={"一键备份"} />}
           </button>
           <button type="button" className="btn btn-danger" onClick={handleRestore} disabled={busy}>
-            {busyAction === "restore" ? "恢复中..." : "备份恢复"}
+            {busyAction === "restore" ? <UiText text={"恢复中..."} /> : <UiText text={"备份恢复"} />}
           </button>
         </div>
       </div>
-      <p className="muted" style={{ margin: "0.35rem 0 0" }}>
-        <strong>备份路径：</strong>{backupPath}
+      <p className="settings-path">
+        <UiText text={"备份路径："} />{["正在读取...", "当前运行环境不支持本地备份。", "读取备份路径失败。"].includes(backupPath) ? <UiText text={backupPath} /> : backupPath}
       </p>
       <OperationProgress progress={progress} />
-      {message ? <p className="muted backup-message">{message}</p> : null}
+      {message ? <p className="muted backup-message"><UiText text={message} /></p> : null}
     </section>
   );
 }

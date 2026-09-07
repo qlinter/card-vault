@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText } from "@/components/ui-text";
 import type { MouseEvent } from "react";
 
 type BackButtonProps = {
@@ -23,8 +24,6 @@ export function BackButton({ href, className = "btn btn-secondary" }: BackButton
   }
 
   return (
-    <a href={href} className={className} onClick={handleClick}>
-      返回上一页
-    </a>
+    <a href={href} className={className} onClick={handleClick}><UiText text={"返回上一页"} /></a>
   );
 }

@@ -1,4 +1,5 @@
-﻿import { deleteCardAction } from "@/app/actions/cards";
+import { UiText } from "@/components/ui-text";
+import { deleteCardAction } from "@/app/actions/cards";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 
@@ -17,19 +18,14 @@ export default async function DeleteCardPage({ params }: DeleteProps) {
   return (
     <div className="page">
       <div className="panel" style={{ maxWidth: "680px", margin: "0 auto" }}>
-        <h1 className="h1">确认删除</h1>
-        <p>
-          即将删除：{card.playerName} - {card.cardTitle}
+        <h1 className="h1"><UiText text={"确认删除"} /></h1>
+        <p><UiText text={"即将删除："} />{card.playerName} - {card.cardTitle}
         </p>
-        <p className="muted">删除后无法恢复，请再次确认。</p>
+        <p className="muted"><UiText text={"删除后无法恢复，请再次确认。"} /></p>
 
         <form action={deleteCardAction.bind(null, id)} style={{ display: "flex", gap: "0.7rem", marginTop: "1rem" }}>
-          <button type="submit" className="btn btn-danger">
-            确认删除
-          </button>
-          <a href={`/cards/${id}`} className="btn btn-secondary">
-            返回详情
-          </a>
+          <button type="submit" className="btn btn-danger"><UiText text={"确认删除"} /></button>
+          <a href={`/cards/${id}`} className="btn btn-secondary"><UiText text={"返回详情"} /></a>
         </form>
       </div>
     </div>

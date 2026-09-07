@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText } from "@/components/ui-text";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { errorMessage } from "@/lib/feedback-messages";
@@ -186,23 +187,17 @@ export function AiRecognitionPanel({
     <div className="ai-recognition-panel">
       <div className="title-row" style={{ marginBottom: "0.6rem" }}>
         <div>
-          <strong>{mode === "edit" ? "AI 识图填充" : "AI 识图录入"}</strong>
+          <strong>{mode === "edit" ? <UiText text={"AI 识图填充"} /> : <UiText text={"AI 识图录入"} />}</strong>
           <p className="muted" style={{ margin: "0.3rem 0 0" }}>
-            {mode === "edit"
-              ? "使用已有默认图片或重新选择图片，AI 会补充字段和中文展示描述，备注保持为空。"
-              : defaultImageUrls.length > 0
-                ? "可直接使用队列预处理图片识别，也可重新选择 1-2 张图片；保存前仍可手动修改。"
-                : "选择 1-2 张正反面图片，AI 会生成字段建议；保存前仍可手动修改，备注保持为空。"}
+            {mode === "edit" ? <UiText text={"使用已有默认图片或重新选择图片，AI 会补充字段和中文展示描述，备注保持为空。"} /> : defaultImageUrls.length > 0 ? <UiText text={"可直接使用队列预处理图片识别，也可重新选择 1-2 张图片；保存前仍可手动修改。"} /> : <UiText text={"选择 1-2 张正反面图片，AI 会生成字段建议；保存前仍可手动修改，备注保持为空。"} />}
           </p>
         </div>
-        <Link href="/settings" className="btn btn-secondary">
-          AI 设置
-        </Link>
+        <Link href="/settings" className="btn btn-secondary"><UiText text={"AI 设置"} /></Link>
       </div>
 
       <div className="ai-recognition-grid">
         <label className="field">
-          <span>识别图片</span>
+          <span><UiText text={"识别图片"} /></span>
           <input
             ref={fileInputRef}
             type="file"
@@ -214,18 +209,16 @@ export function AiRecognitionPanel({
 
         <label className="field ai-checkbox-field">
           <span>
-            <input type="checkbox" checked={overwrite} onChange={(event) => setOverwrite(event.target.checked)} /> 覆盖当前字段
-          </span>
-          <small className="muted">默认只填空字段；需要刷新已有信息时再勾选覆盖。</small>
+            <input type="checkbox" checked={overwrite} onChange={(event) => setOverwrite(event.target.checked)} /><UiText text={"覆盖当前字段"} /></span>
+          <small className="muted"><UiText text={"默认只填空字段；需要刷新已有信息时再勾选覆盖。"} /></small>
         </label>
       </div>
 
       {defaultImageUrls.length > 0 ? (
         <label className="field ai-existing-image-option">
           <span>
-            <input type="checkbox" checked={useExistingImages} onChange={(event) => setUseExistingImages(event.target.checked)} /> 使用{mode === "edit" ? "已有默认" : "队列预处理"}图片识别
-          </span>
-          <small className="muted">默认使用当前项目的前 {Math.min(defaultImageUrls.length, 2)} 张图片。</small>
+            <input type="checkbox" checked={useExistingImages} onChange={(event) => setUseExistingImages(event.target.checked)} /><UiText text={" 使用"} />{mode === "edit" ? <UiText text={"已有默认"} /> : <UiText text={"队列预处理"} />}<UiText text={"图片识别"} /></span>
+          <small className="muted"><UiText text={"默认使用当前项目的前 "} />{Math.min(defaultImageUrls.length, 2)}<UiText text={" 张图片。"} /></small>
         </label>
       ) : null}
 
@@ -237,13 +230,13 @@ export function AiRecognitionPanel({
           onClick={handleRecognize}
           disabled={isPending}
         >
-          {isPending ? "识别中..." : mode === "edit" ? "识别并填充" : "识别并填入"}
+          {isPending ? <UiText text={"识别中..."} /> : mode === "edit" ? <UiText text={"识别并填充"} /> : <UiText text={"识别并填入"} />}
         </button>
       </div>
 
       {message ? (
         <p className="muted" style={{ margin: "0.65rem 0 0" }}>
-          {message}
+          <UiText text={message} />
         </p>
       ) : null}
     </div>

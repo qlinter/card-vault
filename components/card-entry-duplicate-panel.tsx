@@ -1,5 +1,6 @@
 "use client";
 
+import { UiElement, UiText } from "@/components/ui-text";
 import { useEffect, useRef, useState } from "react";
 import { readCardFormValues } from "@/lib/card-entry-domain";
 import type { CardEntryDuplicateCandidate } from "@/lib/card-entry-duplicate-domain";
@@ -66,8 +67,8 @@ export function CardEntryDuplicatePanel() {
   return (
     <div ref={panelRef}>
       {candidates.length > 0 ? (
-        <section className="entry-duplicate-panel" aria-label="疑似重复卡">
-          <strong>发现疑似重复卡</strong>
+        <UiElement as="section" uiAttributes={["aria-label"]} className="entry-duplicate-panel" aria-label="疑似重复卡">
+          <strong><UiText text={"发现疑似重复卡"} /></strong>
           <div className="entry-duplicate-list">
             {candidates.map((candidate) => (
               <a
@@ -83,13 +84,13 @@ export function CardEntryDuplicatePanel() {
                 {candidate.imageUrl ? <img src={candidate.imageUrl} alt="" /> : null}
                 <span>
                   <b>{candidate.playerName} · {candidate.cardTitle}</b>
-                  <small>{candidate.level === "high" ? "高度疑似" : "可能重复"}：{candidate.matches.join("、")}</small>
+                  <small>{candidate.level === "high" ? <UiText text={"高度疑似"} /> : <UiText text={"可能重复"} />}：{candidate.matches.join("、")}</small>
                 </span>
               </a>
             ))}
           </div>
-          <p>提示不会阻止保存，请结合多份持仓或不同评级情况判断。</p>
-        </section>
+          <p><UiText text={"提示不会阻止保存，请结合多份持仓或不同评级情况判断。"} /></p>
+        </UiElement>
       ) : null}
     </div>
   );

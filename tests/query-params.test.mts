@@ -25,3 +25,12 @@ test("return context rejects external and unrelated application paths", () => {
   assert.equal(normalizeReturnTo("/settings"), undefined);
   assert.equal(normalizeReturnTo("/cards/existing"), undefined);
 });
+
+test("export return links retain local search state and reject lookalike routes", () => {
+  for (const base of ["/settings", "/settings/data"]) {
+    const target = base + "?exportQ=Jordan&exportPage=1&exportView=table#data-export";
+    assert.equal(normalizeReturnTo(target), target);
+    assert.equal(normalizeReturnTo(base + "#data-export"), base + "#data-export");
+  }
+  for (const target of ["/settings.evil.test?exportPage=1", "/settings/data/../../outside?x=1", "//evil.test/settings?exportPage=1"]) assert.equal(normalizeReturnTo(target), undefined);
+});

@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText } from "@/components/ui-text";
 import { useState } from "react";
 import { errorMessage } from "@/lib/feedback-messages";
 
@@ -105,15 +106,13 @@ export function ShareThemeGenerator({ cards, currentValues, onApplySuggestion }:
   return (
     <section className="share-ai-panel">
       <div>
-        <strong>AI 生成主题</strong>
+        <strong><UiText text={"AI 生成主题"} /></strong>
       </div>
       <div className="share-ai-actions">
         <label className="inline-check">
-          <input type="checkbox" checked={overwrite} onChange={(event) => setOverwrite(event.target.checked)} />
-          覆盖当前文案
-        </label>
+          <input type="checkbox" checked={overwrite} onChange={(event) => setOverwrite(event.target.checked)} /><UiText text={"覆盖当前文案"} /></label>
         <button type="button" className="btn btn-primary" onClick={generateTheme} disabled={loading}>
-          {loading ? "生成中..." : "生成主题"}
+          {loading ? <UiText text={"生成中..."} /> : <UiText text={"生成主题"} />}
         </button>
       </div>
       {status ? <p className="muted" role="status">{status}</p> : null}

@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText, UiElement } from "@/components/ui-text";
 import type { ShareGalleryCardsPanelProps } from "@/components/share-gallery-editor-types";
 import { maxShareFeaturedCards } from "@/lib/share-presentation";
 
@@ -17,8 +18,8 @@ export function ShareGalleryCardsPanel({
   return (
     <section className="panel share-section share-editor-v2-panel">
       <div className="share-section-head">
-        <h2>单卡展示编辑</h2>
-        <span className="muted">{cards.length} 张卡片</span>
+        <h2><UiText text={"单卡展示编辑"} /></h2>
+        <span className="muted">{cards.length}<UiText text={" 张卡片"} /></span>
       </div>
       <div className="share-item-editor">
         {cards.map((card) => {
@@ -44,30 +45,30 @@ export function ShareGalleryCardsPanel({
               <input type="hidden" name={`displayTitle-${card.id}`} value={draft.displayTitle} />
               <input type="hidden" name={`displayDescription-${card.id}`} value={draft.displayDescription} />
               <div className="share-item-card-heading">
-                <span
+                <UiElement as="span" uiAttributes={["title"]}
                   className="share-drag-handle"
                   draggable
                   title="拖拽调整卡片顺序"
                   aria-hidden="true"
                   onDragStart={() => setDraggedCardId(card.id)}
-                >⠿</span>
+                >⠿</UiElement>
                 <strong>{card.playerName}</strong>
                 <p className="muted">{card.cardTitle}</p>
-                <div className="share-keyboard-order" aria-label={`${card.playerName} 排序`}>
-                  <button type="button" className="icon-btn" title="上移卡片" onClick={() => onMoveCard(card.id, -1)} disabled={cards[0]?.id === card.id}>↑</button>
-                  <button type="button" className="icon-btn" title="下移卡片" onClick={() => onMoveCard(card.id, 1)} disabled={cards.at(-1)?.id === card.id}>↓</button>
-                </div>
+                <UiElement as="div" uiMessages={{"aria-label": {text:"{0} 排序",values:[card.playerName],translateValues:[]}}} className="share-keyboard-order" >
+                  <UiElement as="button" uiAttributes={["title"]} type="button" className="icon-btn" title="上移卡片" onClick={() => onMoveCard(card.id, -1)} disabled={cards[0]?.id === card.id}>↑</UiElement>
+                  <UiElement as="button" uiAttributes={["title"]} type="button" className="icon-btn" title="下移卡片" onClick={() => onMoveCard(card.id, 1)} disabled={cards.at(-1)?.id === card.id}>↓</UiElement>
+                </UiElement>
               </div>
               <label className="field share-sort-field">
-                <span>排序</span>
+                <span><UiText text={"排序"} /></span>
                 <input type="number" value={draft.sortOrder} onChange={(event) => onDraftChange(card.id, { sortOrder: event.target.value })} />
               </label>
               <label className="field">
-                <span>展示标题</span>
+                <span><UiText text={"展示标题"} /></span>
                 <input value={draft.displayTitle} placeholder={card.cardTitle} onChange={(event) => onDraftChange(card.id, { displayTitle: event.target.value })} />
               </label>
               <label className="field full">
-                <span>卡片故事（公开）</span>
+                <span><UiText text={"卡片故事（公开）"} /></span>
                 <textarea
                   value={draft.displayDescription}
                   placeholder={card.publicDescription || "写下这张卡为何重要；留空时使用卡片公开描述"}
@@ -81,7 +82,7 @@ export function ShareGalleryCardsPanel({
                   disabled={featuredLimitReached}
                   onChange={(event) => onFeaturedCardChange(card.id, event.target.checked)}
                 />
-                <strong>设为重点卡</strong>
+                <strong><UiText text={"设为重点卡"} /></strong>
               </label>
             </article>
           );

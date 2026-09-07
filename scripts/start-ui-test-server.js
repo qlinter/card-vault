@@ -149,7 +149,7 @@ async function startUiTestServer() {
   if (init.status !== 0) throw new Error(init.stderr || init.stdout || "Unable to initialize UI test database.");
   seedDatabase();
 
-  const server = spawn(process.execPath, [nextCliPath, "start", "--hostname", "127.0.0.1", "--port", String(port)], {
+  const server = spawn(process.execPath, ["--require", path.join(__dirname, "ui-test-clock.js"), nextCliPath, "start", "--hostname", "127.0.0.1", "--port", String(port)], {
     cwd: rootDir,
     env,
     stdio: ["ignore", "inherit", "inherit"],

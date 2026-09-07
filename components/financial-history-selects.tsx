@@ -1,3 +1,4 @@
+import { UiText } from "@/components/ui-text";
 import { supportedHistoryCurrencies, valuationSources } from "@/lib/financial-history";
 
 const currencyLabels: Record<(typeof supportedHistoryCurrencies)[number], string> = {
@@ -15,7 +16,7 @@ export function HistoryCurrencySelect({ name, defaultValue = "CNY", required = f
   return (
     <select name={name} defaultValue={defaultValue} required={required}>
       {supportedHistoryCurrencies.map((currency) => (
-        <option value={currency} key={currency}>{currencyLabels[currency]}</option>
+        <option value={currency} key={currency}><UiText text={currencyLabels[currency]} /></option>
       ))}
     </select>
   );
@@ -24,7 +25,7 @@ export function HistoryCurrencySelect({ name, defaultValue = "CNY", required = f
 export function ValuationSourceSelect({ name, defaultValue = "个人估计", required = false }: SelectProps) {
   return (
     <select name={name} defaultValue={defaultValue} required={required}>
-      {valuationSources.map((source) => <option value={source} key={source}>{source}</option>)}
+      {valuationSources.map((source) => <option value={source} key={source}><UiText text={source} /></option>)}
     </select>
   );
 }

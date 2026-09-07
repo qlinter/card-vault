@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText, UiElement } from "@/components/ui-text";
 import Link from "next/link";
 import { useState } from "react";
 import type {
@@ -47,21 +48,21 @@ function AllocationCard({ title, items, concentration, currency, filterField }: 
     : right.countShare - left.countShare).slice(0, 5);
   const hhi = concentration.hhiByCurrency[currency] ?? 0;
   return <article className={styles.allocationCard}>
-    <header><div><span>结构分布</span><h3>{title}</h3></div></header>
+    <header><div><span><UiText text={"结构分布"} /></span><h3><UiText text={title} /></h3></div></header>
     <div className={styles.allocationBars}>
       {topItems.map((item) => {
         const share = hasValues ? item.valueShare[currency] ?? 0 : item.countShare;
         return <div key={item.name} className={styles.allocationRow}>
-          <div>{item.name === "未填写" ? <span>{item.name}</span> : <Link href={`/?${filterField}=${encodeURIComponent(item.name)}`}>{item.name}</Link>}<strong>{formatPercentage(share, { fractionDigits: 1 })}</strong></div>
+          <div>{item.name === "未填写" ? <span><UiText text={item.name} /></span> : <Link href={`/?${filterField}=${encodeURIComponent(item.name)}`}>{item.name}</Link>}<strong>{formatPercentage(share, { fractionDigits: 1 })}</strong></div>
           <i><b style={{ width: `${Math.min(100, share)}%` }} /></i>
         </div>;
       })}
-      {topItems.length === 0 ? <p className={styles.emptyText}>暂无分布数据。</p> : null}
+      {topItems.length === 0 ? <p className={styles.emptyText}><UiText text={"暂无分布数据。"} /></p> : null}
     </div>
     <footer>
       <span>Top 1 <strong>{formatPercentage(hasValues ? concentration.top1ValueShare[currency] ?? 0 : concentration.top1CountShare)}</strong></span>
       <span>Top 3 <strong>{formatPercentage(hasValues ? concentration.top3ValueShare[currency] ?? 0 : concentration.top3CountShare)}</strong></span>
-      <span>集中度 <strong>{hhi > 0 ? concentrationLevel(hhi) : "—"}</strong></span>
+      <span><UiText text={"集中度 "} /><strong><UiText text={hhi > 0 ? concentrationLevel(hhi) : "—"} /></strong></span>
     </footer>
   </article>;
 }
@@ -74,10 +75,10 @@ function AttributeCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
     { label: "限量卡", count: snapshot.quality.serialNumberedCount, field: "isSerialNumbered" }
   ] as const;
   return <article className={styles.allocationCard}>
-    <header><div><span>结构分布</span><h3>卡片属性</h3></div></header>
+    <header><div><span><UiText text={"结构分布"} /></span><h3><UiText text={"卡片属性"} /></h3></div></header>
     <div className={styles.attributeList}>{items.map((item) => {
       const share = snapshot.activeCount > 0 ? item.count / snapshot.activeCount * 100 : 0;
-      return <Link href={`/?${item.field}=true`} key={item.field}><span>{item.label}</span><strong>{item.count} 张</strong><small>{formatPercentage(share, { fractionDigits: 1 })}</small></Link>;
+      return <Link href={`/?${item.field}=true`} key={item.field}><span><UiText text={item.label} /></span><strong>{item.count}<UiText text={" 张"} /></strong><small>{formatPercentage(share, { fractionDigits: 1 })}</small></Link>;
     })}</div>
   </article>;
 }
@@ -85,13 +86,13 @@ function AttributeCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
 export function PortfolioValuationSources({ snapshot }: { snapshot: PortfolioSnapshot }) {
   const total = snapshot.financials.valuationSources.reduce((sum, item) => sum + item.count, 0);
   return <section className={styles.section}>
-    <header className={styles.sectionHeader}><div><h2>估值来源</h2></div></header>
+    <header className={styles.sectionHeader}><div><h2><UiText text={"估值来源"} /></h2></div></header>
     <div className={styles.sourceList}>
       {snapshot.financials.valuationSources.map((item) => {
         const share = total > 0 ? item.count / total * 100 : 0;
-        return <div key={item.name}><div><span>{item.name}</span><strong>{item.count} 张 · {formatPercentage(share, { fractionDigits: 1 })}</strong></div><i><b style={{ width: `${share}%` }} /></i></div>;
+        return <div key={item.name}><div><span><UiText text={item.name} /></span><strong>{item.count}<UiText text={" 张 · "} />{formatPercentage(share, { fractionDigits: 1 })}</strong></div><i><b style={{ width: `${share}%` }} /></i></div>;
       })}
-      {total === 0 ? <p className={styles.emptyText}>暂无估值来源数据。</p> : null}
+      {total === 0 ? <p className={styles.emptyText}><UiText text={"暂无估值来源数据。"} /></p> : null}
     </div>
   </section>;
 }
@@ -101,14 +102,14 @@ export function PortfolioStructureSection({ snapshot, currencies }: { snapshot: 
   const [currency, setCurrency] = useState(currencies.includes("CNY") ? "CNY" : currencies[0] ?? "CNY");
   return <section className={styles.section}>
     <header className={styles.sectionHeader}>
-      <div><h2>收藏结构</h2></div>
+      <div><h2><UiText text={"收藏结构"} /></h2></div>
       <div className={styles.structureControls}>
-        <select className={styles.rangeSelect} aria-label="收藏结构维度" value={mode} onChange={(event) => setMode(event.target.value as StructureMode)}>
-          <option value="primary">主要维度</option><option value="extended">扩展维度</option><option value="attributes">卡片属性</option>
-        </select>
-        <div className={styles.currencySwitch} role="group" aria-label="收藏结构币种">
+        <UiElement as="select" uiAttributes={["aria-label"]} className={styles.rangeSelect} aria-label="收藏结构维度" value={mode} onChange={(event) => setMode(event.target.value as StructureMode)}>
+          <option value="primary"><UiText text={"主要维度"} /></option><option value="extended"><UiText text={"扩展维度"} /></option><option value="attributes"><UiText text={"卡片属性"} /></option>
+        </UiElement>
+        <UiElement as="div" uiAttributes={["aria-label"]} className={styles.currencySwitch} role="group" aria-label="收藏结构币种">
           {(currencies.length ? currencies : ["CNY"]).map((item) => <button key={item} type="button" className={currency === item ? styles.active : undefined} onClick={() => setCurrency(item)}>{item}</button>)}
-        </div>
+        </UiElement>
       </div>
     </header>
     <div className={styles.allocationGrid}>

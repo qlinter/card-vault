@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText } from "@/components/ui-text";
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { savePrimaryCurrency, saveExchangeRate, deleteExchangeRate } from "@/app/actions/financial-settings";
@@ -9,7 +10,7 @@ import { type FinancialConfig, type FxRate } from "@/lib/financial-reporting";
 
 function Feedback({ state, pending }: { state: { error?: string; saved?: boolean }; pending: boolean }) {
   const { locale } = useLanguage();
-  return !pending && state.error ? <p className="note-error" role="alert">{state.error}</p> : !pending && state.saved ? <p className="note-ok" role="status">{locale === "en" ? "Saved." : "已保存。"}</p> : null;
+  return !pending && state.error ? <p className="note-error" role="alert">{state.error}</p> : !pending && state.saved ? <p className="note-ok" role="status">{locale === "en" ? "Saved." : <UiText text={"已保存。"} />}</p> : null;
 }
 
 function RateForm({ rate, onCancel }: { rate?: FxRate; onCancel?: () => void }) {
@@ -52,7 +53,7 @@ export function FinancialSettings({ config }: { config: FinancialConfig }) {
   return <section className="panel settings-section" id="financial-settings" data-i18n-skip>
     <button type="button" className="ai-settings-toggle" onClick={() => setIsOpen(!isOpen)} aria-expanded={isOpen} aria-label={text(isOpen ? "收起财务" : "展开财务", isOpen ? "Collapse Finance" : "Expand Finance")}><span><strong>{text("财务", "Finance")}</strong></span><DisclosureIcon expanded={isOpen} /></button>
     {isOpen ? <div className="financial-settings-body">
-      <p className="finance-rules-link"><Link href="/settings/finance-rules">{text("查看财务计算规则 →", "Financial calculation rules →")}</Link></p>
+      <p className="finance-rules-link"><Link href="/settings/guide#finance">{text("查看财务计算规则 →", "Financial calculation rules →")}</Link></p>
       <form action={action} className="primary-currency-form"><label className="field"><span>{text("主币种", "Primary currency")}</span><select name="reportingCurrency" defaultValue={config.reportingCurrency}><option value="CNY">CNY</option><option value="USD">USD</option></select></label><button className="btn btn-primary" disabled={pending}>{text(pending ? "正在保存…" : "保存主币种", pending ? "Saving…" : "Save primary currency")}</button><Feedback state={state} pending={pending} /></form>
       <h3>{text("新增汇率", "Add exchange rate")}</h3><RateForm />
       <details className="exchange-rate-history"><summary>{text("汇率历史", "Rate history")} ({config.rates.length})</summary><ul>{config.rates.map((rate) => <RateRow key={rate.id} rate={rate} />)}</ul>{config.rates.length === 0 ? <p className="muted">{text("暂无汇率记录", "No exchange rates yet")}</p> : null}</details>

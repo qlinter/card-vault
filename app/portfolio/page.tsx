@@ -1,3 +1,4 @@
+import { UiText } from "@/components/ui-text";
 import { PortfolioAnalysisButton } from "@/components/portfolio-analysis";
 import { PortfolioCenter } from "@/components/portfolio-center";
 import { PortfolioComparisonPanel } from "@/components/portfolio-comparison-panel";
@@ -51,19 +52,14 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
 
   return (
     <div className="page portfolio-page">
-      <div className="title-row">
-        <div>
-          <h1 className="h1">组合</h1>
-        </div>
-        <PortfolioAnalysisButton cardCount={result.snapshot.cardCount} query={query} scope={result.snapshot.scope} />
-      </div>
-      {success ? <p className="note-ok">{success}</p> : null}
-      {error ? <p className="note-error">{error}</p> : null}
+      <h1 className="sr-only"><UiText text="组合" /></h1>
+      {success ? <p className="note-ok"><UiText text={success} /></p> : null}
+      {error ? <p className="note-error"><UiText text={error} /></p> : null}
       {comparisonError ? <p className="note-error">{comparisonError}</p> : null}
       <details className={`${styles.portfolioZone} ${styles.comparisonWorkspace}`}>
         <summary className={`${styles.zoneHeader} ${styles.zoneSummary}`}>
-          <div><h2>视图与比较</h2></div>
-          <span className="btn btn-secondary disclosure-button" aria-hidden="true">
+          <div><h2><UiText text={"视图与比较"} /></h2></div>
+          <span className="disclosure-button" aria-hidden="true">
             <DisclosureIcon expanded={false} />
           </span>
         </summary>
@@ -81,12 +77,14 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
       </details>
 
       <section className={styles.portfolioZone} aria-labelledby="portfolio-current-title">
-        <header className={styles.zoneHeader}>
-          <div><h2 id="portfolio-current-title">当前组合数据</h2></div>
+        <header className={`${styles.zoneHeader} ${styles.currentDataHeader}`}>
+          <div><h2 id="portfolio-current-title"><UiText text={"当前组合数据"} /></h2></div>
+          <PortfolioAnalysisButton cardCount={result.snapshot.cardCount} query={query} scope={result.snapshot.scope} />
         </header>
         <PortfolioCenter
           snapshot={result.snapshot}
           qualityCards={result.qualityCards}
+          incompleteCards={result.incompleteCards}
           valuationChanges={result.valuationChanges}
           financialHistory={result.financialHistory}
           highCostPositions={result.highCostPositions}

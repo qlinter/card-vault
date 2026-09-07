@@ -1,5 +1,6 @@
 "use client";
 
+import { UiElement, UiText } from "@/components/ui-text";
 import {
   useActionState,
   useCallback,
@@ -296,15 +297,13 @@ export function CreateCardForm({
 
   return (
     <div className="entry-workbench-layout">
-      <aside className="entry-draft-panel panel" aria-label="录入草稿">
+      <UiElement as="aside" uiAttributes={["aria-label"]} className="entry-draft-panel panel" aria-label="录入草稿">
         <div className="entry-draft-heading">
           <div>
-            <strong>录入草稿</strong>
-            <p className="muted">最多显示最近 8 项</p>
+            <strong><UiText text={"录入草稿"} /></strong>
+            <p className="muted"><UiText text={"最多显示最近 8 项"} /></p>
           </div>
-          <a href="/cards/new" className="btn btn-secondary">
-            新建空白
-          </a>
+          <a href="/cards/new" className="btn btn-secondary"><UiText text={"新建空白"} /></a>
         </div>
 
         {drafts.length > 0 ? (
@@ -320,36 +319,36 @@ export function CreateCardForm({
                   <strong>{draft.title}</strong>
                   <span>{formatDraftTime(draft.updatedAt)}</span>
                 </a>
-                <button
+                <UiElement as="button" uiMessages={{"aria-label": {text:"删除草稿 {0}",values:[draft.title],translateValues:[]}}}
                   type="button"
                   onClick={() => deleteDraft(draft.id)}
-                  aria-label={`删除草稿 ${draft.title}`}
+
                 >
                   ×
-                </button>
+                </UiElement>
               </div>
             ))}
           </div>
         ) : (
-          <p className="muted">暂无草稿。开始填写后会自动创建。</p>
+          <p className="muted"><UiText text={"暂无草稿。开始填写后会自动创建。"} /></p>
         )}
-      </aside>
+      </UiElement>
 
       <div className="entry-form-column">
         {initialMessage ? (
-          <p className="note-ok">{initialMessage}</p>
+          <p className="note-ok"><UiText text={initialMessage} /></p>
         ) : null}
         {draftStatus || queueNavigation.previousId || queueNavigation.nextId || isPending ? (
           <div className="entry-draft-status" aria-live="polite">
-            {draftStatus ? <span>{draftStatus}</span> : null}
+            {draftStatus ? <span><UiText text={draftStatus} /></span> : null}
             <div className="entry-queue-navigation">
               {queueNavigation.previousId ? (
-                <button type="button" onClick={() => navigateToQueueItem(queueNavigation.previousId!)} title="Ctrl + Alt + ←">← 上一项</button>
+                <button type="button" onClick={() => navigateToQueueItem(queueNavigation.previousId!)} title="Ctrl + Alt + ←"><UiText text={"← 上一项"} /></button>
               ) : null}
               {queueNavigation.nextId ? (
-                <button type="button" onClick={() => navigateToQueueItem(queueNavigation.nextId!)} title="Ctrl + Alt + →">下一项 →</button>
+                <button type="button" onClick={() => navigateToQueueItem(queueNavigation.nextId!)} title="Ctrl + Alt + →"><UiText text={"下一项 →"} /></button>
               ) : null}
-              {isPending ? <strong>正在创建卡片...</strong> : null}
+              {isPending ? <strong><UiText text={"正在创建卡片..."} /></strong> : null}
             </div>
           </div>
         ) : null}

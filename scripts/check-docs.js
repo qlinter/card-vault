@@ -37,6 +37,10 @@ for (const filePath of markdownFiles) {
 
 const docsIndex = fs.readFileSync(path.join(docsDir, "README.md"), "utf8");
 for (const requiredSpec of [
+  "v1.3.0-implementation.md",
+  "project-assessment-2026-09-07.md",
+  "data-center-guide.md",
+  "release-v1.3.0.md",
   "share-gallery.md",
   "financial-history-model.md",
   "data-backup-guide.md",
@@ -53,4 +57,4 @@ const roadmapEn = fs.readFileSync(path.join(docsDir, "product-roadmap.en.md"), "
 assert.ok(roadmap.includes("已完成：分享展馆"), "Chinese roadmap does not mark Share Gallery complete");
 assert.ok(roadmapEn.includes("Completed — Share Gallery"), "English roadmap does not mark Share Gallery complete");
 
-process.stdout.write(`Documentation check passed: ${markdownFiles.length} Markdown files, local links and current specifications are consistent.\n`);
+process.stdout.write(`Documentation check passed: ${markdownFiles.length} Markdown files, local links and required documentation entries are valid.\n`);

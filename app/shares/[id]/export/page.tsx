@@ -1,3 +1,4 @@
+import { UiText } from "@/components/ui-text";
 import { exportShareCollectionAction } from "@/app/actions/shares";
 import { prisma } from "@/lib/prisma";
 import { formatBytes } from "@/lib/share-export-validation";
@@ -40,78 +41,70 @@ export default async function ExportSharePage({ params, searchParams }: ExportSh
     <div className="page shares-page">
       <div className="title-row">
         <div>
-          <h1 className="h1">导出分享集</h1>
-          <p className="muted">{share.title} / {share.items.length} 张卡片</p>
+          <h1 className="h1"><UiText text={"导出分享集"} /></h1>
+          <p className="muted">{share.title} / {share.items.length}<UiText text={" 张卡片"} /></p>
         </div>
         <div className="title-actions">
-          <a className="btn btn-secondary" href={`/shares/${share.id}/edit`}>
-            编辑
-          </a>
-          <a className="btn btn-secondary" href={`/shares/${share.id}/preview`}>
-            预览
-          </a>
+          <a className="btn btn-secondary" href={`/shares/${share.id}/edit`}><UiText text={"编辑"} /></a>
+          <a className="btn btn-secondary" href={`/shares/${share.id}/preview`}><UiText text={"预览"} /></a>
         </div>
       </div>
 
-      {privateCount > 0 ? <p className="note-error">当前分享集包含 {privateCount} 张私密卡。导出前请确认这是你主动选择的内容。</p> : null}
-      <p className="muted export-privacy-note">
-        导出仅包含卡片主体、卡片和公开展示信息，不包含价格、成本、购买渠道、备注、AI Key 或本地数据库路径。
-      </p>
-      {error ? <p className="note-error">{error}</p> : null}
+      {privateCount > 0 ? <p className="note-error"><UiText text={"当前分享集包含 "} />{privateCount}<UiText text={" 张私密卡。导出前请确认这是你主动选择的内容。"} /></p> : null}
+      <p className="muted export-privacy-note"><UiText text={"导出仅包含卡片主体、卡片和公开展示信息，不包含价格、成本、购买渠道、备注、AI Key 或本地数据库路径。"} /></p>
+      {error ? <p className="note-error"><UiText text={error} /></p> : null}
       {success ? (
         <div className="panel export-result">
-          <h2>{success === "drop" ? "Cloudflare Drop 临时发布包已生成" : "静态分享包已生成"}</h2>
-          <p>文件夹：{folderPath}</p>
-          <p>压缩包：{zipPath}</p>
-          <p>检查报告：{reportPath}</p>
-          <p>版本差异：{diffPath}</p>
+          <h2>{success === "drop" ? <UiText text={"Cloudflare Drop 临时发布包已生成"} /> : <UiText text={"静态分享包已生成"} />}</h2>
+          <p><UiText text={"文件夹："} />{folderPath}</p>
+          <p><UiText text={"压缩包："} />{zipPath}</p>
+          <p><UiText text={"检查报告："} />{reportPath}</p>
+          <p><UiText text={"版本差异："} />{diffPath}</p>
           {isFirstExport ? (
-            <p>这是该模式的首次导出，已建立后续版本比较基准。</p>
+            <p><UiText text={"这是该模式的首次导出，已建立后续版本比较基准。"} /></p>
           ) : Number.isFinite(addedCount) && Number.isFinite(removedCount) && Number.isFinite(changedCount) ? (
-            <p>相对上次同模式导出：新增 {addedCount} 张、移除 {removedCount} 张、修改 {changedCount} 张。</p>
+            <p><UiText text={"相对上次同模式导出：新增 "} />{addedCount}<UiText text={" 张、移除 "} />{removedCount}<UiText text={" 张、修改 "} />{changedCount}<UiText text={" 张。"} /></p>
           ) : null}
           {Number.isFinite(fileCount) && Number.isFinite(totalBytes) ? (
-            <p>发布前检查已通过：{fileCount} 个文件，合计 {formatBytes(totalBytes)}。</p>
+            <p><UiText text={"发布前检查已通过："} />{fileCount}<UiText text={" 个文件，合计 "} />{formatBytes(totalBytes)}。</p>
           ) : null}
           {Number.isFinite(warningCount) && warningCount > 0 ? (
-            <p className="note-error">另有 {warningCount} 项非阻断提醒，请在上传前查看检查报告。</p>
+            <p className="note-error"><UiText text={"另有 "} />{warningCount}<UiText text={" 项非阻断提醒，请在上传前查看检查报告。"} /></p>
           ) : null}
           {success === "drop" ? (
-            <p className="muted">Cloudflare Drop 临时地址约一小时后失效；Card Vault 不记录发布 URL 或认领链接。</p>
+            <p className="muted"><UiText text={"Cloudflare Drop 临时地址约一小时后失效；Card Vault 不记录发布 URL 或认领链接。"} /></p>
           ) : null}
-          <p className="muted">导出包使用相对路径，不包含价格、成本、购买渠道、备注、AI Key 或本地数据库路径。</p>
+          <p className="muted"><UiText text={"导出包使用相对路径，不包含价格、成本、购买渠道、备注、AI Key 或本地数据库路径。"} /></p>
         </div>
       ) : null}
 
       <section>
         <form action={exportShareCollectionAction.bind(null, share.id)} className="panel share-export-card">
           <div>
-            <h2>生成分享包</h2>
-            <p className="muted">两种分享包包含相同的展馆网页，请根据使用场景选择附加配置。</p>
-            <p className="muted">导出会自动生成 WebP 展示图和缩略图，创建章节页与卡片主体专题页，并执行可访问性检查和版本差异比较。</p>
+            <h2><UiText text={"生成分享包"} /></h2>
+            <p className="muted"><UiText text={"两种分享包包含相同的展馆网页，请根据使用场景选择附加配置。"} /></p>
+            <p className="muted"><UiText text={"导出会自动生成 WebP 展示图和缩略图，创建章节页与卡片主体专题页，并执行可访问性检查和版本差异比较。"} /></p>
           </div>
 
           <fieldset className="share-export-options">
-            <legend className="sr-only">分享包类型</legend>
+            <legend className="sr-only"><UiText text={"分享包类型"} /></legend>
             <label className="share-export-option">
               <input type="radio" name="exportMode" value="static" />
               <span>
-                <strong>通用静态包</strong>
-                <small>用于本地浏览、发送、归档，也可以上传到任意静态托管服务。</small>
+                <strong><UiText text={"通用静态包"} /></strong>
+                <small><UiText text={"用于本地浏览、发送、归档，也可以上传到任意静态托管服务。"} /></small>
               </span>
             </label>
             <label className="share-export-option">
               <input type="radio" name="exportMode" value="drop" defaultChecked />
               <span>
-                <strong>Cloudflare Drop 临时预览包</strong>
-                <small>在相同网页基础上增加 noindex、安全响应头、404 页面和一小时临时发布说明。</small>
+                <strong><UiText text={"Cloudflare Drop 临时预览包"} /></strong>
+                <small><UiText text={"在相同网页基础上增加 noindex、安全响应头、404 页面和一小时临时发布说明。"} /></small>
               </span>
             </label>
           </fieldset>
 
-          <button className="btn btn-primary" type="submit">
-            生成分享包
-          </button>
+          <button className="btn btn-primary" type="submit"><UiText text={"生成分享包"} /></button>
         </form>
       </section>
     </div>

@@ -34,5 +34,10 @@ export function buildReportingPortfolio(cards: PortfolioCardRecord[], scope: Por
     snapshot.timeSeries.purchases = snapshot.timeSeries.sales = snapshot.timeSeries.expenses = [];
     snapshot.activitySeries = { purchases: [], grading: [], sales: [] };
   }
-  return { snapshot, cards: projected };
+  const unvaluedIds = new Set(unvalued.map(card => card.id));
+  const incompleteCards = [...new Map([...incomplete, ...unvalued].map(card => [card.id, card])).values()].flatMap(card => card.id ? [{
+    id: card.id, playerName: card.playerName, cardTitle: card.cardTitle ?? "",
+    reasons: [...new Set([...card.missing, ...(unvaluedIds.has(card.id) ? ["VALUATION"] : [])])]
+  }] : []);
+  return { snapshot, cards: projected, incompleteCards };
 }

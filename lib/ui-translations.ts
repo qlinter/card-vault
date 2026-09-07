@@ -1,4 +1,16 @@
 const exactTranslations: Record<string, string> = {
+  "请指定导入批次。": "Specify an import batch.",
+  "请选择 CSV 或 XLSX 导出格式。": "Choose CSV or XLSX as the export format.",
+  "表格数据格式无效。": "Invalid table data format.",
+  "此历史批次不支持新建预演，请使用文件导入或卡片详情页。": "This historical batch cannot create a new preview. Use file import or card details.",
+  "更新已有卡片仅接受档案字段；估值和交易请在详情页记录。": "Updates to existing cards accept archive fields only; record valuations and transactions in card details.",
+  "提交失败时会保留本页文字、勾选项和已选图片；刷新页面后需重新选择本地图片。": "Failed submissions preserve text, choices and selected images on this page. After a page reload, select local images again.",
+  "{0}向左旋转": "{0}: rotate left",
+  "{0}向右旋转": "{0}: rotate right",
+  "，已选 {0}": ", {0} selected",
+  "{0}预览，{1} 像素": "{0} preview, {1} pixels",
+  "暂无 {0} 月度财务记录。": "No monthly financial records for {0}.",
+  "清理完成，已移出 {0} 个未引用文件。": "Moved {0} unreferenced files to recovery.",
   "展开 AI": "Expand AI",
   "收起 AI": "Collapse AI",
   "累计费用": "Total Expenses",
@@ -602,6 +614,7 @@ const exactTranslations: Record<string, string> = {
   "提交失败时，文字和勾选项会保留；图片需要重新选择。": "If submission fails, text and selections are preserved; images must be selected again.",
   "设置备份路径": "Set Backup Location",
   "存储数据": "Data Storage",
+  "存储": "Storage",
   "当前路径：": "Current Path:",
   "备份与恢复": "Backup and Restore",
   "备份路径：": "Backup Path:",
@@ -688,7 +701,10 @@ const exactTranslations: Record<string, string> = {
   "暂无 USD 可重建的财务历史。": "No reconstructable USD financial history."
 };
 
-const phraseTranslations: Array<[string, string]> = [
+const phraseTranslations: Array<[string | RegExp, string]> = [
+  [/第 (\d+) 张现有图片/g, "Existing image $1"],
+  [/第 (\d+) 张新增图片/g, "New image $1"],
+  [/队列第 (\d+) 张图片/g, "Queued image $1"],
   ["选择 ", "Select "],
   [" 的本机草稿", " local draft"],
   ["，恢复后仍可使用撤销返回当前已保存内容。", ". After restoring it, you can still undo back to the currently saved version."],

@@ -2,13 +2,14 @@ name: Windows Release
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 jobs:
   windows-release:
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 45
     env:
       WIN_CSC_LINK: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
@@ -20,7 +21,7 @@ jobs:
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      CARD_VAULT_UI_SCREENSHOT_MODE: capture
+      CARD_VAULT_UI_SCREENSHOT_MODE: compare
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,7 +29,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run audit:prod
+      - run: npx playwright install chromium
+      - run: npm run audit:all
       - name: Build and verify Windows artifacts
         run: npm run release:win
       - uses: actions/upload-artifact@v4

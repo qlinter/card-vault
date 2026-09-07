@@ -1,5 +1,6 @@
 "use client";
 
+import { UiElement, UiText } from "@/components/ui-text";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   cardImageRotationStyle,
@@ -38,8 +39,8 @@ type CardImageFieldsProps = {
 function RotationButtons({ label, onLeft, onRight }: { label: string; onLeft: () => void; onRight: () => void }) {
   return (
     <div className="card-image-rotation-actions">
-      <button type="button" className="btn btn-secondary" onClick={onLeft} aria-label={`${label}向左旋转`} title="向左旋转">↺</button>
-      <button type="button" className="btn btn-secondary" onClick={onRight} aria-label={`${label}向右旋转`} title="向右旋转">↻</button>
+      <UiElement uiMessages={{"aria-label": {text:"{0}向左旋转",values:[label],translateValues:[0]}}} as="button" uiAttributes={["title"]} type="button" className="btn btn-secondary" onClick={onLeft}  title="向左旋转">↺</UiElement>
+      <UiElement uiMessages={{"aria-label": {text:"{0}向右旋转",values:[label],translateValues:[0]}}} as="button" uiAttributes={["title"]} type="button" className="btn btn-secondary" onClick={onRight}  title="向右旋转">↻</UiElement>
     </div>
   );
 }
@@ -53,12 +54,26 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages 
   ));
   const [newImages, setNewImages] = useState<NewImagePreview[]>([]);
   const objectUrls = useRef<string[]>([]);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const selectedFiles = useRef<File[]>([]);
+  useEffect(() => {
+    const form = fileInput.current?.form;
+    const restore = () => queueMicrotask(() => {
+      if (!fileInput.current || !selectedFiles.current.length) return;
+      const transfer = new DataTransfer();
+      selectedFiles.current.forEach(file => transfer.items.add(file));
+      fileInput.current.files = transfer.files;
+    });
+    form?.addEventListener("reset", restore);
+    return () => form?.removeEventListener("reset", restore);
+  }, []);
 
   useEffect(() => () => {
     objectUrls.current.forEach((url) => URL.revokeObjectURL(url));
   }, []);
 
   function selectNewImages(event: ChangeEvent<HTMLInputElement>) {
+    selectedFiles.current = Array.from(event.target.files ?? []);
     objectUrls.current.forEach((url) => URL.revokeObjectURL(url));
     const next = Array.from(event.target.files ?? []).map((file, index) => ({
       id: `${file.name}-${file.lastModified}-${index}`,
@@ -88,18 +103,12 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages 
     <>
       <div className="field full">
         <span>
-          {mode === "create"
-            ? queuedImages.length > 0
-              ? `队列已有 ${queuedImages.length} 张图片，可追加至总计 5 张`
-              : "上传图片（1-5 张）*"
-            : "新增图片（可选，单张卡总计最多 5 张）"}
+          {mode === "create" ? queuedImages.length > 0 ? <UiText text={"队列已有 {0} 张图片，可追加至总计 5 张"} values={[queuedImages.length]} /> : <UiText text={"上传图片（1-5 张）*"} /> : <UiText text={"新增图片（可选，单张卡总计最多 5 张）"} />}
         </span>
-        <input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={selectNewImages} />
+        <input ref={fileInput} name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={selectNewImages} />
         {mode === "create" ? (
           <small className="muted">
-            {queuedImages.length > 0
-              ? "队列图片已经持久化；仅本次追加选择的图片在提交失败后需要重新选择。"
-              : "提交失败时，文字和勾选项会保留；图片需要重新选择。"}
+            <UiText text="提交失败时会保留本页文字、勾选项和已选图片；刷新页面后需重新选择本地图片。" />
           </small>
         ) : null}
       </div>
@@ -116,7 +125,7 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages 
 
       {newImages.length > 0 ? (
         <section className="card-image-editor full">
-          <h3>新增图片</h3>
+          <h3><UiText text={"新增图片"} /></h3>
           <div className="gallery">
             {newImages.map((image, index) => (
               <figure className="card-image-edit-item" key={image.id}>
@@ -133,14 +142,14 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages 
 
       {mode === "create" && queuedImages.length > 0 ? (
         <section className="card-image-editor full">
-          <h3>队列预处理图片</h3>
+          <h3><UiText text={"队列预处理图片"} /></h3>
           <div className="gallery">
             {queuedImages.map((image, index) => (
               <figure className="card-image-edit-item" key={image.id}>
                 <div className="card-image-preview-frame">
                   <img src={image.url} alt={`${image.side === "front" ? "正面" : "背面"}：${image.originalName}`} style={cardImageRotationStyle(queuedRotations[image.id], { continuous: true })} />
                 </div>
-                <figcaption>{image.side === "front" ? "正面" : "背面"}</figcaption>
+                <figcaption>{image.side === "front" ? <UiText text={"正面"} /> : <UiText text={"背面"} />}</figcaption>
                 <RotationButtons label={`队列第 ${index + 1} 张图片`} onLeft={() => rotateQueued(image.id, -1)} onRight={() => rotateQueued(image.id, 1)} />
               </figure>
             ))}
@@ -150,7 +159,7 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages 
 
       {mode === "edit" && existingImages.length > 0 ? (
         <section className="card-image-editor full">
-          <h3>现有图片</h3>
+          <h3><UiText text={"现有图片"} /></h3>
           <div className="gallery">
             {existingImages.map((image, index) => (
               <figure className="card-image-edit-item" key={image.id}>
@@ -159,8 +168,7 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages 
                 </div>
                 <RotationButtons label={`第 ${index + 1} 张现有图片`} onLeft={() => rotateExisting(image.id, -1)} onRight={() => rotateExisting(image.id, 1)} />
                 <label>
-                  <input type="checkbox" name="removeImageIds" value={image.id} /> 删除此图
-                </label>
+                  <input type="checkbox" name="removeImageIds" value={image.id} /><UiText text={"删除此图"} /></label>
               </figure>
             ))}
           </div>

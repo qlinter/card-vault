@@ -1,3 +1,4 @@
+import { UiText } from "@/components/ui-text";
 import { updateShareCollectionAction } from "@/app/actions/shares";
 import { ShareCollectionForm } from "@/components/share-collection-form";
 import { prisma } from "@/lib/prisma";
@@ -41,19 +42,15 @@ export default async function EditSharePage({ params, searchParams }: EditShareP
     <div className="page shares-page">
       <div className="title-row">
         <div>
-          <h1 className="h1">编辑分享集</h1>
-          <p className="muted">调整展馆文案、卡片选择、排序和导出前展示内容。</p>
+          <h1 className="h1"><UiText text={"编辑分享集"} /></h1>
+          <p className="muted"><UiText text={"调整展馆文案、卡片选择、排序和导出前展示内容。"} /></p>
         </div>
         <div className="title-actions">
-          <a className="btn btn-secondary" href={`/shares/${share.id}/preview`}>
-            预览
-          </a>
-          <a className="btn btn-primary" href={`/shares/${share.id}/export`}>
-            导出
-          </a>
+          <a className="btn btn-secondary" href={`/shares/${share.id}/preview`}><UiText text={"预览"} /></a>
+          <a className="btn btn-secondary" href={`/shares/${share.id}/export`}><UiText text={"导出"} /></a>
         </div>
       </div>
-      {success ? <p className="note-ok">{success}</p> : null}
+      {success ? <p className="note-ok"><UiText text={success} /></p> : null}
       <ShareCollectionForm action={updateShareCollectionAction.bind(null, share.id)} cards={cards} share={share} error={error} />
     </div>
   );

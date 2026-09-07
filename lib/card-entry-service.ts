@@ -24,7 +24,7 @@ function optionalString(value: string): string | null {
   return trimmed ? trimmed : null;
 }
 
-async function createInitialFinancialHistory(
+export async function createInitialFinancialHistory(
   transaction: Prisma.TransactionClient,
   cardId: string,
   values: CardFormValues,

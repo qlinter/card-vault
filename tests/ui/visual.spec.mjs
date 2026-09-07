@@ -7,22 +7,29 @@ if (!new Set(["compare", "capture"]).has(screenshotMode)) {
 
 const pages = [
   { name: "home", path: "/", ready: ".summary-grid" },
+  { name: "home-list", path: "/", ready: ".cards-grid.is-list", view: "list" },
+  { name: "showcase", path: "/showcase", ready: ".showcase-grid" },
+  { name: "showcase-list", path: "/showcase", ready: ".showcase-views.is-list", view: "list" },
   { name: "card-entry", path: "/cards/new", ready: ".entry-workbench-layout" },
   { name: "portfolio", path: "/portfolio", ready: ".portfolio-page" },
+  { name: "shares", path: "/shares", ready: ".share-list" },
   { name: "share-editor", path: "/shares/ui-share-1/edit", ready: ".shares-page" },
   { name: "share-preview", path: "/shares/ui-share-1/preview", ready: ".share-unified-preview-page" },
   { name: "settings", path: "/settings", ready: ".settings-page" },
+  { name: "settings-data", path: "/settings#data-settings", ready: ".management-card-list" },
+  { name: "data-center", path: "/settings/data", ready: ".management-card-list" },
+  { name: "collection", path: "/collection", ready: ".management-page .summary-grid" },
+  { name: "user-guide", path: "/settings/guide", ready: ".user-guide-index" },
   { name: "finance-rules", path: "/settings/finance-rules", ready: ".finance-rules-page" }
 ];
 
 const englishAuditPages = [
   ...pages,
-  { name: "showcase", path: "/showcase", ready: ".showcase-page" },
+
   { name: "showcase-card", path: "/showcase/cards/ui-card-1", ready: ".showcase-detail" },
   { name: "card-details", path: "/cards/ui-card-1", ready: ".details" },
   { name: "card-edit", path: "/cards/ui-card-1/edit", ready: "form.panel" },
   { name: "card-delete", path: "/cards/ui-card-1/delete", ready: ".panel" },
-  { name: "shares", path: "/shares", ready: ".share-list" },
   { name: "share-new", path: "/shares/new", ready: ".shares-page" },
   { name: "share-export", path: "/shares/ui-share-1/export", ready: ".shares-page" }
 ];
@@ -36,6 +43,7 @@ test.beforeEach(async ({ page }) => {
 for (const target of pages) {
   test(`${target.name} visual baseline`, async ({ page }, testInfo) => {
     await page.goto(target.path, { waitUntil: "networkidle" });
+    if (target.view === "list") await page.getByRole("button", { name: /^(列表视图|List view)$/ }).click();
     if (target.name === "share-editor") {
       await page.getByRole("button", { name: /内容修改/ }).click();
       await page.getByRole("button", { name: /视觉设计/ }).click();
@@ -45,10 +53,9 @@ for (const target of pages) {
       content: "*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important;caret-color:transparent!important}"
     });
     await expect(page.locator(target.ready)).toBeVisible();
+    if (["data-center", "settings-data"].includes(target.name)) await page.getByTestId("storage-path").evaluate(element => { element.textContent = "C:\\CardVault\\data"; });
     if (screenshotMode === "capture") {
-      // GitHub-hosted Windows images and local Windows machines rasterize fonts
-      // differently. Keep the same page matrix in CI without treating those
-      // environment-only pixels as a release failure.
+      // Optional local diagnostics; release and CI require comparison mode.
       await testInfo.attach(`${target.name}-${testInfo.project.name}`, {
         body: await page.screenshot({ fullPage: true }),
         contentType: "image/png"
@@ -72,6 +79,7 @@ test.describe("English interface", () => {
   for (const target of englishAuditPages) {
     test(`${target.name} contains no untranslated interface text`, async ({ page }) => {
       await page.goto(target.path, { waitUntil: "networkidle" });
+    if (target.view === "list") await page.getByRole("button", { name: /^(列表视图|List view)$/ }).click();
       if (target.name === "share-editor") {
         await page.getByRole("button", { name: "Edit Content" }).click();
         await expect(page.locator(".share-design-workspace")).toBeVisible();

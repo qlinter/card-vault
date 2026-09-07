@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText, UiElement } from "@/components/ui-text";
 import { useMemo, useState } from "react";
 import { normalizeImagePath } from "@/lib/image-path";
 
@@ -122,15 +123,13 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
   return (
     <section className="panel share-section">
       <div className="share-section-head">
-        <h2>选择卡片</h2>
-        <span className="muted">
-          共 {cards.length} 张可选 / 当前显示 {visibleCount} 张
-        </span>
+        <h2><UiText text={"选择卡片"} /></h2>
+        <span className="muted"><UiText text={"共"} />{cards.length}<UiText text={" 张可选 / 当前显示 "} />{visibleCount}<UiText text={"张"} /></span>
       </div>
 
       <label className="field share-card-search">
-        <span>搜索卡片</span>
-        <input
+        <span><UiText text={"搜索卡片"} /></span>
+        <UiElement as="input" uiAttributes={["placeholder"]}
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -158,8 +157,7 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
               <summary>
                 <span>{sport}</span>
                 <small>
-                  {visibleInGroup} / {groupCards.length} 张
-                  {selectedInGroup > 0 ? `，已选 ${selectedInGroup}` : ""}
+                  {visibleInGroup} / {groupCards.length}<UiText text={"张"} />{selectedInGroup > 0 ? <UiText text={"，已选 {0}"} values={[selectedInGroup]} /> : ""}
                 </small>
               </summary>
               <div className="share-card-picker">
@@ -175,16 +173,16 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
                   return (
                     <article key={card.id} className="share-card-option" hidden={!visible}>
                       <label className="share-card-select">
-                        <input
+                        <UiElement as="input" uiMessages={{"aria-label": {text:"选择 {0} / {1}",values:[card.playerName,card.cardTitle],translateValues:[]}}}
                           type="checkbox"
-                          aria-label={`选择 ${card.playerName} / ${card.cardTitle}`}
+
                           checked={selectedSet.has(card.id)}
                           onChange={(event) => onSelectionChange(card.id, event.target.checked)}
                         />
                         {card.imagePath ? (
                           <img src={normalizeImagePath(card.imagePath)} alt={card.cardTitle} />
                         ) : (
-                          <div className="share-card-placeholder" role="img" aria-label={`${card.cardTitle} 暂无图片`} />
+                          <UiElement as="div" uiMessages={{"aria-label": {text:"{0} 暂无图片",values:[card.cardTitle],translateValues:[]}}} className="share-card-placeholder" role="img"  />
                         )}
                       </label>
                       <div className="share-card-option-body">
@@ -192,10 +190,10 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
                           <strong>{card.playerName}</strong>
                           <p>{card.cardTitle}</p>
                           <p className="muted">{[card.year, card.brand, card.productLine, card.grade].filter(Boolean).join(" / ")}</p>
-                          <span className={card.visibility === "private" ? "share-private-badge" : "tag"}>{privateHint}</span>
+                          <span className={card.visibility === "private" ? "share-private-badge" : "tag"}><UiText text={privateHint} /></span>
                         </div>
                         <label className="field share-sort-field">
-                          <span>排序</span>
+                          <span><UiText text={"排序"} /></span>
                           <input
                             type="number"
                             value={draft.sortOrder}
@@ -203,9 +201,9 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
                           />
                         </label>
                         <details>
-                          <summary>分享展示覆盖</summary>
+                          <summary><UiText text={"分享展示覆盖"} /></summary>
                           <label className="field">
-                            <span>展示标题</span>
+                            <span><UiText text={"展示标题"} /></span>
                             <input
                               value={draft.displayTitle}
                               placeholder={card.cardTitle}
@@ -213,7 +211,7 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
                             />
                           </label>
                           <label className="field">
-                            <span>卡片故事（公开）</span>
+                            <span><UiText text={"卡片故事（公开）"} /></span>
                             <textarea
                               value={draft.displayDescription}
                               placeholder={value(card.publicDescription) || "写下这张卡为何重要；留空时使用卡片公开描述"}
@@ -231,7 +229,7 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
         })}
       </div>
 
-      {visibleCount === 0 ? <p className="muted">没有找到匹配的卡片。</p> : null}
+      {visibleCount === 0 ? <p className="muted"><UiText text={"没有找到匹配的卡片。"} /></p> : null}
     </section>
   );
 }

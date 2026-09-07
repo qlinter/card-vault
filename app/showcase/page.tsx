@@ -1,4 +1,7 @@
-﻿import Link from "next/link";
+import { CollectionViewProvider } from "@/components/view-mode-toggle";
+import { ShowcaseViews } from "@/components/showcase-views";
+import { UiText, UiElement } from "@/components/ui-text";
+import Link from "next/link";
 import { ShowcaseGroupFilter } from "@/components/showcase-group-filter";
 import { cardImageRotationStyle } from "@/lib/card-image-rotation";
 import { normalizeImagePath } from "@/lib/image-path";
@@ -10,9 +13,7 @@ type ShowcasePageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-function activeGroupLabel(group: string | undefined): string {
-  return group ?? "全部卡片";
-}
+function activeGroupLabel(group: string | undefined) { return group ?? <UiText text="全部卡片" />; }
 
 export default async function ShowcasePage({ searchParams }: ShowcasePageProps) {
   const params = await searchParams;
@@ -55,41 +56,28 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
   ).map(([, group]) => group);
 
   return (
-    <div className="page showcase-page showcase-backdrop">
-      <div className="title-row">
-        <div>
-          <h1 className="h1">展示</h1>
-          <p className="muted">
-            当前展示 {cards.length} 张卡片，来自 {groups.length} 个卡片主体
-          </p>
-        </div>
-      </div>
+    <CollectionViewProvider scope="showcase"><div className="page showcase-page showcase-backdrop">
+      <h1 className="sr-only"><UiText text="展示" /></h1>
 
       <form className="panel showcase-search" method="get">
-        <input
+        <UiElement as="input" uiAttributes={["placeholder"]}
           name="q"
           defaultValue={query.q ?? ""}
           placeholder="搜索卡片主体、Team、系列、年份、标签..."
           className="showcase-search-input"
         />
         {query.group ? <input type="hidden" name="group" value={query.group} /> : null}
-        <button className="btn btn-primary" type="submit">
-          搜索
-        </button>
-        <Link className="btn btn-secondary" href="/showcase">
-          清空
-        </Link>
+        <button className="btn btn-secondary" type="submit"><UiText text={"搜索"} /></button>
+        <Link className="btn btn-secondary" href="/showcase"><UiText text={"清空"} /></Link>
       </form>
 
       <ShowcaseGroupFilter groups={groups} activeGroup={query.group} queryText={query.q} />
 
-      <section className="showcase-grid-wrap">
-        <div className="showcase-section-head">
+      <ShowcaseViews heading={
           <div>
             <h2>{activeGroupLabel(query.group)}</h2>
-            <p className="muted">共 {cards.length} 张卡片</p>
-          </div>
-        </div>
+            <p className="muted"><UiText text={"共 "} />{cards.length}<UiText text={" 张卡片"} /></p>
+          </div>}>
         <div className="showcase-grid">
           {cards.map((card) => (
             <Link key={card.id} href={buildShowcaseCardHref(card.id, query)} className="showcase-card">
@@ -112,10 +100,10 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
         </div>
         {cards.length === 0 ? (
           <div className="panel" style={{ marginTop: "1rem" }}>
-            <p>当前筛选条件下没有匹配的卡片。</p>
+            <p><UiText text={"当前筛选条件下没有匹配的卡片。"} /></p>
           </div>
         ) : null}
-      </section>
-    </div>
+      </ShowcaseViews>
+    </div></CollectionViewProvider>
   );
 }

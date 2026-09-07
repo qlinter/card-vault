@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText, UiElement } from "@/components/ui-text";
 import { useEffect, useRef, useState } from "react";
 import {
   cardEntryTemplateFields,
@@ -149,35 +150,35 @@ export function CardEntryTemplatePanel() {
       className="entry-template-panel"
       onToggle={(event) => setExpanded(event.currentTarget.open)}
     >
-      <summary title={expanded ? "收起模板" : "展开模板"}>
-        <span className="entry-template-title">模板</span>
+      <UiElement as="summary" uiAttributes={["title"]} title={expanded ? "收起模板" : "展开模板"}>
+        <span className="entry-template-title"><UiText text={"模板"} /></span>
         <span className="entry-template-summary-meta">
           <span className="entry-template-count">{templates.length}</span>
           <DisclosureIcon expanded={expanded} />
         </span>
-      </summary>
+      </UiElement>
       <div className="entry-template-controls">
         <label className="field">
-          <span>已有模板</span>
+          <span><UiText text={"已有模板"} /></span>
           <select value={selectedId} onChange={(event) => selectTemplate(event.target.value)}>
-            <option value="">选择模板</option>
+            <option value=""><UiText text={"选择模板"} /></option>
             {templates.map((template) => (
               <option key={template.id} value={template.id}>{template.name}</option>
             ))}
           </select>
         </label>
         <label className="field">
-          <span>模板名称</span>
+          <span><UiText text={"模板名称"} /></span>
           <input value={name} maxLength={80} onChange={(event) => setName(event.target.value)} />
         </label>
       </div>
       <div className="entry-template-actions">
-        <button type="button" className="btn btn-primary" disabled={pending || !selectedId} onClick={applyTemplate}>应用</button>
-        <button type="button" className="btn btn-secondary" disabled={pending || !name.trim()} onClick={createTemplate}>保存为新模板</button>
-        <button type="button" className="btn btn-secondary" disabled={pending || !selectedId || !name.trim()} onClick={updateTemplate}>更新模板</button>
-        <button type="button" className="btn btn-secondary" disabled={pending || !selectedId} onClick={deleteTemplate}>删除</button>
+        <button type="button" className="btn btn-primary" disabled={pending || !selectedId} onClick={applyTemplate}><UiText text={"应用"} /></button>
+        <button type="button" className="btn btn-secondary" disabled={pending || !name.trim()} onClick={createTemplate}><UiText text={"保存为新模板"} /></button>
+        <button type="button" className="btn btn-secondary" disabled={pending || !selectedId || !name.trim()} onClick={updateTemplate}><UiText text={"更新模板"} /></button>
+        <button type="button" className="btn btn-secondary" disabled={pending || !selectedId} onClick={deleteTemplate}><UiText text={"删除"} /></button>
       </div>
-      {message ? <p className="muted" aria-live="polite">{message}</p> : null}
+      {message ? <p className="muted" aria-live="polite"><UiText text={message} /></p> : null}
     </details>
   );
 }

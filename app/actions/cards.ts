@@ -77,7 +77,7 @@ export async function createCardFormAction(
   redirect(redirectPath);
 }
 
-export async function updateCardAction(cardId: string, formData: FormData): Promise<void> {
+export async function updateCardFormAction(cardId: string, _previousState: CreateCardFormState, formData: FormData): Promise<CreateCardFormState> {
   const rawReturnTo = formData.get("returnTo");
   const returnTo = normalizeReturnTo(typeof rawReturnTo === "string" ? rawReturnTo : undefined);
   const returnQuery = returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : "";
@@ -153,7 +153,7 @@ export async function updateCardAction(cardId: string, formData: FormData): Prom
     redirectPath = `/cards/${cardId}?success=updated${returnQuery}`;
   } catch (error) {
     const message = errorMessage(error, "更新失败，请稍后重试。");
-    redirectPath = `/cards/${cardId}/edit?error=${encodeURIComponent(message)}${returnQuery}`;
+    return { error: message, values };
   }
 
   redirect(redirectPath);

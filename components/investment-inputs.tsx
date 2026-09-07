@@ -1,5 +1,6 @@
-﻿"use client";
+"use client";
 
+import { UiText } from "@/components/ui-text";
 import { useEffect, useRef, useState } from "react";
 import { ValuationSourceSelect } from "@/components/financial-history-selects";
 import { useLanguage } from "./language-provider";
@@ -84,12 +85,12 @@ export function InvestmentInputs({
   return (
     <>
       <label className="field">
-        <span>币种</span>
+        <span><UiText text={"币种"} /></span>
         <select name="historyCurrency" value={currencyValue} onChange={(event) => setCurrencyValue(event.target.value)}><option value="CNY">CNY</option><option value="USD">USD</option></select>
       </label>
 
       <label className="field">
-        <span>初始数量</span>
+        <span><UiText text={"初始数量"} /></span>
         <input
           ref={quantityInputRef}
           name="initialQuantity"
@@ -103,7 +104,7 @@ export function InvestmentInputs({
       </label>
 
       <label className="field">
-        <span>购买价格</span>
+        <span><UiText text={"购买价格"} /></span>
         <input
           name="purchasePrice"
           type="text"
@@ -114,7 +115,7 @@ export function InvestmentInputs({
       </label>
 
       <label className="field">
-        <span>评级费用</span>
+        <span><UiText text={"评级费用"} /></span>
         <input
           name="gradingFee"
           type="text"
@@ -136,17 +137,17 @@ export function InvestmentInputs({
       </label>
 
       <label className="field">
-        <span>初始估值</span>
+        <span><UiText text={"初始估值"} /></span>
         <input name="currentValue" type="text" inputMode="decimal" defaultValue={currentValue} />
       </label>
 
       <label className="field">
-        <span>估值日期</span>
+        <span><UiText text={"估值日期"} /></span>
         <input name="valuationDate" type="date" defaultValue={valuationDate} />
       </label>
 
       <label className="field">
-        <span>估值来源</span>
+        <span><UiText text={"估值来源"} /></span>
         <ValuationSourceSelect name="valuationSource" defaultValue={valuationSource || "个人估计"} />
       </label>
     </>

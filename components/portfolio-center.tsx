@@ -1,5 +1,6 @@
 "use client";
 
+import { UiElement, UiText } from "@/components/ui-text";
 import Link from "next/link";
 import type { DragEvent, ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -31,11 +32,12 @@ import { PortfolioQualitySection } from "./portfolio-center-quality";
 import { PortfolioStructureSection, PortfolioValuationSources } from "./portfolio-center-structure";
 import { PortfolioActivityTrendSection, PortfolioFinancialHistorySection } from "./portfolio-center-trends";
 import styles from "./portfolio-center.module.css";
-import { FinancialReportNote } from "./financial-report-note";
+import { FinancialReportNote, type IncompleteFinancialCard } from "./financial-report-note";
 
 type PortfolioCenterProps = {
   snapshot: PortfolioSnapshot;
   qualityCards: PortfolioQualityCard[];
+  incompleteCards: IncompleteFinancialCard[];
   valuationChanges: PortfolioValuationChange[];
   financialHistory: PortfolioFinancialHistoryPoint[];
   highCostPositions: PortfolioCostPosition[];
@@ -79,7 +81,7 @@ function SortablePortfolioItem({ id, activeId, axis, order, children, onDragStar
       }}
       onDrop={handleDrop}
     >
-      <button
+      <UiElement as="button" uiAttributes={["aria-label","title"]}
         type="button"
         className={styles.portfolioDragHandle}
         draggable
@@ -100,7 +102,7 @@ function SortablePortfolioItem({ id, activeId, axis, order, children, onDragStar
             onMove(id, 1);
           }
         }}
-      >⠿</button>
+      >⠿</UiElement>
       {children}
     </div>
   );
@@ -109,9 +111,9 @@ function SortablePortfolioItem({ id, activeId, axis, order, children, onDragStar
 function EmptyPortfolio({ returnTo }: { returnTo: string }) {
   return (
     <section className={`${styles.emptyPortfolio} panel`}>
-      <h2>还没有可汇总的收藏</h2>
-      <p>录入第一张卡片后，这里会自动生成财务摘要、结构分布和数据质量清单。</p>
-      <Link className="btn btn-primary" href={`/cards/new?returnTo=${encodeURIComponent(returnTo)}`}>新增卡片</Link>
+      <h2><UiText text={"还没有可汇总的收藏"} /></h2>
+      <p><UiText text={"录入第一张卡片后，这里会自动生成财务摘要、结构分布和数据质量清单。"} /></p>
+      <Link className="btn btn-primary" href={`/cards/new?returnTo=${encodeURIComponent(returnTo)}`}><UiText text={"新增卡片"} /></Link>
     </section>
   );
 }
@@ -120,23 +122,23 @@ function ValuationChanges({ changes }: { changes: PortfolioValuationChange[] }) 
   return (
     <section className={styles.section}>
       <header className={styles.sectionHeader}>
-        <div><h2>估值变化</h2></div>
+        <div><h2><UiText text={"估值变化"} /></h2></div>
       </header>
       <div className={styles.valuationChangeGrid}>
         {changes.map((change) => (
           <article key={change.days}>
-            <header><strong>{change.days} 天</strong><span>基准 {shortDate(change.baselineAt)}</span></header>
+            <header><strong>{change.days}<UiText text={" 天"} /></strong><span><UiText text={"基准 "} />{shortDate(change.baselineAt)}</span></header>
             {change.currencies.length > 0 ? change.currencies.map((item) => (
               <div key={item.currency}>
                 <span>{item.currency}</span>
                 <strong className={item.changeAmount >= 0 ? styles.positive : styles.negative}>{signedMoney(item.changeAmount, item.currency)}</strong>
                 <small>
-                  {item.baselineValue > 0 ? `${money(item.baselineValue, item.currency)} → ` : "基准暂无 → "}
+                  {item.baselineValue > 0 ? `${money(item.baselineValue, item.currency)} → ` : <UiText text={"基准暂无 → "} />}
                   {money(item.currentValue, item.currency)}
                   {item.changeRate === null ? "" : ` · ${formatPercentage(item.changeRate, { fractionDigits: 2, signed: true })}`}
                 </small>
               </div>
-            )) : <p className={styles.emptyText}>暂无可比较估值。</p>}
+            )) : <p className={styles.emptyText}><UiText text={"暂无可比较估值。"} /></p>}
           </article>
         ))}
       </div>
@@ -144,7 +146,7 @@ function ValuationChanges({ changes }: { changes: PortfolioValuationChange[] }) 
   );
 }
 
-export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, financialHistory, highCostPositions, soldReviews, returnTo, asOfMonth }: PortfolioCenterProps) {
+export function PortfolioCenter({ snapshot, qualityCards, incompleteCards, valuationChanges, financialHistory, highCostPositions, soldReviews, returnTo, asOfMonth }: PortfolioCenterProps) {
   const availableCurrencies = snapshot.financials.currencies.map((item) => item.currency);
   const [layout, setLayout] = useState<PortfolioLayout>(defaultPortfolioLayout);
   const [draggedFullSection, setDraggedFullSection] = useState<PortfolioFullSectionId | null>(null);
@@ -217,12 +219,12 @@ export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, fina
 
   return (
     <>
-      <section className={styles.overviewGrid} aria-label="组合概览">
-        <article><span>全部卡片</span><strong>{snapshot.cardCount}</strong><small>{snapshot.playerCount} 个卡片主体</small></article>
-        <article><span>当前持有</span><strong>{snapshot.activeCount}</strong><small>已售 {snapshot.soldCount} · 目标 {snapshot.targetCount}</small></article>
-        <article><span>估值覆盖</span><strong>{countPercent(snapshot.financials.valuationCoverageCount, snapshot.cardCount)}</strong><small>{snapshot.financials.valuationCoverageCount}/{snapshot.cardCount} 张</small></article>
-        <article><span>最新估值</span><strong className={styles.dateValue}>{shortDate(snapshot.financials.latestValuationAt)}</strong><small>90 天内 {snapshot.financials.freshValuationCount} 张</small></article>
-      </section>
+      <UiElement as="section" uiAttributes={["aria-label"]} className={styles.overviewGrid} aria-label="组合概览">
+        <article><span><UiText text={"全部卡片"} /></span><strong>{snapshot.cardCount}</strong><small>{snapshot.playerCount}<UiText text={" 个卡片主体"} /></small></article>
+        <article><span><UiText text={"当前持有"} /></span><strong>{snapshot.activeCount}</strong><small><UiText text={"已售 "} />{snapshot.soldCount}<UiText text={" · 目标 "} />{snapshot.targetCount}</small></article>
+        <article><span><UiText text={"估值覆盖"} /></span><strong>{countPercent(snapshot.financials.valuationCoverageCount, snapshot.cardCount)}</strong><small>{snapshot.financials.valuationCoverageCount}/{snapshot.cardCount}<UiText text={" 张"} /></small></article>
+        <article><span><UiText text={"最新估值"} /></span><strong className={styles.dateValue}>{shortDate(snapshot.financials.latestValuationAt)}</strong><small><UiText text={"90 天内 "} />{snapshot.financials.freshValuationCount}<UiText text={" 张"} /></small></article>
+      </UiElement>
 
       <div className={styles.sortableFullLayout}>
       <SortablePortfolioItem
@@ -237,29 +239,29 @@ export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, fina
       >
       <section className={styles.section}>
         <header className={styles.sectionHeader}>
-          <div><h2>持仓财务</h2></div>
+          <div><h2><UiText text={"持仓财务"} /></h2></div>
         </header>
         <div className={styles.currencyGrid}>
           {currencies.map((item) => (
             <article key={item.currency} className={styles.currencyCard}>
-              <header><strong>{item.currency}</strong><span>{item.activeValuedCardCount} 张持仓有估值</span></header>
-              <div className={styles.primaryValue}><span>持仓估值</span><strong>{money(item.activeLatestValue, item.currency)}</strong></div>
+              <header><strong>{item.currency}</strong><span>{item.activeValuedCardCount}<UiText text={" 张持仓有估值"} /></span></header>
+              <div className={styles.primaryValue}><span><UiText text={"持仓估值"} /></span><strong>{money(item.activeLatestValue, item.currency)}</strong></div>
               <dl>
-                <div><dt>累计买入金额</dt><dd>{money(item.purchaseAmount, item.currency)}</dd></div>
-                <div><dt>累计费用</dt><dd>{money(item.expenseAmount, item.currency)}</dd></div>
-                <div><dt>净现金投入</dt><dd>{signedMoney(item.netCashInvested, item.currency)}</dd></div>
-                <div><dt>累计出售金额</dt><dd>{money(item.salesAmount, item.currency)}</dd></div>
-                <div><dt>剩余成本</dt><dd>{money(item.activeCostBasis, item.currency)}</dd></div>
-                <div><dt>已实现盈亏</dt><dd className={(item.realizedProfit ?? 0) >= 0 ? styles.positive : styles.negative}>{signedMoney(item.realizedProfit, item.currency)}</dd></div>
-                <div><dt>总盈亏</dt><dd className={(item.totalProfit ?? 0) >= 0 ? styles.positive : styles.negative}>{signedMoney(item.totalProfit, item.currency)}</dd></div>
-                <div><dt>未实现盈亏</dt><dd className={(item.unrealizedDifference ?? 0) >= 0 ? styles.positive : styles.negative}>{signedMoney(item.unrealizedDifference, item.currency)}</dd></div>
-                <div><dt>未实现回报率</dt><dd className={(item.unrealizedReturnRate ?? 0) >= 0 ? styles.positive : styles.negative}>{formatPercentage(item.unrealizedReturnRate, { fractionDigits: 2, signed: true })}</dd></div>
+                <div><dt><UiText text={"累计买入金额"} /></dt><dd>{money(item.purchaseAmount, item.currency)}</dd></div>
+                <div><dt><UiText text={"累计费用"} /></dt><dd>{money(item.expenseAmount, item.currency)}</dd></div>
+                <div><dt><UiText text={"净现金投入"} /></dt><dd>{signedMoney(item.netCashInvested, item.currency)}</dd></div>
+                <div><dt><UiText text={"累计出售金额"} /></dt><dd>{money(item.salesAmount, item.currency)}</dd></div>
+                <div><dt><UiText text={"剩余成本"} /></dt><dd>{money(item.activeCostBasis, item.currency)}</dd></div>
+                <div><dt><UiText text={"已实现盈亏"} /></dt><dd className={(item.realizedProfit ?? 0) >= 0 ? styles.positive : styles.negative}>{signedMoney(item.realizedProfit, item.currency)}</dd></div>
+                <div><dt><UiText text={"总盈亏"} /></dt><dd className={(item.totalProfit ?? 0) >= 0 ? styles.positive : styles.negative}>{signedMoney(item.totalProfit, item.currency)}</dd></div>
+                <div><dt><UiText text={"未实现盈亏"} /></dt><dd className={(item.unrealizedDifference ?? 0) >= 0 ? styles.positive : styles.negative}>{signedMoney(item.unrealizedDifference, item.currency)}</dd></div>
+                <div><dt><UiText text={"未实现回报率"} /></dt><dd className={(item.unrealizedReturnRate ?? 0) >= 0 ? styles.positive : styles.negative}>{formatPercentage(item.unrealizedReturnRate, { fractionDigits: 2, signed: true })}</dd></div>
               </dl>
             </article>
           ))}
-          {currencies.length === 0 ? <div className={styles.chartEmpty}>暂无财务记录。</div> : null}
+          {currencies.length === 0 ? <div className={styles.chartEmpty}><UiText text={"暂无财务记录。"} /></div> : null}
         </div>
-        <FinancialReportNote accounting={snapshot.accounting} showBasis={false} showRates={false} />
+        <FinancialReportNote accounting={snapshot.accounting} incompleteCards={incompleteCards} returnTo={returnTo} showBasis={false} showRates={false} />
       </section>
       </SortablePortfolioItem>
 
@@ -349,17 +351,17 @@ export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, fina
         >
         <section className={styles.section}>
           <header className={styles.sectionHeader}>
-            <div><h2>高价值持仓</h2></div>
+            <div><h2><UiText text={"高价值持仓"} /></h2></div>
           </header>
           <div className={styles.positionList}>
             {snapshot.topPositions.filter((item) => item.latestValue > 0).slice(0, 8).map((item, index) => (
               <Link href={`/?q=${encodeURIComponent(item.cardTitle || item.playerName)}&sort=valueCnyDesc`} key={`${item.playerName}-${item.cardTitle}-${item.currency}-${index}`}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <div><strong>{item.playerName}</strong><small>{item.cardTitle || [item.year, item.brand, item.productLine].filter(Boolean).join(" · ")}</small></div>
-                <div><strong>{money(item.latestValue, item.currency)}</strong><small>{item.valuationAgeDays > 180 ? "估值待更新" : `${item.valuationAgeDays} 天前估值`}</small></div>
+                <div><strong>{money(item.latestValue, item.currency)}</strong><small>{item.valuationAgeDays > 180 ? <UiText text={"估值待更新"} /> : <UiText text={"{0} 天前估值"} values={[item.valuationAgeDays]} />}</small></div>
               </Link>
             ))}
-            {snapshot.topPositions.every((item) => item.latestValue <= 0) ? <p className={styles.emptyText}>暂无已估值持仓。</p> : null}
+            {snapshot.topPositions.every((item) => item.latestValue <= 0) ? <p className={styles.emptyText}><UiText text={"暂无已估值持仓。"} /></p> : null}
           </div>
         </section>
         </SortablePortfolioItem>
@@ -389,7 +391,7 @@ export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, fina
         >
         <section className={styles.section}>
           <header className={styles.sectionHeader}>
-            <div><h2>高成本持仓</h2></div>
+            <div><h2><UiText text={"高成本持仓"} /></h2></div>
           </header>
           <div className={styles.positionList}>
             {[...new Set(highCostPositions.map((item) => item.currency))].map((currency) => (
@@ -397,13 +399,13 @@ export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, fina
                 {highCostPositions.filter((item) => item.currency === currency).slice(0, 8).map((item, index) => (
                   <Link href={`/cards/${item.cardId}?returnTo=${encodeURIComponent(returnTo)}`} key={`${item.cardId}-${item.currency}`}>
                     <span>{String(index + 1).padStart(2, "0")}</span>
-                    <div><strong>{item.playerName}</strong><small>{item.cardTitle} · {item.quantity} 张</small></div>
-                    <div><strong>{money(item.remainingCost, item.currency)}</strong><small>单张均价 {money(item.averageCost, item.currency)}</small></div>
+                    <div><strong>{item.playerName}</strong><small>{item.cardTitle} · {item.quantity}<UiText text={" 张"} /></small></div>
+                    <div><strong>{money(item.remainingCost, item.currency)}</strong><small><UiText text={"单张均价 "} />{money(item.averageCost, item.currency)}</small></div>
                   </Link>
                 ))}
               </div>
             ))}
-            {highCostPositions.length === 0 ? <p className={styles.emptyText}>暂无可核算的持仓成本。</p> : null}
+            {highCostPositions.length === 0 ? <p className={styles.emptyText}><UiText text={"暂无可核算的持仓成本。"} /></p> : null}
           </div>
         </section>
         </SortablePortfolioItem>
@@ -420,7 +422,7 @@ export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, fina
         >
         <section className={styles.section}>
           <header className={styles.sectionHeader}>
-            <div><h2>已售卡片复盘</h2></div>
+            <div><h2><UiText text={"已售卡片复盘"} /></h2></div>
           </header>
           <div className={styles.positionList}>
             {[...new Set(soldReviews.map((item) => item.currency))].map((currency) => (
@@ -428,17 +430,17 @@ export function PortfolioCenter({ snapshot, qualityCards, valuationChanges, fina
                 <h3>{currency}</h3>
                 {soldReviews.filter((item) => item.currency === currency).slice(0, 8).map((item) => (
                   <Link href={`/cards/${item.cardId}?returnTo=${encodeURIComponent(returnTo)}`} key={`${item.cardId}-${item.currency}`}>
-                    <span>{item.soldAt ? shortDate(item.soldAt) : "待补"}</span>
-                    <div><strong>{item.playerName}</strong><small>{item.cardTitle} · {item.soldQuantity} 张</small></div>
+                    <span>{item.soldAt ? shortDate(item.soldAt) : <UiText text={"待补"} />}</span>
+                    <div><strong>{item.playerName}</strong><small>{item.cardTitle} · {item.soldQuantity}<UiText text={" 张"} /></small></div>
                     <div>
-                      <strong className={(item.realizedProfit ?? 0) >= 0 ? styles.positive : styles.negative}>{item.needsSaleRecord ? "缺少出售记录" : signedMoney(item.realizedProfit, item.currency)}</strong>
-                      <small>回报率 {formatPercentage(item.realizedReturnRate, { fractionDigits: 2, signed: true })}</small>
+                      <strong className={(item.realizedProfit ?? 0) >= 0 ? styles.positive : styles.negative}>{item.needsSaleRecord ? <UiText text={"缺少出售记录"} /> : signedMoney(item.realizedProfit, item.currency)}</strong>
+                      <small><UiText text={"回报率 "} />{formatPercentage(item.realizedReturnRate, { fractionDigits: 2, signed: true })}</small>
                     </div>
                   </Link>
                 ))}
               </div>
             ))}
-            {soldReviews.length === 0 ? <p className={styles.emptyText}>暂无已售卡片。</p> : null}
+            {soldReviews.length === 0 ? <p className={styles.emptyText}><UiText text={"暂无已售卡片。"} /></p> : null}
           </div>
         </section>
         </SortablePortfolioItem>

@@ -1,16 +1,17 @@
 "use client";
 
+import { UiText, UiElement } from "@/components/ui-text";
 import type { CardExpense, CardTransaction, CardValuation } from "@prisma/client";
 import { useState } from "react";
 import { paymentComponents, type FinancialConfig } from "@/lib/financial-reporting";
 import {
-  addExpenseAction,
-  addTransactionAction,
-  addValuationAction,
+  saveFinancialRecordFormAction,
+
+
   deleteFinancialRecordAction,
-  updateExpenseAction,
-  updateTransactionAction,
-  updateValuationAction
+
+
+
 } from "@/app/actions/financial-history";
 import { ExpenseForm, TransactionForm, ValuationForm } from "@/components/financial-history-forms";
 import { FinancialPositionOverview } from "@/components/financial-position-overview";
@@ -87,21 +88,21 @@ function recordSource(item: TimelineItem): string | null {
 
 function AddRecord({ cardId, returnTo, transactions, isOpen, onClose }: { cardId: string; returnTo?: string; transactions: CardTransaction[]; isOpen: boolean; onClose: () => void }) {
   const [recordType, setRecordType] = useState<RecordType>("transaction");
-  const addTransaction = addTransactionAction.bind(null, cardId, returnTo);
-  const addExpense = addExpenseAction.bind(null, cardId, returnTo);
-  const addValuation = addValuationAction.bind(null, cardId, returnTo);
+  const addTransaction = saveFinancialRecordFormAction.bind(null, cardId, "transaction", null, returnTo);
+  const addExpense = saveFinancialRecordFormAction.bind(null, cardId, "expense", null, returnTo);
+  const addValuation = saveFinancialRecordFormAction.bind(null, cardId, "valuation", null, returnTo);
   return (
     <div className="financial-add-record" id="financial-add-record" hidden={!isOpen}>
       <div className="financial-add-record-heading">
-        <strong>新增财务记录</strong>
-        <button type="button" className="btn btn-secondary" onClick={onClose}>收起</button>
+        <strong><UiText text={"新增财务记录"} /></strong>
+        <button type="button" className="btn btn-secondary" onClick={onClose}><UiText text={"收起"} /></button>
       </div>
       <div className="financial-record-composer">
-        <div className="financial-record-tabs" role="tablist" aria-label="新增财务记录类型">
+        <UiElement as="div" uiAttributes={["aria-label"]} className="financial-record-tabs" role="tablist" aria-label="新增财务记录类型">
           {(["transaction", "expense", "valuation"] as const).map((type) => (
-            <button key={type} type="button" role="tab" aria-selected={recordType === type} onClick={() => setRecordType(type)}>{filterLabels[type]}</button>
+            <button key={type} type="button" role="tab" aria-selected={recordType === type} onClick={() => setRecordType(type)}><UiText text={filterLabels[type]} /></button>
           ))}
-        </div>
+        </UiElement>
         <div hidden={recordType !== "transaction"}><TransactionForm action={addTransaction} submitLabel="保存交易" /></div>
         <div hidden={recordType !== "expense"}><ExpenseForm action={addExpense} submitLabel="保存费用" transactions={transactions} /></div>
         <div hidden={recordType !== "valuation"}><ValuationForm action={addValuation} submitLabel="保存估值" /></div>
@@ -112,11 +113,7 @@ function AddRecord({ cardId, returnTo, transactions, isOpen, onClose }: { cardId
 
 function TimelineRecord({ cardId, item, returnTo, transactions }: { cardId: string; item: TimelineItem; returnTo?: string; transactions: CardTransaction[] }) {
   const record = item.record;
-  const updateAction = item.type === "transaction"
-    ? updateTransactionAction.bind(null, cardId, record.id, returnTo)
-    : item.type === "expense"
-      ? updateExpenseAction.bind(null, cardId, record.id, returnTo)
-      : updateValuationAction.bind(null, cardId, record.id, returnTo);
+  const updateAction = saveFinancialRecordFormAction.bind(null, cardId, item.type, record.id, returnTo);
   const deleteAction = deleteFinancialRecordAction.bind(null, cardId, item.type, record.id, returnTo);
   const source = recordSource(item);
   const linkedSale = item.type === "expense" && item.record.transactionId
@@ -127,21 +124,21 @@ function TimelineRecord({ cardId, item, returnTo, transactions }: { cardId: stri
     <article className={`financial-timeline-item financial-timeline-${item.type}`}>
       <time dateTime={formatHistoryDateInput(item.date)}>{formatHistoryDateLabel(item.date)}</time>
       <div className="financial-record-description">
-        <div><span className={`financial-kind financial-kind-${item.type}`}>{filterLabels[item.type]}</span><strong>{recordTitle(item)}</strong></div>
-        <small>{recordImpact(item)}</small>
-        {linkedSale ? <small className="financial-record-link">{`关联 ${formatHistoryDateInput(linkedSale.occurredAt)} 出售`}</small> : null}
+        <div><span className={`financial-kind financial-kind-${item.type}`}><UiText text={filterLabels[item.type]} /></span><strong><UiText text={recordTitle(item)} /></strong></div>
+        <small><UiText text={recordImpact(item)} /></small>
+        {linkedSale ? <small className="financial-record-link">{<UiText text={"关联 {0} 出售"} values={[formatHistoryDateInput(linkedSale.occurredAt)]} />}</small> : null}
       </div>
       <strong className={`financial-record-amount ${item.type === "valuation" ? "is-neutral" : item.type === "transaction" && item.record.kind === "sale" ? "is-positive" : "is-negative"}`}>{recordAmount(item)}</strong>
       <details className="financial-correction">
-        <summary>编辑</summary>
+        <summary><UiText text={"编辑"} /></summary>
         <div className="financial-correction-body">
-          {source || record.notes ? <div className="financial-record-context">{source ? <span>来源 / 服务方：{source}</span> : null}{record.notes ? <span>备注：{record.notes}</span> : null}</div> : null}
+          {source || record.notes ? <div className="financial-record-context">{source ? <span><UiText text={"来源 / 服务方："} />{item.type === "valuation" ? <UiText text={source} /> : source}</span> : null}{record.notes ? <span><UiText text={"备注："} />{record.notes}</span> : null}</div> : null}
           {item.type === "transaction" ? <TransactionForm action={updateAction} submitLabel="保存修改" marker={`${item.type}-${record.id}`} record={item.record} /> : null}
           {item.type === "expense" ? <ExpenseForm action={updateAction} submitLabel="保存修改" marker={`${item.type}-${record.id}`} record={item.record} transactions={transactions} /> : null}
           {item.type === "valuation" ? <ValuationForm action={updateAction} submitLabel="保存修改" marker={`${item.type}-${record.id}`} record={item.record} /> : null}
           <form action={deleteAction} className="financial-delete-form">
-            <button className="btn btn-danger" type="submit">删除这条记录</button>
-            <small>删除后将重新计算持仓、成本和盈亏，此操作无法撤销。</small>
+            <button className="btn btn-danger" type="submit"><UiText text={"删除这条记录"} /></button>
+            <small><UiText text={"删除后将重新计算持仓、成本和盈亏，此操作无法撤销。"} /></small>
           </form>
         </div>
       </details>
@@ -168,34 +165,32 @@ export function CardFinancialHistory(props: FinancialHistoryProps) {
   return (
     <section className="panel financial-history" id="financial-history">
       <div className="financial-history-heading">
-        <div><h2>财务历史</h2></div>
+        <div><h2><UiText text={"财务历史"} /></h2></div>
         <div className="financial-history-actions">
-          <span className="financial-history-count">{timeline.length} 条记录</span>
+          <span className="financial-history-count">{timeline.length}<UiText text={" 条记录"} /></span>
           <button
             type="button"
             className="btn btn-primary financial-add-trigger"
             aria-expanded={isAddingRecord}
             aria-controls="financial-add-record"
             onClick={() => setIsAddingRecord((open) => !open)}
-          >
-            ＋ 新增记录
-          </button>
+          ><UiText text={"＋ 新增记录"} /></button>
         </div>
       </div>
       <AddRecord cardId={props.cardId} returnTo={props.returnTo} transactions={props.transactions} isOpen={isAddingRecord} onClose={() => setIsAddingRecord(false)} />
       <FinancialPositionOverview transactions={props.transactions} expenses={props.expenses} valuations={props.valuations} config={props.config} holdingQuantity={props.holdingQuantity} collectionStatus={props.collectionStatus} />
       <div className="financial-timeline">
         <div className="financial-timeline-heading">
-          <h3>历史记录</h3>
-          <div className="financial-history-filters" aria-label="筛选财务记录">
+          <h3><UiText text={"历史记录"} /></h3>
+          <UiElement as="div" uiAttributes={["aria-label"]} className="financial-history-filters" aria-label="筛选财务记录">
             {(Object.keys(filterLabels) as HistoryFilter[]).map((type) => (
-              <button key={type} type="button" aria-pressed={filter === type} onClick={() => setFilter(type)}>{filterLabels[type]} <span>{counts[type]}</span></button>
+              <button key={type} type="button" aria-pressed={filter === type} onClick={() => setFilter(type)}><UiText text={filterLabels[type]} /> <span>{counts[type]}</span></button>
             ))}
-          </div>
+          </UiElement>
         </div>
         {visibleTimeline.length
           ? visibleTimeline.map((item) => <TimelineRecord key={`${item.type}-${item.record.id}`} cardId={props.cardId} item={item} returnTo={props.returnTo} transactions={props.transactions} />)
-          : <p className="financial-empty muted">暂无{filter === "all" ? "" : filterLabels[filter]}记录。</p>}
+          : <p className="financial-empty muted"><UiText text={"暂无"} />{filter === "all" ? "" : filterLabels[filter]}<UiText text={"记录。"} /></p>}
       </div>
     </section>
   );

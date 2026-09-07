@@ -191,6 +191,7 @@ function renderHero(data: ExportData, coverImage: string | undefined, coverTitle
       ${data.subtitle ? `<p class="subtitle">${escapeHtml(data.subtitle)}</p>` : ""}
       ${paragraphHtml(data.description)}
       <div class="stats"><span>${data.cards.length} 张卡片</span><span>${playerCount} 个卡片主体</span></div>
+      <a class="gallery-enter" href="#collection">浏览馆藏 <span aria-hidden="true">↗</span></a>
     </div>
     ${coverImage ? `<div class="hero-cover"><img src="${escapeHtml(coverImage)}"${normalizeCardImageRotation(data.coverRotation) ? ` style="transform:rotate(${normalizeCardImageRotation(data.coverRotation)}deg) scale(${normalizeCardImageRotation(data.coverRotation) % 180 === 0 ? 1 : 0.72});transform-origin:center"` : ""} alt="${escapeHtml(coverTitle)}" loading="eager" decoding="async" fetchpriority="high" /></div>` : ""}
   </section>`;
@@ -220,7 +221,7 @@ function renderCarousel(data: ExportData, inlineDetails = false): string {
 
 function renderCollectionBrowser(data: ExportData, inlineDetails = false): string {
   if (data.cards.length <= shareGalleryFeaturedCardLimit) return "";
-  return `<section class="collection-browser" data-segmented-gallery data-segment-size="${shareGallerySegmentSize}">
+  return `<section id="collection" class="collection-browser" data-segmented-gallery data-segment-size="${shareGallerySegmentSize}">
     <div class="collection-browser-head"><div><p class="kicker">完整馆藏</p><h2>浏览全部 ${data.cards.length} 张卡片</h2></div><span data-segment-status>已显示 ${Math.min(shareGallerySegmentSize, data.cards.length)} / ${data.cards.length}</span></div>
     <div class="collection-card-grid">${data.cards.map((card, index) => `<div data-segment-item${index >= shareGallerySegmentSize ? " hidden" : ""}>${renderGalleryCard(card, "section-card", inlineDetails, "", data.presentation.featuredCardIds.includes(card.id))}</div>`).join("")}</div>
     ${data.cards.length > shareGallerySegmentSize ? `<button type="button" class="segment-more" data-segment-more>显示更多（剩余 ${data.cards.length - shareGallerySegmentSize}）</button>` : ""}
@@ -740,6 +741,27 @@ body.has-custom-bg .chip {
 .template-archive-journal .curated-section { border-radius: 2px; }
 .template-arena-lineup .arena-board > div { box-shadow: inset 0 3px 0 var(--accent); }
 .template-arena-lineup .curated-section { border-radius: 0 18px 18px 0; }
+/* v1.3: display the whole collectible, including slab edges and serial numbers. */
+.hero-cover img, .section-card img, .card-image img, .featured-story img, .collection-card img { object-fit: contain; padding: clamp(8px, 1.2vw, 18px); }
+.image-fit-cover .card-image img, .image-fit-cover .section-card img, .image-fit-cover .hero-cover img { object-fit: cover; padding: 0; }
+.hero-cover { padding: 18px; box-shadow: 0 24px 70px rgba(0,0,0,.2); }
+.layout-archive .hero { grid-template-columns: minmax(0, 1.05fr) minmax(280px, .85fr); }
+.layout-archive .hero-copy h1 { font-size: clamp(36px, 6vw, 76px); }
+body.has-custom-bg .hero-copy, body.has-custom-bg .curated-section, body.has-custom-bg .detail-copy, body.has-custom-bg .archive-catalog > aside {
+  background: linear-gradient(var(--panel), var(--panel)), color-mix(in srgb, var(--bg) 78%, transparent);
+}
+body.has-custom-bg .hero-copy h1, body.has-custom-bg .detail-copy h1, body.has-custom-bg .subtitle, body.has-custom-bg .hero-copy p:not(.kicker):not(.subtitle), body.has-custom-bg .curated-section p, body.has-custom-bg .detail-copy p { text-shadow: none; }
+.hero-cover img { max-height: 72vh; background: color-mix(in srgb, var(--panel-strong) 80%, transparent); }
+.hero-copy h1 { line-height: 1.06; }
+.hero-copy { padding-block: 32px; }
+.kicker { letter-spacing: .12em; }
+.gallery-enter { display: inline-flex; gap: 32px; align-items: center; border-bottom: 1px solid var(--accent); padding: 14px 0 10px; margin-top: 18px; font-size: 14px; font-weight: 700; color: var(--accent); }
+.gallery-enter span { font-size: 24px; }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; }
+#collection { scroll-margin-top: 24px; }
+.section-card { transition: transform .2s ease, box-shadow .2s ease; }
+.section-card:hover { transform: translateY(-4px); box-shadow: 0 14px 28px rgba(0,0,0,.16); }
+.curated-section p { line-height: 1.8; }
 @media (max-width: 1024px) and (min-width: 821px) {
   :root {
     --gallery-content-max: 900px;
@@ -748,7 +770,8 @@ body.has-custom-bg .chip {
     --gallery-section-gap: 20px;
   }
   .hero,
-  .layout-arena .hero { grid-template-columns: minmax(0, 1fr) minmax(250px, 0.62fr); min-height: 64vh; }
+  .layout-archive .hero,
+  .layout-arena .hero { grid-template-columns: minmax(0, 1fr) minmax(250px, 0.72fr); min-height: 64vh; }
   .hero-copy h1, .detail-copy h1 { font-size: clamp(42px, 7vw, 72px); }
   .curated-section { grid-template-columns: 44px minmax(180px, 0.8fr) minmax(0, 1.2fr); gap: 16px; }
   .section-cards, .section-grid .section-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -763,6 +786,10 @@ body.has-custom-bg .chip {
     --gallery-title-measure: 100%;
   }
   .shell { padding-top: 20px; }
+  .hero-cover { max-width: 460px; width: 100%; margin-inline: auto; padding: 12px; }
+  .hero-cover img { max-height: 62vh; }
+  .hero-copy { padding-block: 16px; }
+  .gallery-enter { min-height: 44px; margin-top: 8px; }
   .hero,
   .layout-arena .hero,
   .layout-archive .hero,

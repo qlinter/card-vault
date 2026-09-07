@@ -1,4 +1,4 @@
-const crypto = require("node:crypto");
+const { sha256File } = require("../lib/file-hash");
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -113,7 +113,7 @@ function verifyPackagedFiles() {
 
 function smokeTestPackagedRuntime(executablePath) {
   const packagedScriptsDir = path.join(unpackedDir, "resources", "app", "scripts");
-  for (const scriptName of ["test-card-flow.js", "test-share-flow.js"]) {
+  for (const scriptName of ["test-card-flow.js", "test-share-flow.js", "test-management-flow.js"]) {
     run(executablePath, [path.join(packagedScriptsDir, scriptName)], {
       timeout: 120000,
       env: { ELECTRON_RUN_AS_NODE: "1" }
@@ -146,15 +146,6 @@ function createPortableZip() {
   }
 }
 
-function hashFile(filePath) {
-  return new Promise((resolve, reject) => {
-    const hash = crypto.createHash("sha256");
-    const stream = fs.createReadStream(filePath);
-    stream.on("error", reject);
-    stream.on("data", (chunk) => hash.update(chunk));
-    stream.on("end", () => resolve(hash.digest("hex").toUpperCase()));
-  });
-}
 
 async function main() {
   if (process.platform !== "win32") {
@@ -164,8 +155,8 @@ async function main() {
   const signing = resolveWindowsSigning(process.env);
   process.stdout.write(`Windows signing mode: ${signing.description}\n`);
 
+  run("npm.cmd", ["run", "check:release"], { env: { CARD_VAULT_UI_SCREENSHOT_MODE: "compare" } });
   cleanDistDirectory();
-  run("npm.cmd", ["run", "check:release"]);
   const removedPrismaTemps = prunePrismaTempEngines(path.join(rootDir, "node_modules", ".prisma", "client"));
   process.stdout.write(`Release dependency cleanup removed ${removedPrismaTemps.length} Prisma temporary engine file(s).\n`);
   run("node", ["scripts/patch-electron-builder-nsis.js"]);
@@ -194,7 +185,7 @@ async function main() {
   assertArtifactSize(setupPath, defaultArtifactLimits.installer, "Windows installer");
   assertArtifactSize(zipPath, defaultArtifactLimits.portable, "Portable ZIP");
 
-  const [setupHash, zipHash] = await Promise.all([hashFile(setupPath), hashFile(zipPath)]);
+  const [setupHash, zipHash] = [sha256File(setupPath).toUpperCase(), sha256File(zipPath).toUpperCase()];
   fs.writeFileSync(checksumPath, `${setupHash}  ${path.basename(setupPath)}\n${zipHash}  ${path.basename(zipPath)}\n`, "utf8");
   removeArtifact(unpackedDir);
   removeArtifact(`${setupPath}.blockmap`);

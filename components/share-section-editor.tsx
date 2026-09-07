@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText, UiElement } from "@/components/ui-text";
 import type { SharePickerCard } from "@/components/share-card-picker";
 import { shareSectionLayouts, type ShareSectionDraft } from "@/lib/share-sections";
 
@@ -27,13 +28,11 @@ export function ShareSectionEditor({
   return (
     <section className="panel share-section">
       <div className="share-section-head">
-        <h2>展馆章节</h2>
-        <button type="button" className="btn btn-secondary" onClick={onAdd}>
-          新增章节
-        </button>
+        <h2><UiText text={"展馆章节"} /></h2>
+        <button type="button" className="btn btn-secondary" onClick={onAdd}><UiText text={"新增章节"} /></button>
       </div>
 
-      {sections.length === 0 ? <p className="muted">尚未创建章节。展馆仍会显示标题、封面和完整卡组。</p> : null}
+      {sections.length === 0 ? <p className="muted"><UiText text={"尚未创建章节。展馆仍会显示标题、封面和完整卡组。"} /></p> : null}
 
       <div className="share-section-editor-list">
         {sections.map((section, index) => (
@@ -49,53 +48,51 @@ export function ShareSectionEditor({
           >
             <div className="share-section-editor-toolbar">
               <strong>
-                <span
+                <UiElement as="span" uiAttributes={["title"]}
                   className="share-drag-handle"
                   draggable
                   title="拖拽调整章节顺序"
                   aria-hidden="true"
                   onDragStart={(event) => event.dataTransfer.setData("text/share-section", section.id)}
-                >⠿</span> 章节 {index + 1}
+                >⠿</UiElement><UiText text={" 章节 "} />{index + 1}
               </strong>
               <div>
-                <button type="button" className="icon-btn" title="上移章节" onClick={() => onMove(section.id, -1)} disabled={index === 0}>
+                <UiElement as="button" uiAttributes={["title"]} type="button" className="icon-btn" title="上移章节" onClick={() => onMove(section.id, -1)} disabled={index === 0}>
                   ↑
-                </button>
-                <button type="button" className="icon-btn" title="下移章节" onClick={() => onMove(section.id, 1)} disabled={index === sections.length - 1}>
+                </UiElement>
+                <UiElement as="button" uiAttributes={["title"]} type="button" className="icon-btn" title="下移章节" onClick={() => onMove(section.id, 1)} disabled={index === sections.length - 1}>
                   ↓
-                </button>
-                <button type="button" className="btn btn-danger" onClick={() => onRemove(section.id)}>
-                  删除
-                </button>
+                </UiElement>
+                <button type="button" className="btn btn-danger" onClick={() => onRemove(section.id)}><UiText text={"删除"} /></button>
               </div>
             </div>
 
             <div className="form-grid">
               <label className="field">
-                <span>章节标题</span>
+                <span><UiText text={"章节标题"} /></span>
                 <input value={section.title} onChange={(event) => onChange(section.id, { title: event.target.value })} />
               </label>
               <label className="field">
-                <span>章节展示方式</span>
+                <span><UiText text={"章节展示方式"} /></span>
                 <select
                   value={section.layout}
                   onChange={(event) => onChange(section.id, { layout: event.target.value as ShareSectionDraft["layout"] })}
                 >
                   {shareSectionLayouts.map((layout) => (
                     <option key={layout.id} value={layout.id}>
-                      {layout.label}
+                      <UiText text={layout.label} />
                     </option>
                   ))}
                 </select>
               </label>
               <label className="field full">
-                <span>章节说明</span>
+                <span><UiText text={"章节说明"} /></span>
                 <textarea value={section.description} onChange={(event) => onChange(section.id, { description: event.target.value })} />
               </label>
             </div>
 
             <details className="share-section-card-assignment">
-              <summary>分配卡片（已选 {section.cardIds.length} 张）</summary>
+              <summary><UiText text={"分配卡片（已选 "} />{section.cardIds.length}<UiText text={" 张）"} /></summary>
               <div className="share-section-card-options">
                 {cards.map((card) => (
                   <label key={card.id} className="inline-check">

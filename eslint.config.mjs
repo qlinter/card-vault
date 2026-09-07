@@ -26,6 +26,7 @@ export default tseslint.config(
   },
   {
     files: ["app/**/*.tsx", "components/**/*.tsx"],
+    settings: { "jsx-a11y": { polymorphicPropName: "as", polymorphicAllowList: ["UiElement"] } },
     rules: {
       "jsx-a11y/label-has-associated-control": ["error", {
         assert: "either",

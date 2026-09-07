@@ -63,11 +63,11 @@ function registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, log
       if (!health.ok) throw new Error("数据健康检查未通过，暂时不能清理未引用文件。");
       if (health.orphanFiles.length === 0) return { cancelled: false, deletedFiles: [], failedFiles: [], health };
       const visibleFiles = health.orphanFiles.slice(0, 20).map((file) => file.path); const remainingCount = health.orphanFiles.length - visibleFiles.length;
-      const detail = ["即将永久删除以下未被数据库引用的文件：", "", ...visibleFiles, ...(remainingCount > 0 ? [`……以及另外 ${remainingCount} 个文件`] : []), "", "此操作无法撤销，建议先执行一次一键备份。确认后，程序会再次检查文件是否仍未被引用。"].join("\n");
+      const detail = ["即将移出以下未被数据库引用的文件：", "", ...visibleFiles, ...(remainingCount > 0 ? [`……以及另外 ${remainingCount} 个文件`] : []), "", "文件会保留在数据目录的 .recovery 文件夹。清理时会暂停数据服务并重新核对引用，完成后自动恢复连接。"].join("\n");
       const confirmation = await dialog.showMessageBox({ type: "warning", title: "确认清理未引用文件", message: `确定清理 ${health.orphanFiles.length} 个未引用文件吗？`, detail, buttons: ["取消", `清理 ${health.orphanFiles.length} 个文件`], defaultId: 0, cancelId: 0, noLink: true });
       if (confirmation.response !== 1) return { cancelled: true, deletedFiles: [], failedFiles: [], health };
       sendStorageProgress(sender, "cleanup", { percent: 38, message: "已确认清理，正在进行删除前复核..." });
-      const result = await runStorageWorker(sender, "cleanup", {}, { start: 40, end: 100 }); logger.appendLog("desktop.log", `Orphan cleanup completed: ${result.deletedFiles.length} deleted, ${result.failedFiles.length} failed.`); return { cancelled: false, ...result };
+      const result = await runWithPausedLocalServer(runtime, () => runStorageWorker(sender, "cleanup", {}, { start: 40, end: 90 })); logger.appendLog("desktop.log", `Orphan cleanup completed: ${result.deletedFiles.length} retained in recovery, ${result.failedFiles.length} failed.`); return { cancelled: false, ...result };
     } catch (error) { logger.appendLog("desktop.log", `Orphan cleanup failed: ${error instanceof Error ? error.message : "Unknown orphan cleanup error."}`); throw error; }
   }));
   trustedHandle("card-vault:restore-data-folder", async (event) => withStorageOperation(event, "restore", async (sender) => {

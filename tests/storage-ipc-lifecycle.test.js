@@ -96,3 +96,11 @@ test("progress notification errors cannot block service reconnection", async () 
   );
   assert.equal(events.includes("resume"), true);
 });
+
+test("failure while pausing the service still reconnects before returning the error", async () => {
+  const events = [];
+  const runtime = runtimeStub(events);
+  runtime.waitForAvailablePort = async () => { throw new Error("port busy"); };
+  await assert.rejects(runWithPausedLocalServer(runtime, async () => { events.push("must not run"); }), /port busy/);
+  assert.deepEqual(events, ["stop", "wait-exit", "resume"]);
+});

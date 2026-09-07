@@ -1,7 +1,6 @@
 const { spawn } = require("node:child_process");
 
 function createStorageWorkerBridge({ app, runtime, storage, logger }) {
-  let activeStorageOperation = null;
 
   function sendStorageProgress(sender, operation, progress) {
     if (!sender || sender.isDestroyed()) return;
@@ -57,15 +56,14 @@ function createStorageWorkerBridge({ app, runtime, storage, logger }) {
   }
 
   async function withStorageOperation(event, operation, callback) {
-    if (activeStorageOperation) throw new Error(`存储任务“${activeStorageOperation}”正在执行，请等待完成后重试。`);
-    activeStorageOperation = operation;
-    sendStorageProgress(event.sender, operation, { percent: 0, message: "正在准备任务..." });
-    try {
-      return await callback(event.sender);
-    } finally {
-      sendStorageProgress(event.sender, operation, { percent: 100, message: "任务已结束。", done: true });
-      activeStorageOperation = null;
-    }
+    return runtime.runExclusiveOperation(operation, async () => {
+      try {
+        sendStorageProgress(event.sender, operation, { percent: 0, message: "正在准备任务..." });
+        return await callback(event.sender);
+      } finally {
+        sendStorageProgress(event.sender, operation, { percent: 100, message: "任务已结束。", done: true });
+      }
+    });
   }
 
   return { sendStorageProgress, runStorageWorker, withStorageOperation };

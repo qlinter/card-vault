@@ -5,6 +5,7 @@ const { dateFolderName, uniqueBackupTarget } = require("./backup");
 const { isSubPath, pathsEqual } = require("./file-utils");
 const { inspectDataFolder } = require("./health");
 const { mapProgress, reportProgress } = require("./progress");
+const { verifyBackupManifest, databaseCounts } = require("./backup-manifest");
 
 function resolveRestoreSourcePath(selectedPath) {
   if (typeof selectedPath !== "string" || selectedPath.trim() === "") return null;
@@ -22,6 +23,7 @@ function createRestoreService({ config, backupDataFolder, repairDataLayout }) {
     if (!sourceDataDir) throw new Error("所选文件夹中未找到可恢复的 dev.db。请选择一键备份生成的日期文件夹或其中的 data 文件夹。");
     const targetDataDir = path.resolve(config.getDataDir());
     if (pathsEqual(sourceDataDir, targetDataDir) || isSubPath(targetDataDir, sourceDataDir) || isSubPath(sourceDataDir, targetDataDir)) throw new Error("恢复来源和当前数据目录不能互相包含。");
+    const verification = verifyBackupManifest(sourceDataDir);
     const sourceHealth = inspectDataFolder(sourceDataDir, mapProgress(onProgress, 4, 18));
     if (sourceHealth.integrity !== "ok") throw new Error("所选备份的 SQLite 数据库完整性检查未通过，已取消恢复。");
     let safetyBackupPath = null;
@@ -43,6 +45,8 @@ function createRestoreService({ config, backupDataFolder, repairDataLayout }) {
       reportProgress(onProgress, 81, "正在验证恢复数据的数据库结构...");
       schema = initializeDatabase(path.join(stagingDir, "dev.db"));
       if (inspectDataFolder(stagingDir, mapProgress(onProgress, 82, 86)).integrity !== "ok") throw new Error("备份数据库结构验证后的完整性检查失败。");
+      const report = { version: 1, restoredAt: new Date().toISOString(), verification, afterCounts: databaseCounts(stagingDir), schemaVersion: schema.schemaVersion, safetyBackupPath };
+      fs.writeFileSync(path.join(stagingDir, "migration-report.json"), JSON.stringify(report, null, 2));
       if (fs.existsSync(targetDataDir)) { reportProgress(onProgress, 84, "正在保留当前数据以便回滚..."); fs.renameSync(targetDataDir, rollbackDir); }
       try { reportProgress(onProgress, 88, "正在切换到恢复后的数据目录..."); fs.renameSync(stagingDir, targetDataDir); }
       catch (error) { if (fs.existsSync(rollbackDir) && !fs.existsSync(targetDataDir)) fs.renameSync(rollbackDir, targetDataDir); throw error; }

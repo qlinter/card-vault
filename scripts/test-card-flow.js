@@ -398,7 +398,7 @@ async function main() {
       !thumbnailHomePage.includes('data-testid="home-filter-actions"') ||
       !thumbnailHomePage.includes('href="/cards/new"') ||
       !thumbnailHomePage.includes("filter-add-card") ||
-      !thumbnailHomePage.includes('href="/portfolio">组合中心')
+      !/data-testid="home-portfolio-link"[^>]*href="\/portfolio"/.test(thumbnailHomePage)
     ) {
       throw new Error("Home page did not keep the create-card and Portfolio Center actions available.");
     }
@@ -750,17 +750,16 @@ async function main() {
     if (repurchasedCard?.holdingQuantity !== 1 || repurchasedCard?.collectionStatus !== "holding") {
       throw new Error(`Repurchase did not restore the position status: ${JSON.stringify(repurchasedCard)}.`);
     }
-    if (!repurchasedDetailPage.includes("总盈亏") || !repurchasedDetailPage.includes("关联 2026-08-11 出售")) {
-      throw new Error(`Financial detail does not show total profit or the linked sale expense: ${repurchasedDetailPage.includes("总盈亏")},${repurchasedDetailPage.includes("关联 2026-08-11 出售")}.`);
+    if (!repurchasedDetailPage.includes("总盈亏") || !repurchasedDetailPage.replace(/<!--.*?-->/g, "").includes("关联 2026-08-11 出售")) {
+      throw new Error(`Financial detail does not show total profit or the linked sale expense: ${repurchasedDetailPage.includes("总盈亏")},${repurchasedDetailPage.replace(/<!--.*?-->/g, "").includes("关联 2026-08-11 出售")}.`);
     }
     const portfolioPage = await fetchPage(baseUrl, "/portfolio");
     for (const marker of [
-      "组合中心",
+      "portfolio-page",
       "持仓财务",
       "财务历史趋势",
       "估值来源",
       "活动趋势",
-      "评级",
       "收藏结构",
       "扩展维度",
       "卡片属性",

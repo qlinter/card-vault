@@ -25,7 +25,7 @@ export default defineConfig({
   use: {
     baseURL,
     browserName: "chromium",
-    channel: "msedge",
+
     colorScheme: "light",
     locale: "zh-CN",
     timezoneId: "Asia/Shanghai",
@@ -34,11 +34,13 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "desktop-edge",
+      name: "desktop-chromium",
       use: { viewport: { width: 1440, height: 1000 } }
     },
     {
-      name: "mobile-edge",
+      name: "mobile-chromium",
+      testMatch: "**/visual.spec.mjs",
+      grep: /share-preview|generated share preview fills/,
       use: { viewport: { width: 390, height: 844 } }
     }
   ]

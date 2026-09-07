@@ -11,7 +11,7 @@ tests/.ui-test-runtime
 logs
 .desktop-user-data
 backups
-data
+/data
 *.log
 tsconfig.tsbuildinfo
 prisma/dev.db

@@ -1,5 +1,6 @@
 "use client";
 
+import { UiElement, UiText } from "@/components/ui-text";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { DisclosureIcon } from "@/components/disclosure-icon";
@@ -156,14 +157,14 @@ export function CardEntryQueuePanel({
   }
 
   return (
-    <details
+    <UiElement as="details" uiAttributes={["aria-label"]}
       className="entry-queue-panel panel"
       aria-label="批量录入"
       open={isExpanded}
       onToggle={(event) => setIsExpanded(event.currentTarget.open)}
     >
       <summary className="entry-queue-header">
-        <span className="entry-queue-title">批量录入</span>
+        <span className="entry-queue-title"><UiText text={"批量录入"} /></span>
         <span className="entry-queue-summary-meta">
           <span className="entry-queue-count">{items.length}</span>
           <DisclosureIcon expanded={isExpanded} className="entry-queue-chevron" />
@@ -172,18 +173,18 @@ export function CardEntryQueuePanel({
 
       <form className="entry-queue-import" onSubmit={importBatch}>
         <label className="field">
-          <span>批次名称（可选）</span>
-          <input name="label" maxLength={120} placeholder="例如 2026-08 拆盒" />
+          <span><UiText text={"批次名称（可选）"} /></span>
+          <UiElement as="input" uiAttributes={["placeholder"]} name="label" maxLength={120} placeholder="例如 2026-08 拆盒" />
         </label>
         <label className="field">
-          <span>图片分组方式</span>
+          <span><UiText text={"图片分组方式"} /></span>
           <select name="pairingMode" defaultValue="pairs">
-            <option value="pairs">按选择顺序两张一组（正面 / 背面）</option>
-            <option value="single">每张图片单独一项</option>
+            <option value="pairs"><UiText text={"按选择顺序两张一组（正面 / 背面）"} /></option>
+            <option value="single"><UiText text={"每张图片单独一项"} /></option>
           </select>
         </label>
         <label className="field entry-queue-file-field">
-          <span>选择图片（最多 20 张，总计 100MB）</span>
+          <span><UiText text={"选择图片（最多 20 张，总计 100MB）"} /></span>
           <input
             ref={fileInputRef}
             name="images"
@@ -193,7 +194,7 @@ export function CardEntryQueuePanel({
           />
         </label>
         <button className="btn btn-primary" type="submit" disabled={isUploading}>
-          {isUploading ? "正在预处理..." : "导入并预处理"}
+          {isUploading ? <UiText text={"正在预处理..."} /> : <UiText text={"导入并预处理"} />}
         </button>
       </form>
 
@@ -205,13 +206,13 @@ export function CardEntryQueuePanel({
             disabled={isRecognizingBatch || isUploading}
             onClick={recognizePendingItems}
           >
-            {isRecognizingBatch ? "批量识别中..." : "识别未完成项目"}
+            {isRecognizingBatch ? <UiText text={"批量识别中..."} /> : <UiText text={"识别未完成项目"} />}
           </button>
         </div>
       ) : null}
 
       {message ? (
-        <p className="entry-queue-message" aria-live="polite">{message}</p>
+        <p className="entry-queue-message" aria-live="polite"><UiText text={message} /></p>
       ) : null}
 
       {items.length > 0 ? (
@@ -226,7 +227,7 @@ export function CardEntryQueuePanel({
                   image.url ? (
                     <figure key={image.id}>
                       <img src={image.url} alt={`${image.side === "front" ? "正面" : "背面"}：${image.originalName}`} />
-                      <figcaption>{image.side === "front" ? "正面" : "背面"}</figcaption>
+                      <figcaption>{image.side === "front" ? <UiText text={"正面"} /> : <UiText text={"背面"} />}</figcaption>
                     </figure>
                   ) : (
                     <div className="entry-queue-placeholder" key={image.id}>
@@ -242,8 +243,7 @@ export function CardEntryQueuePanel({
                     {statusLabel(item.status)}
                   </span>
                 </div>
-                <small>
-                  第 {item.attemptCount} 次处理 · {item.images.map((image) =>
+                <small><UiText text={"第"} />{item.attemptCount}<UiText text={" 次处理 · "} />{item.images.map((image) =>
                     image.processedBytes
                       ? `${formatBytes(image.originalBytes)} → ${formatBytes(image.processedBytes)}`
                       : formatBytes(image.originalBytes)
@@ -251,13 +251,7 @@ export function CardEntryQueuePanel({
                 </small>
                 {item.recognition ? (
                   <p className={`entry-recognition-state is-${item.recognition.status}`}>
-                    {item.recognition.status === "review"
-                      ? item.recognition.lowConfidenceFields.length > 0
-                        ? `AI 待确认 · 低置信：${item.recognition.lowConfidenceFields.join("、")}`
-                        : "AI 待确认"
-                      : item.recognition.status === "failed"
-                        ? `AI 失败：${item.recognition.errorMessage || "请重新识别"}`
-                        : "AI 识别中"}
+                    {item.recognition.status === "review" ? item.recognition.lowConfidenceFields.length > 0 ? <UiText text={"AI 待确认 · 低置信：{0}"} values={[item.recognition.lowConfidenceFields.join("、")]} /> : <UiText text={"AI 待确认"} /> : item.recognition.status === "failed" ? <UiText text={"AI 失败：{0}"} values={[item.recognition.errorMessage || "请重新识别"]} /> : <UiText text={"AI 识别中"} />}
                   </p>
                 ) : null}
                 {item.errorMessage ? <p className="note-error">{item.errorMessage}</p> : null}
@@ -273,9 +267,7 @@ export function CardEntryQueuePanel({
                           detail: `/cards/new?queue=${encodeURIComponent(item.id)}`
                         }));
                       }}
-                    >
-                      进入录入
-                    </a>
+                    ><UiText text={"进入录入"} /></a>
                   ) : null}
                   {item.status === "ready" && item.images.length === 2 ? (
                     <button
@@ -283,9 +275,7 @@ export function CardEntryQueuePanel({
                       type="button"
                       disabled={pendingItemId === item.id}
                       onClick={() => mutateItem(item.id, "swap")}
-                    >
-                      交换正反面
-                    </button>
+                    ><UiText text={"交换正反面"} /></button>
                   ) : null}
                   {item.status === "ready" && item.recognition?.status !== "recognizing" ? (
                     <button
@@ -294,7 +284,7 @@ export function CardEntryQueuePanel({
                       disabled={pendingItemId === item.id || isRecognizingBatch}
                       onClick={() => recognizeItem(item.id)}
                     >
-                      {item.recognition?.status === "review" ? "重新识别" : "AI 识别"}
+                      {item.recognition?.status === "review" ? <UiText text={"重新识别"} /> : <UiText text={"AI 识别"} />}
                     </button>
                   ) : null}
                   {item.status === "failed" ? (
@@ -303,24 +293,20 @@ export function CardEntryQueuePanel({
                       type="button"
                       disabled={pendingItemId === item.id}
                       onClick={() => mutateItem(item.id, "retry")}
-                    >
-                      重试
-                    </button>
+                    ><UiText text={"重试"} /></button>
                   ) : null}
                   <button
                     className="btn btn-secondary"
                     type="button"
                     disabled={pendingItemId === item.id}
                     onClick={() => mutateItem(item.id, "delete")}
-                  >
-                    移除
-                  </button>
+                  ><UiText text={"移除"} /></button>
                 </div>
               </div>
             </article>
           ))}
         </div>
       ) : null}
-    </details>
+    </UiElement>
   );
 }

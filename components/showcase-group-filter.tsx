@@ -1,5 +1,6 @@
-﻿"use client";
+"use client";
 
+import { UiElement, UiText } from "@/components/ui-text";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { DisclosureIcon } from "@/components/disclosure-icon";
@@ -48,11 +49,11 @@ export function ShowcaseGroupFilter({ groups, activeGroup, queryText }: Showcase
   }, [activeGroup, expanded, groups]);
 
   return (
-    <section className="showcase-groups" aria-label="卡片主体筛选">
+    <UiElement as="section" uiAttributes={["aria-label"]} className="showcase-groups" aria-label="卡片主体筛选">
       <div className="showcase-section-head">
-        <p className="muted">共 {groups.length} 个卡片主体</p>
+        <p className="muted"><UiText text={"共 "} />{groups.length}<UiText text={" 个卡片主体"} /></p>
         {groups.length > 8 ? (
-          <button
+          <UiElement as="button" uiAttributes={["aria-label","title"]}
             type="button"
             className="btn btn-secondary disclosure-button"
             onClick={() => setExpanded((value) => !value)}
@@ -61,16 +62,14 @@ export function ShowcaseGroupFilter({ groups, activeGroup, queryText }: Showcase
             title={expanded ? "收起卡片主体列表" : "展开卡片主体列表"}
           >
             <DisclosureIcon expanded={expanded} />
-          </button>
+          </UiElement>
         ) : null}
       </div>
       <div
         className={`showcase-group-row${expanded ? " is-expanded" : " is-collapsed"}`}
         style={!expanded ? { gridTemplateColumns: `repeat(${visibleGroups.length + 1}, minmax(0, 1fr))` } : undefined}
       >
-        <Link href={buildGroupHref(undefined, queryText)} className={`showcase-chip${!activeGroup ? " active" : ""}`}>
-          全部
-        </Link>
+        <Link href={buildGroupHref(undefined, queryText)} className={`showcase-chip${!activeGroup ? " active" : ""}`}><UiText text={"全部"} /></Link>
         {visibleGroups.map((group) => (
           <Link
             key={group.name}
@@ -83,6 +82,6 @@ export function ShowcaseGroupFilter({ groups, activeGroup, queryText }: Showcase
           </Link>
         ))}
       </div>
-    </section>
+    </UiElement>
   );
 }

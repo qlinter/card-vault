@@ -1,3 +1,4 @@
+import { UiText } from "@/components/ui-text";
 import { CreateCardForm } from "@/components/create-card-form";
 import { CardEntryQueuePanel } from "@/components/card-entry-queue-panel";
 import {
@@ -78,10 +79,10 @@ export default async function NewCardPage({ searchParams }: NewCardPageProps) {
           : undefined;
 
   return (
-    <div className="page">
+    <div className="page entry-page">
       <div className="title-row">
         <div>
-          <h1 className="h1">录入工作台</h1>
+          <h1 className="h1"><UiText text={"录入工作台"} /></h1>
         </div>
       </div>
       <CardEntryQueuePanel items={queueItems} activeItemId={queueItem?.id} />

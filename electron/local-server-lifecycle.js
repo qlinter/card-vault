@@ -22,12 +22,11 @@ function notifyLifecycleHook(hook) {
 }
 
 async function runWithPausedLocalServer(runtime, task, hooks = {}) {
-  const child = runtime.stopServer();
-  await runtime.waitForProcessExit(child);
-  await runtime.waitForAvailablePort(runtime.getServerPort());
-
   let result;
   try {
+    const child = runtime.stopServer();
+    await runtime.waitForProcessExit(child);
+    await runtime.waitForAvailablePort(runtime.getServerPort());
     result = await task();
   } catch (taskError) {
     notifyLifecycleHook(hooks.beforeRecovery);

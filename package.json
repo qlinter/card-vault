@@ -23,7 +23,7 @@
     "test:security": "node scripts/test-local-session-flow.js",
     "test:ui": "playwright test",
     "test:ui:update": "playwright test --update-snapshots",
-    "check:release": "npm run prisma:generate && npm run check:encoding && npm run check:docs && npm run check:metadata && npm run lint && npm run typecheck && npm run test:coverage && next build --webpack && npm run test:security && npm run test:card && npm run test:share && npm run test:ui",
+    "check:release": "npm run prisma:generate && npm run check:encoding && npm run check:docs && npm run check:metadata && npm run lint && npm run typecheck && npm run test:coverage && next build --webpack && npm run test:security && npm run test:card && npm run test:share && npm run test:management && npm run test:ui",
     "audit:prod": "npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org",
     "typecheck": "tsc --noEmit",
     "clean:cache": "node scripts/clean-cache.js",
@@ -37,11 +37,15 @@
     "release:win": "node scripts/release-win.js",
     "verify:release-artifacts": "node scripts/verify-release-artifacts.js",
     "db:init": "node scripts/init-db.js",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "test:management": "node scripts/test-management-flow.js",
+    "benchmark": "node scripts/test-management-flow.js --benchmark",
+    "audit:all": "npm audit --audit-level=high --registry=https://registry.npmjs.org"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "@swc/helpers": "^0.5.15",
+    "exceljs": "^4.4.0",
     "next": "^16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -65,7 +69,10 @@
     "typescript-eslint": "^8.46.0"
   },
   "overrides": {
-    "deepmerge-ts": "8.0.0"
+    "deepmerge-ts": "8.0.0",
+    "exceljs": {
+      "uuid": "11.1.1"
+    }
   },
   "build": {
     "appId": "com.ql.cardvault",

@@ -162,6 +162,8 @@ test("Finance links to clear calculation rules and returns to its expanded secti
   await expect(page.getByRole("button", { name: "展开 AI", exact: true })).toHaveText("AI");
   await page.getByRole("button", { name: "展开财务", exact: true }).click();
   await page.getByRole("link", { name: "查看财务计算规则 →" }).click();
+  await expect(page).toHaveURL(/settings\/guide#finance$/);
+  await page.getByRole("link", { name: "详细财务计算规则", exact: true }).click();
   await expect(page).toHaveURL(/settings\/finance-rules$/);
   await expect(page.getByRole("heading", { name: "财务计算规则", exact: true })).toBeVisible();
   await expect(page.locator(".finance-rules-page")).toContainText("移动平均法");

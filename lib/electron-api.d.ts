@@ -31,6 +31,7 @@ declare global {
       checkDataHealth: () => Promise<DesktopDataHealth>;
       showOrphanFileInFolder: (file: DesktopMediaFile) => Promise<{ path: string }>;
       cleanOrphanFiles: () => Promise<{
+        recoveryPath?: string | null;
         cancelled: boolean;
         deletedFiles: Array<{ type: string; path: string }>;
         failedFiles: Array<{ type: string; path: string; reason: string }>;

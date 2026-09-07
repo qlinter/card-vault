@@ -1,3 +1,4 @@
+import { UiText } from "@/components/ui-text";
 import Link from "next/link";
 import { deleteShareCollectionAction } from "@/app/actions/shares";
 import { prisma } from "@/lib/prisma";
@@ -19,42 +20,30 @@ export default async function SharesPage({ searchParams }: SharesPageProps) {
 
   return (
     <div className="page shares-page">
-      <div className="title-row">
-        <div>
-          <h1 className="h1">分享</h1>
-        </div>
-        <Link className="btn btn-primary" href="/shares/new">
-          新建分享集
-        </Link>
+      <h1 className="sr-only"><UiText text="分享" /></h1>
+      <div className="share-list-toolbar">
+        <Link className="btn btn-primary" href="/shares/new"><UiText text={"新建分享集"} /></Link>
       </div>
 
-      {success ? <p className="note-ok">{success}</p> : null}
-      {error ? <p className="note-error">{error}</p> : null}
+      {success ? <p className="note-ok"><UiText text={success} /></p> : null}
+      {error ? <p className="note-error"><UiText text={error} /></p> : null}
 
       <section className="share-list">
         {shares.map((share) => (
           <article className="panel share-list-item" key={share.id}>
             <div>
               <h2>{share.title}</h2>
-              <p className="muted">{share.subtitle || share.description || "尚未填写分享说明。"}</p>
+              {share.subtitle || share.description ? <p className="muted">{share.subtitle || share.description}</p> : null}
               <p className="muted">
-                {share.items.length} 张卡片 / slug: {share.slug}
+                {share.items.length}<UiText text=" 张卡片" />
               </p>
             </div>
             <div className="share-list-actions">
-              <Link className="btn btn-secondary" href={`/shares/${share.id}/preview`}>
-                预览
-              </Link>
-              <Link className="btn btn-secondary" href={`/shares/${share.id}/edit`}>
-                编辑
-              </Link>
-              <Link className="btn btn-primary" href={`/shares/${share.id}/export`}>
-                导出
-              </Link>
+              <Link className="btn btn-secondary" href={`/shares/${share.id}/preview`}><UiText text={"预览"} /></Link>
+              <Link className="btn btn-secondary" href={`/shares/${share.id}/edit`}><UiText text={"编辑"} /></Link>
+              <Link className="btn btn-secondary" href={`/shares/${share.id}/export`}><UiText text={"导出"} /></Link>
               <form action={deleteShareCollectionAction.bind(null, share.id)}>
-                <button className="btn btn-danger" type="submit">
-                  删除
-                </button>
+                <button className="btn btn-danger" type="submit"><UiText text="删除" /></button>
               </form>
             </div>
           </article>
@@ -63,7 +52,7 @@ export default async function SharesPage({ searchParams }: SharesPageProps) {
 
       {shares.length === 0 ? (
         <div className="panel">
-          <p>还没有分享集。先新建一个主题展馆，手动挑选要展示的卡片。</p>
+          <p><UiText text={"还没有分享集。先新建一个主题展馆，手动挑选要展示的卡片。"} /></p>
         </div>
       ) : null}
     </div>

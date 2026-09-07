@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText, UiElement } from "@/components/ui-text";
 import { useEffect, useState } from "react";
 import { DisclosureIcon } from "@/components/disclosure-icon";
 import { errorMessage } from "@/lib/feedback-messages";
@@ -302,7 +303,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
 
   return (
     <section className="panel settings-section ai-settings-panel">
-      <button
+      <UiElement as="button" uiAttributes={["aria-label"]}
         type="button"
         className="ai-settings-toggle"
         onClick={() => setIsOpen((value) => !value)}
@@ -313,13 +314,13 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
           <strong>AI</strong>
         </span>
         <DisclosureIcon expanded={isOpen} />
-      </button>
+      </UiElement>
 
       {isOpen ? (
         <>
           <div className="form-grid">
             <label className="field">
-              <span>当前服务</span>
+              <span><UiText text={"当前服务"} /></span>
               <select value={selectedProviderValue} onChange={(event) => handleProviderChange(event.target.value)} disabled={!isDesktop}>
                 <option value="azure">Azure OpenAI</option>
                 <option value="minimax">MiniMax</option>
@@ -330,11 +331,11 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
             </label>
 
             <div className="field">
-              <span>自定义配置</span>
+              <span><UiText text={"自定义配置"} /></span>
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                <button type="button" className="btn btn-secondary" onClick={addCustomProvider} disabled={!isDesktop}>新增自定义 AI</button>
+                <button type="button" className="btn btn-secondary" onClick={addCustomProvider} disabled={!isDesktop}><UiText text={"新增自定义 AI"} /></button>
                 {settings.provider === "custom" && currentCustom ? (
-                  <button type="button" className="btn btn-danger" onClick={deleteCurrentCustomProvider} disabled={!isDesktop}>删除当前配置</button>
+                  <button type="button" className="btn btn-danger" onClick={deleteCurrentCustomProvider} disabled={!isDesktop}><UiText text={"删除当前配置"} /></button>
                 ) : null}
               </div>
             </div>
@@ -343,15 +344,15 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
               <>
                 <label className="field">
                   <span>Azure Endpoint</span>
-                  <input value={settings.azure.endpoint} onChange={(event) => setSettings((current) => ({ ...current, azure: { ...current.azure, endpoint: event.target.value } }))} placeholder="https://your-resource.openai.azure.com 或 https://your-resource.services.ai.azure.com" disabled={!isDesktop} />
+                  <UiElement as="input" uiAttributes={["placeholder"]} value={settings.azure.endpoint} onChange={(event) => setSettings((current) => ({ ...current, azure: { ...current.azure, endpoint: event.target.value } }))} placeholder="https://your-resource.openai.azure.com 或 https://your-resource.services.ai.azure.com" disabled={!isDesktop} />
                 </label>
                 <label className="field">
                   <span>Deployment</span>
-                  <input value={settings.azure.deployment} onChange={(event) => setSettings((current) => ({ ...current, azure: { ...current.azure, deployment: event.target.value } }))} placeholder="你的部署名称" disabled={!isDesktop} />
+                  <UiElement as="input" uiAttributes={["placeholder"]} value={settings.azure.deployment} onChange={(event) => setSettings((current) => ({ ...current, azure: { ...current.azure, deployment: event.target.value } }))} placeholder="你的部署名称" disabled={!isDesktop} />
                 </label>
                 <label className="field">
                   <span>Azure API Key</span>
-                  <input value={azureApiKey} type="password" onChange={(event) => setAzureApiKey(event.target.value)} placeholder={settings.azure.hasApiKey ? "已保存；留空则不修改" : "请输入 API Key"} disabled={!isDesktop} />
+                  <UiElement as="input" uiAttributes={["placeholder"]} value={azureApiKey} type="password" onChange={(event) => setAzureApiKey(event.target.value)} placeholder={settings.azure.hasApiKey ? "已保存；留空则不修改" : "请输入 API Key"} disabled={!isDesktop} />
                 </label>
               </>
             ) : settings.provider === "minimax" ? (
@@ -366,14 +367,14 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
                 </label>
                 <label className="field">
                   <span>MiniMax API Key</span>
-                  <input value={minimaxApiKey} type="password" onChange={(event) => setMiniMaxApiKey(event.target.value)} placeholder={settings.minimax.hasApiKey ? "已保存；留空则不修改" : "请输入 API Key"} disabled={!isDesktop} />
+                  <UiElement as="input" uiAttributes={["placeholder"]} value={minimaxApiKey} type="password" onChange={(event) => setMiniMaxApiKey(event.target.value)} placeholder={settings.minimax.hasApiKey ? "已保存；留空则不修改" : "请输入 API Key"} disabled={!isDesktop} />
                 </label>
               </>
             ) : currentCustom ? (
               <>
                 <label className="field">
-                  <span>显示名称 *</span>
-                  <input value={currentCustom.name} onChange={(event) => updateCurrentCustom({ name: event.target.value })} placeholder="例如 OpenRouter、DeepSeek 或本地模型" disabled={!isDesktop} />
+                  <span><UiText text={"显示名称 *"} /></span>
+                  <UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.name} onChange={(event) => updateCurrentCustom({ name: event.target.value })} placeholder="例如 OpenRouter、DeepSeek 或本地模型" disabled={!isDesktop} />
                 </label>
                 <label className="field">
                   <span>Chat Completions Endpoint *</span>
@@ -381,11 +382,11 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
                 </label>
                 <label className="field">
                   <span>Model *</span>
-                  <input value={currentCustom.model} onChange={(event) => updateCurrentCustom({ model: event.target.value })} placeholder="服务商提供的模型 ID" disabled={!isDesktop} />
+                  <UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.model} onChange={(event) => updateCurrentCustom({ model: event.target.value })} placeholder="服务商提供的模型 ID" disabled={!isDesktop} />
                 </label>
                 <label className="field">
-                  <span>API Key（可选）</span>
-                  <input
+                  <span><UiText text={"API Key（可选）"} /></span>
+                  <UiElement as="input" uiAttributes={["placeholder"]}
                     value={customApiKeys[currentCustom.id] || ""}
                     type="password"
                     onChange={(event) => {
@@ -398,7 +399,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
                 </label>
                 {currentCustom.hasApiKey ? (
                   <label className="field">
-                    <span>已保存密钥</span>
+                    <span><UiText text={"已保存密钥"} /></span>
                     <span>
                       <input
                         type="checkbox"
@@ -408,28 +409,24 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
                           if (event.target.checked) setCustomApiKeys((current) => ({ ...current, [currentCustom.id]: "" }));
                         }}
                         disabled={!isDesktop}
-                      />{" "}
-                      保存时清除 API Key
-                    </span>
+                      />{" "}<UiText text={"保存时清除 API Key"} /></span>
                   </label>
                 ) : null}
                 <label className="field full">
-                  <span>模型列表 Endpoint（可选）</span>
-                  <input value={currentCustom.modelsEndpoint} onChange={(event) => updateCurrentCustom({ modelsEndpoint: event.target.value })} placeholder="留空时从 /chat/completions 自动推断 /models" disabled={!isDesktop} />
+                  <span><UiText text={"模型列表 Endpoint（可选）"} /></span>
+                  <UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.modelsEndpoint} onChange={(event) => updateCurrentCustom({ modelsEndpoint: event.target.value })} placeholder="留空时从 /chat/completions 自动推断 /models" disabled={!isDesktop} />
                 </label>
-                <p className="muted full" style={{ margin: 0 }}>
-                  适用于 OpenAI Chat Completions 兼容服务；API Key 默认使用 Authorization: Bearer 发送。用于识图时，请选择支持图片输入的多模态模型。
-                </p>
+                <p className="muted full" style={{ margin: 0 }}><UiText text={"适用于 OpenAI Chat Completions 兼容服务；API Key 默认使用 Authorization: Bearer 发送。用于识图时，请选择支持图片输入的多模态模型。"} /></p>
               </>
             ) : (
-              <p className="muted full">尚未创建自定义配置，请点击“新增自定义 AI”。</p>
+              <p className="muted full"><UiText text={"尚未创建自定义配置，请点击“新增自定义 AI”。"} /></p>
             )}
 
             {modelOptions.length > 0 ? (
               <label className="field">
-                <span>{settings.provider === "azure" ? "选择 Deployment" : "选择模型"}</span>
+                <span>{settings.provider === "azure" ? <UiText text={"选择 Deployment"} /> : <UiText text={"选择模型"} />}</span>
                 <select value={selectedModel} onChange={(event) => handleModelOptionChange(event.target.value)}>
-                  <option value="">请选择</option>
+                  <option value=""><UiText text={"请选择"} /></option>
                   {modelOptions.map((model) => <option key={model} value={model}>{model}</option>)}
                 </select>
               </label>
@@ -437,16 +434,16 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
           </div>
 
           <div className="ai-actions">
-            <button type="button" className="btn btn-primary" onClick={handleSave} disabled={isDesktop !== true || isSaving}>{isSaving ? "保存中..." : "保存设置"}</button>
-            <button type="button" className="btn btn-secondary" onClick={handleTest} disabled={isTesting || !testable}>{isTesting ? "测试中..." : "测试连接"}</button>
-            <button type="button" className="btn btn-secondary" onClick={handleLoadModels} disabled={isLoadingModels || !modelsReadable}>{isLoadingModels ? "读取中..." : "读取模型"}</button>
+            <button type="button" className="btn btn-primary" onClick={handleSave} disabled={isDesktop !== true || isSaving}>{isSaving ? <UiText text={"保存中..."} /> : <UiText text={"保存设置"} />}</button>
+            <button type="button" className="btn btn-secondary" onClick={handleTest} disabled={isTesting || !testable}>{isTesting ? <UiText text={"测试中..."} /> : <UiText text={"测试连接"} />}</button>
+            <button type="button" className="btn btn-secondary" onClick={handleLoadModels} disabled={isLoadingModels || !modelsReadable}>{isLoadingModels ? <UiText text={"读取中..."} /> : <UiText text={"读取模型"} />}</button>
           </div>
 
-          {isDesktop === false ? <p className="muted" style={{ margin: "0.65rem 0 0" }}>当前不是桌面端环境，界面内保存不可用；开发态可通过 .env.local 配置 AI 服务商。</p> : null}
+          {isDesktop === false ? <p className="muted" style={{ margin: "0.65rem 0 0" }}><UiText text={"当前不是桌面端环境，界面内保存不可用；开发态可通过 .env.local 配置 AI 服务商。"} /></p> : null}
         </>
       ) : null}
 
-      {message ? <p className="muted" style={{ margin: "0.65rem 0 0" }}>{message}</p> : null}
+      {message ? <p className="muted" style={{ margin: "0.65rem 0 0" }}><UiText text={message} /></p> : null}
     </section>
   );
 }

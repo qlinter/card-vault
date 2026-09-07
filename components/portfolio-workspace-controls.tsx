@@ -1,3 +1,4 @@
+import { UiText, UiElement } from "@/components/ui-text";
 import {
   createPortfolioSnapshotAction,
   createPortfolioViewAction,
@@ -56,12 +57,8 @@ export function PortfolioWorkspaceControls({
 
   return (
     <section className={`${styles.section} ${styles.workspaceSection}`}>
-      <header className={styles.sectionHeader}>
-        <div><h2>保存与比较设置</h2></div>
-      </header>
-
-      <nav className={styles.viewTabs} aria-label="收藏视图">
-        <a className={!activeViewId ? styles.activeView : undefined} href="/portfolio">全部收藏</a>
+      <UiElement as="nav" uiAttributes={["aria-label"]} className={styles.viewTabs} aria-label="收藏视图">
+        <a className={!activeViewId ? styles.activeView : undefined} href="/portfolio"><UiText text={"全部收藏"} /></a>
         {views.map((view) => (
           <a
             className={activeViewId === view.id ? styles.activeView : undefined}
@@ -71,38 +68,38 @@ export function PortfolioWorkspaceControls({
             {view.name}
           </a>
         ))}
-      </nav>
+      </UiElement>
 
       <div className={styles.workspaceActions}>
         <form action={createPortfolioViewAction} className={styles.workspaceForm}>
           <input type="hidden" name="queryJson" value={queryJson} />
-          <input name="name" maxLength={60} placeholder="当前范围的视图名称" aria-label="收藏视图名称" required />
-          <button type="submit" className="btn btn-secondary">保存视图</button>
+          <UiElement as="input" uiAttributes={["placeholder","aria-label"]} name="name" maxLength={60} placeholder="当前范围的视图名称" aria-label="收藏视图名称" required />
+          <button type="submit" className="btn btn-secondary"><UiText text={"保存视图"} /></button>
         </form>
         <form action={createPortfolioSnapshotAction} className={styles.workspaceForm}>
           <input type="hidden" name="queryJson" value={queryJson} />
           {activeViewId ? <input type="hidden" name="savedViewId" value={activeViewId} /> : null}
-          <input name="name" maxLength={80} placeholder="快照名称（可选）" aria-label="时间点快照名称" />
-          <button type="submit" className="btn btn-secondary">保存当前快照</button>
+          <UiElement as="input" uiAttributes={["placeholder","aria-label"]} name="name" maxLength={80} placeholder="快照名称（可选）" aria-label="时间点快照名称" />
+          <button type="submit" className="btn btn-secondary"><UiText text={"保存当前快照"} /></button>
         </form>
       </div>
 
       <form className={styles.compareForm} method="get">
         {hiddenQueryFields(query)}
         {activeViewId ? <input type="hidden" name="viewId" value={activeViewId} /> : null}
-        <label><span>比较基准</span><select name="compareLeft" defaultValue={leftValue}>{compareOptions.map((option) => <option key={`left-${option.value}`} value={option.value}>{option.label}</option>)}</select></label>
-        <label><span>比较对象</span><select name="compareRight" defaultValue={rightValue}>{compareOptions.map((option) => <option key={`right-${option.value}`} value={option.value}>{option.label}</option>)}</select></label>
-        <button type="submit" className="btn btn-secondary">开始比较</button>
+        <label><span><UiText text={"比较基准"} /></span><select name="compareLeft" defaultValue={leftValue}>{compareOptions.map((option) => <option key={`left-${option.value}`} value={option.value}>{option.value === "current" ? <UiText text={option.label} /> : option.label}</option>)}</select></label>
+        <label><span><UiText text={"比较对象"} /></span><select name="compareRight" defaultValue={rightValue}>{compareOptions.map((option) => <option key={`right-${option.value}`} value={option.value}>{option.value === "current" ? <UiText text={option.label} /> : option.label}</option>)}</select></label>
+        <button type="submit" className="btn btn-secondary"><UiText text={"开始比较"} /></button>
       </form>
 
       {(views.length > 0 || snapshots.length > 0) ? (
         <details className={styles.workspaceManager}>
-          <summary>管理已保存内容</summary>
-          {views.length > 0 ? <div className={styles.savedItems}><strong>收藏视图</strong>{views.map((view) => (
-            <div key={view.id}><span>{view.name}</span><form action={deletePortfolioViewAction.bind(null, view.id)}><ConfirmSubmitButton className={styles.textButton} message={`确认删除收藏视图“${view.name}”吗？已保存的时间点快照会保留。`}>删除</ConfirmSubmitButton></form></div>
+          <summary><UiText text={"管理已保存内容"} /></summary>
+          {views.length > 0 ? <div className={styles.savedItems}><strong><UiText text={"收藏视图"} /></strong>{views.map((view) => (
+            <div key={view.id}><span>{view.name}</span><form action={deletePortfolioViewAction.bind(null, view.id)}><ConfirmSubmitButton className={styles.textButton} message={`确认删除收藏视图“${view.name}”吗？已保存的时间点快照会保留。`}><UiText text={"删除"} /></ConfirmSubmitButton></form></div>
           ))}</div> : null}
-          {snapshots.length > 0 ? <div className={styles.savedItems}><strong>时间点快照</strong>{snapshots.map((snapshot) => (
-            <div key={snapshot.id}><span>{snapshot.name}<small>{dateTime(snapshot.capturedAt)}</small></span><form action={deletePortfolioSnapshotAction.bind(null, snapshot.id)}><ConfirmSubmitButton className={styles.textButton} message={`确认删除时间点快照“${snapshot.name}”吗？`}>删除</ConfirmSubmitButton></form></div>
+          {snapshots.length > 0 ? <div className={styles.savedItems}><strong><UiText text={"时间点快照"} /></strong>{snapshots.map((snapshot) => (
+            <div key={snapshot.id}><span>{snapshot.name}<small>{dateTime(snapshot.capturedAt)}</small></span><form action={deletePortfolioSnapshotAction.bind(null, snapshot.id)}><ConfirmSubmitButton className={styles.textButton} message={`确认删除时间点快照“${snapshot.name}”吗？`}><UiText text={"删除"} /></ConfirmSubmitButton></form></div>
           ))}</div> : null}
         </details>
       ) : null}

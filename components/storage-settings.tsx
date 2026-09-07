@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText } from "@/components/ui-text";
 import { useEffect, useState } from "react";
 import { OperationProgress } from "@/components/operation-progress";
 import { useDesktopStorageProgress } from "@/components/use-desktop-storage-progress";
@@ -111,7 +112,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
       } else if (result.failedFiles.length > 0) {
         setMessage(`已清理 ${result.deletedFiles.length} 个文件，另有 ${result.failedFiles.length} 个文件清理失败。`);
       } else {
-        setMessage(`清理完成，共删除 ${result.deletedFiles.length} 个未引用文件。`);
+        setMessage(`清理完成，已移出 ${result.deletedFiles.length} 个未引用文件。${result.recoveryPath ? `恢复副本：${result.recoveryPath}` : ""}`);
       }
     } catch (error) {
       setMessage(`清理失败：${errorMessage(error, "请稍后重试。")}`);
@@ -142,39 +143,35 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
   const busy = busyAction !== null || revealingPath !== null || activeStorageOperation !== null;
 
   return (
-    <section className="panel settings-section">
+    <section id="storage" className="panel settings-section">
       <div className="title-row" style={{ marginBottom: "0.4rem" }}>
         <div>
-          <h2>存储数据</h2>
+          <h2><UiText text={"存储"} /></h2>
         </div>
         <div className="storage-actions">
           <button type="button" className="btn btn-secondary" onClick={handleChooseDirectory} disabled={busy}>
-            {busyAction === "storage" ? "处理中..." : "更改存储路径"}
+            {busyAction === "storage" ? <UiText text={"处理中..."} /> : <UiText text={"更改存储路径"} />}
           </button>
           <button type="button" className="btn btn-secondary" onClick={handleHealthCheck} disabled={busy}>
-            {busyAction === "health" ? "检查中..." : "检查数据健康"}
+            {busyAction === "health" ? <UiText text={"检查中..."} /> : <UiText text={"检查数据健康"} />}
           </button>
         </div>
       </div>
-      <p className="muted" style={{ margin: "0.35rem 0 0" }}>
-        <strong>当前路径：</strong>{displayedPath}
+      <p className="settings-path">
+        <UiText text={"当前路径："} /><span data-testid="storage-path">{displayedPath}</span>
       </p>
       <OperationProgress progress={progress} />
       {health ? (
         <div className={health.ok ? "note-ok health-result" : "note-error health-result"}>
-          <strong>{health.ok ? "数据状态正常" : "数据需要处理"}</strong>
-          <p>
-            数据库：{health.integrity}；卡片 {health.counts.cards} 张；图片记录 {health.counts.images} 条；待处理项目 {health.counts.queueItems} 个；分享集 {health.counts.shares} 个。
-          </p>
-          <p>
-            缺失文件 {health.missingFiles.length} 个；未被数据库引用的文件 {health.orphanFiles.length} 个。
-          </p>
+          <strong>{health.ok ? <UiText text={"数据状态正常"} /> : <UiText text={"数据需要处理"} />}</strong>
+          <p><UiText text={"数据库："} />{health.integrity}<UiText text={"；卡片 "} />{health.counts.cards}<UiText text={" 张；图片记录 "} />{health.counts.images}<UiText text={" 条；待处理项目 "} />{health.counts.queueItems}<UiText text={" 个；分享集 "} />{health.counts.shares}<UiText text={"个。"} /></p>
+          <p><UiText text={"缺失文件"} />{health.missingFiles.length}<UiText text={" 个；未被数据库引用的文件 "} />{health.orphanFiles.length}<UiText text={"个。"} /></p>
           {health.issues.map((issue) => <p key={issue}>{issue}</p>)}
           {health.orphanFiles.length > 0 ? (
             <div className="orphan-cleanup-panel">
               <details>
-                <summary>查看未引用文件明细（{health.orphanFiles.length} 个）</summary>
-                <p className="muted">这些文件位于当前数据目录中，但没有被任何卡片或分享集引用。</p>
+                <summary><UiText text={"查看未引用文件明细（"} />{health.orphanFiles.length}<UiText text={" 个）"} /></summary>
+                <p className="muted"><UiText text={"这些文件位于当前数据目录中，但没有被任何卡片或分享集引用。"} /></p>
                 <ul className="orphan-file-list">
                   {health.orphanFiles.map((file) => (
                     <li key={`${file.type}:${file.path}`}>
@@ -186,20 +183,20 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
                         onClick={() => void handleRevealOrphanFile(file)}
                         disabled={busy}
                       >
-                        {revealingPath === file.path ? "正在打开..." : "在文件夹中查看"}
+                        {revealingPath === file.path ? <UiText text={"正在打开..."} /> : <UiText text={"在文件夹中查看"} />}
                       </button>
                     </li>
                   ))}
                 </ul>
               </details>
               <button type="button" className="btn btn-danger" onClick={handleCleanup} disabled={busy}>
-                {busyAction === "cleanup" ? "清理中..." : `清理 ${health.orphanFiles.length} 个未引用文件`}
+                {busyAction === "cleanup" ? <UiText text={"清理中..."} /> : <UiText text={"清理 {0} 个未引用文件"} values={[health.orphanFiles.length]} />}
               </button>
             </div>
           ) : null}
         </div>
       ) : null}
-      {message ? <p className="muted backup-message">{message}</p> : null}
+      {message ? <p className="muted backup-message"><UiText text={message} /></p> : null}
     </section>
   );
 }

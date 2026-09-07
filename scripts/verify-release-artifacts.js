@@ -1,5 +1,5 @@
+const { sha256File } = require("../lib/file-hash");
 const assert = require("node:assert/strict");
-const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -14,11 +14,6 @@ const zipPath = path.join(distDir, `card-vault-${packageJson.version}-portable.z
 const checksumPath = path.join(distDir, "SHA256SUMS.txt");
 const unpackedDir = path.join(distDir, "win-unpacked");
 
-function hashFile(filePath) {
-  const hash = crypto.createHash("sha256");
-  hash.update(fs.readFileSync(filePath));
-  return hash.digest("hex").toUpperCase();
-}
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -122,14 +117,14 @@ function main() {
   verifyPortableArchive(detectedSigningMode);
   assert.ok(fs.existsSync(checksumPath), `校验清单不存在：${checksumPath}`);
   const checksums = fs.readFileSync(checksumPath, "utf8");
-  assert.match(checksums, new RegExp(`${hashFile(setupPath)}\\s+${escapeRegExp(path.basename(setupPath))}`));
-  assert.match(checksums, new RegExp(`${hashFile(zipPath)}\\s+${escapeRegExp(path.basename(zipPath))}`));
+  assert.match(checksums, new RegExp(`${sha256File(setupPath).toUpperCase()}\\s+${escapeRegExp(path.basename(setupPath))}`));
+  assert.match(checksums, new RegExp(`${sha256File(zipPath).toUpperCase()}\\s+${escapeRegExp(path.basename(zipPath))}`));
   process.stdout.write(`Release artifacts verified for v${packageJson.version} (${detectedSigningMode}).\n`);
   if (detectedSigningMode === "unsigned") {
     process.stdout.write("Warning: Windows may show Unknown Publisher or SmartScreen warnings for these unsigned artifacts.\n");
   }
-  process.stdout.write(`${path.basename(setupPath)}  SHA256 ${hashFile(setupPath)}\n`);
-  process.stdout.write(`${path.basename(zipPath)}  SHA256 ${hashFile(zipPath)}\n`);
+  process.stdout.write(`${path.basename(setupPath)}  SHA256 ${sha256File(setupPath).toUpperCase()}\n`);
+  process.stdout.write(`${path.basename(zipPath)}  SHA256 ${sha256File(zipPath).toUpperCase()}\n`);
 }
 
 main();

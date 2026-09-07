@@ -53,6 +53,26 @@ function seedCardVaultData(manager, playerName = "Card Vault Player") {
   db.close();
 }
 
+test("cleanup preserves newly committed references and retains removed media", (t) => {
+  const { manager } = createTestManager(t);
+  seedCardVaultData(manager);
+  fs.writeFileSync(path.join(manager.getUploadsDir(), "new.png"), "new image");
+  fs.writeFileSync(path.join(manager.getUploadsDir(), "unused.png"), "retained image");
+  let inserted = false;
+  const result = manager.cleanOrphanFiles((progress) => {
+    if (inserted || progress.percent !== 30) return;
+    const writer = new DatabaseSync(manager.getDbPath());
+    writer.prepare("INSERT INTO CardImage (id, cardId, path) VALUES ('late', 'card-1', '/media/new.png')").run();
+    writer.close();
+    inserted = true;
+  });
+  assert.equal(inserted, true);
+  assert.equal(result.health.ok, true);
+  assert.equal(fs.existsSync(path.join(manager.getUploadsDir(), "new.png")), true);
+  assert.deepEqual(result.deletedFiles.map((file) => path.basename(file.path)), ["unused.png"]);
+  assert.equal(fs.readFileSync(path.join(result.recoveryPath, "uploads", "unused.png"), "utf8"), "retained image");
+});
+
 test("backup refuses a database/media race and removes the incomplete backup", (t) => {
   const { root, manager } = createTestManager(t);
   seedCardVaultData(manager);
@@ -376,6 +396,29 @@ test("current-version backup restores after creating a safety backup", (t) => {
   assert.equal(restored.health.integrity, "ok");
 });
 
+test("backup restores management jobs, wishlist and reminder decisions with a verified migration report", (t) => {
+  const { root, manager } = createTestManager(t);
+  seedCardVaultData(manager, "Managed card");
+  const db = new DatabaseSync(manager.getDbPath());
+  db.exec(`INSERT INTO BulkJob(id,token,kind,optionsJson) VALUES('batch','token','import','{}');
+    INSERT INTO BulkJobRow(id,jobId,rowNumber,inputJson,status) VALUES('row','batch',2,'{}','failed');
+    INSERT INTO CollectionPlan(id,title,budgetMinor,currency) VALUES('wish','Wish',12345,'CNY');
+    INSERT INTO CollectionTaskState(id,status,fingerprint) VALUES('card-1:images','dismissed','original');`);
+  db.close();
+  manager.chooseBackupDir(path.join(root, "backups"));
+  const backup = manager.backupDataFolder();
+  const changed = new DatabaseSync(manager.getDbPath()); changed.exec("DELETE FROM BulkJobRow; DELETE FROM BulkJob; DELETE FROM CollectionPlan; DELETE FROM CollectionTaskState;"); changed.close();
+  manager.restoreDataFolder(backup.backupPath);
+  const restored = new DatabaseSync(manager.getDbPath());
+  assert.equal(restored.prepare("SELECT status FROM BulkJobRow WHERE id='row'").get().status, "failed");
+  assert.equal(restored.prepare("SELECT budgetMinor FROM CollectionPlan WHERE id='wish'").get().budgetMinor, 12345);
+  assert.equal(restored.prepare("SELECT status FROM CollectionTaskState").get().status, "dismissed");
+  restored.close();
+  const report = JSON.parse(fs.readFileSync(path.join(manager.getDataDir(), "migration-report.json"), "utf8"));
+  assert.equal(report.verification.verified, true);
+  assert.equal(report.afterCounts.CollectionPlan, 1);
+});
+
 test("backup and restore preserve saved portfolio views and point-in-time snapshots", (t) => {
   const { root, manager } = createTestManager(t);
   seedCardVaultData(manager, "Portfolio Backup Player");
@@ -421,7 +464,7 @@ test("restore upgrades a v1.1.1 backup with v1.2.0 portfolio and rotation fields
   const backupDb = new DatabaseSync(path.join(sourceBackup.backupPath, "dev.db"));
   backupDb.exec("DROP TABLE PortfolioSnapshotRecord; DROP TABLE PortfolioSavedView; ALTER TABLE CardImage DROP COLUMN rotation;");
   backupDb.close();
-
+  fs.rmSync(path.join(sourceBackup.backupPath, "backup-manifest.json"), { force: true });
   const restored = manager.restoreDataFolder(sourceBackup.backupPath);
   const restoredDb = new DatabaseSync(manager.getDbPath(), { readOnly: true });
   const tables = new Set(restoredDb.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((row) => row.name));
@@ -465,6 +508,7 @@ test("restore upgrades a v1.1.0 backup and backfills its position data", (t) => 
   currentDb.prepare("UPDATE Card SET playerName = ? WHERE id = ?").run("Changed Current Player", "card-1");
   currentDb.close();
 
+  fs.rmSync(path.join(sourceBackup.backupPath, "backup-manifest.json"), { force: true });
   const restored = manager.restoreDataFolder(sourceBackup.backupPath);
   const restoredDb = new DatabaseSync(manager.getDbPath(), { readOnly: true });
   const card = restoredDb.prepare("SELECT playerName, holdingQuantity FROM Card WHERE id = ?").get("card-1");
@@ -514,6 +558,7 @@ test("restore rejects a backup that does not match the current database baseline
 
   const backupDb = new DatabaseSync(path.join(oldBackup.backupPath, "dev.db"));
   backupDb.exec("DROP TABLE CardEntryRecognition");
+  fs.rmSync(path.join(oldBackup.backupPath, "backup-manifest.json"), { force: true });
   backupDb.close();
 
   assert.throws(

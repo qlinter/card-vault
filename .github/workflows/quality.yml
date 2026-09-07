@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   release-check:
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -20,10 +20,11 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run audit:prod
+      - run: npx playwright install chromium
+      - run: npm run audit:all
       - run: npm run check:release
         env:
-          CARD_VAULT_UI_SCREENSHOT_MODE: capture
+          CARD_VAULT_UI_SCREENSHOT_MODE: compare
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

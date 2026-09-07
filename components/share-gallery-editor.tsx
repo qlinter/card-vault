@@ -1,5 +1,6 @@
 "use client";
 
+import { UiText, UiElement } from "@/components/ui-text";
 import { ShareGalleryCardsPanel } from "@/components/share-gallery-cards-panel";
 import { ShareGalleryContentPanel } from "@/components/share-gallery-content-panel";
 import type { ShareGalleryEditorProps } from "@/components/share-gallery-editor-types";
@@ -73,23 +74,23 @@ export function ShareGalleryEditor({
     <div className={styles.editor}>
       <header className="panel share-editor-v2-header">
         <div>
-          <h2>分享展馆编辑工作台</h2>
+          <h2><UiText text={"分享展馆编辑工作台"} /></h2>
         </div>
-        <div className="share-editor-v2-summary" aria-label="当前展馆摘要">
-          <span><small>样式</small><strong>{activeStyle?.label ?? activeLayout?.label ?? presentation.layout}</strong></span>
-          <span><small>主题</small><strong>{activeTheme?.label ?? theme}</strong></span>
-          <span><small>章节</small><strong>{sections.length}</strong></span>
-          <span><small>卡片</small><strong>{cards.length}</strong></span>
-          <span><small>重点卡</small><strong>{presentation.featuredCardIds.length}</strong></span>
-        </div>
-        <div className="share-editor-history" aria-label="编辑历史">
-          <button type="button" className="btn btn-secondary" onClick={onUndo} disabled={!canUndo}>撤销</button>
-          <button type="button" className="btn btn-secondary" onClick={onRedo} disabled={!canRedo}>重做</button>
-          <small className="muted">{draftStatus}</small>
-        </div>
+        <UiElement as="div" uiAttributes={["aria-label"]} className="share-editor-v2-summary" aria-label="当前展馆摘要">
+          <span><small><UiText text={"样式"} /></small><strong><UiText text={activeStyle?.label ?? activeLayout?.label ?? presentation.layout} /></strong></span>
+          <span><small><UiText text={"主题"} /></small><strong><UiText text={activeTheme?.label ?? theme} /></strong></span>
+          <span><small><UiText text={"章节"} /></small><strong>{sections.length}</strong></span>
+          <span><small><UiText text={"卡片"} /></small><strong>{cards.length}</strong></span>
+          <span><small><UiText text={"重点卡"} /></small><strong>{presentation.featuredCardIds.length}</strong></span>
+        </UiElement>
+        <UiElement as="div" uiAttributes={["aria-label"]} className="share-editor-history" aria-label="编辑历史">
+          <button type="button" className="btn btn-secondary" onClick={onUndo} disabled={!canUndo}><UiText text={"撤销"} /></button>
+          <button type="button" className="btn btn-secondary" onClick={onRedo} disabled={!canRedo}><UiText text={"重做"} /></button>
+          <small className="muted"><UiText text={draftStatus} /></small>
+        </UiElement>
       </header>
 
-      <nav className="share-editor-v2-tabs" aria-label="展馆编辑分区">
+      <UiElement as="nav" uiAttributes={["aria-label"]} className="share-editor-v2-tabs" aria-label="展馆编辑分区">
         {editorPanels.map((panel) => (
           <button
             key={panel.id}
@@ -98,10 +99,10 @@ export function ShareGalleryEditor({
             aria-current={activePanel === panel.id ? "page" : undefined}
             onClick={() => setActivePanel(panel.id)}
           >
-            <strong>{panel.label}</strong>
+            <strong><UiText text={panel.label} /></strong>
           </button>
         ))}
-      </nav>
+      </UiElement>
 
       <input type="hidden" name="themeNarrative" value={values.themeNarrative} />
       <input type="hidden" name="themeHighlights" value={values.themeHighlights} />

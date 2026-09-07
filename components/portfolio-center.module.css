@@ -142,10 +142,10 @@
 .comparisonWorkspace {
   margin-top: 0.35rem;
   padding: 1rem;
-  border: 2px solid rgba(39, 127, 127, 0.42);
-  border-radius: 18px;
-  background: linear-gradient(145deg, rgba(230, 246, 245, 0.92), rgba(242, 247, 248, 0.96));
-  box-shadow: 0 12px 30px rgba(28, 78, 78, 0.08);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
 }
 
 .comparisonWorkspace > .zoneHeader {
@@ -166,7 +166,7 @@
   background: rgba(255, 255, 255, 0.8);
 }
 
-.comparisonWorkspace[open] :global(.disclosure-icon) {
+.comparisonWorkspace[open] > .zoneSummary :global(.disclosure-icon) {
   transform: rotate(180deg);
 }
 
@@ -1021,3 +1021,12 @@
   .currencyCard dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 400px) { .currencyCard dl { grid-template-columns: minmax(0, 1fr); } }
+
+.currentDataHeader { align-items: center; flex-wrap: wrap; gap: .75rem; }
+
+.overviewGrid article, .section { padding: var(--panel-space); border-radius: 12px; }
+.comparisonWorkspace > .zoneHeader { min-height: var(--control-height); align-items: center; padding: 0; }
+.zoneContent { padding-top: var(--section-gap); }
+.zoneSummary :global(.disclosure-button) { color: var(--slate); background: transparent; }
+.currencyCard dd, .currencyCard .primaryValue, .positionList a > div:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.positionList a > div:first-of-type { min-width: 0; overflow-wrap: anywhere; }

@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
+const { createManagementSchema, managementSchemaNeeded } = require("./management-schema");
 
 const schemaVersion = "1.3.0";
 const previousSchemaVersion = "1.1.1";
@@ -464,6 +465,11 @@ function initializeDatabase(dbPath) {
         }
       }
     }
+    if (!initialized && managementSchemaNeeded(db) && !backupPath) {
+      backupPath = createUpgradeSnapshot(db, dbPath);
+      upgraded = true;
+      upgradeSource = "1.3.0-core";
+    }
     db.exec("BEGIN IMMEDIATE;");
     try {
       if (addImageRotation) addCardImageRotation(db);
@@ -480,6 +486,7 @@ function initializeDatabase(dbPath) {
         CREATE UNIQUE INDEX IF NOT EXISTS ExchangeRate_effectiveDate_revision_key ON ExchangeRate(effectiveDate, revision);
         CREATE INDEX IF NOT EXISTS ExchangeRate_effectiveDate_idx ON ExchangeRate(effectiveDate);
       `);
+      createManagementSchema(db);
       validateCurrentSchema(db);
       db.exec("COMMIT;");
     } catch (error) {

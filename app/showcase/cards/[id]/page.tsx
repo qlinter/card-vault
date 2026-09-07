@@ -1,4 +1,5 @@
-﻿import Link from "next/link";
+import { UiText } from "@/components/ui-text";
+import Link from "next/link";
 import { BackButton } from "@/components/back-button";
 import { ShowcaseGallery } from "@/components/showcase-gallery";
 import { prisma } from "@/lib/prisma";
@@ -50,14 +51,10 @@ export default async function ShowcaseCardPage({ params, searchParams }: Showcas
         <BackButton href={returnHref} />
         <div className="showcase-switches">
           {previousCard ? (
-            <Link href={buildShowcaseCardHref(previousCard.id, query)} className="btn btn-secondary">
-              上一张卡
-            </Link>
+            <Link href={buildShowcaseCardHref(previousCard.id, query)} className="btn btn-secondary"><UiText text={"上一张卡"} /></Link>
           ) : null}
           {nextCard ? (
-            <Link href={buildShowcaseCardHref(nextCard.id, query)} className="btn btn-secondary">
-              下一张卡
-            </Link>
+            <Link href={buildShowcaseCardHref(nextCard.id, query)} className="btn btn-secondary"><UiText text={"下一张卡"} /></Link>
           ) : null}
         </div>
       </div>

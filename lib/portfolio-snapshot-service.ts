@@ -26,13 +26,13 @@ import type { PortfolioFilterInput } from "./portfolio-analysis";
 import { loadFinancialSettings } from "./financial-settings";
 import { buildReportingPortfolio } from "./portfolio-reporting";
 
-export const maximumPortfolioCardCount = 5000;
 
 export type { PortfolioQualityCard } from "./portfolio-quality";
 
 export type PortfolioSnapshotResult = {
   snapshot: PortfolioSnapshot;
   qualityCards: PortfolioQualityCard[];
+  incompleteCards: ReturnType<typeof buildReportingPortfolio>["incompleteCards"];
   query: PortfolioFilterInput;
   valuationChanges: PortfolioValuationChange[];
   financialHistory: PortfolioFinancialHistoryPoint[];
@@ -45,7 +45,14 @@ type LoadPortfolioSnapshotOptions = {
 };
 
 async function queryPortfolioCards(where: ReturnType<typeof buildCardFilters>) {
-  return prisma.card.findMany({ where, select: portfolioAnalysisCardSelect });
+  const cards = [];
+  let cursor: string | undefined;
+  for (;;) {
+    const page = await prisma.card.findMany({ where, select: portfolioAnalysisCardSelect, orderBy: { id: "asc" }, take: 250, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) });
+    cards.push(...page);
+    if (page.length < 250) return cards;
+    cursor = page.at(-1)!.id;
+  }
 }
 
 export async function loadPortfolioSnapshot(
@@ -59,14 +66,12 @@ export async function loadPortfolioSnapshot(
   if (cardCount === 0 && !options.allowEmpty) {
     throw new Error("当前筛选范围内没有可分析的卡片。");
   }
-  if (cardCount > maximumPortfolioCardCount) {
-    throw new Error(`当前筛选结果超过 ${maximumPortfolioCardCount} 张，请缩小范围后重试。`);
-  }
+
 
   const asOf = new Date();
   const cards = await queryPortfolioCards(where);
   const config = await loadFinancialSettings();
-  const { snapshot, cards: portfolioCards } = buildReportingPortfolio(
+  const { snapshot, cards: portfolioCards, incompleteCards } = buildReportingPortfolio(
     cards.map((card) => ({ ...card, imageCount: card._count.images })), buildPortfolioScope(query), config, asOf);
   const qualityCards = buildPortfolioQualityCards(cards.map((card) => ({
     id: card.id,
@@ -81,7 +86,7 @@ export async function loadPortfolioSnapshot(
   const financialHistory = buildPortfolioFinancialHistory(portfolioCards, asOf);
   const { highCostPositions, soldReviews } = buildPortfolioPositionReviews(portfolioCards);
 
-  return { snapshot, qualityCards, query, valuationChanges, financialHistory, highCostPositions, soldReviews };
+  return { snapshot, qualityCards, incompleteCards, query, valuationChanges, financialHistory, highCostPositions, soldReviews };
 }
 
 async function loadComparisonPoint(

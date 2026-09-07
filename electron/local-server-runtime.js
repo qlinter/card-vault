@@ -4,8 +4,10 @@ const http = require("node:http");
 const net = require("node:net");
 const path = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");
+const { createOperationCoordinator } = require("./operation-coordinator");
 
 function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
+  const runExclusiveOperation = createOperationCoordinator();
   const nextBuildIdPath = path.join(rootDir, ".next", "BUILD_ID");
   const nextHealthRoutePath = path.join(rootDir, ".next", "server", "app", "api", "health", "route.js");
   const nextCliPath = path.join(rootDir, "node_modules", "next", "dist", "bin", "next");
@@ -18,7 +20,7 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
   const sessionToken = randomBytes(32).toString("base64url");
   const nextBuildSourcePaths = [
     path.join(rootDir, "app"), path.join(rootDir, "components"), path.join(rootDir, "lib"),
-    path.join(rootDir, "next.config.mjs"), path.join(rootDir, "package.json"),
+    path.join(rootDir, "next.config.mjs"), path.join(rootDir, "proxy.ts"), path.join(rootDir, "package.json"),
     path.join(rootDir, "prisma", "schema.prisma")
   ];
   let serverPort = defaultServerPort;
@@ -152,7 +154,7 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
     try { await serverRestartPromise; } finally { serverRestartPromise = null; }
   }
 
-  return { getRootDir: () => rootDir, getServerUrl: () => serverUrl, getServerPort: () => serverPort, getSessionCookie: () => ({ name: sessionCookieName, value: sessionToken }), getDesktopEnv, runNodeCommand, waitForServer, waitForAvailablePort, selectServerTarget, ensurePreparedBuild, startServer, stopServer, waitForProcessExit, resumeLocalServer, restartLocalServer, getStorageWorkerPath: () => storageWorkerPath };
+  return { runExclusiveOperation, getRootDir: () => rootDir, getServerUrl: () => serverUrl, getServerPort: () => serverPort, getSessionCookie: () => ({ name: sessionCookieName, value: sessionToken }), getDesktopEnv, runNodeCommand, waitForServer, waitForAvailablePort, selectServerTarget, ensurePreparedBuild, startServer, stopServer, waitForProcessExit, resumeLocalServer, restartLocalServer, getStorageWorkerPath: () => storageWorkerPath };
 }
 
 module.exports = { createLocalServerRuntime };

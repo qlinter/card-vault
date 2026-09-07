@@ -1,28 +1,19 @@
+import { CollectionViewProvider } from "@/components/view-mode-toggle";
+import { UiText } from "@/components/ui-text";
 import { FilterBar } from "@/components/filter-bar";
-import { HomeCardGrid, type HomeCardGridItem } from "@/components/home-card-grid";
+import { HomeCardGrid } from "@/components/home-card-grid";
 import { PortfolioAnalysisButton } from "@/components/portfolio-analysis";
-import { splitTagString, buildCardFilters, buildCardSorting } from "@/lib/card-helpers";
-import { homeCardInclude } from "@/lib/card-query-shapes";
-import { calculateLatestValuationTotals } from "@/lib/card-stats";
-import { homeThumbnailPublicPath } from "@/lib/card-thumbnail-core.js";
 import { formatMinorMoneyGrouped } from "@/lib/financial-history";
 import { buildPortfolioScope } from "@/lib/portfolio-analysis";
-import { prisma } from "@/lib/prisma";
 import { toScalar } from "@/lib/query-params";
 import { commonSuccessMessages, resolveSuccessMessage } from "@/lib/feedback-messages";
-import { loadFinancialSettings } from "@/lib/financial-settings";
-import { reportingHistory } from "@/lib/financial-reporting";
-import { calculateCurrencyPosition } from "@/lib/position-accounting";
+
+import { loadHomeData, loadHomeOptions } from "@/lib/home-data";
 
 type HomeProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-function uniqueStrings(values: Array<string | null>): string[] {
-  return [...new Set(values.filter((value): value is string => Boolean(value && value.trim())))].sort((a, b) =>
-    a.localeCompare(b)
-  );
-}
 
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
@@ -52,62 +43,13 @@ export default async function Home({ searchParams }: HomeProps) {
     sort: toScalar(params.sort)
   };
 
-  const [cards, optionRows] = await Promise.all([
-    prisma.card.findMany({
-      where: buildCardFilters(query),
-      include: homeCardInclude,
-      orderBy: buildCardSorting(query.sort)
-    }),
-    prisma.card.findMany({
-      select: {
-        sport: true,
-        team: true,
-        year: true,
-        brand: true,
-        productLine: true,
-        subsetName: true,
-        parallel: true,
-        gradingCompany: true,
-        grade: true,
-        autoType: true,
-        patchType: true
-      }
-    })
-  ]);
-
-  const sports = uniqueStrings(optionRows.map((row) => row.sport));
-  const teams = uniqueStrings(optionRows.map((row) => row.team));
-  const years = uniqueStrings(optionRows.map((row) => row.year));
-  const brands = uniqueStrings(optionRows.map((row) => row.brand));
-  const productLines = uniqueStrings(optionRows.map((row) => row.productLine));
-  const subsetNames = uniqueStrings(optionRows.map((row) => row.subsetName));
-  const parallels = uniqueStrings(optionRows.map((row) => row.parallel));
-  const gradingCompanies = uniqueStrings(optionRows.map((row) => row.gradingCompany));
-  const grades = uniqueStrings(optionRows.map((row) => row.grade));
-  const autoTypes = uniqueStrings(optionRows.map((row) => row.autoType));
-  const patchTypes = uniqueStrings(optionRows.map((row) => row.patchType));
-
+  const [home, options] = await Promise.all([loadHomeData(query), loadHomeOptions()]);
+  const totalCount = home.totalCount;
+  const config = { reportingCurrency: home.currency };
+  const valuationTotals = { totals: (home.totalValue === null ? {} : { [home.currency]: BigInt(home.totalValue) }) as Record<string, bigint>, valuedCardCount: home.valuedCount };
+  const valuationCurrencies = Object.keys(valuationTotals.totals);
   const successMessage = resolveSuccessMessage(toScalar(params.success), commonSuccessMessages, { passthroughUnknown: true });
   const errorMessage = toScalar(params.error);
-  const config = await loadFinancialSettings();
-  const reports = new Map(cards.map((card) => [card.id, reportingHistory({ ...card, holdingQuantity: card.collectionStatus === "target" || card.collectionStatus === "sold" ? 0 : card.holdingQuantity }, config)]));
-  const valuationTotals = calculateLatestValuationTotals([...reports.values()]);
-  if (/^(?:price|costCny|valueCny)(?:Asc|Desc)$/.test(query.sort ?? "")) {
-    const values = new Map([...reports].map(([id, report]) => {
-      const position = calculateCurrencyPosition(report, config.reportingCurrency);
-      return [id, query.sort?.startsWith("value") ? position.currentValueMinor : position.costComplete ? position.remainingCostMinor : null];
-    }));
-    cards.sort((left, right) => {
-      const a = values.get(left.id) ?? null, b = values.get(right.id) ?? null;
-      if (a === null || b === null) return a === b ? 0 : a === null ? 1 : -1;
-      return (a < b ? -1 : a > b ? 1 : 0) * (query.sort?.endsWith("Desc") ? -1 : 1);
-    });
-  }
-  const valuationCurrencies = Object.keys(valuationTotals.totals).sort((left, right) => {
-    if (left === "CNY") return -1;
-    if (right === "CNY") return 1;
-    return left.localeCompare(right);
-  });
   const portfolioScope = buildPortfolioScope(query);
   const returnParams = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
@@ -115,32 +57,23 @@ export default async function Home({ searchParams }: HomeProps) {
   }
   const returnSuffix = returnParams.toString();
   const cardListReturnHref = returnSuffix ? `/?${returnSuffix}` : "/";
-  const homeCards: HomeCardGridItem[] = cards.map((card) => ({
-    id: card.id,
-    playerName: card.playerName,
-    cardTitle: card.cardTitle,
-    details: [card.year, card.team, card.productLine].filter(Boolean).join(" / ") || "未补充更多信息",
-    tags: splitTagString(card.tags).slice(0, 4),
-    imagePath: card.images[0] ? homeThumbnailPublicPath(card.images[0].path) : null,
-    imageRotation: card.images[0]?.rotation ?? 0,
-    href: `/cards/${card.id}?returnTo=${encodeURIComponent(cardListReturnHref)}`
-  }));
+
 
   return (
-    <div className="page home-page">
+    <CollectionViewProvider scope="home"><div className="page home-page">
       <div className="summary-grid">
         <div className="panel">
-          <strong>{"卡片数量"}</strong>
+          <strong>{<UiText text={"卡片数量"} />}</strong>
           <p className="h1" style={{ marginTop: "0.35rem" }}>
-            {cards.length}
+            {totalCount}
           </p>
         </div>
         <div className="panel valuation-summary-card">
           <div className="valuation-summary-head">
-            <strong>{"总估值"}</strong>
+            <strong>{<UiText text={"总估值"} />}</strong>
             <div className="valuation-summary-actions">
-              <a className="btn btn-secondary" href={returnSuffix ? `/portfolio?${returnSuffix}` : "/portfolio"}>组合</a>
-              <PortfolioAnalysisButton cardCount={cards.length} query={query} scope={portfolioScope} />
+              <a className="btn btn-secondary" data-testid="home-portfolio-link" href={returnSuffix ? `/portfolio?${returnSuffix}` : "/portfolio"}><UiText text={"组合"} /></a>
+              <PortfolioAnalysisButton cardCount={totalCount} query={query} scope={portfolioScope} />
             </div>
           </div>
           <div className="valuation-total-list">
@@ -150,38 +83,37 @@ export default async function Home({ searchParams }: HomeProps) {
               </p>
             )) : <p className="h1 valuation-total-item">—</p>}
           </div>
-          <small className="muted valuation-coverage">
-            估值覆盖 {valuationTotals.valuedCardCount}/{cards.length}
+          <small className="muted valuation-coverage"><UiText text={"估值覆盖"} />{" "}{valuationTotals.valuedCardCount}/{totalCount}
             {" · "}{config.reportingCurrency}
           </small>
         </div>
       </div>
 
-      {successMessage ? <p className="note-ok">{successMessage}</p> : null}
-      {errorMessage ? <p className="note-error">{"操作失败："}{errorMessage}</p> : null}
+      {successMessage ? <p className="note-ok"><UiText text={successMessage} /></p> : null}
+      {errorMessage ? <p className="note-error">{<UiText text={"操作失败："} />}<UiText text={errorMessage} /></p> : null}
 
       <FilterBar
         query={query}
-        sports={sports}
-        teams={teams}
-        years={years}
-        brands={brands}
-        productLines={productLines}
-        subsetNames={subsetNames}
-        parallels={parallels}
-        gradingCompanies={gradingCompanies}
-        grades={grades}
-        autoTypes={autoTypes}
-        patchTypes={patchTypes}
+        sports={options.sport}
+        teams={options.team}
+        years={options.year}
+        brands={options.brand}
+        productLines={options.productLine}
+        subsetNames={options.subsetName}
+        parallels={options.parallel}
+        gradingCompanies={options.gradingCompany}
+        grades={options.grade}
+        autoTypes={options.autoType}
+        patchTypes={options.patchType}
       />
 
-      <HomeCardGrid key={cardListReturnHref} cards={homeCards} historyKey={cardListReturnHref} />
+      <HomeCardGrid key={cardListReturnHref} cards={home.cards} totalCount={totalCount} historyKey={cardListReturnHref} />
 
-      {cards.length === 0 ? (
+      {totalCount === 0 ? (
         <div className="panel" style={{ marginTop: "1rem" }}>
-          <p>{"没有找到符合条件的卡片，试试放宽筛选条件或新增一张卡片。"}</p>
+          <p>{<UiText text={"没有找到符合条件的卡片，试试放宽筛选条件或新增一张卡片。"} />}</p>
         </div>
       ) : null}
-    </div>
+    </div></CollectionViewProvider>
   );
 }

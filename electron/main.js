@@ -61,7 +61,7 @@ function configureUserDataPath() {
 configureUserDataPath();
 if (process.platform === "win32") app.setAppUserModelId("com.ql.cardvault");
 
-const logger = createDesktopLogger(path.join(rootDir, "logs"));
+const logger = createDesktopLogger(path.join(app.getPath("userData"), "logs"));
 const storage = createStorageManager({ appDataRoot: app.getPath("userData"), projectRoot: rootDir, log: (message) => logger.appendLog("desktop.log", message) });
 const aiConfig = createAiConfigManager(path.join(app.getPath("userData"), "ai-config.json"), { isEncryptionAvailable: () => safeStorage.isEncryptionAvailable(), encryptString: (value) => safeStorage.encryptString(value), decryptString: (value) => safeStorage.decryptString(value) });
 const runtime = createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger });

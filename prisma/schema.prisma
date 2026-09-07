@@ -50,6 +50,7 @@ model Card {
   shareItems        ShareCollectionItem[]
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
+  report            CardReport?
 
   @@index([playerName])
   @@index([cardTitle])
@@ -320,4 +321,79 @@ model PortfolioSnapshotRecord {
 
   @@index([savedViewId, capturedAt(sort: Desc)])
   @@index([capturedAt(sort: Desc)])
+}
+
+model DataRevision {
+  id Int @id @default(1)
+  revision BigInt @default(0)
+  projectionRevision BigInt @default(-1)
+  projectionDay String @default("")
+}
+
+model CardReport {
+  cardId String @id
+  currency String
+  remainingCostMinor BigInt?
+  valueMinor BigInt?
+  quantity Int
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  @@index([remainingCostMinor, cardId])
+  @@index([valueMinor, cardId])
+}
+
+model BulkJob {
+  id String @id @default(cuid())
+  token String @unique
+  kind String
+  status String @default("preview")
+  optionsJson String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  rows BulkJobRow[]
+}
+
+model BulkJobRow {
+  id String @id @default(cuid())
+  jobId String
+  rowNumber Int
+  inputJson String
+  status String @default("pending")
+  error String?
+  cardId String?
+  beforeJson String?
+  afterJson String?
+  job BulkJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  @@unique([jobId, rowNumber])
+  @@index([jobId, status])
+}
+
+model CollectionTaskState {
+  id String @id
+  status String @default("open")
+  snoozedUntil DateTime?
+  fingerprint String
+  updatedAt DateTime @updatedAt
+}
+
+model CollectionPlan {
+  id String @id @default(cuid())
+  title String
+  playerName String?
+  sport String?
+  budgetMinor BigInt?
+  currency String @default("CNY")
+  targetDate DateTime?
+  notes String?
+  status String @default("planned")
+  cardId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, targetDate])
+}
+
+model ManagementSettings {
+  id String @id @default("default")
+  notifications Boolean @default(false)
+  digestCadence String @default("weekly")
+  lastNotifiedAt DateTime?
 }

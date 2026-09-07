@@ -1,3 +1,4 @@
+import { UiText } from "@/components/ui-text";
 import { BackButton } from "@/components/back-button";
 import { CardFinancialHistory } from "@/components/card-financial-history";
 import { cardImageRotationStyle } from "@/lib/card-image-rotation";
@@ -92,21 +93,17 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
         </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <BackButton href={returnHref} />
-          <a href={`/cards/${card.id}/edit${encodeReturnTo(returnTo)}`} className="btn btn-secondary">
-            编辑
-          </a>
-          <a href={`/cards/${card.id}/delete`} className="btn btn-danger">
-            删除
-          </a>
+          <a href={`/cards/${card.id}/edit${encodeReturnTo(returnTo)}`} className="btn btn-secondary"><UiText text={"编辑"} /></a>
+          <a href={`/cards/${card.id}/delete`} className="btn btn-danger"><UiText text={"删除"} /></a>
         </div>
       </div>
 
-      {success ? <p className="note-ok">{success}</p> : null}
-      {error ? <p className="note-error">{error}</p> : null}
+      {success ? <p className="note-ok"><UiText text={success} /></p> : null}
+      {error ? <p className="note-error"><UiText text={error} /></p> : null}
 
       <div className="details">
         <section className="panel">
-          <h2>图片展示</h2>
+          <h2><UiText text={"图片展示"} /></h2>
           <div className="gallery">
             {card.images.map((image) => (
               <img key={image.id} src={normalizeImagePath(image.path)} alt={card.cardTitle} style={cardImageRotationStyle(image.rotation)} />
@@ -115,14 +112,14 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
         </section>
 
         <section className="panel">
-          <h2>卡片信息</h2>
+          <h2><UiText text={"卡片信息"} /></h2>
           <div className="info-grid">
             <div className="info-item">
-              <strong>卡片主体</strong>
+              <strong><UiText text={"卡片主体"} /></strong>
               <span>{valueOrDash(card.playerName)}</span>
             </div>
             <div className="info-item">
-              <strong>运动类型</strong>
+              <strong><UiText text={"运动类型"} /></strong>
               <span>{valueOrDash(card.sport)}</span>
             </div>
             <div className="info-item">
@@ -130,101 +127,99 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
               <span>{valueOrDash(card.team)}</span>
             </div>
             <div className="info-item">
-              <strong>年份</strong>
+              <strong><UiText text={"年份"} /></strong>
               <span>{valueOrDash(card.year)}</span>
             </div>
             <div className="info-item">
-              <strong>品牌</strong>
+              <strong><UiText text={"品牌"} /></strong>
               <span>{valueOrDash(card.brand)}</span>
             </div>
             <div className="info-item">
-              <strong>产品线</strong>
+              <strong><UiText text={"产品线"} /></strong>
               <span>{valueOrDash(card.productLine)}</span>
             </div>
             <div className="info-item">
-              <strong>子系列</strong>
+              <strong><UiText text={"子系列"} /></strong>
               <span>{valueOrDash(card.subsetName)}</span>
             </div>
             <div className="info-item">
-              <strong>平行版本</strong>
+              <strong><UiText text={"平行版本"} /></strong>
               <span>{valueOrDash(card.parallel)}</span>
             </div>
             <div className="info-item">
-              <strong>卡号</strong>
+              <strong><UiText text={"卡号"} /></strong>
               <span>{valueOrDash(card.cardNumber)}</span>
             </div>
             <div className="info-item">
-              <strong>编号</strong>
+              <strong><UiText text={"编号"} /></strong>
               <span>{valueOrDash(card.serialNumber)}</span>
             </div>
             <div className="info-item">
-              <strong>编号范围</strong>
+              <strong><UiText text={"编号范围"} /></strong>
               <span>{valueOrDash(card.serialRange)}</span>
             </div>
             <div className="info-item">
               <strong>Rookie</strong>
-              <span>{yesNo(card.isRookie)}</span>
+              <span><UiText text={yesNo(card.isRookie)} /></span>
             </div>
             <div className="info-item">
-              <strong>签名卡</strong>
-              <span>{yesNo(card.isAutograph)}</span>
+              <strong><UiText text={"签名卡"} /></strong>
+              <span><UiText text={yesNo(card.isAutograph)} /></span>
             </div>
             <div className="info-item">
-              <strong>签字类型</strong>
+              <strong><UiText text={"签字类型"} /></strong>
               <span>{valueOrDash(card.autoType)}</span>
             </div>
             <div className="info-item">
               <strong>Patch/Jersey</strong>
-              <span>{yesNo(card.isPatch)}</span>
+              <span><UiText text={yesNo(card.isPatch)} /></span>
             </div>
             <div className="info-item">
-              <strong>Patch 类型</strong>
+              <strong><UiText text={"Patch 类型"} /></strong>
               <span>{valueOrDash(card.patchType)}</span>
             </div>
             <div className="info-item">
-              <strong>评级机构</strong>
+              <strong><UiText text={"评级机构"} /></strong>
               <span>{valueOrDash(card.gradingCompany)}</span>
             </div>
             <div className="info-item">
-              <strong>评级</strong>
+              <strong><UiText text={"评级"} /></strong>
               <span>{valueOrDash(card.grade)}</span>
             </div>
             <div className="info-item">
-              <strong>证书号</strong>
+              <strong><UiText text={"证书号"} /></strong>
               <span>{valueOrDash(card.certNumber)}</span>
             </div>
             <div className="info-item">
-              <strong>评级链接</strong>
+              <strong><UiText text={"评级链接"} /></strong>
               <span>
                 {gradingLink ? (
-                  <a href={gradingLink} target="_blank" rel="noreferrer">
-                    查看评级页面
-                  </a>
+                  <a href={gradingLink} target="_blank" rel="noreferrer"><UiText text={"查看评级页面"} /></a>
                 ) : (
                   "-"
                 )}
               </span>
             </div>
             <div className="info-item">
-              <strong>公开状态</strong>
-              <span>{visibilityText(card.visibility)}</span>
+              <strong><UiText text={"公开状态"} /></strong>
+              <span><UiText text={visibilityText(card.visibility)} /></span>
             </div>
             <div className="info-item">
-              <strong>收藏状态</strong>
-              <span>{collectionStatusText(card.collectionStatus)}</span>
+              <strong><UiText text={"收藏状态"} /></strong>
+              <span><UiText text={collectionStatusText(card.collectionStatus)} /></span>
             </div>
             <div className="info-item">
-              <strong>持有数量</strong>
+              <strong><UiText text={"持有数量"} /></strong>
               <span>{card.holdingQuantity}</span>
             </div>
             <div className="info-item">
-              <strong>标签</strong>
+              <strong><UiText text={"标签"} /></strong>
               <span>{tags.length > 0 ? tags.join(", ") : "-"}</span>
             </div>
           </div>
 
           <div style={{ marginTop: "0.8rem" }}>
-            <strong>备注</strong>
+            <strong><UiText text={"备注"} /></strong>
             <p>{card.notes || "-"}</p>
           </div>
         </section>

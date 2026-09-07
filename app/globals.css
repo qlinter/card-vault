@@ -1,4 +1,7 @@
 :root {
+  --control-height: 40px;
+  --panel-space: 1rem;
+  --section-gap: 1rem;
   --ink: #10131a;
   --slate: #2b3240;
   --muted-ink: #667085;
@@ -23,7 +26,7 @@
 body {
   margin: 0;
   color: var(--ink);
-  font-family: "Manrope", "Segoe UI", sans-serif;
+  font-family: Arial, "Microsoft YaHei", sans-serif;
   background:
     linear-gradient(180deg, #fbfcfd 0%, #f3f5f8 46%, #eef1f5 100%);
   min-height: 100vh;
@@ -64,7 +67,7 @@ body {
 
 .brand {
   flex-shrink: 0;
-  font-family: "Bebas Neue", Impact, sans-serif;
+  font-family: Arial, "Microsoft YaHei", sans-serif;
   letter-spacing: 0;
   text-transform: uppercase;
   color: var(--ink);
@@ -268,7 +271,7 @@ body:has(.settings-page) .topbar {
 
 .h1 {
   margin: 0;
-  font-family: "Manrope", "Segoe UI", sans-serif;
+  font-family: Arial, "Microsoft YaHei", sans-serif;
   letter-spacing: 0;
   font-size: clamp(1.9rem, 3.4vw, 3rem);
   line-height: 1.04;
@@ -465,8 +468,7 @@ form.panel {
   grid-template-columns: 1fr;
 }
 
-.entry-queue-thumbnails figure,
-.queued-card-images figure {
+.entry-queue-thumbnails figure {
   position: relative;
   margin: 0;
 }
@@ -477,8 +479,7 @@ form.panel {
   object-fit: cover;
 }
 
-.entry-queue-thumbnails figcaption,
-.queued-card-images figcaption {
+.entry-queue-thumbnails figcaption {
   position: absolute;
   right: 0.3rem;
   bottom: 0.3rem;
@@ -570,23 +571,8 @@ form.panel {
   font-size: 0.76rem;
 }
 
-.queued-card-images {
-  margin-top: 0.25rem;
-  padding-top: 0.9rem;
-  border-top: 1px solid rgba(16, 19, 26, 0.08);
-}
 
-.queued-card-images h3 {
-  margin-bottom: 0.7rem;
-}
 
-.queued-card-images img {
-  width: 100%;
-  max-height: 520px;
-  object-fit: contain;
-  border-radius: 10px;
-  background: var(--surface-soft);
-}
 
 .entry-form-column {
   min-width: 0;
@@ -983,15 +969,18 @@ form.panel {
 }
 
 a.btn,
-button.btn {
+button.btn,
+summary.btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  min-height: 38px;
+  min-height: var(--control-height);
   border: 1px solid transparent;
   border-radius: 10px;
   padding: 0.55rem 0.9rem;
+  font-family: inherit;
+  font-size: .875rem;
   font-weight: 700;
   line-height: 1.2;
   text-decoration: none;
@@ -1299,7 +1288,6 @@ textarea {
 
 .financial-overview { margin-top: 1rem; }
 
-.financial-currency-tabs,
 .financial-record-tabs,
 .financial-history-filters {
   display: flex;
@@ -1307,7 +1295,6 @@ textarea {
   gap: 0.4rem;
 }
 
-.financial-currency-tabs button,
 .financial-record-tabs button,
 .financial-history-filters button {
   border: 1px solid rgba(16, 19, 26, 0.12);
@@ -1321,7 +1308,6 @@ textarea {
   cursor: pointer;
 }
 
-.financial-currency-tabs button[aria-selected="true"],
 .financial-record-tabs button[aria-selected="true"],
 .financial-history-filters button[aria-pressed="true"] {
   color: #fff;
@@ -2090,6 +2076,11 @@ body:has(.showcase-backdrop) main.container {
 
 .settings-section {
   margin-top: 1rem;
+}
+
+.settings-path {
+  margin: .35rem 0 0;
+  overflow-wrap: anywhere;
 }
 
 .settings-section h2,
@@ -3082,3 +3073,160 @@ html[data-ui-locale="en"][data-ui-ready="false"] body {
 .finance-rules-metrics dd { margin: 0; line-height: 1.7; }
 .finance-rules-link { margin: 0 0 1rem; }
 @media (max-width: 600px) { .finance-rules-metrics > div { grid-template-columns: minmax(0, 1fr); gap: .3rem; } }
+.management-section { margin-block: 1.2rem; padding: clamp(16px, 3vw, 28px); }
+.management-section h2 { margin-top: 0; }
+.management-section label { display: grid; gap: .45rem; min-width: 0; }
+.management-section input:not([type=checkbox]), .management-section select { min-width: 0; width: 100%; }
+.management-section input[type=checkbox] { width: auto; margin-right: .5rem; }
+.management-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; margin-block: .85rem; }
+.management-toolbar label { flex: 1 1 180px; }
+.mapping-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,220px),1fr)); gap: 1rem; margin-block: 1rem; }
+.mapping-grid small { overflow-wrap: anywhere; max-height: 3em; overflow: hidden; }
+.management-card-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,280px),1fr)); gap: .5rem; }
+.management-card-option { display: flex; align-items: flex-start; gap: .5rem; text-align: left; border: 1px solid var(--line); border-radius: 10px; padding: .75rem; }
+.management-card-list span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.management-card-list small { display: block; color: var(--muted); }
+.management-table { overflow: auto; max-height: 500px; margin-block: 1rem; }
+.management-table table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.management-table th, .management-table td { padding: .7rem; text-align: left; border-bottom: 1px solid var(--line); max-width: 500px; overflow-wrap: anywhere; }
+.management-table th { position: sticky; top: 0; background: var(--surface); }
+.management-task { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; padding: 1rem 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: inherit; width: 100%; text-align: left; }
+.management-task > div:first-child { display: grid; gap: .4rem; min-width: 0; overflow-wrap: anywhere; }
+.management-task small { color: var(--muted); }
+@media(max-width: 760px) { .topbar-inner { flex-wrap: wrap; } .nav-links { order: 3; flex: 1 0 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: .35rem; } }
+.management-section label:has(> input[type=checkbox]) { display: flex; align-items: center; gap: .5rem; flex: 0 1 auto; }
+.management-section label:has(> input[type=checkbox]) input { flex: 0 0 auto; margin: 0; }
+.management-page .summary-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.management-page .summary-grid > .panel { min-height: 0; padding: 18px; }
+.management-page .summary-grid .h1 { margin: .65rem 0 0; font-size: 2rem; }
+.management-page a:not(.btn) { color: inherit; text-underline-offset: 3px; }
+@media(max-width: 600px) { .management-page .summary-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+.user-guide-index { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; }
+.user-guide-index a, .user-guide-section a { color: inherit; text-underline-offset: 3px; }
+.user-guide-index a { padding-block: .5rem; }
+.user-guide-section { margin-block: 1rem; scroll-margin-top: 6rem; }
+.user-guide-section p { max-width: 85ch; line-height: 1.8; }
+
+.financial-incomplete a { color: inherit; text-underline-offset: 3px; }
+.financial-incomplete li { margin-block: .45rem; overflow-wrap: anywhere; }
+
+.settings-disclosure-content { margin-top: 1rem; }
+.settings-disclosure-content[hidden] { display: none; }
+.data-workspace .management-section { padding: 1rem; }
+.data-workspace h2 { font-size: 1.15rem; font-weight: 800; line-height: 1.3; }
+.collection-view-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-block: 1rem; }
+.selection-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; }
+.view-mode-toggle { margin-left: auto; display: inline-flex; flex: 0 0 auto; padding: 4px; gap: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); }
+.view-mode-toggle button { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .8rem; border: 0; border-radius: 7px; background: transparent; color: var(--muted-ink); font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; }
+.view-mode-toggle button[aria-pressed=true] { background: var(--ink); color: white; }
+.view-mode-toggle button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.view-mode-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; }
+.cards-grid.is-list { grid-template-columns: 1fr; }
+.cards-grid.is-list .card-item { display: grid; grid-template-columns: 100px minmax(0,1fr); }
+.cards-grid.is-list .card-thumb { width: 100%; height: 130px; aspect-ratio: auto; object-fit: contain; }
+.cards-grid.is-list .card-body { align-self: center; }
+.showcase-views.is-list .showcase-grid { grid-template-columns: 1fr; }
+.showcase-views.is-list .showcase-card { display: grid; grid-template-columns: 100px minmax(0,1fr); align-items: center; }
+.showcase-views.is-list .showcase-card-image { width: 100%; height: 140px; aspect-ratio: auto; object-fit: contain; }
+.showcase-views.is-list .showcase-card-body { min-width: 0; }
+
+.filter-display-actions { display: flex; align-items: center; gap: .8rem; }
+.filter-display-actions .view-mode-toggle { margin-left: 0; }
+form.showcase-search { display: flex; align-items: center; flex-wrap: wrap; gap: .7rem; }
+form.showcase-search .showcase-search-input { flex: 1 1 260px; min-width: 0; width: auto; }
+form.showcase-search > .btn { flex: 0 0 auto; }
+.export-controls { display: flex; align-items: flex-end; flex-wrap: wrap; gap: .75rem; margin-block: .85rem; }
+.export-controls .export-search { flex: 1 1 240px; }
+.export-controls .export-public { display: flex; align-items: center; justify-content: center; gap: .5rem; height: 40px; padding-inline: .85rem; border: 1px solid var(--line); border-radius: 9px; white-space: nowrap; background: var(--surface-soft); font-size: .85rem; }
+.export-controls > .btn, .export-controls .export-search input { height: 40px; min-height: 40px; box-sizing: border-box; }
+.export-controls > .btn { display: inline-flex; align-items: center; justify-content: center; }
+.export-pagination { display: flex; align-items: center; gap: .6rem; margin-top: 1rem; }
+.export-pagination > * { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; }
+.export-pagination > span { min-width: 64px; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.plans-layout { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(0,1fr); gap: 1rem; align-items: start; }
+.plans-overview { display: grid; gap: 1rem; min-width: 0; }
+.plans-page .management-section { margin: 0; padding: 1.1rem; min-width: 0; }
+.plans-page h2 { font-size: 1.1rem; margin: 0; line-height: 1.4; }
+.plans-section-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.plans-section-head .digest-period { flex: 0 0 auto; min-width: 138px; }
+.plans-page .summary-grid { gap: .5rem; margin: .9rem 0 0; }
+.plans-page .summary-grid > .panel { padding: .7rem; background: var(--surface-soft); box-shadow: none; }
+.plans-page .summary-grid .h1 { font-size: 1.7rem; margin-top: .3rem; }
+.plans-page .summary-grid span { font-size: .82rem; color: var(--muted-ink); }
+.plans-page .title-row { align-items: center; }
+.plans-page .management-section .title-row { margin-bottom: 0; }
+.plans-page .management-task { padding-block: .8rem; gap: .5rem; }
+.plans-page .management-toolbar { align-items: center; margin-block: .3rem; gap: .4rem; }
+.plans-page .management-toolbar .btn { padding: .4rem .6rem; font-size: .78rem; }
+.plans-wishlist .mapping-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: .75rem; margin-block: 1rem; }
+.plans-wishlist label { font-size: .85rem; }
+.plans-budgets { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .6rem; }
+.plans-budgets:empty { display: none; }
+@media(max-width: 900px) { .plans-layout { grid-template-columns: minmax(0,1fr); } }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* Wishlist disclosures and card-info navigation. */
+.wish-disclosure { border-top: 1px solid var(--line); margin-top: .85rem; padding-top: .2rem; }
+.wish-disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem 0; font-weight: 600; cursor: pointer; list-style: none; }
+.wish-disclosure > summary::-webkit-details-marker { display: none; }
+.wish-disclosure[open] > summary .disclosure-icon { transform: rotate(180deg); }
+.wish-disclosure > form { padding-bottom: .25rem; }
+.wish-disclosure .mapping-grid { margin-top: .25rem; }
+.management-card-list .export-card-link { flex: 1; min-width: 0; overflow-wrap: anywhere; padding: 0; line-height: 1.4; }
+.export-card-link { color: inherit; text-decoration: none; }
+.export-card-link:hover { color: var(--accent); text-decoration: underline; }
+#data-export { scroll-margin-top: 1rem; }
+
+.view-mode-toggle.is-compact { padding: 2px; gap: 2px; border-radius: 8px; background: var(--surface-soft); }
+.view-mode-toggle.is-compact button { justify-content: center; min-width: 42px; min-height: 28px; padding: 0 .5rem; border-radius: 5px; font-size: .75rem; font-weight: 500; line-height: 1; }
+.view-mode-toggle.is-compact button[aria-pressed=true] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .1); }
+.view-mode-toggle.is-compact button:not([aria-pressed=true]):hover { color: var(--ink); }
+.management-card-option > input[type=checkbox] { flex: 0 0 auto; margin: .25rem 0 0; }
+#data-export .management-table td { vertical-align: top; }
+
+.share-list-toolbar { display: flex; justify-content: flex-end; margin-bottom: .85rem; }
+
+/* Shared disclosure rows, quiet management surfaces and consistent controls. */
+details > summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: var(--control-height); list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; border-radius: 6px; }
+details > summary:not(:has(.disclosure-icon))::after { content: ""; flex: 0 0 6px; width: 6px; height: 6px; margin: 0 .55rem 3px auto; border-right: 1.8px solid currentColor; border-bottom: 1.8px solid currentColor; transform: rotate(45deg); }
+details[open] > summary:not(:has(.disclosure-icon))::after { transform: rotate(225deg); margin-bottom: -3px; }
+details[open] > summary .disclosure-icon { transform: rotate(180deg); }
+.filter-details > summary { width: 100%; }
+.ai-settings-toggle { min-height: var(--control-height); }
+.about-toggle { min-height: 72px; padding: var(--panel-space); }
+.about-toggle-end { display: flex; align-items: center; gap: .75rem; }
+.disclosure-button { width: 24px; height: 24px; padding: 0; border: 0; background: transparent; border-radius: 0; color: var(--slate); }
+.wish-disclosure > summary { padding: .5rem 0; }
+.settings-disclosure-content, .filter-details-grid { margin-top: var(--section-gap); }
+
+body:has(.portfolio-page, .settings-page, .shares-page, .entry-page, .plans-page) { --shadow-soft: 0 4px 14px rgb(28 34 45 / .035); --shadow: 0 6px 18px rgb(28 34 45 / .055); background: #f7f9fb; }
+body:has(.settings-page, .shares-page) .site-bg { opacity: .18; }
+body:has(.entry-page, .plans-page) .site-bg { opacity: .35; }
+body:has(.portfolio-page) .site-bg { background-image: linear-gradient(180deg, #f7fafb, #f3f7f8); }
+:is(.settings-page, .shares-page, .entry-page, .plans-page) .panel { padding: var(--panel-space); border-color: var(--line); background: var(--surface); backdrop-filter: none; }
+.settings-page .about-settings { padding: 0; }
+.entry-page .panel .panel, .settings-disclosure-content .panel { box-shadow: none; }
+:is(.mapping-grid, .form-grid, .management-section) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select) { min-height: var(--control-height); }
+.btn-primary { box-shadow: 0 3px 8px rgb(217 83 30 / .12); }
+.btn-primary:hover { box-shadow: 0 4px 10px rgb(217 83 30 / .18); }
+
+.share-list-actions .btn-danger { color: #b9362e; background: #fff4f2; border-color: #f1d1cc; box-shadow: none; }
+.share-list-actions .btn-danger:hover { background: #fce5e1; }
+.share-list-item > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+
+.numeric-value, .financial-record-amount { text-align: right; font-variant-numeric: tabular-nums; }
+.financial-record-amount { min-width: 10ch; }
+.financial-timeline-item { align-items: start; }
+.financial-record-description > div { flex-wrap: wrap; }
+.management-task { align-items: flex-start; }
+.management-task > div:first-child { flex: 1 1 240px; min-width: 0; overflow-wrap: anywhere; }
+.wish-meta { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem .75rem; font-size: .85rem; }
+.wish-meta time { min-width: 10ch; font-variant-numeric: tabular-nums; color: var(--muted-ink); }
+.record-status { min-width: 5em; text-align: right; color: var(--muted-ink); }
+.management-table th, .management-table td { vertical-align: top; text-align: left; }
+
+.btn:not(.btn-primary):not(.btn-secondary):not(.btn-danger) { color: var(--ink); background: var(--surface-soft); border-color: var(--line); }

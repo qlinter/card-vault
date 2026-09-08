@@ -23,7 +23,7 @@ function writeBackupManifest(root) {
 }
 function verifyBackupManifest(root) {
   const manifestPath = path.join(root, manifestName);
-  if (!fs.existsSync(manifestPath)) return { verified: false, legacy: true, counts: databaseCounts(root) };
+  if (!fs.existsSync(manifestPath)) throw new Error("缺少 backup-manifest.json，仅支持当前格式的完整备份。");
   if (fs.statSync(manifestPath).size > 50 * 1024 * 1024) throw new Error("备份清单过大。");
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
   if (manifest.version !== 1 || !Array.isArray(manifest.files)) throw new Error("备份清单无效。");
@@ -37,6 +37,6 @@ function verifyBackupManifest(root) {
   const counts = databaseCounts(root);
   if (!manifest.counts || typeof manifest.counts !== "object" || Array.isArray(manifest.counts) || Object.keys(manifest.counts).length !== Object.keys(counts).length) throw new Error("备份记录数量清单不完整。");
   for (const [table, count] of Object.entries(counts)) if (manifest.counts[table] !== count) throw new Error(`备份记录数量不一致：${table}`);
-  return { verified: true, legacy: false, counts };
+  return { verified: true, counts };
 }
 module.exports = { writeBackupManifest, verifyBackupManifest, databaseCounts };

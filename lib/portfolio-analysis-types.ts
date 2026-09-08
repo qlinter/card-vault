@@ -1,6 +1,6 @@
 import type { PortfolioScorecardKey, PortfolioSectionKey } from "./portfolio-analysis-protocol.ts";
 
-export type PortfolioMoneyRecord = { amountMinor: bigint; currency: string; occurredAt?: Date; createdAt?: Date };
+export type PortfolioMoneyRecord = { amountMinor: bigint; currency: string; occurredAt?: Date; createdAt?: Date; amountKnown?: boolean };
 export type PortfolioTransactionRecord = PortfolioMoneyRecord & { kind: string; quantity?: number; paymentsJson?: string | null; amountKnown?: boolean };
 export type PortfolioExpenseRecord = PortfolioMoneyRecord & { kind?: string; context?: string; amountKnown?: boolean };
 export type PortfolioValuationRecord = PortfolioMoneyRecord & { valuedAt: Date; createdAt: Date; source: string; available?: boolean };
@@ -47,7 +47,7 @@ export type PortfolioAllocationBreakdown = PortfolioBreakdown & { countShare: nu
 export type PortfolioAllocation = Record<"bySport" | "byPlayer" | "byTeam" | "byYear" | "byBrand" | "byProductLine" | "bySubsetName" | "byParallel" | "byStatus" | "byGradingCompany" | "byGrade" | "byAutoType" | "byPatchType" | "byTag", PortfolioAllocationBreakdown[]>;
 export type PortfolioConcentrationDimension = { top1CountShare: number; top3CountShare: number; top1ValueShare: Record<string, number>; top3ValueShare: Record<string, number>; hhiByCurrency: Record<string, number> };
 export type PortfolioConcentration = Record<"player" | "sport" | "team" | "brand" | "productLine", PortfolioConcentrationDimension>;
-export type PortfolioTimeSeriesPoint = { month: string; count: number; values: Record<string, number> };
+export type PortfolioTimeSeriesPoint = { month: string; count: number; values: Record<string, number>; missingCurrencies?: string[] };
 export type PortfolioAttentionItem = { type: "missing_valuation" | "stale_valuation" | "missing_transaction" | "missing_image" | "incomplete_data"; priority: "high" | "medium" | "low"; count: number };
 export type PortfolioTopPosition = { playerName: string; cardTitle: string; sport: string; team: string | null; year: string | null; brand: string | null; productLine: string | null; subsetName: string | null; parallel: string | null; collectionStatus: string; gradingCompany: string | null; grade: string | null; isRookie: boolean; isAutograph: boolean; isPatch: boolean; isSerialNumbered: boolean; currency: string; latestValue: number; valuedAt: string; valuationAgeDays: number; fieldCompleteness: number };
 

@@ -4,7 +4,7 @@ import { ShareCollectionWizard } from "@/components/share-collection-wizard";
 import { ShareThemeCard } from "@/components/share-theme-generator";
 import { normalizeShareTheme } from "@/lib/share-themes";
 import { parseSharePresentation, sanitizeSharePresentationCards } from "@/lib/share-presentation";
-import { fallbackShareSections, type ShareSectionDraft } from "@/lib/share-sections";
+import { type ShareSectionDraft } from "@/lib/share-sections";
 
 type CardOption = Card & { images: CardImage[] };
 type ShareWithItems =
@@ -110,14 +110,7 @@ export function ShareCollectionForm({ action, cards, share, error }: ShareCollec
     layout: section.layout === "rail" || section.layout === "grid" ? section.layout : "editorial",
     cardIds: sectionItems.get(section.id) ?? []
   }));
-  const initialSections = storedSections.length > 0
-    ? storedSections
-    : fallbackShareSections({
-        themeNarrative: share?.themeNarrative,
-        themeHighlights: share?.themeHighlights,
-        groupNotes: share?.groupNotes,
-        cardIds: share?.items.map((item) => item.cardId) ?? []
-      });
+  const initialSections = storedSections;
 
   return (
     <ShareCollectionWizard

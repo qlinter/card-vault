@@ -23,6 +23,7 @@ function createTestManager(t) {
 
 function seedData(manager) {
   manager.repairDataLayout(manager.getDataDir());
+  initializeDatabase(manager.getDbPath());
   fs.writeFileSync(path.join(manager.getUploadsDir(), "card.jpg"), "card");
   fs.writeFileSync(path.join(manager.getThumbnailsDir(), "card.jpg.home.webp"), "thumbnail-cache");
   fs.writeFileSync(path.join(manager.getShareCoversDir(), "cover.jpg"), "cover");
@@ -33,6 +34,18 @@ function seedData(manager) {
   db.prepare("INSERT INTO Sample (name) VALUES (?)").run("Card Vault");
   db.close();
 }
+
+test("unsupported media layouts are rejected without moving or deleting files", t => {
+  const { manager } = createTestManager(t);
+  const uploads = manager.getUploadsDir();
+  fs.mkdirSync(path.join(uploads, "uploads"), { recursive: true });
+  fs.writeFileSync(path.join(uploads, "dev.db"), "keep database");
+  fs.writeFileSync(path.join(uploads, "uploads", "card.jpg"), "keep image");
+  assert.throws(() => manager.repairDataLayout(manager.getDataDir()), /不是当前布局/);
+  assert.equal(fs.readFileSync(path.join(uploads, "dev.db"), "utf8"), "keep database");
+  assert.equal(fs.readFileSync(path.join(uploads, "uploads", "card.jpg"), "utf8"), "keep image");
+  assert.equal(fs.existsSync(manager.getDbPath()), false);
+});
 
 function seedCardVaultData(manager, playerName = "Card Vault Player") {
   manager.repairDataLayout(manager.getDataDir());
@@ -182,6 +195,7 @@ test("switching to existing storage preserves its database and media", (t) => {
   fs.mkdirSync(targetUploadsDir, { recursive: true });
   fs.writeFileSync(path.join(targetUploadsDir, "existing.jpg"), "existing");
 
+  initializeDatabase(path.join(targetDir, "dev.db"));
   const targetDb = new DatabaseSync(path.join(targetDir, "dev.db"));
   targetDb.exec("CREATE TABLE Sample (id INTEGER PRIMARY KEY, name TEXT NOT NULL);");
   targetDb.prepare("INSERT INTO Sample (name) VALUES (?)").run("Existing collection");
@@ -199,21 +213,6 @@ test("switching to existing storage preserves its database and media", (t) => {
   assert.equal(fs.existsSync(path.join(sourceUploadsDir, "card.jpg")), true);
 });
 
-test("legacy pending cleanup is cancelled without deleting old data", (t) => {
-  const { appDataRoot, manager } = createTestManager(t);
-  seedData(manager);
-
-  const sourceDataDir = manager.getDataDir();
-  const cleanupConfigPath = path.join(appDataRoot, "cleanup-config.json");
-  fs.mkdirSync(appDataRoot, { recursive: true });
-  fs.writeFileSync(cleanupConfigPath, JSON.stringify({ pendingDeleteDir: sourceDataDir }));
-
-  manager.runPendingCleanup();
-
-  assert.equal(fs.existsSync(path.join(sourceDataDir, "dev.db")), true);
-  assert.equal(fs.existsSync(path.join(sourceDataDir, "uploads", "card.jpg")), true);
-  assert.equal(fs.existsSync(cleanupConfigPath), false);
-});
 
 test("backup creates an integrity-checked SQLite snapshot and copies media", (t) => {
   const { root, manager } = createTestManager(t);
@@ -396,7 +395,7 @@ test("current-version backup restores after creating a safety backup", (t) => {
   assert.equal(restored.health.integrity, "ok");
 });
 
-test("backup restores management jobs, wishlist and reminder decisions with a verified migration report", (t) => {
+test("backup restores management jobs, wishlist and reminder decisions with a verified restore report", (t) => {
   const { root, manager } = createTestManager(t);
   seedCardVaultData(manager, "Managed card");
   const db = new DatabaseSync(manager.getDbPath());
@@ -414,7 +413,7 @@ test("backup restores management jobs, wishlist and reminder decisions with a ve
   assert.equal(restored.prepare("SELECT budgetMinor FROM CollectionPlan WHERE id='wish'").get().budgetMinor, 12345);
   assert.equal(restored.prepare("SELECT status FROM CollectionTaskState").get().status, "dismissed");
   restored.close();
-  const report = JSON.parse(fs.readFileSync(path.join(manager.getDataDir(), "migration-report.json"), "utf8"));
+  const report = JSON.parse(fs.readFileSync(path.join(manager.getDataDir(), "restore-report.json"), "utf8"));
   assert.equal(report.verification.verified, true);
   assert.equal(report.afterCounts.CollectionPlan, 1);
 });
@@ -456,72 +455,7 @@ test("backup and restore preserve saved portfolio views and point-in-time snapsh
   assert.equal(restored.health.integrity, "ok");
 });
 
-test("restore upgrades a v1.1.1 backup with v1.2.0 portfolio and rotation fields", (t) => {
-  const { root, manager } = createTestManager(t);
-  seedCardVaultData(manager, "Pre-portfolio Backup Player");
-  manager.chooseBackupDir(path.join(root, "backups"));
-  const sourceBackup = manager.backupDataFolder();
-  const backupDb = new DatabaseSync(path.join(sourceBackup.backupPath, "dev.db"));
-  backupDb.exec("DROP TABLE PortfolioSnapshotRecord; DROP TABLE PortfolioSavedView; ALTER TABLE CardImage DROP COLUMN rotation;");
-  backupDb.close();
-  fs.rmSync(path.join(sourceBackup.backupPath, "backup-manifest.json"), { force: true });
-  const restored = manager.restoreDataFolder(sourceBackup.backupPath);
-  const restoredDb = new DatabaseSync(manager.getDbPath(), { readOnly: true });
-  const tables = new Set(restoredDb.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((row) => row.name));
-  const imageColumns = new Set(restoredDb.prepare("PRAGMA table_info(CardImage)").all().map((row) => row.name));
-  const card = restoredDb.prepare("SELECT playerName FROM Card WHERE id = ?").get("card-1");
-  restoredDb.close();
 
-  assert.equal(restored.schemaVersion, "1.3.0");
-  assert.equal(restored.health.integrity, "ok");
-  assert.equal(tables.has("PortfolioSavedView"), true);
-  assert.equal(tables.has("PortfolioSnapshotRecord"), true);
-  assert.equal(imageColumns.has("rotation"), true);
-  assert.equal(card.playerName, "Pre-portfolio Backup Player");
-  assert.equal(fs.readdirSync(path.join(manager.getDataDir(), "schema-backups")).length, 1);
-});
-
-test("restore upgrades a v1.1.0 backup and backfills its position data", (t) => {
-  const { root, manager } = createTestManager(t);
-  seedCardVaultData(manager, "v1.1.0 Backup Player");
-  manager.chooseBackupDir(path.join(root, "backups"));
-  const sourceBackup = manager.backupDataFolder();
-
-  const backupDb = new DatabaseSync(path.join(sourceBackup.backupPath, "dev.db"));
-  backupDb.exec("DROP INDEX CardExpense_transactionId_idx");
-  backupDb.exec("ALTER TABLE CardExpense DROP COLUMN transactionId");
-  backupDb.exec("ALTER TABLE Card DROP COLUMN holdingQuantity");
-  backupDb.exec("ALTER TABLE CardExpense DROP COLUMN context");
-  const purchaseDate = Date.parse("2026-08-01T00:00:00.000Z");
-  backupDb.prepare("UPDATE Card SET purchaseDate = ? WHERE id = ?").run(purchaseDate, "card-1");
-  backupDb.prepare(`INSERT INTO CardTransaction
-    (id, cardId, kind, amountMinor, currency, quantity, occurredAt, provenance)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run("purchase-v110", "card-1", "purchase", 20000, "CNY", 2, purchaseDate, "test");
-  backupDb.prepare(`INSERT INTO CardExpense
-    (id, cardId, kind, amountMinor, currency, occurredAt, provenance)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`)
-    .run("shipping-v110", "card-1", "shipping", 1000, "CNY", purchaseDate, "test");
-  backupDb.close();
-
-  const currentDb = new DatabaseSync(manager.getDbPath());
-  currentDb.prepare("UPDATE Card SET playerName = ? WHERE id = ?").run("Changed Current Player", "card-1");
-  currentDb.close();
-
-  fs.rmSync(path.join(sourceBackup.backupPath, "backup-manifest.json"), { force: true });
-  const restored = manager.restoreDataFolder(sourceBackup.backupPath);
-  const restoredDb = new DatabaseSync(manager.getDbPath(), { readOnly: true });
-  const card = restoredDb.prepare("SELECT playerName, holdingQuantity FROM Card WHERE id = ?").get("card-1");
-  const expense = restoredDb.prepare("SELECT context, transactionId FROM CardExpense WHERE id = ?").get("shipping-v110");
-  restoredDb.close();
-
-  assert.equal(restored.schemaVersion, "1.3.0");
-  assert.equal(restored.health.integrity, "ok");
-  assert.equal(card.playerName, "v1.1.0 Backup Player");
-  assert.equal(card.holdingQuantity, 2);
-  assert.deepEqual({ ...expense }, { context: "purchase", transactionId: null });
-  assert.equal(fs.readdirSync(path.join(manager.getDataDir(), "schema-backups")).length, 1);
-});
 
 test("restore accepts a dated backup folder and selects its latest backup", (t) => {
   const { root, manager } = createTestManager(t);
@@ -558,12 +492,12 @@ test("restore rejects a backup that does not match the current database baseline
 
   const backupDb = new DatabaseSync(path.join(oldBackup.backupPath, "dev.db"));
   backupDb.exec("DROP TABLE CardEntryRecognition");
-  fs.rmSync(path.join(oldBackup.backupPath, "backup-manifest.json"), { force: true });
   backupDb.close();
+  require("../electron/storage/backup-manifest").writeBackupManifest(oldBackup.backupPath);
 
   assert.throws(
     () => manager.restoreDataFolder(oldBackup.backupPath),
-    /不是 Card Vault v1.1.0、v1.1.1、v1.2.0 或 v1.3.0/
+    /仅支持当前完整格式/
   );
   const restoredDb = new DatabaseSync(manager.getDbPath(), { readOnly: true });
   const card = restoredDb.prepare("SELECT playerName FROM Card WHERE id = ?").get("card-1");
@@ -579,6 +513,19 @@ test("restore rejects folders that do not contain a generated backup", (t) => {
   fs.mkdirSync(emptyFolder, { recursive: true });
 
   assert.throws(() => manager.restoreDataFolder(emptyFolder), /未找到可恢复的 dev\.db/);
+});
+
+test("restore rejects missing manifests without modifying either database", t => {
+  const { root, manager } = createTestManager(t);
+  seedCardVaultData(manager);
+  manager.chooseBackupDir(path.join(root, "backups"));
+  const source = manager.backupDataFolder().backupPath;
+  fs.rmSync(path.join(source, "backup-manifest.json"));
+  const before = fs.readFileSync(manager.getDbPath());
+  const incoming = fs.readFileSync(path.join(source, "dev.db"));
+  assert.throws(() => manager.restoreDataFolder(source), /仅支持当前格式的完整备份/);
+  assert.deepEqual(fs.readFileSync(manager.getDbPath()), before);
+  assert.deepEqual(fs.readFileSync(path.join(source, "dev.db")), incoming);
 });
 
 test("restore preserves a raw safety copy when the current database is corrupted", (t) => {

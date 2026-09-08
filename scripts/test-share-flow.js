@@ -153,7 +153,7 @@ function seedDatabase(dbPath, dataDir) {
       "回归测试副标题",
       "e2e-share",
       "archive",
-      '{"version":1,"layout":"archive","backgroundPosition":{"x":45,"y":50},"panelOpacity":18}',
+      '{"version":3,"layout":"archive","backgroundPosition":{"x":45,"y":50},"panelOpacity":18}',
       "回归测试简介。",
       "回归测试叙事。"
     );

@@ -39,22 +39,11 @@ function configureUserDataPath() {
     return;
   }
   if (app.isPackaged) return;
-  const legacyUserDataDir = app.getPath("userData");
   const developmentUserDataDir = path.join(app.getPath("appData"), "Card Vault Development");
   const userDataDir = canWriteDirectory(developmentUserDataDir)
     ? developmentUserDataDir
     : path.join(rootDir, ".desktop-user-data");
   fs.mkdirSync(userDataDir, { recursive: true });
-  for (const fileName of ["storage-config.json", "ai-config.json"]) {
-    const targetPath = path.join(userDataDir, fileName);
-    if (fs.existsSync(targetPath)) continue;
-    for (const sourceDir of [developmentUserDataDir, legacyUserDataDir]) {
-      const sourcePath = path.join(sourceDir, fileName);
-      if (!fs.existsSync(sourcePath)) continue;
-      fs.copyFileSync(sourcePath, targetPath);
-      break;
-    }
-  }
   app.setPath("userData", userDataDir);
 }
 
@@ -75,8 +64,6 @@ async function bootDesktopApp() {
     logger.appendLog("desktop.log", "Desktop app boot started.");
     logger.appendLog("desktop.log", `Rendering mode: ${softwareRendering ? "software compatibility" : "hardware accelerated"}.`);
     logger.appendLog("desktop.log", `User data directory: ${app.getPath("userData")}`);
-    if (aiConfig.migrateLegacyConfig()) logger.appendLog("desktop.log", "Legacy AI settings were encrypted with Windows safeStorage.");
-    storage.runPendingCleanup();
     await runtime.ensurePreparedBuild();
     await runtime.selectServerTarget();
     await runtime.startServer();

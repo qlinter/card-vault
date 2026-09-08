@@ -57,23 +57,3 @@ export function parseShareSectionDrafts(value: unknown, allowedCardIds: readonly
     })
     .filter((section) => section.title || section.description || section.cardIds.length > 0);
 }
-
-export function fallbackShareSections(input: {
-  themeNarrative?: string | null;
-  themeHighlights?: string | null;
-  groupNotes?: string | null;
-  cardIds?: string[];
-}): ShareSectionDraft[] {
-  const cardIds = input.cardIds ?? [];
-  const sections: ShareSectionDraft[] = [];
-  if (input.themeNarrative) {
-    sections.push({ id: "narrative", title: "展馆叙事", description: input.themeNarrative, layout: "editorial", cardIds: [] });
-  }
-  if (input.themeHighlights) {
-    sections.push({ id: "highlights", title: "收藏亮点", description: input.themeHighlights, layout: "rail", cardIds });
-  }
-  if (input.groupNotes) {
-    sections.push({ id: "groups", title: "主题分组", description: input.groupNotes, layout: "grid", cardIds });
-  }
-  return sections;
-}

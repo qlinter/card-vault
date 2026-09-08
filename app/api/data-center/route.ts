@@ -4,8 +4,13 @@ import { exportCards } from "@/lib/card-data-export";
 import { normalizePortfolioFilterInput } from "@/lib/portfolio-analysis";
 import { prisma } from "@/lib/prisma";
 import { buildCardFilters } from "@/lib/card-helpers";
+import { parseExportSelection } from "@/lib/card-export-selection";
 export const runtime = "nodejs";
 const active = new Set<string>();
+async function exportResponse(query: Record<string, unknown>, format: string, publicOnly: boolean, selection?: unknown) {
+  const result = await exportCards(normalizePortfolioFilterInput(query), format, publicOnly, parseExportSelection(selection));
+  return new NextResponse(new Uint8Array(result.bytes), { headers: { "Content-Type": result.type, "Content-Disposition": `attachment; filename="card-vault-${publicOnly ? "public" : "private"}.${result.extension}"`, "Cache-Control": "no-store" } });
+}
 export async function GET(request: NextRequest) {
   try {
     const params = request.nextUrl.searchParams;
@@ -15,8 +20,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ids: rows.map(row => row.id) });
     }
     if (params.has("export")) {
-      const result = await exportCards(normalizePortfolioFilterInput(Object.fromEntries(params)), params.get("export")!, params.get("publicOnly") === "true");
-      return new NextResponse(new Uint8Array(result.bytes), { headers: { "Content-Type": result.type, "Content-Disposition": `attachment; filename="card-vault-${params.get("publicOnly") === "true" ? "public" : "private"}.${result.extension}"`, "Cache-Control": "no-store" } });
+      return await exportResponse(Object.fromEntries(params), params.get("export")!, params.get("publicOnly") === "true", params.get("ids"));
     }
     if (!params.get("id")) throw new Error("请指定导入批次。");
     return NextResponse.json(await getJob(params.get("id")!));
@@ -25,6 +29,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   let lock: string | undefined;
   try {
+    if (request.headers.get("content-type")?.includes("application/x-www-form-urlencoded")) {
+      const text = await request.text();
+      if (text.length > 2 * 1024 * 1024) throw new Error("请求超过大小限制。");
+      const form = new URLSearchParams(text);
+      if (form.get("action") !== "export") throw new Error("操作无效。");
+      return await exportResponse({ q: form.get("q") }, form.get("format") ?? "", form.get("publicOnly") === "true", form.get("ids"));
+    }
     if (request.headers.get("content-type")?.includes("multipart/form-data")) {
       if (Number(request.headers.get("content-length")) > 11 * 1024 * 1024) throw new Error("文件不能超过 10 MB。");
       const form = await request.formData(), file = form.get("file");

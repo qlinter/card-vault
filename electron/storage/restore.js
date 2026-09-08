@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { initializeDatabase } = require("../../scripts/database-schema");
+const { validateDatabase } = require("../../scripts/database-schema");
 const { dateFolderName, uniqueBackupTarget } = require("./backup");
 const { isSubPath, pathsEqual } = require("./file-utils");
 const { inspectDataFolder } = require("./health");
@@ -24,6 +24,7 @@ function createRestoreService({ config, backupDataFolder, repairDataLayout }) {
     const targetDataDir = path.resolve(config.getDataDir());
     if (pathsEqual(sourceDataDir, targetDataDir) || isSubPath(targetDataDir, sourceDataDir) || isSubPath(sourceDataDir, targetDataDir)) throw new Error("恢复来源和当前数据目录不能互相包含。");
     const verification = verifyBackupManifest(sourceDataDir);
+    validateDatabase(path.join(sourceDataDir, "dev.db"));
     const sourceHealth = inspectDataFolder(sourceDataDir, mapProgress(onProgress, 4, 18));
     if (sourceHealth.integrity !== "ok") throw new Error("所选备份的 SQLite 数据库完整性检查未通过，已取消恢复。");
     let safetyBackupPath = null;
@@ -37,23 +38,38 @@ function createRestoreService({ config, backupDataFolder, repairDataLayout }) {
     const stagingDir = path.join(parentDir, `.${baseName}-restore-staging-${suffix}`);
     const rollbackDir = path.join(parentDir, `.${baseName}-restore-rollback-${suffix}`);
     let schema = { schemaVersion: null };
+    let restoredHealth = null;
+    let retainedRollbackPath = null;
     if (pathsEqual(targetDataDir, path.parse(targetDataDir).root)) throw new Error("不能将文件系统根目录作为恢复目标。");
     fs.mkdirSync(parentDir, { recursive: true });
     try {
       fs.cpSync(sourceDataDir, stagingDir, { recursive: true });
       if (inspectDataFolder(stagingDir, mapProgress(onProgress, 64, 80)).integrity !== "ok") throw new Error("备份复制到临时目录后完整性检查失败。");
       reportProgress(onProgress, 81, "正在验证恢复数据的数据库结构...");
-      schema = initializeDatabase(path.join(stagingDir, "dev.db"));
+      schema = validateDatabase(path.join(stagingDir, "dev.db"));
       if (inspectDataFolder(stagingDir, mapProgress(onProgress, 82, 86)).integrity !== "ok") throw new Error("备份数据库结构验证后的完整性检查失败。");
       const report = { version: 1, restoredAt: new Date().toISOString(), verification, afterCounts: databaseCounts(stagingDir), schemaVersion: schema.schemaVersion, safetyBackupPath };
-      fs.writeFileSync(path.join(stagingDir, "migration-report.json"), JSON.stringify(report, null, 2));
+      fs.writeFileSync(path.join(stagingDir, "restore-report.json"), JSON.stringify(report, null, 2));
       if (fs.existsSync(targetDataDir)) { reportProgress(onProgress, 84, "正在保留当前数据以便回滚..."); fs.renameSync(targetDataDir, rollbackDir); }
-      try { reportProgress(onProgress, 88, "正在切换到恢复后的数据目录..."); fs.renameSync(stagingDir, targetDataDir); }
-      catch (error) { if (fs.existsSync(rollbackDir) && !fs.existsSync(targetDataDir)) fs.renameSync(rollbackDir, targetDataDir); throw error; }
-      if (fs.existsSync(rollbackDir)) fs.rmSync(rollbackDir, { recursive: true, force: true });
+      try {
+        reportProgress(onProgress, 88, "正在切换到恢复后的数据目录...");
+        fs.renameSync(stagingDir, targetDataDir);
+        repairDataLayout(targetDataDir);
+        restoredHealth = inspectDataFolder(targetDataDir, mapProgress(onProgress, 92, 99));
+        if (restoredHealth.integrity !== "ok") throw new Error("恢复后的数据库校验失败，正在还原原数据。");
+      } catch (error) {
+        if (fs.existsSync(rollbackDir)) {
+          if (fs.existsSync(targetDataDir)) fs.renameSync(targetDataDir, stagingDir);
+          fs.renameSync(rollbackDir, targetDataDir);
+        }
+        throw error;
+      }
+      if (fs.existsSync(rollbackDir)) {
+        try { fs.rmSync(rollbackDir, { recursive: true, force: true }); }
+        catch { retainedRollbackPath = rollbackDir; }
+      }
     } catch (error) { if (fs.existsSync(stagingDir)) fs.rmSync(stagingDir, { recursive: true, force: true }); throw error; }
-    repairDataLayout(targetDataDir);
-    const result = { restoredFrom: sourceDataDir, restoredTo: targetDataDir, safetyBackupPath, schemaVersion: schema.schemaVersion, health: inspectDataFolder(targetDataDir, mapProgress(onProgress, 92, 100)) };
+    const result = { restoredFrom: sourceDataDir, restoredTo: targetDataDir, safetyBackupPath, retainedRollbackPath, schemaVersion: schema.schemaVersion, health: restoredHealth };
     reportProgress(onProgress, 100, "数据恢复完成。");
     return result;
   }

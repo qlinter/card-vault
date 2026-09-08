@@ -9,12 +9,6 @@ async function main() {
   const result = initializeDatabase(resolveDbPath(rootDir));
 
   console.log(`Database ready: ${result.dbPath} (${result.schemaVersion})`);
-  if (result.upgraded) {
-    console.log(`Upgrade snapshot: ${result.backupPath}`);
-    if (result.expenseBackfill) {
-      console.log(`Expense associations updated: ${result.expenseBackfill.expenseBackfillCount} (purchase shipping ${result.expenseBackfill.purchaseShippingCount}, grading shipping ${result.expenseBackfill.gradingShippingCount})`);
-    }
-  }
 
   try {
     const thumbnails = await generateHomeThumbnails({ projectRoot: rootDir });

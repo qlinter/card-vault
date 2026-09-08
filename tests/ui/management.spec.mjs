@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
+import { readFileSync } from "node:fs";
+const productVersion = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version;
 function fixture(action) { const db = new DatabaseSync(path.resolve("tests/.ui-test-runtime/data/dev.db")); try { db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000"); return action(db); } finally { db.close(); } }
 test.beforeEach(() => fixture(db => {
   db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,tags,notes) VALUES('management-ui','卡片数量','备注','Basketball','公开,标签','保存')").run();
@@ -15,6 +17,41 @@ test("language switches leave dictionary-like user content unchanged", async ({ 
   await page.goto("/cards/management-ui/edit", { waitUntil: "networkidle" });
   await expect(page.locator('[name="playerName"]')).toHaveValue("卡片数量"); await expect(page.locator('[name="cardTitle"]')).toHaveValue("备注");
   await page.getByRole("button", { name: "Choose language" }).click(); await page.getByRole("menuitemradio", { name: "简体中文" }).click(); await expect(page.locator('[name="notes"]')).toHaveValue("保存");
+});
+
+test("CSV download respects selection across pages and the public filter", async ({ page }) => {
+  fixture(db => {
+    const insert = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,visibility) VALUES(?,'Import UI',?,'Basketball',?)");
+    for (let i = 0; i < 26; i++) insert.run(`selected-${String(i).padStart(2, '0')}`, `Selected ${i}`, i === 0 ? "private" : "public");
+  });
+  await page.goto("/settings/data", { waitUntil: "networkidle" });
+  await page.getByLabel("搜索收藏").fill("Import UI");
+  const rows = page.locator(".management-card-option");
+  await expect(rows).toHaveCount(24);
+  await rows.first().getByRole("checkbox").check();
+  await page.getByRole("navigation", { name: "导出分页" }).getByRole("button", { name: "下一页" }).click();
+  await expect(rows).toHaveCount(2);
+  await rows.last().getByRole("checkbox").check();
+  const ids = JSON.parse(await page.locator('input[name="ids"]').inputValue());
+  expect(ids).toHaveLength(2);
+  const downloadedText = async () => {
+    const ready = page.waitForEvent("download");
+    await page.getByRole("button", { name: "CSV", exact: true }).click();
+    const download = await ready;
+    const stream = await download.createReadStream();
+    const chunks = [];
+    for await (const chunk of stream) chunks.push(chunk);
+    return Buffer.concat(chunks).toString("utf8");
+  };
+  const csv = await downloadedText();
+  expect(csv.trim().split(/\r?\n/)).toHaveLength(3);
+  for (const id of ids) expect(csv).toContain(`"${id}"`);
+  await page.getByLabel("仅导出公开档案").check();
+  const publicCsv = await downloadedText();
+  expect(publicCsv).not.toContain('"selected-00"');
+  expect(publicCsv).not.toContain('"notes"');
+  await page.getByRole("button", { name: "清空选择", exact: true }).click();
+  expect((await downloadedText()).trim().split(/\r?\n/)).toHaveLength(26); // 25 public cards + header
 });
 test("failed edit retains fields, choices and newly selected images", async ({ page }) => {
   await page.goto("/cards/management-ui/edit", { waitUntil: "networkidle" });
@@ -123,7 +160,7 @@ test("Settings groups data management and fits the minimum Windows window", asyn
   await page.setViewportSize({ width: 1100, height: 760 });
   await page.goto("/settings", { waitUntil: "networkidle" });
   await expect(page.locator(".nav-links").getByRole("link", { name: "数据", exact: true })).toHaveCount(0);
-  await expect(page.locator(".settings-page > .settings-section")).toHaveText(["数据", "AI", "财务", "使用说明", "关于v1.3.0"]);
+  await expect(page.locator(".settings-page > .settings-section")).toHaveText(["数据", "AI", "财务", "使用说明", `关于v${productVersion}`]);
   await page.getByRole("button", { name: "展开数据", exact: true }).click();
   await expect(page).toHaveURL(/settings$/);
   await expect(page.getByRole("heading", { name: "存储", exact: true })).toBeVisible();
@@ -182,7 +219,7 @@ for (const mode of ["list", "table"]) {
     await expect(rows).toHaveCount(2);
     await page.getByLabel("仅导出公开档案").check();
     await page.getByRole("button", { name: "选中本页", exact: true }).click();
-    await expect(page.locator(".selection-actions > span")).toHaveText("2 / 26");
+    await expect(page.locator(".selection-actions > span")).toHaveText("2 / 26 · 导出选中");
     const info = rows.first().locator("a").last();
     const destination = await info.getAttribute("href");
     await expect(page.locator("#data-export").getByRole("link", { name: "详情", exact: true })).toHaveCount(0);

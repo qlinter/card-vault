@@ -1,4 +1,7 @@
+const { createCardTrackingSchema } = require("./card-tracking-schema");
 const managementTables = {
+  CardReportDirty: ["cardId"],
+  CardTracking: ["cardId", "statusStartedAt", "statusDateEstimated", "statusRevision", "imagesRevision", "purchaseRevision", "valuationRevision"],
   DataRevision: ["id", "revision", "projectionRevision", "projectionDay"],
   CardReport: ["cardId", "currency", "remainingCostMinor", "valueMinor", "quantity"],
   BulkJob: ["id", "token", "kind", "status", "optionsJson", "createdAt", "updatedAt"],
@@ -7,12 +10,6 @@ const managementTables = {
   CollectionPlan: ["id", "title", "playerName", "sport", "budgetMinor", "currency", "targetDate", "notes", "status", "cardId", "createdAt", "updatedAt"],
   ManagementSettings: ["id", "notifications", "digestCadence", "lastNotifiedAt"]
 };
-function managementSchemaNeeded(db) {
-  return Object.entries(managementTables).some(([table, fields]) => {
-    const columns = new Set(db.prepare(`PRAGMA table_info("${table}")`).all().map(row => row.name));
-    return fields.some(field => !columns.has(field));
-  });
-}
 function createManagementSchema(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS DataRevision(id INTEGER PRIMARY KEY NOT NULL DEFAULT 1, revision INTEGER NOT NULL DEFAULT 0, projectionRevision INTEGER NOT NULL DEFAULT -1, projectionDay TEXT NOT NULL DEFAULT '');
@@ -35,6 +32,6 @@ function createManagementSchema(db) {
       db.exec(`CREATE TRIGGER IF NOT EXISTS revision_${table}_${operation} AFTER ${operation} ON ${table} BEGIN UPDATE DataRevision SET revision=revision+1 WHERE id=1; END;`);
     }
   }
-  if (managementSchemaNeeded(db)) throw new Error("管理数据结构不完整，升级已取消。");
+  createCardTrackingSchema(db);
 }
-module.exports = { createManagementSchema, managementSchemaNeeded };
+module.exports = { createManagementSchema, managementTables };

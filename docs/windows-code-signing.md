@@ -6,7 +6,7 @@ Card Vault 的 Windows 代码签名是可选增强。`npm run release:win` 在�
 
 ## 执行前提
 
-当前 v1.3.0 已经用户确认生成未签名 Windows x64 安装包和便携包。后续新的分发构建仍需明确确认；仅作源码审查时使用 `npm run check:release`，不生成安装文件。
+当前 v1.3.1 已经用户确认生成未签名安装包和便携包，版本、包内运行及 SHA-256 验证通过；仅作源码审查时使用 `npm run check:release`，不生成安装文件。
 
 ## 无证书发布
 
@@ -88,7 +88,7 @@ npm.cmd run release:win
 发布后可再次检查安装包签名：
 
 ```powershell
-Get-AuthenticodeSignature -LiteralPath '.\dist\card-vault-1.3.0-setup.exe' |
+Get-AuthenticodeSignature -LiteralPath '.\dist\card-vault-1.3.1-setup.exe' |
   Format-List Status,StatusMessage,SignerCertificate,TimeStamperCertificate
 ```
 

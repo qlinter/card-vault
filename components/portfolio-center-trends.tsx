@@ -24,9 +24,9 @@ const financialTrendMeta = {
   unrealizedProfit: { label: "未实现盈亏", color: "#8a63d2" }
 } as const;
 
-function trendValues(points: PortfolioTimeSeriesPoint[], months: string[], currency: string): number[] {
-  const byMonth = new Map(points.map((point) => [point.month, point.values[currency] ?? 0]));
-  return months.map((month) => byMonth.get(month) ?? 0);
+function trendValues(points: PortfolioTimeSeriesPoint[], months: string[], currency: string): Array<number | null> {
+  const byMonth = new Map(points.map(point => [point.month, point.missingCurrencies?.includes(currency) ? null : point.values[currency] ?? 0]));
+  return months.map(month => byMonth.has(month) ? byMonth.get(month)! : 0);
 }
 
 function compactAmount(value: number): string {
@@ -69,7 +69,7 @@ function LineChart({ months, series, currency, ariaLabel, emptyLabel, coverage }
   const hitWidth = months.length > 1 ? plotWidth / (months.length - 1) : plotWidth;
   const monthLabelIndexes = new Set(portfolioTrendLabelIndexes(months.length, plotWidth));
 
-  if (months.length === 0 || !series.some((item) => item.values.some((value) => value !== null))) {
+  if (months.length === 0 || !series.some(item => item.values.some(value => value !== null) || item.counts?.some(count => count > 0))) {
     return <div className={styles.chartEmpty}><UiText text={emptyLabel} /></div>;
   }
 

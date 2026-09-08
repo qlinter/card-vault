@@ -10,15 +10,16 @@ import { createInitialFinancialHistory } from "./card-entry-service";
 import { parseInitialCardQuantity } from "./card-quantity";
 import { optionalCardDate } from "./card-domain";
 import { moneyValue } from "./financial-history";
-import { createCardValuation, getCardFinancialHistory } from "./financial-history-store";
-import { deriveCardFinancialSummary } from "./financial-history-snapshot";
 
 const evidenceInclude = { transactions: { orderBy: { id: "asc" } }, expenses: { orderBy: { id: "asc" } }, valuations: { orderBy: { id: "asc" } }, images: { orderBy: { id: "asc" } }, shareItems: { orderBy: { id: "asc" } } } as const;
 const json = (value: unknown) => JSON.stringify(value, (_key, item) => typeof item === "bigint" ? item.toString() : item);
 const fingerprint = (value: unknown) => createHash("sha256").update(json(value)).digest("hex");
 type Input = { values: Record<string, string | boolean>; existingId?: string; expected?: string; validationError?: string };
-// Historical edit/valuation jobs remain readable and undoable; new jobs are imports only.
-type Options = { policy: "skip" | "update" | "separate"; kind: "import" | "edit" | "valuation" };
+type Options = { policy: "skip" | "update" | "separate"; kind: "import" };
+
+function assertImportJob(job: { kind: string; optionsJson: string }) {
+  if (job.kind !== "import" || JSON.parse(job.optionsJson).kind !== "import") throw new Error("批次格式不受支持，请使用当前文件导入流程。");
+}
 
 export async function readImportFile(file: File) {
   if (file.size > 10 * 1024 * 1024) throw new Error("文件不能超过 10 MB。");
@@ -96,7 +97,7 @@ export async function previewImport(headers: string[], rows: string[][], mapping
 export async function repreviewJob(id: string) {
   const job = await prisma.bulkJob.findUniqueOrThrow({ where: { id }, include: { rows: { orderBy: { rowNumber: "asc" } } } });
   const options = JSON.parse(job.optionsJson) as Options;
-  if (options.kind !== "import") throw new Error("此历史批次不支持新建预演，请使用文件导入或卡片详情页。");
+  assertImportJob(job);
   return createPreview(job.rows.map(row => ({ values: (JSON.parse(row.inputJson) as Input).values })), options, randomUUID());
 }
 async function createPreview(inputs: Input[], options: Options, newBatch = "") {
@@ -111,13 +112,9 @@ async function createPreview(inputs: Input[], options: Options, newBatch = "") {
         input.existingId = card.id; input.expected = fingerprint(card);
         if (options.policy === "update") {
           metadataPatch(card, input.values);
-          if (options.kind === "import" && ["purchasePrice", "purchaseDate", "currentValue", "initialQuantity"].some(key => input.values[key])) throw new Error("更新已有卡片仅接受档案字段；估值和交易请在详情页记录。");
+          if (["purchasePrice", "purchaseDate", "currentValue", "initialQuantity"].some(key => input.values[key])) throw new Error("更新已有卡片仅接受档案字段；估值和交易请在详情页记录。");
         }
-      } else if (options.kind === "import") validateInitial(input.values);
-      if (options.kind === "valuation") {
-        moneyValue({ amount: String(input.values.currentValue), currency: String(input.values.historyCurrency) });
-        if (!optionalCardDate(String(input.values.valuationDate), "估值日期") || !String(input.values.valuationSource).trim()) throw new Error("估值需要日期和来源。");
-      }
+      } else validateInitial(input.values);
     } catch (error) { input.validationError = error instanceof Error ? error.message : "预演失败。"; }
   }
   const job = await prisma.bulkJob.create({ data: { token, kind: options.kind, optionsJson: json(options), rows: { create: inputs.map((input, index) => ({ rowNumber: index + 2, inputJson: json(input), status: input.validationError ? "failed" : "pending", error: input.validationError ?? null, cardId: input.existingId })) } } });
@@ -125,12 +122,14 @@ async function createPreview(inputs: Input[], options: Options, newBatch = "") {
 }
 export async function getJob(id: string) {
   const job = await prisma.bulkJob.findUniqueOrThrow({ where: { id }, include: { rows: { orderBy: { rowNumber: "asc" } } } });
+  assertImportJob(job);
   return { id: job.id, kind: job.kind, status: job.status, createdAt: job.createdAt.toISOString(), rows: job.rows.map(row => ({ id: row.id, rowNumber: row.rowNumber, status: row.status, error: row.error, cardId: row.cardId, values: (JSON.parse(row.inputJson) as Input).values })) };
 }
 
 // Each row is a transaction. Replaying a request never repeats a committed row.
 export async function applyJob(id: string, undo = false, cursor?: number) {
   const job = await prisma.bulkJob.findUniqueOrThrow({ where: { id } });
+  assertImportJob(job);
   if (job.status === "undone" && !undo) throw new Error("此批次已撤销。");
   const options = JSON.parse(job.optionsJson) as Options;
   const candidates = await prisma.bulkJobRow.findMany({ where: { jobId: id, status: { in: undo ? ["applied", "undo-failed"] : ["pending", "failed"] }, ...(cursor === undefined ? {} : { rowNumber: undo ? { lt: cursor } : { gt: cursor } }) }, orderBy: { rowNumber: undo ? "desc" : "asc" }, take: 50 });
@@ -142,11 +141,10 @@ export async function applyJob(id: string, undo = false, cursor?: number) {
         const input = JSON.parse(row.inputJson) as Input;
         if (undo) {
           const current = await tx.card.findUnique({ where: { id: row.cardId! }, include: evidenceInclude });
-          const after = JSON.parse(row.afterJson!) as { fingerprint: string; valuationId?: string };
+          const after = JSON.parse(row.afterJson!) as { fingerprint: string };
           if (!current || fingerprint(current) !== after.fingerprint) throw new Error("卡片已被后续修改，不能自动撤销。");
           if (!row.beforeJson) await tx.card.delete({ where: { id: current.id } });
           else {
-            if (after.valuationId) await tx.cardValuation.delete({ where: { id: after.valuationId } });
             const before = JSON.parse(row.beforeJson) as Card;
             await tx.card.update({ where: { id: current.id }, data: { ...before, purchaseDate: before.purchaseDate ? new Date(before.purchaseDate) : null, createdAt: new Date(before.createdAt), updatedAt: new Date(before.updatedAt) } });
           }
@@ -157,18 +155,13 @@ export async function applyJob(id: string, undo = false, cursor?: number) {
         let card = input.existingId ? await tx.card.findUniqueOrThrow({ where: { id: input.existingId }, include: evidenceInclude }) : null;
         if (card && options.policy === "skip") { await tx.bulkJobRow.update({ where: { id: row.id }, data: { status: "skipped", error: null } }); return; }
         if (card && fingerprint(card) !== input.expected) throw new Error("预演后卡片发生变化，请重新建立批次。");
-        let beforeJson: string | null = null, valuationId: string | undefined;
+        let beforeJson: string | null = null;
         if (card) {
           const { transactions, expenses, valuations, images, shareItems, ...before } = card;
           void transactions; void expenses; void valuations; void images; void shareItems;
           beforeJson = json(before);
-          if (options.kind === "valuation") {
-            const valuation = await createCardValuation(tx, { cardId: card.id, amount: String(input.values.currentValue), currency: String(input.values.historyCurrency), valuedAt: optionalCardDate(String(input.values.valuationDate), "估值日期")!, source: String(input.values.valuationSource), provenance: "bulk_import", externalKey: row.id });
-            valuationId = valuation.id;
-            await tx.card.update({ where: { id: card.id }, data: deriveCardFinancialSummary(await getCardFinancialHistory(tx, card.id)) });
-          } else await tx.card.update({ where: { id: card.id }, data: metadataPatch(card, input.values) });
+          await tx.card.update({ where: { id: card.id }, data: metadataPatch(card, input.values) });
         } else {
-          if (options.kind !== "import") throw new Error("卡片不存在。");
           const match = options.policy === "separate" ? null : await findMatch(tx, input.values);
           if (match) {
             if (options.policy === "skip") { await tx.bulkJobRow.update({ where: { id: row.id }, data: { status: "skipped", cardId: match.id, error: null } }); return; }
@@ -180,7 +173,7 @@ export async function applyJob(id: string, undo = false, cursor?: number) {
           card = await tx.card.findUniqueOrThrow({ where: { id: created.id }, include: evidenceInclude });
         }
         const current = await tx.card.findUniqueOrThrow({ where: { id: card.id }, include: evidenceInclude });
-        await tx.bulkJobRow.update({ where: { id: row.id }, data: { status: "applied", error: null, cardId: card.id, beforeJson, afterJson: json({ fingerprint: fingerprint(current), valuationId }) } });
+        await tx.bulkJobRow.update({ where: { id: row.id }, data: { status: "applied", error: null, cardId: card.id, beforeJson, afterJson: json({ fingerprint: fingerprint(current) }) } });
       }, { timeout: 15000 });
     } catch (error) {
       await prisma.bulkJobRow.updateMany({ where: { id: candidate.id, status: { in: undo ? ["applied", "undo-failed"] : ["pending", "failed"] } }, data: { status: undo ? "undo-failed" : "failed", error: error instanceof Error ? error.message : "操作失败。" } });

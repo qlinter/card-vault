@@ -111,6 +111,16 @@ export function normalizeConcentration(value: unknown, currencies: readonly stri
   return { player: normalize(source.player), sport: normalize(source.sport), team: normalize(source.team), brand: normalize(source.brand), productLine: normalize(source.productLine) };
 }
 
+function addMonthlyAmount(point: PortfolioTimeSeriesPoint, record: PortfolioMoneyRecord, sign = 1) {
+  const currency = normalizeCurrency(record.currency);
+  if (record.amountKnown === false) {
+    point.missingCurrencies = [...new Set([...(point.missingCurrencies ?? []), currency])];
+    delete point.values[currency];
+  } else if (!point.missingCurrencies?.includes(currency)) {
+    point.values[currency] = money((point.values[currency] ?? 0) + moneyAmount(record) * sign);
+  }
+}
+
 export function monthlySeries(cards: PortfolioCardRecord[], kind: "purchase" | "sale" | "expense" | "valuation"): PortfolioTimeSeriesPoint[] {
   const groups = new Map<string, PortfolioTimeSeriesPoint>();
   for (const card of cards) {
@@ -122,10 +132,9 @@ export function monthlySeries(cards: PortfolioCardRecord[], kind: "purchase" | "
         : (record.occurredAt instanceof Date ? record.occurredAt : undefined);
       if (!date) continue;
       const month = date.toISOString().slice(0, 7);
-      const point = groups.get(month) ?? { month, count: 0, values: {} };
+      const point: PortfolioTimeSeriesPoint = groups.get(month) ?? { month, count: 0, values: {} };
       point.count += 1;
-      const currency = normalizeCurrency(record.currency);
-      point.values[currency] = money((point.values[currency] ?? 0) + moneyAmount(record as PortfolioMoneyRecord));
+      addMonthlyAmount(point, record as PortfolioMoneyRecord);
       groups.set(month, point);
     }
   }
@@ -152,10 +161,9 @@ export function monthlyActivitySeries(cards: PortfolioCardRecord[]): {
     const date = record.occurredAt instanceof Date ? record.occurredAt : record.createdAt;
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) return;
     const month = date.toISOString().slice(0, 7);
-    const point = groups[kind].get(month) ?? { month, count: 0, values: {} };
-    const currency = normalizeCurrency(record.currency);
+    const point: PortfolioTimeSeriesPoint = groups[kind].get(month) ?? { month, count: 0, values: {} };
     point.count += quantity;
-    point.values[currency] = money((point.values[currency] ?? 0) + moneyAmount(record) * sign);
+    addMonthlyAmount(point, record, sign);
     groups[kind].set(month, point);
   };
 

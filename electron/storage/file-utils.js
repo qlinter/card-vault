@@ -10,10 +10,6 @@ function saveJson(filePath, value) {
   fs.writeFileSync(filePath, JSON.stringify(value, null, 2));
 }
 
-function clearFile(filePath) {
-  if (fs.existsSync(filePath)) fs.rmSync(filePath, { force: true });
-}
-
 function pathsEqual(leftPath, rightPath) { return path.resolve(leftPath) === path.resolve(rightPath); }
 
 function isSubPath(parentPath, childPath) {
@@ -25,11 +21,6 @@ function resolveSelectedDataDir(selectedPath) {
   const normalizedPath = path.resolve(selectedPath);
   const parsedPath = path.parse(normalizedPath);
   return normalizedPath === parsedPath.root ? path.join(normalizedPath, "QL-card-vault-data") : normalizedPath;
-}
-
-function copyFileIfMissing(sourcePath, targetPath) {
-  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-  if (!fs.existsSync(targetPath)) fs.copyFileSync(sourcePath, targetPath);
 }
 
 function directoryHasEntries(directoryPath) {
@@ -47,25 +38,13 @@ function hasExistingStorageData(dataDir) {
   return ["uploads", "share-covers", "share-backgrounds", "entry-queue", "schema-backups"].some((directory) => directoryHasEntries(path.join(dataDir, directory)));
 }
 
-function flattenNestedUploads(uploadsDir) {
-  const nestedUploadsDir = path.join(uploadsDir, "uploads");
-  if (!fs.existsSync(nestedUploadsDir)) return;
-  for (const entry of fs.readdirSync(nestedUploadsDir, { withFileTypes: true })) {
-    if (entry.isFile()) copyFileIfMissing(path.join(nestedUploadsDir, entry.name), path.join(uploadsDir, entry.name));
-  }
-  fs.rmSync(nestedUploadsDir, { recursive: true, force: true });
-}
-
 module.exports = {
   loadJson,
   saveJson,
-  clearFile,
   pathsEqual,
   isSubPath,
   resolveSelectedDataDir,
-  copyFileIfMissing,
   directoryHasEntries,
   directoryFiles,
-  hasExistingStorageData,
-  flattenNestedUploads
+  hasExistingStorageData
 };

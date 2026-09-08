@@ -89,7 +89,7 @@ function seedDatabase() {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       "ui-share-1", "2026 Featured Collection", "Card Vault Visual Baseline", "ui-gallery",
-      "archive", '{"version":1,"layout":"archive","backgroundPosition":{"x":48,"y":50},"panelOpacity":18,"fontStyle":"editorial","density":"balanced","imageFit":"contain"}',
+      "archive", '{"version":3,"templateId":"custom","layout":"archive","backgroundPosition":{"x":48,"y":50},"panelOpacity":18,"density":"balanced","imageFit":"contain"}',
       "An annual selection organized with a local-first workflow.", "Three cards tell a collection story about rookies, competition, and speed.", "Rookie autograph\nClassic patch\nLimited motorsport card"
     );
     db.prepare(`

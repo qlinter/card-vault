@@ -15,6 +15,7 @@ function isForbiddenPackagedEntry(value) {
   const normalized = normalizePackagedEntry(value).toLowerCase();
   if (!normalized.startsWith("resources/app/")) return false;
   return normalized.endsWith(".map")
+    || /^resources\/app\/prisma\/(?:[^/]+\.db[^/]*|schema-backups\/.*)$/.test(normalized)
     || (normalized.includes("/node_modules/.prisma/client/") && /\.tmp[^/]*$/.test(normalized));
 }
 

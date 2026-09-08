@@ -51,6 +51,8 @@ model Card {
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
   report            CardReport?
+  reportDirty       CardReportDirty?
+  tracking          CardTracking?
 
   @@index([playerName])
   @@index([cardTitle])
@@ -339,6 +341,22 @@ model CardReport {
   card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
   @@index([remainingCostMinor, cardId])
   @@index([valueMinor, cardId])
+}
+
+model CardReportDirty {
+  cardId String @id
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+}
+
+model CardTracking {
+  cardId String @id
+  statusStartedAt DateTime
+  statusDateEstimated Boolean @default(false)
+  statusRevision Int @default(0)
+  imagesRevision Int @default(0)
+  purchaseRevision Int @default(0)
+  valuationRevision Int @default(0)
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
 }
 
 model BulkJob {

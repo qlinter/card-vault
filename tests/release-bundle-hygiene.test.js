@@ -35,6 +35,14 @@ test("release cleanup removes only Prisma temporary engines", () => {
   }
 });
 
+test("release bundle excludes local databases, journals and database snapshots", () => {
+  for (const entry of ["dev.db", "dev.db-wal", "dev.db-shm", "dev.db-journal", "schema-backups/before.db"]) {
+    assert.equal(isForbiddenPackagedEntry(`resources/app/prisma/${entry}`), true);
+  }
+  assert.equal(isForbiddenPackagedEntry("resources/app/prisma/schema.prisma"), false);
+  assert.equal(isForbiddenPackagedEntry("resources/app/lib/prisma.ts"), false);
+});
+
 test("release tree and artifact budgets fail closed", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "card-vault-release-tree-"));
   try {

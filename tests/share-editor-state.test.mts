@@ -31,6 +31,7 @@ test("share editor draft recovery drops unavailable cards and normalizes present
       themeValues: { title: "恢复展馆" },
       theme: "archive",
       presentation: {
+        version: 3,
         layout: "arena",
         typography: "editorial",
         density: "compact",

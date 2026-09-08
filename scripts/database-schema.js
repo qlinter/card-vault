@@ -1,11 +1,10 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
-const { createManagementSchema, managementSchemaNeeded } = require("./management-schema");
+const { createManagementSchema, managementTables } = require("./management-schema");
 
 const schemaVersion = "1.3.0";
-const previousSchemaVersion = "1.1.1";
-const v120RequiredSchema = {
+const requiredSchema = {
   Card: [
     "id", "playerName", "cardTitle", "sport", "team", "year", "brand", "productLine", "subsetName",
     "parallel", "cardNumber", "isSerialNumbered", "serialNumber", "serialRange", "isRookie",
@@ -14,7 +13,7 @@ const v120RequiredSchema = {
     "totalCost", "currentValue", "purchaseSource", "tags", "publicDescription", "notes", "createdAt", "updatedAt"
   ],
   CardImage: ["id", "cardId", "path", "rotation", "createdAt"],
-  CardTransaction: ["id", "cardId", "kind", "amountMinor", "currency", "quantity", "occurredAt", "source", "notes", "provenance", "externalKey", "createdAt", "updatedAt"],
+  CardTransaction: ["id", "cardId", "kind", "amountMinor", "currency", "quantity", "paymentsJson", "amountKnown", "occurredAt", "source", "notes", "provenance", "externalKey", "createdAt", "updatedAt"],
   CardExpense: ["id", "cardId", "kind", "context", "transactionId", "amountMinor", "currency", "occurredAt", "vendor", "notes", "provenance", "externalKey", "createdAt", "updatedAt"],
   CardValuation: ["id", "cardId", "amountMinor", "currency", "valuedAt", "source", "notes", "provenance", "externalKey", "createdAt", "updatedAt"],
   CardEntryDraft: ["id", "schemaVersion", "status", "valuesJson", "createdAt", "updatedAt"],
@@ -26,31 +25,11 @@ const v120RequiredSchema = {
   ShareCollection: ["id", "title", "subtitle", "slug", "theme", "presentationConfig", "description", "themeNarrative", "themeHighlights", "groupNotes", "coverImagePath", "backgroundImagePath", "createdAt", "updatedAt"],
   ShareSection: ["id", "shareCollectionId", "title", "description", "layout", "sortOrder"],
   ShareCollectionItem: ["id", "shareCollectionId", "cardId", "sectionId", "sortOrder", "displayTitle", "displayDescription"],
+  ...managementTables,
+  FinancialSettings: ["id", "reportingCurrency"],
+  ExchangeRate: ["id", "effectiveDate", "rateMicros", "source", "revision", "createdAt"],
   PortfolioSavedView: ["id", "name", "queryJson", "createdAt", "updatedAt"],
   PortfolioSnapshotRecord: ["id", "savedViewId", "name", "queryJson", "snapshotJson", "capturedAt"]
-};
-
-const requiredSchema = {
-  ...v120RequiredSchema,
-  CardTransaction: [...v120RequiredSchema.CardTransaction, "paymentsJson", "amountKnown"],
-  FinancialSettings: ["id", "reportingCurrency"],
-  ExchangeRate: ["id", "effectiveDate", "rateMicros", "source", "revision", "createdAt"]
-};
-const portfolioTableNames = new Set(["PortfolioSavedView", "PortfolioSnapshotRecord"]);
-const prePortfolioRequiredSchema = Object.fromEntries(
-  Object.entries(v120RequiredSchema).filter(([tableName]) => !portfolioTableNames.has(tableName))
-);
-const preRotationRequiredSchema = {
-  ...v120RequiredSchema,
-  CardImage: v120RequiredSchema.CardImage.filter((column) => column !== "rotation")
-};
-const prePortfolioPreRotationRequiredSchema = Object.fromEntries(
-  Object.entries(preRotationRequiredSchema).filter(([tableName]) => !portfolioTableNames.has(tableName))
-);
-const v110RequiredSchema = {
-  ...prePortfolioPreRotationRequiredSchema,
-  Card: prePortfolioPreRotationRequiredSchema.Card.filter((column) => column !== "holdingQuantity"),
-  CardExpense: prePortfolioPreRotationRequiredSchema.CardExpense.filter((column) => !["context", "transactionId"].includes(column))
 };
 
 function applicationTableNames(db) {
@@ -74,10 +53,26 @@ function schemaIssues(db, expectedSchema) {
   return issues;
 }
 
+let requiredObjects;
+function currentSchemaObjects() {
+  if (!requiredObjects) {
+    const reference = new DatabaseSync(":memory:");
+    try {
+      createCurrentSchema(reference);
+      requiredObjects = reference.prepare("SELECT type, name FROM sqlite_master WHERE type IN ('index', 'trigger') AND name NOT LIKE 'sqlite_%'").all();
+    } finally { reference.close(); }
+  }
+  return requiredObjects;
+}
+
 function validateCurrentSchema(db) {
   const issues = schemaIssues(db, requiredSchema);
+  const objects = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type IN ('index', 'trigger')").all().map(row => row.name));
+  for (const object of currentSchemaObjects()) {
+    if (!objects.has(object.name)) issues.push(`缺少${object.type === "trigger" ? "触发器" : "索引"} ${object.name}`);
+  }
   if (issues.length > 0) {
-    throw new Error(`数据库未通过 Card Vault ${schemaVersion} 当前结构校验：${issues.join("；")}。请使用已完成升级的数据或当前版本备份。`);
+    throw new Error(`数据库未通过 Card Vault ${schemaVersion} 当前结构校验：${issues.join("；")}。仅支持当前完整格式，不再提供历史版本数据升级。请使用当前格式数据库或完整备份。`);
   }
 }
 
@@ -108,6 +103,7 @@ function createCurrentSchema(db) {
       amountMinor INTEGER NOT NULL CHECK (typeof(amountMinor) = 'integer' AND amountMinor >= 0),
       currency TEXT NOT NULL DEFAULT 'CNY' CHECK (length(currency) = 3 AND currency = upper(currency)),
       quantity INTEGER NOT NULL DEFAULT 1 CHECK (typeof(quantity) = 'integer' AND quantity > 0),
+      paymentsJson TEXT, amountKnown BOOLEAN NOT NULL DEFAULT 1 CHECK(amountKnown IN (0,1)),
       occurredAt DATETIME NOT NULL, source TEXT, notes TEXT,
       provenance TEXT NOT NULL CHECK (length(trim(provenance)) > 0), externalKey TEXT,
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -258,249 +254,46 @@ function createCurrentSchema(db) {
     CREATE TRIGGER IF NOT EXISTS CardValuation_currency_update_check BEFORE UPDATE OF currency ON CardValuation
       WHEN NEW.currency NOT IN ('CNY', 'USD') BEGIN SELECT RAISE(ABORT, 'currency must be CNY or USD'); END;
   `);
-}
-
-function escapedSqlString(value) {
-  return String(value).replaceAll("'", "''");
-}
-
-function sqliteCalendarDate(expression) {
-  return `CASE WHEN typeof(${expression}) = 'integer'
-    THEN date(${expression} / 1000, 'unixepoch')
-    ELSE date(${expression}) END`;
-}
-
-function createUpgradeSnapshot(db, dbPath) {
-  const backupDirectory = path.join(path.dirname(dbPath), "schema-backups");
-  fs.mkdirSync(backupDirectory, { recursive: true });
-  const timestamp = new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-");
-  const backupPath = path.join(backupDirectory, `card-vault-before-v${schemaVersion}-${timestamp}.db`);
-  db.exec(`VACUUM INTO '${escapedSqlString(backupPath)}';`);
-  return backupPath;
-}
-
-function addCardImageRotation(db) {
-  const columns = new Set(db.prepare("PRAGMA table_info(CardImage)").all().map((column) => column.name));
-  if (!columns.has("rotation")) {
-    db.exec("ALTER TABLE CardImage ADD COLUMN rotation INTEGER NOT NULL DEFAULT 0 CHECK (rotation IN (0, 90, 180, 270));");
-  }
-}
-
-function upgradeV110ToV111(db) {
-  const refundCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardTransaction WHERE kind = 'refund'").get().count);
-  if (refundCount > 0) {
-    throw new Error(`数据库中仍有 ${refundCount} 条退款记录，v${schemaVersion} 不支持自动删除这些业务数据。请先在 v1.1.0 中处理后再升级。`);
-  }
-
-  const sameDayShippingCount = Number(db.prepare(`
-    SELECT COUNT(*) AS count
-    FROM CardExpense expense
-    JOIN Card card ON card.id = expense.cardId
-    WHERE expense.kind = 'shipping'
-      AND (
-        (card.purchaseDate IS NOT NULL
-          AND ${sqliteCalendarDate("expense.occurredAt")} = ${sqliteCalendarDate("card.purchaseDate")})
-        OR EXISTS (
-          SELECT 1 FROM CardTransaction transactionRow
-          WHERE transactionRow.cardId = card.id
-            AND transactionRow.kind = 'purchase'
-            AND ${sqliteCalendarDate("transactionRow.occurredAt")} = ${sqliteCalendarDate("expense.occurredAt")}
-        )
-      )
-  `).get().count);
-  const shippingCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardExpense WHERE kind = 'shipping'").get().count);
-
-  db.exec("PRAGMA foreign_keys = OFF;");
-  db.exec("BEGIN IMMEDIATE;");
-  try {
-    db.exec(`
-      ALTER TABLE Card ADD COLUMN holdingQuantity INTEGER NOT NULL DEFAULT 1
-        CHECK (typeof(holdingQuantity) = 'integer' AND holdingQuantity >= 0);
-      ALTER TABLE CardExpense ADD COLUMN context TEXT NOT NULL DEFAULT 'grading'
-        CHECK (context IN ('purchase', 'grading', 'sale'));
-      ALTER TABLE CardExpense ADD COLUMN transactionId TEXT;
-
-      UPDATE CardExpense
-      SET context = CASE
-        WHEN kind = 'shipping' AND EXISTS (
-          SELECT 1 FROM Card
-          WHERE Card.id = CardExpense.cardId
-            AND (
-              (Card.purchaseDate IS NOT NULL
-                AND ${sqliteCalendarDate("CardExpense.occurredAt")} = ${sqliteCalendarDate("Card.purchaseDate")})
-              OR EXISTS (
-                SELECT 1 FROM CardTransaction
-                WHERE CardTransaction.cardId = Card.id
-                  AND CardTransaction.kind = 'purchase'
-                  AND ${sqliteCalendarDate("CardTransaction.occurredAt")} = ${sqliteCalendarDate("CardExpense.occurredAt")}
-              )
-            )
-        ) THEN 'purchase'
-        WHEN kind = 'marketplace_fee' THEN 'sale'
-        ELSE 'grading'
-      END;
-
-      UPDATE Card
-      SET holdingQuantity = CASE
-        WHEN EXISTS (SELECT 1 FROM CardTransaction WHERE CardTransaction.cardId = Card.id)
-          THEN max(0, COALESCE((
-            SELECT SUM(CASE WHEN kind = 'purchase' THEN quantity ELSE -quantity END)
-            FROM CardTransaction WHERE CardTransaction.cardId = Card.id
-          ), 0))
-        WHEN collectionStatus IN ('sold', 'target') THEN 0
-        ELSE 1
-      END;
-
-      UPDATE Card
-      SET
-        purchasePrice = CASE WHEN EXISTS (
-          SELECT 1 FROM CardTransaction
-          WHERE CardTransaction.cardId = Card.id AND kind = 'purchase' AND currency = 'CNY'
-        ) THEN (
-          SELECT SUM(amountMinor) / 100.0 FROM CardTransaction
-          WHERE CardTransaction.cardId = Card.id AND kind = 'purchase' AND currency = 'CNY'
-        ) ELSE purchasePrice END,
-        gradingFee = CASE WHEN EXISTS (
-          SELECT 1 FROM CardExpense
-          WHERE CardExpense.cardId = Card.id AND kind = 'grading' AND currency = 'CNY'
-        ) THEN (
-          SELECT SUM(amountMinor) / 100.0 FROM CardExpense
-          WHERE CardExpense.cardId = Card.id AND kind = 'grading' AND currency = 'CNY'
-        ) ELSE gradingFee END,
-        totalCost = CASE WHEN EXISTS (
-          SELECT 1 FROM CardTransaction
-          WHERE CardTransaction.cardId = Card.id AND kind = 'purchase' AND currency = 'CNY'
-        ) THEN (
-          (
-            COALESCE((SELECT SUM(amountMinor) FROM CardTransaction
-              WHERE CardTransaction.cardId = Card.id AND kind = 'purchase' AND currency = 'CNY'), 0)
-            + COALESCE((SELECT SUM(amountMinor) FROM CardExpense
-              WHERE CardExpense.cardId = Card.id AND context IN ('purchase', 'grading') AND currency = 'CNY'), 0)
-          ) / 100.0
-          * max(0, COALESCE((SELECT SUM(CASE WHEN kind = 'purchase' THEN quantity ELSE -quantity END)
-            FROM CardTransaction WHERE CardTransaction.cardId = Card.id AND currency = 'CNY'), 0))
-          / max(1, COALESCE((SELECT SUM(quantity) FROM CardTransaction
-            WHERE CardTransaction.cardId = Card.id AND kind = 'purchase' AND currency = 'CNY'), 0))
-        ) ELSE totalCost END;
-
-      DROP TRIGGER IF EXISTS CardTransaction_currency_insert_check;
-      DROP TRIGGER IF EXISTS CardTransaction_currency_update_check;
-      CREATE TABLE CardTransaction_v111 (
-        id TEXT PRIMARY KEY NOT NULL, cardId TEXT NOT NULL,
-        kind TEXT NOT NULL CHECK (kind IN ('purchase', 'sale')),
-        amountMinor INTEGER NOT NULL CHECK (typeof(amountMinor) = 'integer' AND amountMinor >= 0),
-        currency TEXT NOT NULL DEFAULT 'CNY' CHECK (length(currency) = 3 AND currency = upper(currency)),
-        quantity INTEGER NOT NULL DEFAULT 1 CHECK (typeof(quantity) = 'integer' AND quantity > 0),
-        occurredAt DATETIME NOT NULL, source TEXT, notes TEXT,
-        provenance TEXT NOT NULL CHECK (length(trim(provenance)) > 0), externalKey TEXT,
-        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT CardTransaction_cardId_fkey FOREIGN KEY (cardId) REFERENCES Card (id) ON DELETE CASCADE ON UPDATE CASCADE
-      );
-      INSERT INTO CardTransaction_v111
-        (id, cardId, kind, amountMinor, currency, quantity, occurredAt, source, notes, provenance, externalKey, createdAt, updatedAt)
-      SELECT id, cardId, kind, amountMinor, currency, quantity, occurredAt, source, notes, provenance, externalKey, createdAt, updatedAt
-      FROM CardTransaction;
-      DROP TABLE CardTransaction;
-      ALTER TABLE CardTransaction_v111 RENAME TO CardTransaction;
-    `);
-    db.exec("COMMIT;");
-  } catch (error) {
-    db.exec("ROLLBACK;");
-    throw error;
-  } finally {
-    db.exec("PRAGMA foreign_keys = ON;");
-  }
-  return {
-    expenseBackfillCount: Number(db.prepare("SELECT COUNT(*) AS count FROM CardExpense").get().count),
-    purchaseShippingCount: sameDayShippingCount,
-    gradingShippingCount: shippingCount - sameDayShippingCount
-  };
-}
-
-function initializeDatabase(dbPath) {
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-  const db = new DatabaseSync(dbPath);
-  try {
-    db.exec("PRAGMA foreign_keys = ON;");
-    const initialized = applicationTableNames(db).length === 0;
-    let upgraded = false;
-    let backupPath = null;
-    let expenseBackfill = null;
-    let upgradeSource = null;
-    let addImageRotation = false;
-    if (!initialized) {
-      const currentIssues = schemaIssues(db, requiredSchema);
-      if (currentIssues.length > 0) {
-        const preRotationIssues = schemaIssues(db, preRotationRequiredSchema);
-        const prePortfolioIssues = schemaIssues(db, prePortfolioRequiredSchema);
-        const prePortfolioPreRotationIssues = schemaIssues(db, prePortfolioPreRotationRequiredSchema);
-        if (schemaIssues(db, v120RequiredSchema).length === 0) {
-          backupPath = createUpgradeSnapshot(db, dbPath);
-          upgradeSource = "1.2.0";
-          upgraded = true;
-        } else if (preRotationIssues.length === 0) {
-          backupPath = createUpgradeSnapshot(db, dbPath);
-          upgradeSource = previousSchemaVersion;
-          addImageRotation = true;
-          upgraded = true;
-        } else if (prePortfolioIssues.length === 0) {
-          backupPath = createUpgradeSnapshot(db, dbPath);
-          upgradeSource = previousSchemaVersion;
-          upgraded = true;
-        } else if (prePortfolioPreRotationIssues.length === 0) {
-          backupPath = createUpgradeSnapshot(db, dbPath);
-          upgradeSource = previousSchemaVersion;
-          addImageRotation = true;
-          upgraded = true;
-        } else {
-          const v110Issues = schemaIssues(db, v110RequiredSchema);
-          if (v110Issues.length > 0) {
-            throw new Error(`数据库不是 Card Vault v1.1.0、v${previousSchemaVersion}、v1.2.0 或 v${schemaVersion} 支持结构：${v110Issues.join("；")}。`);
-          }
-          backupPath = createUpgradeSnapshot(db, dbPath);
-          expenseBackfill = upgradeV110ToV111(db);
-          upgradeSource = "v1.1.0";
-          addImageRotation = true;
-          upgraded = true;
-        }
-      }
-    }
-    if (!initialized && managementSchemaNeeded(db) && !backupPath) {
-      backupPath = createUpgradeSnapshot(db, dbPath);
-      upgraded = true;
-      upgradeSource = "1.3.0-core";
-    }
-    db.exec("BEGIN IMMEDIATE;");
-    try {
-      if (addImageRotation) addCardImageRotation(db);
-      createCurrentSchema(db);
-      const transactionColumns = new Set(db.prepare("PRAGMA table_info(CardTransaction)").all().map((column) => column.name));
-      if (!transactionColumns.has("paymentsJson")) db.exec("ALTER TABLE CardTransaction ADD COLUMN paymentsJson TEXT;");
-      if (!transactionColumns.has("amountKnown")) {
-        db.exec("ALTER TABLE CardTransaction ADD COLUMN amountKnown BOOLEAN NOT NULL DEFAULT 1 CHECK(amountKnown IN (0,1));");
-        if (!initialized) db.exec("UPDATE CardTransaction SET amountKnown = 0 WHERE amountMinor = 0;");
-      }
-      db.exec(`
+  db.exec(`
         CREATE TABLE IF NOT EXISTS FinancialSettings (id TEXT PRIMARY KEY NOT NULL, reportingCurrency TEXT NOT NULL DEFAULT 'CNY' CHECK(reportingCurrency IN ('CNY','USD')));
         CREATE TABLE IF NOT EXISTS ExchangeRate (id TEXT PRIMARY KEY NOT NULL, effectiveDate TEXT NOT NULL, rateMicros INTEGER NOT NULL CHECK(typeof(rateMicros) = 'integer' AND rateMicros > 0), source TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision > 0), createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
         CREATE UNIQUE INDEX IF NOT EXISTS ExchangeRate_effectiveDate_revision_key ON ExchangeRate(effectiveDate, revision);
         CREATE INDEX IF NOT EXISTS ExchangeRate_effectiveDate_idx ON ExchangeRate(effectiveDate);
-      `);
-      createManagementSchema(db);
-      validateCurrentSchema(db);
-      db.exec("COMMIT;");
-    } catch (error) {
-      db.exec("ROLLBACK;");
-      throw error;
-    }
-    validateCurrentSchema(db);
-    const integrity = db.prepare("PRAGMA integrity_check;").all();
-    const valid = integrity.length === 1 && Object.values(integrity[0]).some((value) => String(value).toLowerCase() === "ok");
-    if (!valid) throw new Error("Database integrity check failed after schema initialization.");
-    return { dbPath, schemaVersion, initialized, upgraded, upgradeSource, backupPath, expenseBackfill };
-  } finally {
-    db.close();
-  }
+  `);
+  createManagementSchema(db);
 }
 
-module.exports = { initializeDatabase, schemaVersion, validateCurrentSchema };
+// Existing databases are validated without DDL, backfills or schema snapshots.
+function validateDatabase(dbPath) {
+  const db = new DatabaseSync(dbPath, { readOnly: true });
+  try {
+    validateCurrentSchema(db);
+    if (!db.prepare("SELECT 1 FROM DataRevision WHERE id=1").get() || db.prepare("SELECT 1 FROM Card LEFT JOIN CardTracking ON CardTracking.cardId=Card.id WHERE CardTracking.cardId IS NULL LIMIT 1").get()) {
+      throw new Error("数据库当前格式的索引或状态记录不完整，未自动回填。请使用完整的当前格式数据。");
+    }
+    const integrity = db.prepare("PRAGMA integrity_check").all();
+    if (integrity.length !== 1 || Object.values(integrity[0])[0] !== "ok") throw new Error("数据库完整性检查失败。");
+    if (db.prepare("PRAGMA foreign_key_check").all().length) throw new Error("数据库关联完整性检查失败。");
+    return { dbPath, schemaVersion };
+  } finally { db.close(); }
+}
+
+function initializeDatabase(dbPath) {
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  let initialized;
+  const db = new DatabaseSync(dbPath);
+  try {
+    initialized = applicationTableNames(db).length === 0;
+    if (initialized) {
+      db.exec("PRAGMA foreign_keys = ON; BEGIN IMMEDIATE;");
+      try {
+        createCurrentSchema(db);
+        validateCurrentSchema(db);
+        db.exec("COMMIT;");
+      } catch (error) { db.exec("ROLLBACK;"); throw error; }
+    }
+  } finally { db.close(); }
+  return { ...validateDatabase(dbPath), initialized };
+}
+
+module.exports = { initializeDatabase, validateDatabase, schemaVersion, validateCurrentSchema };

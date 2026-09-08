@@ -78,6 +78,7 @@ export function applyShareGalleryTemplate(
   }
   return parseSharePresentation({
     ...template.presentation,
+    version: 3,
     backgroundPosition: { ...template.presentation.backgroundPosition },
     templateId: template.id,
     featuredCardIds: current.featuredCardIds

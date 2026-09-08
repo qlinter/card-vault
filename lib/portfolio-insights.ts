@@ -86,14 +86,6 @@ export type PortfolioFinancialHistoryPoint = {
   coverage: Array<{ currency: string; active: number; valued: number; costKnown: number }>;
 };
 
-function historicalRecordDates(card: PortfolioCardRecord): Date[] {
-  return [
-    ...card.transactions.map(recordDate),
-    ...card.expenses.map(recordDate),
-    ...card.valuations.map((valuation) => valuation.valuedAt)
-  ].filter((date) => !Number.isNaN(date.getTime()));
-}
-
 function nextMonth(month: string): string {
   const [year, monthNumber] = month.split("-").map(Number);
   return new Date(Date.UTC(year, monthNumber, 1)).toISOString().slice(0, 7);
@@ -109,12 +101,19 @@ export function buildPortfolioFinancialHistory(
   cards: PortfolioCardRecord[],
   asOf = new Date()
 ): PortfolioFinancialHistoryPoint[] {
-  const dates = cards.flatMap(historicalRecordDates)
-    .filter((date) => date.getTime() <= asOf.getTime())
-    .sort((left, right) => left.getTime() - right.getTime());
-  if (dates.length === 0) return [];
+  let earliest = Infinity;
+  const includeDate = (date: Date) => {
+    const time = date.getTime();
+    if (time <= asOf.getTime() && time < earliest) earliest = time;
+  };
+  for (const card of cards) {
+    for (const row of card.transactions) includeDate(recordDate(row));
+    for (const row of card.expenses) includeDate(recordDate(row));
+    for (const row of card.valuations) includeDate(row.valuedAt);
+  }
+  if (earliest === Infinity) return [];
 
-  const firstMonth = dates[0].toISOString().slice(0, 7);
+  const firstMonth = new Date(earliest).toISOString().slice(0, 7);
   const lastMonth = asOf.toISOString().slice(0, 7);
   const months: string[] = [];
   for (let month = firstMonth; month <= lastMonth; month = nextMonth(month)) months.push(month);

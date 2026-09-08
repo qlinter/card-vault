@@ -21,29 +21,11 @@ test("financial schema preserves manual FX history and initializes idempotently"
     assert.throws(() => db.prepare("INSERT INTO ExchangeRate (id, effectiveDate, rateMicros, source, revision) VALUES ('duplicate', '2026-01-01', 7100000, 'manual', 1)").run(), /UNIQUE/);
     assert.throws(() => db.prepare("INSERT INTO ExchangeRate (id, effectiveDate, rateMicros, source, revision) VALUES ('invalid', '2026-01-02', 0, 'manual', 1)").run(), /CHECK/);
   } finally { db.close(); }
-  assert.equal(initializeDatabase(dbPath).upgraded, false);
+  assert.equal(initializeDatabase(dbPath).initialized, false);
   const check = new DatabaseSync(dbPath, { readOnly: true });
   try { assert.equal(check.prepare("SELECT rateMicros FROM ExchangeRate").get().rateMicros, 7000000); } finally { check.close(); }
 });
 
-test("supported 1.2.0 finance initialization preserves facts and marks historical zero costs incomplete", (t) => {
-  const dbPath = temporaryDatabase(t);
-  initializeDatabase(dbPath);
-  const db = new DatabaseSync(dbPath);
-  db.exec("DROP TABLE ExchangeRate; DROP TABLE FinancialSettings; ALTER TABLE CardTransaction DROP COLUMN paymentsJson; ALTER TABLE CardTransaction DROP COLUMN amountKnown;");
-  db.prepare("INSERT INTO Card (id, playerName, cardTitle, sport) VALUES ('finance', 'A', 'B', 'Basketball')").run();
-  db.prepare("INSERT INTO CardTransaction (id, cardId, kind, amountMinor, currency, quantity, occurredAt, provenance) VALUES ('opening', 'finance', 'purchase', 0, 'USD', 2, '2026-01-01', 'initial_card_entry')").run();
-  db.close();
-  const result = initializeDatabase(dbPath);
-  assert.equal(result.upgradeSource, "1.2.0");
-  assert.ok(fs.existsSync(result.backupPath));
-  const after = new DatabaseSync(dbPath, { readOnly: true });
-  try {
-    const record = after.prepare("SELECT amountMinor, currency, quantity, amountKnown FROM CardTransaction").get();
-    assert.deepEqual({ ...record }, { amountMinor: 0, currency: "USD", quantity: 2, amountKnown: 0 });
-  } finally { after.close(); }
-  assert.equal(initializeDatabase(dbPath).upgraded, false);
-});
 
 test("current baseline initializes the complete schema without migration metadata", (t) => {
   const dbPath = temporaryDatabase(t);
@@ -69,54 +51,7 @@ test("current baseline initializes the complete schema without migration metadat
   assert.equal(cardImageColumns.has("rotation"), true);
 });
 
-test("existing v1.1.1 images add rotation metadata once without changing image paths", (t) => {
-  const dbPath = temporaryDatabase(t);
-  initializeDatabase(dbPath);
-  const db = new DatabaseSync(dbPath);
-  db.prepare("INSERT INTO Card (id, playerName, cardTitle, sport) VALUES (?, ?, ?, ?)")
-    .run("card-1", "Current Subject", "Current Card", "Basketball");
-  db.prepare("INSERT INTO CardImage (id, cardId, path) VALUES (?, ?, ?)")
-    .run("image-1", "card-1", "/media/current.webp");
-  db.exec("ALTER TABLE CardImage DROP COLUMN rotation;");
-  db.close();
 
-  const result = initializeDatabase(dbPath);
-  const verify = new DatabaseSync(dbPath, { readOnly: true });
-  const image = verify.prepare("SELECT path, rotation FROM CardImage WHERE id = ?").get("image-1");
-  verify.close();
-
-  assert.equal(result.upgraded, true);
-  assert.equal(result.upgradeSource, "1.1.1");
-  assert.equal(fs.existsSync(result.backupPath), true);
-  assert.deepEqual({ ...image }, { path: "/media/current.webp", rotation: 0 });
-  assert.equal(initializeDatabase(dbPath).upgraded, false);
-});
-
-test("existing v1.1.1 data adds v1.2.0 portfolio and rotation fields once", (t) => {
-  const dbPath = temporaryDatabase(t);
-  initializeDatabase(dbPath);
-  const db = new DatabaseSync(dbPath);
-  db.prepare("INSERT INTO Card (id, playerName, cardTitle, sport) VALUES (?, ?, ?, ?)")
-    .run("card-1", "Current Player", "Current Card", "Basketball");
-  db.exec("DROP TABLE PortfolioSnapshotRecord; DROP TABLE PortfolioSavedView; ALTER TABLE CardImage DROP COLUMN rotation;");
-  db.close();
-
-  const result = initializeDatabase(dbPath);
-  const verify = new DatabaseSync(dbPath, { readOnly: true });
-  const tables = new Set(verify.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((row) => row.name));
-  const imageColumns = new Set(verify.prepare("PRAGMA table_info(CardImage)").all().map((row) => row.name));
-  const card = verify.prepare("SELECT playerName FROM Card WHERE id = ?").get("card-1");
-  verify.close();
-
-  assert.equal(result.upgraded, true);
-  assert.equal(result.upgradeSource, "1.1.1");
-  assert.equal(fs.existsSync(result.backupPath), true);
-  assert.equal(tables.has("PortfolioSavedView"), true);
-  assert.equal(tables.has("PortfolioSnapshotRecord"), true);
-  assert.equal(imageColumns.has("rotation"), true);
-  assert.equal(card.playerName, "Current Player");
-  assert.equal(initializeDatabase(dbPath).upgraded, false);
-});
 
 test("baseline validation is idempotent and preserves current data", (t) => {
   const dbPath = temporaryDatabase(t);
@@ -148,13 +83,49 @@ test("unsupported legacy schemas are rejected without structural mutation", (t) 
     .run("legacy-card", "Legacy Player", "Legacy Card", "Basketball");
   db.close();
 
-  assert.throws(() => initializeDatabase(dbPath), /不是 Card Vault v1.1.0/);
+  assert.throws(() => initializeDatabase(dbPath), /仅支持当前完整格式/);
   const verify = new DatabaseSync(dbPath, { readOnly: true });
   const tables = verify.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all();
   const card = verify.prepare("SELECT playerName FROM Card WHERE id = ?").get("legacy-card");
   verify.close();
   assert.deepEqual(tables.map((row) => row.name), ["Card"]);
   assert.equal(card.playerName, "Legacy Player");
+});
+
+for (const [label, change] of [
+  ["pre-position expenses", "DROP INDEX CardExpense_transactionId_idx; ALTER TABLE CardExpense DROP COLUMN transactionId; ALTER TABLE CardExpense DROP COLUMN context;"],
+  ["pre-rotation images", "ALTER TABLE CardImage DROP COLUMN rotation;"],
+  ["pre-payment facts", "ALTER TABLE CardTransaction DROP COLUMN amountKnown;"],
+  ["missing management table", "DROP TABLE CollectionPlan;"],
+  ["missing tracking table", "DROP TABLE CardTracking;"],
+  ["missing tracking trigger", "DROP TRIGGER tracking_status_update;"],
+  ["missing current index", "DROP INDEX CardReport_valueMinor_cardId_idx;"],
+  ["missing revision state", "DELETE FROM DataRevision;"],
+  ["missing card tracking", "DELETE FROM CardTracking;"],
+]) {
+  test(`incomplete format is rejected without writes: ${label}`, t => {
+    const dbPath = temporaryDatabase(t);
+    initializeDatabase(dbPath);
+    const db = new DatabaseSync(dbPath);
+    db.exec("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES('kept','A','B','Basketball');");
+    db.exec(change);
+    db.close();
+    const before = fs.readFileSync(dbPath);
+    assert.throws(() => initializeDatabase(dbPath), /当前.*格式/);
+    assert.deepEqual(fs.readFileSync(dbPath), before);
+    assert.equal(fs.existsSync(path.join(path.dirname(dbPath), "schema-backups")), false);
+  });
+}
+
+test("current database validation preserves every byte and current zero-price facts", t => {
+  const dbPath = temporaryDatabase(t);
+  initializeDatabase(dbPath);
+  const db = new DatabaseSync(dbPath);
+  db.exec("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES('free','A','B','Basketball'); INSERT INTO CardTransaction(id,cardId,kind,amountMinor,currency,occurredAt,provenance,amountKnown) VALUES('free-purchase','free','purchase',0,'CNY','2026-09-08','manual',1);");
+  db.close();
+  const before = fs.readFileSync(dbPath);
+  assert.equal(initializeDatabase(dbPath).initialized, false);
+  assert.deepEqual(fs.readFileSync(dbPath), before);
 });
 
 test("current baseline enforces financial constraints and cascade deletion", (t) => {
@@ -194,49 +165,4 @@ test("portfolio snapshots survive saved-view deletion and keep their historical 
 
   assert.equal(snapshot.savedViewId, null);
   assert.deepEqual(JSON.parse(snapshot.snapshotJson), { cardCount: 1 });
-});
-
-test("v1.1.0 data upgrades expense associations and holding quantity once", (t) => {
-  const dbPath = temporaryDatabase(t);
-  initializeDatabase(dbPath);
-  const db = new DatabaseSync(dbPath);
-  db.exec("DROP INDEX CardExpense_transactionId_idx");
-  db.exec("ALTER TABLE CardExpense DROP COLUMN transactionId");
-  db.exec("ALTER TABLE Card DROP COLUMN holdingQuantity");
-  db.exec("ALTER TABLE CardExpense DROP COLUMN context");
-  db.prepare("INSERT INTO Card (id, playerName, cardTitle, sport, purchaseDate) VALUES (?, ?, ?, ?, ?)")
-    .run("card-1", "Player", "Card", "Basketball", Date.parse("2026-08-01T00:00:00.000Z"));
-  db.prepare(`INSERT INTO CardTransaction (id, cardId, kind, amountMinor, currency, quantity, occurredAt, provenance)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run("purchase-1", "card-1", "purchase", 20000, "CNY", 2, Date.parse("2026-08-01T00:00:00.000Z"), "test");
-  const insertExpense = db.prepare(`INSERT INTO CardExpense
-    (id, cardId, kind, amountMinor, currency, occurredAt, provenance) VALUES (?, ?, ?, ?, ?, ?, ?)`);
-  insertExpense.run("shipping-buy", "card-1", "shipping", 1000, "CNY", Date.parse("2026-08-01T16:00:00.000Z"), "test");
-  insertExpense.run("shipping-grade", "card-1", "shipping", 2000, "CNY", Date.parse("2026-08-02T00:00:00.000Z"), "test");
-  insertExpense.run("grading-1", "card-1", "grading", 3000, "CNY", Date.parse("2026-08-03T00:00:00.000Z"), "test");
-  db.close();
-
-  const result = initializeDatabase(dbPath);
-  const verify = new DatabaseSync(dbPath, { readOnly: true });
-  const expenses = verify.prepare("SELECT id, context, transactionId FROM CardExpense ORDER BY id").all();
-  const card = verify.prepare("SELECT holdingQuantity, purchasePrice, gradingFee, totalCost FROM Card WHERE id = ?").get("card-1");
-  verify.close();
-
-  assert.equal(result.upgraded, true);
-  assert.equal(result.expenseBackfill.purchaseShippingCount, 1);
-  assert.equal(result.expenseBackfill.gradingShippingCount, 1);
-  assert.equal(fs.existsSync(result.backupPath), true);
-  assert.deepEqual(expenses.map((row) => ({ ...row })), [
-    { id: "grading-1", context: "grading", transactionId: null },
-    { id: "shipping-buy", context: "purchase", transactionId: null },
-    { id: "shipping-grade", context: "grading", transactionId: null }
-  ]);
-  assert.equal(card.holdingQuantity, 2);
-  assert.equal(card.purchasePrice, 200);
-  assert.equal(card.gradingFee, 30);
-  assert.equal(card.totalCost, 260);
-
-  const second = initializeDatabase(dbPath);
-  assert.equal(second.upgraded, false);
-  assert.equal(second.backupPath, null);
 });

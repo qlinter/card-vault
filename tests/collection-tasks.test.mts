@@ -3,6 +3,19 @@ import test from "node:test";
 import { deriveCollectionTasks, taskIsVisible, type TaskCard } from "../lib/collection-tasks.ts";
 const now = new Date("2026-09-07T00:00:00Z");
 const card: TaskCard = { id: "one", playerName: "卡片主体", cardTitle: "备注", collectionStatus: "holding", createdAt: new Date("2025-01-01"), updatedAt: new Date("2026-01-01"), _count: { images: 0, transactions: 0 }, valuations: [] };
+const tracking = { statusStartedAt: new Date("2025-01-01"), statusDateEstimated: false, statusRevision: 0, imagesRevision: 0, purchaseRevision: 0, valuationRevision: 0 };
+
+test("unrelated edits do not postpone status follow-up; recurring missing evidence reopens", () => {
+  const listed = deriveCollectionTasks([{ ...card, collectionStatus: "listed", updatedAt: now, tracking }], now).find(task => task.kind === "listed");
+  assert.ok(listed);
+  assert.equal(listed.dateEstimated, false);
+  const initial = deriveCollectionTasks([{ ...card, tracking }], now).find(task => task.kind === "images")!;
+  const completed = { status: "done", fingerprint: initial.fingerprint, snoozedUntil: null };
+  const recurring = deriveCollectionTasks([{ ...card, tracking: { ...tracking, imagesRevision: 2 } }], now).find(task => task.kind === "images")!;
+  assert.equal(taskIsVisible(initial, completed), false);
+  assert.equal(taskIsVisible(recurring, completed), true);
+  assert.ok(deriveCollectionTasks([{ ...card, _count: { images: 1, transactions: 1 }, hasUnknownPurchase: true }], now).some(task => task.kind === "purchase"));
+});
 test("reminder rules handle missing history, stale valuations and sold holdings", () => {
   assert.deepEqual(new Set(deriveCollectionTasks([card], now).map(task => task.kind)), new Set(["images", "purchase", "valuation"]));
   assert.ok(deriveCollectionTasks([{ ...card, collectionStatus: "grading", valuations: [{ valuedAt: new Date("2025-01-01") }] }], now).some(task => task.kind === "stale"));

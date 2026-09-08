@@ -13,21 +13,19 @@ type AboutSettingsProps = {
 export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
   const { locale } = useLanguage();
   const releaseHighlights = locale === "en" ? [
-    "CSV/XLSX import mapping, previews, per-row retries and conflict-safe undo.",
-    "Paged collections, reminders, wishlist budgets and a shared user guide in Settings.",
-    "Explicit interface translations protect user content; galleries emphasize complete card images.",
-    "Mixed CNY/USD payments and cross-currency sales share one physical holding.",
-    "Settings now manage reporting currency and manual FX dates, sources, and revisions.",
-    "Financial views share one calculation; snapshots preserve their FX evidence and incomplete data remains unavailable.",
-    "Backups pause local writes and validate referenced media. The globe opens a language menu."
+    "Windows-reserved and occupied ports now fall back to an OS-assigned local port.",
+    "Missing FX preserves monthly purchase/sale counts; status timers and recurring reminders are accurate.",
+    "Exports respect cross-page selections; restore rolls back if final validation fails.",
+    "Incremental financial indexes, faster quote/rate lookup and focused reminder queries reduce unnecessary work.",
+    "Only current data formats are supported; historical upgrade and conversion paths have been removed.",
+    "Bilingual READMEs retain every historical version; release notes include code optimizations and validation."
   ] : [
-    "新增 CSV/XLSX 导入映射、预演、逐行重试和冲突保护撤销。",
-    "收藏分页、整理提醒、愿望预算与设置中的统一使用说明。",
-    "显式界面翻译保护用户原文，展馆提升卡图展示和阅读体验。",
-    "支持 CNY/USD 混合付款和跨币出售，同一实物数量只计算一次。",
-    "设置中管理报表币种、人工汇率、生效日期、来源和历史修订。",
-    "财务页面统一核算，快照保留汇率依据，资料缺失时明确标为不完整。",
-    "备份暂停本地写入并校验媒体引用；地球按钮打开语言菜单。"
+    "Windows 保留或占用优先端口时，自动改用系统分配的本地端口。",
+    "缺失汇率仍保留逐月买入/出售数量，修正状态计时与提醒复发。",
+    "导出遵循跨页勾选范围；恢复最终检查失败时回滚原数据。",
+    "增量财务索引、估值与汇率查找优化，单条提醒仅查询对应卡片。",
+    "仅支持当前数据格式，移除历史数据升级与旧格式转换功能。",
+    "中英文 README 保留全部历史版本，更新说明包含代码优化与验收结果。"
   ];
   const [expanded, setExpanded] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
@@ -59,7 +57,7 @@ export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
 
           {showReleaseNotes ? (
             <UiElement as="div" uiMessages={{"aria-label": {text:"Card Vault v{0} 更新说明",values:[defaultVersion],translateValues:[]}}} className="about-release-notes" role="region" >
-              <div><h3>v{defaultVersion}<UiText text={" 主要更新"} /></h3><small>2026-09-07</small></div>
+              <div><h3>v{defaultVersion}<UiText text={" 主要更新"} /></h3><small>2026-09-08</small></div>
               <ul data-i18n-skip>{releaseHighlights.map((item) => <li key={item}>{item}</li>)}</ul>
             </UiElement>
           ) : null}

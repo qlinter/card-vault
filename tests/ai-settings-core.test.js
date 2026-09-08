@@ -22,17 +22,3 @@ test("shared AI settings normalization applies consistent endpoints, defaults, a
   assert.equal(settings.customProviders[0].endpoint, "https://first.example/v1");
   assert.equal(settings.activeCustomId, "same");
 });
-
-test("shared AI settings normalization preserves legacy single-provider fields", () => {
-  const settings = normalizeSettings({
-    provider: "custom",
-    endpoint: "https://legacy.example/v1/chat/completions",
-    apiKey: "legacy-key",
-    model: "legacy-model"
-  });
-
-  assert.equal(settings.customProviders.length, 1);
-  assert.equal(settings.customProviders[0].endpoint, "https://legacy.example/v1/chat/completions");
-  assert.equal(settings.customProviders[0].apiKey, "legacy-key");
-  assert.equal(settings.customProviders[0].model, "legacy-model");
-});

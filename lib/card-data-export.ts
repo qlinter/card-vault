@@ -10,7 +10,7 @@ import { formatMinorMoney } from "./financial-history";
 const initialFinancialFields = new Set(["initialQuantity", "purchasePrice", "purchaseDate", "currentValue", "historyCurrency", "valuationDate", "valuationSource"]);
 const ledgerHeaders = ["cardId", "recordId", "type", "kind", "amount", "currency", "quantity", "date", "source", "amountKnown", "secondaryPayments", "context", "notes", "amountMinor", "transactionId", "provenance", "externalKey", "createdAt", "updatedAt"];
 
-export async function exportCards(query: Parameters<typeof buildCardFilters>[0], format: string, publicOnly: boolean) {
+export async function exportCards(query: Parameters<typeof buildCardFilters>[0], format: string, publicOnly: boolean, selectedIds?: string[]) {
   if (format !== "csv" && format !== "xlsx") throw new Error("请选择 CSV 或 XLSX 导出格式。");
   const fields = Object.keys(importFields).filter(field => !initialFinancialFields.has(field) && !(publicOnly && field === "notes"));
   const rows: string[][] = [fields];
@@ -22,7 +22,7 @@ export async function exportCards(query: Parameters<typeof buildCardFilters>[0],
   for (;;) {
     // Archive-only exports do not load financial facts, images or share references.
     const cards = await prisma.card.findMany({
-      where: { AND: [buildCardFilters(query), ...(publicOnly ? [{ visibility: "public" }] : [])] },
+      where: { AND: [buildCardFilters(query), ...(selectedIds ? [{ id: { in: selectedIds } }] : []), ...(publicOnly ? [{ visibility: "public" }] : [])] },
       include: { transactions: Boolean(ledger), expenses: Boolean(ledger), valuations: Boolean(ledger) },
       orderBy: { id: "asc" }, take: 250,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {})

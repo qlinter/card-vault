@@ -1,6 +1,6 @@
 # Card Vault Product Roadmap
 
-Updated 2026-09-07. The current version is v1.3.0; installer and portable archives have been generated and verified after explicit confirmation. See [development status](./v1.3.0-implementation.md) for acceptance results and the [documentation index](./README.md) for current behavior. This roadmap records capability status and priorities, not duplicate specifications or chronological logs.
+Updated 2026-09-08. Current source is v1.3.1; installer and portable packages have been generated and verified after user confirmation. See the [release notes](./release-v1.3.1.md) for scope and acceptance, and the [documentation index](./README.md) for current rules. This file maintains capability status and future priorities only.
 
 ## Completed capabilities
 
@@ -13,28 +13,24 @@ Updated 2026-09-07. The current version is v1.3.0; installer and portable archiv
 | Data management | Implemented in v1.3.0 source: Settings groups import, export, storage and backup/restore, including mapping, retries and undo. |
 | Reminders and planning | Implemented in v1.3.0 source: 180-day reminders, 7/30-day digests, wishlist and original-currency budgets. |
 | Reliability and scale | Implemented in v1.3.0 source: shared operation locks, recovery copies, manifests, explicit translations, Home pagination and chunked Portfolio reads. |
+| v1.3.1 reliability and optimization | Implemented: port fallback, recurring reminders, selected exports, final restore rollback, incremental indexing and financial-query optimization; current data formats only. |
 
 ## Completed — Share Gallery
 
 The current implementation retains independent styles and themes, sections, card overrides, shared rendering, a public-field allowlist, export checks and difference reports. Static packages and manual Drop publishing remain; this cleanup does not add hosted services. See the [gallery specification](./share-gallery.md).
 
-## Completed closeout — v1.3.0
+## v1.3.1 release completed
 
-1. Review accumulated code, remove retired entry points, consolidate shared utilities and retain recovery compatibility.
-2. Align READMEs, specifications, in-app guidance, release notes and development status with final behavior.
-3. Complete source release checks, dependency auditing and necessary performance reruns.
-4. Present results for explicit user confirmation, then build and verify the installer, portable ZIP and checksums.
-
-Source review, documentation, validation and confirmed packaging are complete. Artifacts reside in the local dist directory and have not been uploaded to an online release channel. Clean Windows installation and upgrade checks remain manual follow-ups below.
+This batch includes startup/restore fixes, reminder and export correctness, incremental indexing, financial-query optimization, current-format cleanup and bilingual documentation. Source checks, packaged runtime, version and SHA-256 verification passed; results are recorded in the release notes. Artifacts have not been uploaded.
 
 ## Next priorities
 
 | Priority | Direction | Conditions and acceptance |
 | --- | --- | --- |
-| 1 | Real Windows usage validation | After packaging approval, verify clean installation, upgrades, protected install locations, portable migration and data retention. |
-| 2 | Scale and failure recovery | Test dense financial histories, large image sets and real hardware; exercise disk exhaustion, service interruption and restore before choosing incremental aggregation work. |
+| 1 | Real Windows usage validation | Verify clean installation and upgrades with the new packages, protected install locations, portable migration and data retention. |
+| 2 | Scale and failure recovery | Per-card indexing, dense-history/synthetic-image benchmarks and restore-failure rollback are implemented. Next optimize dense Portfolio histories and validate large real photos and power interruption. |
 | 3 | Feedback-driven usability | Record actual entry, search and maintenance problems. Retain current layout and typography unless feedback supports further changes. |
-| 4 | Data rule extensions | Define the model and compatibility requirements for precise grading/listing status dates, additional import fields and more detailed correction flows. |
+| 4 | Data rule extensions | Define the model and compatibility requirements for full status-transition history beyond the implemented status start dates, additional import fields and more detailed correction flows. |
 | Deferred | Managed publishing and multi-device sync | Resume only with renewed user agreement and long-term hosting, identity, operational and recovery resources. |
 
 The removed standalone bulk-edit controls, recent-batch list, system digest notifications and share More menu are not future deliverables. No independent mobile application is planned; exported galleries still support phone browsers.

@@ -28,6 +28,59 @@ const history = () => ({
 });
 const card = () => ({ ...history(), id: "card", playerName: "A", cardTitle: "B", sport: "Basketball", collectionStatus: "holding", gradingCompany: null, grade: null, isRookie: false, isAutograph: false, isPatch: false });
 
+test("historical quote reconstruction matches independent date cutoffs, ties and unavailable quotes", () => {
+  const quotes = Array.from({ length: 80 }, (_, index) => ({
+    currency: index % 3 ? "USD" : " cny ", amountMinor: BigInt(index * 100),
+    valuedAt: at(`2026-01-${String(index % 20 + 1).padStart(2, "0")}`),
+    createdAt: new Date(at("2026-02-01").getTime() + index % 4),
+    available: index % 11 !== 0, source: `quote-${index}`
+  })).reverse();
+  // Exact ties deliberately disagree on amount; the first input record wins.
+  quotes.unshift({ ...quotes[3], amountMinor: 999n, source: "first exact tie" });
+  const unchanged = structuredClone(quotes);
+  for (const currency of ["CNY", "USD"]) for (const rates of [[], config.rates]) {
+    for (const cutoff of [at("2025-12-31"), at("2026-01-10"), at("2026-02-01")]) {
+      const report = reportingHistory({ transactions: [], expenses: [], valuations: quotes }, { reportingCurrency: currency, rates }, cutoff);
+      const eligible = quotes.filter(row => row.valuedAt <= cutoff);
+      const dates = [...new Set(eligible.map(row => row.valuedAt.getTime()))].sort((a, b) => a - b);
+      const expected = new Map();
+      for (const time of dates) {
+        const available = eligible.filter(row => row.valuedAt.getTime() <= time);
+        const quote = selectLatestValuation(available, currency) ?? selectLatestValuation(available);
+        if (!quote) continue;
+        const key = `${quote.currency}:${quote.valuedAt.toISOString()}:${quote.createdAt.toISOString()}`;
+        const converted = convertMoney(quote, currency, quote.valuedAt, rates);
+        expected.set(key, { ...quote, currency, amountMinor: converted.amountMinor ?? 0n, available: converted.amountMinor !== null });
+      }
+      assert.deepEqual(report.valuations, [...expected.values()]);
+    }
+  }
+  assert.deepEqual(quotes, unchanged);
+});
+
+test("FX lookup preserves stable ties without mutating unsorted input", () => {
+  const rates = [config.rates[1], { ...config.rates[0], id: "first", revision: 3 }, config.rates[0], { ...config.rates[0], id: "tie", revision: 3 }];
+  const unchanged = structuredClone(rates);
+  assert.equal(rateForDate(rates, at("2026-01-31"))?.id, "first");
+  assert.equal(rateForDate(rates, at("2026-02-01"))?.id, "feb");
+  assert.deepEqual(rates, unchanged);
+});
+
+test("missing FX preserves monthly physical activity and does not erase other months", () => {
+  const source = card();
+  const result = buildReportingPortfolio([source], { isFiltered: false, criteria: [] }, { ...config, rates: [] }, at("2026-09-08")).snapshot;
+  const purchases = result.activitySeries.purchases;
+  assert.equal(purchases[0].count, 2);
+  assert.deepEqual(purchases[0].missingCurrencies, ["CNY"]);
+  assert.equal(purchases[0].values.CNY, undefined);
+  assert.equal(result.activitySeries.sales[0].count, 1);
+  assert.deepEqual(result.activitySeries.sales[0].missingCurrencies, ["CNY"]); // unknown USD sale expense
+  source.expenses = [];
+  const withoutExpense = buildReportingPortfolio([source], { isFiltered: false, criteria: [] }, { ...config, rates: [] }, at("2026-09-08")).snapshot;
+  assert.equal(withoutExpense.activitySeries.sales[0].values.CNY, 600);
+  assert.equal(withoutExpense.timeSeries.sales[0].values.CNY, 600);
+});
+
 test("dual payments count physical quantity once; cross-currency sale allocates both cost components", () => {
   const original = calculatePositions(history());
   assert.deepEqual(original.map((p) => p.remainingQuantity), [1, 1]);

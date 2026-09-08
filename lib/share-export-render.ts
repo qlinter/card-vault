@@ -1,5 +1,4 @@
 import type { ExportCard, ExportData, ExportImage, ExportSection, ExportSubject } from "./share-export-types.ts";
-import { fallbackShareSections } from "./share-sections.ts";
 import { normalizeShareTheme, shareThemeCssVariables } from "./share-themes.ts";
 import { normalizeCardImageRotation } from "./card-image-rotation.ts";
 
@@ -125,19 +124,8 @@ function renderGalleryCard(card: ExportCard, className: string, inlineDetails = 
   `);
 }
 
-function legacySections(data: ExportData) {
-  return fallbackShareSections({
-    themeNarrative: data.themeNarrative,
-    themeHighlights: data.themeHighlights,
-    groupNotes: data.groupNotes,
-    cardIds: data.cards.map((card) => card.id)
-  });
-}
-
 function renderSections(data: ExportData, inlineDetails = false): string {
-  const sections: ExportSection[] = data.sections.length > 0
-    ? data.sections
-    : legacySections(data).map((section) => ({ ...section }));
+  const sections: ExportSection[] = data.sections;
   if (sections.length === 0) {
     return "";
   }

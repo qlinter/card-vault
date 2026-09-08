@@ -66,6 +66,7 @@ function verifyPortableArchive(signingMode) {
     `$forbidden=$zip.Entries | Where-Object { $entryName=($_.FullName -replace '\\\\','/').ToLowerInvariant(); $entryName.StartsWith('resources/app/') -and ($entryName.EndsWith('.map') -or ($entryName.Contains('/node_modules/.prisma/client/') -and $entryName -match '\\.tmp[^/]*$')) }`,
     `$tempExe=[System.IO.Path]::Combine([System.IO.Path]::GetTempPath(),('card-vault-artifact-'+[guid]::NewGuid().ToString('N')+'.exe'))`,
     `if(-not $exe) { throw 'Portable ZIP does not contain Card Vault.exe' }`,
+    `if($zip.Entries | Where-Object { ($_.FullName -replace '\\\\','/') -match '^resources/app/prisma/([^/]+\\.db[^/]*|schema-backups/.*)$' }) { throw 'Portable ZIP contains a local database or database snapshot' }`,
     `if(-not $package) { throw 'Portable ZIP does not contain resources/app/package.json' }`,
     `if($forbidden) { throw ('Portable ZIP contains forbidden generated files: ' + (($forbidden | Select-Object -First 8 -ExpandProperty FullName) -join ', ')) }`,
     `$reader=[System.IO.StreamReader]::new($package.Open())`,

@@ -57,19 +57,11 @@ export type AiSettingsDraft = {
   customProviders?: Array<Partial<CustomProviderSettings> & { id?: string }>;
 };
 
-type LegacyAiSettings = AiSettingsDraft & {
-  custom?: Partial<CustomProviderSettings>;
-  endpoint?: string;
-  apiKey?: string;
-  deployment?: string;
-  model?: string;
-};
-
-function loadSettingsFile(): LegacyAiSettings {
+function loadSettingsFile(): AiSettingsDraft {
   const configPath = process.env.CARD_VAULT_AI_CONFIG_PATH;
   if (!configPath) return {};
   try {
-    return JSON.parse(fs.readFileSync(configPath, "utf8")) as LegacyAiSettings;
+    return JSON.parse(fs.readFileSync(configPath, "utf8")) as AiSettingsDraft;
   } catch {
     return {};
   }
@@ -90,7 +82,7 @@ export function getAiSettingsFile(): AiSettingsFile {
   const fileSettings = normalizeSettings(loadSettingsFile());
   const provider = normalizeProvider(process.env.CARD_VAULT_AI_PROVIDER || fileSettings.provider);
   const runtimeCustomProviders = parseRuntimeCustomProviders();
-  const legacyRuntimeCustom = runtimeCustomProviders === undefined && (process.env.CARD_VAULT_CUSTOM_AI_ENDPOINT || process.env.CARD_VAULT_CUSTOM_AI_MODEL)
+  const customEnvProfile = runtimeCustomProviders === undefined && (process.env.CARD_VAULT_CUSTOM_AI_ENDPOINT || process.env.CARD_VAULT_CUSTOM_AI_MODEL)
     ? [{
         id: process.env.CARD_VAULT_CUSTOM_AI_ACTIVE_ID || "custom-env",
         name: process.env.CARD_VAULT_CUSTOM_AI_NAME,
@@ -116,7 +108,7 @@ export function getAiSettingsFile(): AiSettingsFile {
       apiKey: process.env.MINIMAX_API_KEY || fileSettings.minimax.apiKey,
       model: process.env.MINIMAX_MODEL || fileSettings.minimax.model
     },
-    customProviders: runtimeCustomProviders ?? legacyRuntimeCustom ?? fileSettings.customProviders
+    customProviders: runtimeCustomProviders ?? customEnvProfile ?? fileSettings.customProviders
   });
 }
 

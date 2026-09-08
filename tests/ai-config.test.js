@@ -17,28 +17,16 @@ function testConfig(t) {
   return { configPath, manager: createAiConfigManager(configPath, cryptoAdapter) };
 }
 
-test("version 2 AI settings migrate to v5 without the legacy API version", (t) => {
+test("unsupported AI configuration is rejected without rewriting the file", t => {
   const { configPath, manager } = testConfig(t);
-  fs.writeFileSync(configPath, JSON.stringify({
-    version: 2,
-    provider: "azure",
-    azure: {
-      endpoint: "https://example.openai.azure.com",
-      apiKeyEncrypted: Buffer.from("encrypted:azure-secret").toString("base64"),
-      deployment: "gpt-5.4",
-      apiVersion: "2024-02-15-preview"
-    },
-    minimax: { endpoint: "https://minimax.test", apiKeyEncrypted: "", model: "model-a" }
-  }));
-
-  assert.equal(manager.migrateLegacyConfig(), true);
-  const stored = JSON.parse(fs.readFileSync(configPath, "utf8"));
-  const runtime = manager.getRuntimeEnv();
-  assert.equal(stored.version, 5);
-  assert.equal("apiVersion" in stored.azure, false);
-  assert.equal(runtime.AZURE_OPENAI_API_VERSION, undefined);
-  assert.equal(runtime.AZURE_OPENAI_API_KEY, "azure-secret");
+  for (const version of [undefined, 2, 3, 4, 6]) {
+    const raw = JSON.stringify({ version, provider: "azure", endpoint: "https://old.example", apiKey: "old-key" });
+    fs.writeFileSync(configPath, raw);
+    assert.throws(() => manager.getRuntimeEnv(), /配置格式不受支持/);
+    assert.equal(fs.readFileSync(configPath, "utf8"), raw);
+  }
 });
+
 
 test("AI settings encrypt API keys at rest and expose them only to the runtime environment", (t) => {
   const { configPath, manager } = testConfig(t);
@@ -90,58 +78,14 @@ test("AI settings encrypt API keys at rest and expose them only to the runtime e
   assert.deepEqual(runtimeProfiles.map((item) => item.name), ["Local Vision", "Cloud Vision"]);
 });
 
-test("version 4 single custom AI settings migrate to a named v5 profile", (t) => {
-  const { configPath, manager } = testConfig(t);
-  fs.writeFileSync(configPath, JSON.stringify({
-    version: 4,
-    provider: "custom",
-    azure: { endpoint: "", apiKeyEncrypted: "", deployment: "" },
-    minimax: { endpoint: "https://minimax.test", apiKeyEncrypted: "", model: "model-a" },
-    custom: {
-      name: "Legacy Gateway",
-      endpoint: "https://legacy.test/v1/chat/completions",
-      modelsEndpoint: "https://legacy.test/v1/models",
-      apiKeyEncrypted: Buffer.from("encrypted:legacy-secret").toString("base64"),
-      model: "legacy-vision",
-      apiKeyHeader: "Authorization",
-      apiKeyPrefix: "Bearer"
-    }
-  }));
 
-  assert.equal(manager.migrateLegacyConfig(), true);
-  const stored = JSON.parse(fs.readFileSync(configPath, "utf8"));
-  const settings = manager.getPublicSettings();
-  assert.equal(stored.version, 5);
-  assert.equal(settings.activeCustomId, "custom-legacy");
-  assert.equal(settings.customProviders[0].name, "Legacy Gateway");
-  assert.equal(settings.customProviders[0].hasApiKey, true);
-  assert.equal(manager.getRuntimeEnv().CARD_VAULT_CUSTOM_AI_API_KEY, "legacy-secret");
-});
-
-test("legacy plaintext AI settings are migrated without losing provider configuration", (t) => {
-  const { configPath, manager } = testConfig(t);
-  fs.writeFileSync(configPath, JSON.stringify({
-    provider: "minimax",
-    azure: { endpoint: "https://azure.test", apiKey: "old-azure", deployment: "deployment" },
-    minimax: { endpoint: "https://minimax.test", apiKey: "old-minimax", model: "model-a" }
-  }));
-
-  assert.equal(manager.migrateLegacyConfig(), true);
-  const raw = fs.readFileSync(configPath, "utf8");
-  const runtime = manager.getRuntimeEnv();
-  assert.equal(raw.includes("old-azure"), false);
-  assert.equal(raw.includes("old-minimax"), false);
-  assert.equal(runtime.CARD_VAULT_AI_PROVIDER, "minimax");
-  assert.equal(runtime.MINIMAX_MODEL, "model-a");
-  assert.equal(manager.migrateLegacyConfig(), false);
-});
 
 test("undecryptable API keys do not prevent desktop startup or settings recovery", (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "card-vault-ai-public-test-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const configPath = path.join(root, "ai-config.json");
   fs.writeFileSync(configPath, JSON.stringify({
-    version: 3,
+    version: 5,
     provider: "azure",
     azure: {
       endpoint: "https://example.test",

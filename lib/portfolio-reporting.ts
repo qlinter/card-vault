@@ -29,11 +29,7 @@ export function buildReportingPortfolio(cards: PortfolioCardRecord[], scope: Por
       summary.unrealizedDifference = summary.unrealizedReturnRate = summary.totalProfit = null;
     }
   }
-  // Unknown conversions must not become numeric zero in charts or AI evidence.
-  if (incompleteCosts.length > 0) {
-    snapshot.timeSeries.purchases = snapshot.timeSeries.sales = snapshot.timeSeries.expenses = [];
-    snapshot.activitySeries = { purchases: [], grading: [], sales: [] };
-  }
+  // Monthly series retain physical activity and mark only incomplete amounts.
   const unvaluedIds = new Set(unvalued.map(card => card.id));
   const incompleteCards = [...new Map([...incomplete, ...unvalued].map(card => [card.id, card])).values()].flatMap(card => card.id ? [{
     id: card.id, playerName: card.playerName, cardTitle: card.cardTitle ?? "",

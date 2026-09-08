@@ -63,27 +63,24 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
     const provider = normalizeProvider(raw.provider);
     const azureRaw = raw.azure || {};
     const minimaxRaw = raw.minimax || {};
-    const customRawItems = Array.isArray(raw.customProviders)
-      ? raw.customProviders
-      : raw.custom && (provider === "custom" || raw.custom.endpoint || raw.custom.model || raw.custom.apiKeyEncrypted || raw.custom.apiKey)
-        ? [{ ...raw.custom, id: raw.custom.id || "custom-legacy" }]
-        : [];
+    if (fs.existsSync(configPath) && raw.version !== 5) throw new Error("AI 配置格式不受支持，仅接受当前版本配置。");
+    const customRawItems = Array.isArray(raw.customProviders) ? raw.customProviders : [];
     return normalizeSettings({
       provider,
       activeCustomId: raw.activeCustomId,
       azure: {
-        endpoint: azureRaw.endpoint ?? (provider === "azure" ? raw.endpoint : undefined),
-        apiKey: azureRaw.apiKeyEncrypted ? decryptKey(azureRaw.apiKeyEncrypted) : (azureRaw.apiKey ?? (provider === "azure" ? raw.apiKey : "")),
-        deployment: azureRaw.deployment ?? raw.deployment
+        endpoint: azureRaw.endpoint,
+        apiKey: azureRaw.apiKeyEncrypted ? decryptKey(azureRaw.apiKeyEncrypted) : "",
+        deployment: azureRaw.deployment
       },
       minimax: {
-        endpoint: minimaxRaw.endpoint ?? (provider === "minimax" ? raw.endpoint : undefined),
-        apiKey: minimaxRaw.apiKeyEncrypted ? decryptKey(minimaxRaw.apiKeyEncrypted) : (minimaxRaw.apiKey ?? (provider === "minimax" ? raw.apiKey : "")),
-        model: minimaxRaw.model ?? raw.model
+        endpoint: minimaxRaw.endpoint,
+        apiKey: minimaxRaw.apiKeyEncrypted ? decryptKey(minimaxRaw.apiKeyEncrypted) : "",
+        model: minimaxRaw.model
       },
       customProviders: customRawItems.map((item) => ({
         ...item,
-        apiKey: item.apiKeyEncrypted ? decryptKey(item.apiKeyEncrypted) : (item.apiKey ?? (provider === "custom" ? raw.apiKey : ""))
+        apiKey: item.apiKeyEncrypted ? decryptKey(item.apiKeyEncrypted) : ""
       }))
     });
   }
@@ -138,13 +135,6 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
     return publicSettings(next, false);
   }
 
-  function migrateLegacyConfig() {
-    const raw = readRaw();
-    if (!fs.existsSync(configPath) || raw.version === 5) return false;
-    writeEncrypted(load());
-    return true;
-  }
-
   function getRuntimeEnv() {
     const settings = load();
     const activeCustom = settings.customProviders.find((item) => item.id === settings.activeCustomId) || settings.customProviders[0];
@@ -176,7 +166,6 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
     getConfigPath: () => configPath,
     getPublicSettings,
     getRuntimeEnv,
-    migrateLegacyConfig,
     save
   };
 }

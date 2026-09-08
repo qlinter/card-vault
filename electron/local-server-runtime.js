@@ -5,6 +5,7 @@ const net = require("node:net");
 const path = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");
 const { createOperationCoordinator } = require("./operation-coordinator");
+const { selectLocalPort } = require("./local-server-port");
 
 function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
   const runExclusiveOperation = createOperationCoordinator();
@@ -27,6 +28,8 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
   let serverUrl = `http://127.0.0.1:${serverPort}`;
   let serverProcess = null;
   let serverRestartPromise = null;
+  let serverFailure = null;
+  let hasStarted = false;
 
   function getLatestModifiedTime(targetPath) {
     if (!fs.existsSync(targetPath)) return 0;
@@ -75,6 +78,7 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
       const startedAt = Date.now();
       const attempt = async () => {
         if (await checkServer(url)) return resolve();
+        if (serverFailure) return reject(serverFailure);
         if (Date.now() - startedAt >= timeoutMs) return reject(new Error(`Timed out waiting for ${url}`));
         setTimeout(attempt, 500);
       };
@@ -100,11 +104,10 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
     throw new Error(`Local service port ${port} is still in use.`);
   }
 
-  async function selectServerTarget() {
-    for (let candidate = defaultServerPort; candidate < defaultServerPort + 20; candidate += 1) {
-      if (await canListenOnPort(candidate)) { serverPort = candidate; serverUrl = `http://127.0.0.1:${serverPort}`; return; }
-    }
-    throw new Error("No available local port found for Card Vault.");
+  async function selectServerTarget(preferDefault = true) {
+    serverPort = await selectLocalPort({ preferredPort: preferDefault ? defaultServerPort : null });
+    serverUrl = `http://127.0.0.1:${serverPort}`;
+    logger.appendLog("desktop.log", `Selected local service address: ${serverUrl}`);
   }
 
   async function ensurePreparedBuild() {
@@ -123,11 +126,35 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
     fs.mkdirSync(storage.getShareBackgroundsDir(), { recursive: true });
     await runNodeCommand(initDbScriptPath, [], "prepare.log");
     const dbPath = storage.getDbPath();
-    serverProcess = spawn(process.execPath, [nextCliPath, "start", "--hostname", "127.0.0.1", "--port", String(serverPort)], { cwd: rootDir, windowsHide: true, env: { ...process.env, ...getDesktopEnv(), ELECTRON_RUN_AS_NODE: "1", DATABASE_URL: `file:${dbPath.replace(/\\/g, "/")}`, CARD_VAULT_SESSION_TOKEN: sessionToken, CARD_VAULT_ALLOWED_ORIGIN: serverUrl } });
-    serverProcess.stdout.on("data", (chunk) => logger.appendLog("server.log", chunk.toString().trimEnd()));
-    serverProcess.stderr.on("data", (chunk) => logger.appendLog("server.log", chunk.toString().trimEnd()));
-    serverProcess.on("error", (error) => logger.appendLog("desktop.log", `Server process error: ${error.message}`));
-    serverProcess.on("exit", (code) => logger.appendLog("desktop.log", `Server exited with code ${code ?? "unknown"}.`));
+    for (let attempt = 0; attempt < 3; attempt++) {
+      serverFailure = null;
+      let bindError = null;
+      const child = spawn(process.execPath, [nextCliPath, "start", "--hostname", "127.0.0.1", "--port", String(serverPort)], { cwd: rootDir, windowsHide: true, env: { ...process.env, ...getDesktopEnv(), ELECTRON_RUN_AS_NODE: "1", DATABASE_URL: `file:${dbPath.replace(/\\/g, "/")}`, CARD_VAULT_SESSION_TOKEN: sessionToken, CARD_VAULT_ALLOWED_ORIGIN: serverUrl } });
+      serverProcess = child;
+      child.stdout.on("data", chunk => logger.appendLog("server.log", chunk.toString().trimEnd()));
+      child.stderr.on("data", chunk => {
+        const text = chunk.toString();
+        bindError = text.match(/EADDRINUSE|EACCES/)?.[0] || bindError;
+        logger.appendLog("server.log", text.trimEnd());
+      });
+      child.on("error", error => { if (serverProcess === child) serverFailure = error; });
+      child.on("exit", code => {
+        logger.appendLog("desktop.log", `Server exited with code ${code ?? "unknown"}.`);
+        if (serverProcess === child) serverFailure = Object.assign(new Error(`本地服务启动失败（${bindError || `exit ${code ?? "unknown"}`}），请查看 server.log。`), { code: bindError });
+      });
+      try {
+        await waitForServer(serverUrl, 30000);
+        hasStarted = true;
+        return;
+      } catch (error) {
+        const previous = stopServer();
+        await waitForProcessExit(previous);
+        // Once a window exists its origin must remain stable during backup/AI reloads.
+        if (hasStarted || attempt === 2 || !["EADDRINUSE", "EACCES"].includes(error.code)) throw error;
+        logger.appendLog("desktop.log", "Selected port became unavailable; requesting another local port.");
+        await selectServerTarget(false);
+      }
+    }
   }
 
   function stopServer() {

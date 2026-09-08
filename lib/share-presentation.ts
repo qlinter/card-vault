@@ -141,6 +141,7 @@ export function parseSharePresentation(value: unknown): SharePresentation {
   }
 
   const record = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+  if (Object.keys(record).length && record.version !== 3) throw new Error("分享配置格式不受支持，仅接受当前版本格式。");
   const position = record.backgroundPosition && typeof record.backgroundPosition === "object"
     ? (record.backgroundPosition as Record<string, unknown>)
     : {};
@@ -175,6 +176,7 @@ export function createSharePresentation(input: {
   featuredCardIds?: unknown;
 }): SharePresentation {
   return parseSharePresentation({
+    version: 3,
     templateId: input.templateId,
     layout: input.layout,
     backgroundPosition: {

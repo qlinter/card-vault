@@ -1,10 +1,18 @@
 import { Prisma } from "@prisma/client";
 
+// Rebuilding financial reports does not need card text or image records.
+export const financialCardSelect = Prisma.validator<Prisma.CardSelect>()({
+  id: true, collectionStatus: true, holdingQuantity: true,
+  transactions: { select: { kind: true, amountMinor: true, currency: true, quantity: true, occurredAt: true, createdAt: true, paymentsJson: true, amountKnown: true } },
+  expenses: { select: { context: true, amountMinor: true, currency: true, occurredAt: true, createdAt: true } },
+  valuations: { select: { amountMinor: true, currency: true, valuedAt: true, createdAt: true, source: true } }
+});
+
 export const homeCardInclude = Prisma.validator<Prisma.CardInclude>()({
   _count: { select: { images: true } },
   images: { take: 1, orderBy: { createdAt: "asc" } },
-  transactions: { select: { kind: true, amountMinor: true, currency: true, quantity: true, occurredAt: true, createdAt: true, paymentsJson: true, amountKnown: true } },
-  expenses: { select: { context: true, amountMinor: true, currency: true, occurredAt: true, createdAt: true } },
+  transactions: financialCardSelect.transactions,
+  expenses: financialCardSelect.expenses,
   valuations: {
     select: { amountMinor: true, currency: true, valuedAt: true, createdAt: true, source: true },
     orderBy: [{ valuedAt: "desc" }, { createdAt: "desc" }]
@@ -39,7 +47,7 @@ export const portfolioAnalysisCardSelect = Prisma.validator<Prisma.CardSelect>()
   tags: true,
   publicDescription: true,
   _count: { select: { images: true } },
-  transactions: { select: { kind: true, amountMinor: true, currency: true, quantity: true, occurredAt: true, createdAt: true, paymentsJson: true, amountKnown: true } },
+  transactions: financialCardSelect.transactions,
   expenses: { select: { kind: true, context: true, amountMinor: true, currency: true, occurredAt: true, createdAt: true } },
-  valuations: { select: { amountMinor: true, currency: true, valuedAt: true, createdAt: true, source: true } }
+  valuations: financialCardSelect.valuations
 });

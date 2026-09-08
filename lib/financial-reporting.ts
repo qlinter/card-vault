@@ -1,4 +1,4 @@
-import { normalizeCurrency, selectLatestValuation } from "./financial-history.ts";
+import { normalizeCurrency } from "./financial-history.ts";
 
 export const accountingVersion = "physical-position-v2";
 export type MoneyComponent = { currency: string; amountMinor: bigint };
@@ -41,8 +41,12 @@ export function parseFxRate(value: string): bigint {
 export function rateForDate(rates: readonly FxRate[], at: Date): FxRate | null {
   const day = at.toISOString().slice(0, 10);
   // Each manually confirmed rate is effective from its date until the next entry.
-  return [...rates].filter((rate) => rate.effectiveDate <= day)
-    .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate) || b.revision - a.revision)[0] ?? null;
+  let latest: FxRate | null = null;
+  for (const rate of rates) {
+    if (rate.effectiveDate <= day && (!latest || rate.effectiveDate > latest.effectiveDate
+      || (rate.effectiveDate === latest.effectiveDate && rate.revision > latest.revision))) latest = rate;
+  }
+  return latest;
 }
 
 export function convertMoney(value: MoneyComponent, target: string, at: Date, rates: readonly FxRate[]) {
@@ -80,25 +84,36 @@ export function reportingHistory<T extends FinancialHistory>(history: T, config:
   const collectionStatus = history.collectionStatus === "sold" && (holdingQuantity ?? 0) > 0 ? "holding" : history.collectionStatus;
   if (history.transactions.length === 0 && ((holdingQuantity ?? 0) > 0 || expenses.length > 0 || history.collectionStatus === "sold")) missing.add("COST · No purchase history");
   const costMissing = [...missing];
-  const originalValuations = history.valuations.filter((row) => row.valuedAt <= asOf);
-  // Reconstruct the quote that was available at each business date. A direct quote
-  // always takes precedence over an alternative quote in the reporting currency.
-  const dates = [...new Set(originalValuations.map((row) => row.valuedAt.getTime()))].sort((a, b) => a - b);
+  const originalValuations = history.valuations.filter((row) => row.valuedAt <= asOf)
+    .sort((a, b) => a.valuedAt.getTime() - b.valuedAt.getTime() || b.createdAt.getTime() - a.createdAt.getTime());
+  // Reconstruct the quote available at each business date. A quote in the
+  // reporting currency always takes precedence over an alternative-currency quote.
   const seenQuotes = new Set<string>();
-  const valuations = dates.flatMap((time) => {
-    const available = originalValuations.filter((row) => row.valuedAt.getTime() <= time);
-    const quote = selectLatestValuation(available, target) ?? selectLatestValuation(available);
-    if (!quote) return [];
+  const valuations: Array<FinancialValuation & { available: boolean }> = [];
+  let direct: (FinancialValuation & { available?: boolean }) | undefined;
+  let latestOriginal: FinancialValuation | undefined;
+  // Sweep each date once. Newest creation wins within a date; stable sorting
+  // preserves input order for exact ties, just like selectLatestValuation.
+  for (let index = 0; index < originalValuations.length;) {
+    const latest: FinancialValuation & { available?: boolean } = originalValuations[index];
+    const time = latest.valuedAt.getTime();
+    let foundDirect = false;
+    do {
+      const row = originalValuations[index++];
+      if (normalizeCurrency(row.currency) === target && !foundDirect) { direct = row; foundDirect = true; }
+    } while (index < originalValuations.length && originalValuations[index].valuedAt.getTime() === time);
+    const quote = direct && direct.available !== false ? direct : latest.available !== false ? latest : undefined;
+    latestOriginal = quote;
+    if (!quote) continue;
     const key = `${quote.currency}:${quote.valuedAt.toISOString()}:${quote.createdAt.toISOString()}`;
-    if (seenQuotes.has(key)) return [];
+    if (seenQuotes.has(key)) continue;
     seenQuotes.add(key);
     const result = convertMoney(quote, target, quote.valuedAt, config.rates);
     if (result.rate) evidence.set(result.rate.id, result.rate);
     // Keep an unavailable marker so an older convertible quote cannot masquerade
     // as the latest quote. Historical cutoffs before this marker still work.
-    return [{ ...quote, currency: target, amountMinor: result.amountMinor ?? 0n, available: result.amountMinor !== null }];
-  });
-  const latestOriginal = selectLatestValuation(originalValuations, target) ?? selectLatestValuation(originalValuations);
+    valuations.push({ ...quote, currency: target, amountMinor: result.amountMinor ?? 0n, available: result.amountMinor !== null });
+  }
   if (latestOriginal) convert(latestOriginal, latestOriginal.valuedAt);
   return { ...history, holdingQuantity, collectionStatus, transactions: transactions as T["transactions"], expenses: expenses as T["expenses"], valuations: valuations as T["valuations"], costMissing, missing: [...missing], evidence: [...evidence.values()], reportingCurrency: target };
 }

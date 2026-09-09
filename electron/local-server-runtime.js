@@ -53,10 +53,22 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
   function runNodeCommand(scriptPath, args, logFile) {
     return new Promise((resolve, reject) => {
       const child = spawn(process.execPath, [scriptPath, ...args], { cwd: rootDir, windowsHide: true, env: { ...process.env, ...getDesktopEnv(), ELECTRON_RUN_AS_NODE: "1" } });
-      child.stdout.on("data", (chunk) => logger.appendLog(logFile, chunk.toString().trimEnd()));
-      child.stderr.on("data", (chunk) => logger.appendLog(logFile, chunk.toString().trimEnd()));
+      let errorOutput = "";
+      child.stdout.setEncoding("utf8");
+      child.stderr.setEncoding("utf8");
+      child.stdout.on("data", (chunk) => logger.appendLog(logFile, chunk.trimEnd()));
+      child.stderr.on("data", (chunk) => {
+        errorOutput = (errorOutput + chunk).slice(-6000);
+        logger.appendLog(logFile, chunk.trimEnd());
+      });
       child.on("error", reject);
-      child.on("exit", (code) => code === 0 ? resolve() : reject(new Error(`${path.basename(scriptPath)} ${args.join(" ")} exited with code ${code ?? "unknown"}.`)));
+      child.on("close", (code) => {
+        if (code === 0) return resolve();
+        const command = [path.basename(scriptPath), ...args].join(" ");
+        const details = errorOutput.trim();
+        const logPath = logger.getLogPath?.(logFile) || logFile;
+        reject(new Error(`${command} exited with code ${code ?? "unknown"}.${details ? `\n\n${details}` : ""}\n\n日志：${logPath}`));
+      });
     });
   }
 

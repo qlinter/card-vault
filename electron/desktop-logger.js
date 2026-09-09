@@ -19,7 +19,7 @@ function createDesktopLogger(logsDir, { maxBytes = 2 * 1024 * 1024 } = {}) {
     } catch { return false; }
   }
 
-  return { ensureLogsDir, appendLog };
+  return { ensureLogsDir, appendLog, getLogPath: (fileName) => path.join(logsDir, path.basename(fileName)) };
 }
 
 module.exports = { createDesktopLogger };

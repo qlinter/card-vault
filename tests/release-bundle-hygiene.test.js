@@ -15,6 +15,12 @@ test("release bundle rejects Prisma temporary engines and source maps", () => {
   assert.equal(isForbiddenPackagedEntry("resources/app/node_modules/next/runtime.js.map"), true);
   assert.equal(isForbiddenPackagedEntry("resources/app/node_modules/.prisma/client/query_engine.dll.node"), false);
   assert.equal(isForbiddenPackagedEntry("LICENSES.chromium.html"), false);
+  for (const name of ["benchmark-dense-history.js", "benchmark-portfolio-history.mts", "check-docs.js", "start-ui-test-server.js", "ui-test-clock.js"]) {
+    assert.equal(isForbiddenPackagedEntry("resources/app/scripts/" + name), true);
+  }
+  for (const name of ["init-db.js", "database-schema.js", "test-card-flow.js", "test-memory-sampler.js"]) {
+    assert.equal(isForbiddenPackagedEntry("resources/app/scripts/" + name), false);
+  }
 });
 
 test("release cleanup removes only Prisma temporary engines", () => {

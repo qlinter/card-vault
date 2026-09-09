@@ -78,7 +78,7 @@ function parseRuntimeCustomProviders(): CustomProviderSettings[] | undefined {
   }
 }
 
-export function getAiSettingsFile(): AiSettingsFile {
+function getAiSettingsFile(): AiSettingsFile {
   const fileSettings = normalizeSettings(loadSettingsFile());
   const provider = normalizeProvider(process.env.CARD_VAULT_AI_PROVIDER || fileSettings.provider);
   const runtimeCustomProviders = parseRuntimeCustomProviders();

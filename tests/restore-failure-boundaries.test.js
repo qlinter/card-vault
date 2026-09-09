@@ -32,3 +32,29 @@ test("failure after directory switch restores the original database and media", 
   assert.equal(fs.readFileSync(path.join(source, "marker.txt"), "utf8"), "incoming");
   assert.ok(!fs.readdirSync(root).some(name => name.includes("restore-staging") || name.includes("restore-rollback")));
 });
+
+test("restore rejects media changed during copying before switching current data", t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "card-vault-restore-copy-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const target = path.join(root, "current"), source = path.join(root, "incoming");
+  for (const folder of [target, source]) initializeDatabase(path.join(folder, "dev.db"));
+  fs.writeFileSync(path.join(target, "marker.txt"), "original");
+  fs.writeFileSync(path.join(source, "marker.txt"), "incoming");
+  require("../electron/storage/backup-manifest").writeBackupManifest(source);
+  const copy = fs.cpSync;
+  t.mock.method(fs, "cpSync", (from, to, options) => {
+    copy(from, to, options);
+    if (String(to).includes("restore-staging")) fs.writeFileSync(path.join(to, "marker.txt"), "tampered");
+  });
+  let switched = false;
+  const service = createRestoreService({
+    config: { getDataDir: () => target, getDbPath: () => path.join(target, "dev.db"), getBackupDir: () => path.join(root, "backups") },
+    backupDataFolder: () => ({ backupPath: "test-backup" }),
+    repairDataLayout: () => { switched = true; }
+  });
+  assert.throws(() => service.restoreDataFolder(source), /备份文件校验失败/);
+  assert.equal(switched, false);
+  assert.equal(fs.readFileSync(path.join(target, "marker.txt"), "utf8"), "original");
+  assert.equal(fs.readFileSync(path.join(source, "marker.txt"), "utf8"), "incoming");
+  assert.ok(!fs.readdirSync(root).some(name => name.includes("restore-staging")));
+});

@@ -1,6 +1,6 @@
 # Card Vault Product Roadmap
 
-Updated 2026-09-08. Current source is v1.3.1; installer and portable packages have been generated and verified after user confirmation. See the [release notes](./release-v1.3.1.md) for scope and acceptance, and the [documentation index](./README.md) for current rules. This file maintains capability status and future priorities only.
+Updated 2026-09-09. Current version is v1.3.2; installer and portable artifacts were generated and verified, but have not been uploaded. See the [release notes](./release-v1.3.2.md) for current review and validation; previous distribution facts remain in historical notes.
 
 ## Completed capabilities
 
@@ -23,14 +23,19 @@ The current implementation retains independent styles and themes, sections, card
 
 This batch includes startup/restore fixes, reminder and export correctness, incremental indexing, financial-query optimization, current-format cleanup and bilingual documentation. Source checks, packaged runtime, version and SHA-256 verification passed; results are recorded in the release notes. Artifacts have not been uploaded.
 
+## v1.3.2 distribution completed
+
+Security updates, atomic settings writes, copied-backup verification, Windows path fixes, collection queries, dense portfolio-history reuse and large CSV/XLSX streaming exports are included. Monthly output equivalence, 1k/10k HTTP exports, cancellation cleanup and full Portfolio page benchmarks are complete. The follow-up cleanup removes obsolete queries and helpers, consolidates ZIP generation and memory sampling, narrows internal interfaces and trims development-only package files. Independent accounting references and current restore protections remain. Following user confirmation, unsigned Windows x64 installer and portable artifacts were generated. Full release checks, packaged card/share/management/streaming-export flows, version, bundle contents and SHA-256 verification passed. Results and remaining manual checks are recorded in the release notes.
+
+
 ## Next priorities
 
 | Priority | Direction | Conditions and acceptance |
 | --- | --- | --- |
-| 1 | Real Windows usage validation | Verify clean installation and upgrades with the new packages, protected install locations, portable migration and data retention. |
-| 2 | Scale and failure recovery | Per-card indexing, dense-history/synthetic-image benchmarks and restore-failure rollback are implemented. Next optimize dense Portfolio histories and validate large real photos and power interruption. |
-| 3 | Feedback-driven usability | Record actual entry, search and maintenance problems. Retain current layout and typography unless feedback supports further changes. |
-| 4 | Data rule extensions | Define the model and compatibility requirements for full status-transition history beyond the implemented status start dates, additional import fields and more detailed correction flows. |
+| Deferred | Real Windows installation and upgrade validation | Deferred by user agreement. Artifacts are available; schedule real clean-install, upgrade, portable-migration and data-retention checks separately. |
+| 1 | Scale and failure recovery | Dense-history reuse and disk-backed streaming exports are complete. Next profile Portfolio queries, reporting projection and rendering separately, assess task pagination, and validate large real photos and power interruption. |
+| 2 | Feedback-driven usability | Record actual entry, search and maintenance problems. Retain current layout and typography unless feedback supports further changes. |
+| 3 | Data rule extensions | Define the model and compatibility requirements for full status-transition history beyond the implemented status start dates, additional import fields and more detailed correction flows. |
 | Deferred | Managed publishing and multi-device sync | Resume only with renewed user agreement and long-term hosting, identity, operational and recovery resources. |
 
 The removed standalone bulk-edit controls, recent-batch list, system digest notifications and share More menu are not future deliverables. No independent mobile application is planned; exported galleries still support phone browsers.

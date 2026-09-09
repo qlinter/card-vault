@@ -62,7 +62,7 @@ const shareGalleryTemplateById = new Map<ShareGalleryTemplateId, ShareGalleryTem
   shareGalleryTemplates.map((template) => [template.id, template])
 );
 
-export function getShareGalleryTemplate(value: unknown): ShareGalleryTemplate | null {
+function getShareGalleryTemplate(value: unknown): ShareGalleryTemplate | null {
   return typeof value === "string"
     ? shareGalleryTemplateById.get(value as ShareGalleryTemplateId) ?? null
     : null;

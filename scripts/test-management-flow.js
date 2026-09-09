@@ -83,6 +83,28 @@ async function main() {
     assert.equal("notificationDue" in monthly, false);
     assert.equal("notifications" in monthly.settings, false);
 
+    // Dense history and mixed SQLite date encodings must preserve digest semantics.
+    const baseline = await get("/api/collection-management");
+    const clock = Date.now(), recent = clock - 2 * 86400000, future = clock + 2 * 86400000;
+    db.exec("PRAGMA foreign_keys=ON");
+    const fixtureCard = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,createdAt) VALUES(?, 'History fixture', 'Boundary', 'Basketball', ?)");
+    fixtureCard.run("digest-text", new Date(recent).toISOString());
+    fixtureCard.run("digest-numeric", recent);
+    fixtureCard.run("digest-future", future);
+    const fixtureBuy = db.prepare("INSERT INTO CardTransaction(id,cardId,kind,amountMinor,currency,occurredAt,provenance,amountKnown) VALUES(?,?,'purchase',0,'CNY',?,'test',0)");
+    const fixtureValue = db.prepare("INSERT INTO CardValuation(id,cardId,amountMinor,currency,valuedAt,source,provenance) VALUES(?,?,100,'CNY',?,'个人估计','test')");
+    for (const [id, date] of [["digest-text", new Date(recent).toISOString()], ["digest-numeric", recent], ["digest-future", future]]) {
+      fixtureBuy.run(id, id, date); fixtureValue.run(id, id, date);
+    }
+    for (let n = 0; n < 300; n++) fixtureValue.run("old-" + n, "digest-future", new Date(clock - (200 + n) * 86400000).toISOString());
+    const dense = await get("/api/collection-management");
+    assert.equal(dense.digest.newCards, baseline.digest.newCards + 2);
+    assert.equal(dense.digest.purchases, baseline.digest.purchases + 2);
+    assert.equal(dense.digest.valuations, baseline.digest.valuations + 2);
+    assert.ok(dense.tasks.some(task => task.cardId === "digest-text" && task.kind === "purchase"));
+    assert.ok(dense.tasks.some(task => task.cardId === "digest-future" && task.kind === "stale" && task.days === 200));
+    db.exec("DELETE FROM Card WHERE id IN ('digest-text','digest-numeric','digest-future')");
+
     const insert = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,holdingQuantity) VALUES(?,?,?,?,1)"), buy = db.prepare("INSERT INTO CardTransaction(id,cardId,kind,amountMinor,currency,quantity,occurredAt,provenance) VALUES(?,?,'purchase',?,'CNY',1,'2026-01-01T00:00:00.000Z','benchmark')"), valuation = db.prepare("INSERT INTO CardValuation(id,cardId,amountMinor,currency,valuedAt,source,provenance) VALUES(?,?,?,'CNY','2026-08-01T00:00:00.000Z','个人估计','benchmark')");
     let seeded = 1; const benchmarks = [];
     for (const size of process.argv.includes("--benchmark") ? [1000, 5000, 10000] : [60]) {

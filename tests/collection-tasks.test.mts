@@ -40,3 +40,13 @@ test("valuation, grading and listing reminders share the 180-day boundary", () =
     }
   }
 });
+
+test("unsorted dense valuations select the latest effective date without mutating input", () => {
+  const values = [250, -3, 400, 180, 181].map(days => ({ valuedAt: new Date(now.getTime() - days * 86400000) }));
+  const order = values.map(row => row.valuedAt.toISOString());
+  const tasks = deriveCollectionTasks([{ ...card, valuations: values }], now);
+  const stale = tasks.find(task => task.kind === "stale")!;
+  assert.equal(stale.days, 180);
+  assert.ok(stale.fingerprint.startsWith(`stale:${values[3].valuedAt.toISOString()}`));
+  assert.deepEqual(values.map(row => row.valuedAt.toISOString()), order);
+});

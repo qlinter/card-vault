@@ -13,19 +13,19 @@ type AboutSettingsProps = {
 export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
   const { locale } = useLanguage();
   const releaseHighlights = locale === "en" ? [
-    "Windows-reserved and occupied ports now fall back to an OS-assigned local port.",
-    "Missing FX preserves monthly purchase/sale counts; status timers and recurring reminders are accurate.",
-    "Exports respect cross-page selections; restore rolls back if final validation fails.",
-    "Incremental financial indexes, faster quote/rate lookup and focused reminder queries reduce unnecessary work.",
-    "Only current data formats are supported; historical upgrade and conversion paths have been removed.",
-    "Bilingual READMEs retain every historical version; release notes include code optimizations and validation."
+    "Updated Next.js, sharp and js-yaml to security-patched versions.",
+    "Startup failures show the underlying error and actual log path.",
+    "AI and storage settings are saved atomically; restore verifies copied files before switching data.",
+    "Fixed Windows path boundaries and future-date counts in collection digests.",
+    "Optimized dense portfolio history and added streamed CSV/XLSX generation with cancellation cleanup.",
+    "Removed obsolete helpers and consolidated ZIP generation, performance sampling and packaging rules."
   ] : [
-    "Windows 保留或占用优先端口时，自动改用系统分配的本地端口。",
-    "缺失汇率仍保留逐月买入/出售数量，修正状态计时与提醒复发。",
-    "导出遵循跨页勾选范围；恢复最终检查失败时回滚原数据。",
-    "增量财务索引、估值与汇率查找优化，单条提醒仅查询对应卡片。",
-    "仅支持当前数据格式，移除历史数据升级与旧格式转换功能。",
-    "中英文 README 保留全部历史版本，更新说明包含代码优化与验收结果。"
+    "更新 Next.js、sharp 和 js-yaml，修复已知依赖安全问题。",
+    "启动失败显示底层错误及实际日志路径。",
+    "AI 与存储配置完整写入后替换；恢复切换前再次校验复制文件。",
+    "修正 Windows 路径边界及收藏摘要的未来日期计数。",
+    "优化密集组合历史，支持 CSV/XLSX 流式生成与取消清理。",
+    "移除无用旧代码，统一 ZIP 归档、性能采样与打包内容管理。"
   ];
   const [expanded, setExpanded] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);

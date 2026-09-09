@@ -26,7 +26,7 @@ type CardFilterInput = {
   sort?: string;
 };
 
-export function parseTags(value: string): string[] {
+function parseTags(value: string): string[] {
   return value
     .split(",")
     .map((tag) => tag.trim())

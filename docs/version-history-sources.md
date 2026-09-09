@@ -39,3 +39,9 @@ Standalone release notes for v1.0.0–v1.0.13 were not found; existing separate 
 The search covered the current workspace and all locally accessible Git references, not unsynchronized branches, unreachable deleted commits or external release attachments. Initial development/revert commits are not counted as separate product versions.
 
 Both READMEs must retain detailed notes for the latest version and concise entries for every earlier version. On a new release, preserve the outgoing version's full notes in its release document and add its summary to the history table. Keep the two languages aligned, distinguish later source fixes from packaged artifacts, and document any source gaps explicitly.
+
+## v1.3.2 更新整理
+
+v1.3.1 的详细发布事实保留于其发布说明，并加入双语 README 历史表；当前历史表包含 26 个旧版本。9 月 9 日的安全、可靠性、密集组合历史与流式导出更新统一见 [v1.3.2](./release-v1.3.2.md)，不沿用旧分发包验证结论。
+
+Both README history tables now contain 26 earlier versions, including v1.3.1. The v1.3.2 source changes and the unsigned Windows x64 artifacts generated on 2026-09-09 are recorded in its own release notes, separately from previous distribution artifacts.

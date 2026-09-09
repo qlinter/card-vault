@@ -175,7 +175,7 @@ export function calculateCurrencyPositionSeries(history: PositionHistory, curren
 export function calculateCurrencyPosition(history: PositionHistory, currencyValue: string): CurrencyPosition {
   const currency = normalizeCurrency(currencyValue);
   const expenses = history.expenses.filter((row) => normalizeCurrency(row.currency) === currency);
-  const events = currencyEvents(history, currency)
+  const events = currencyEvents({ ...history, valuations: [] }, currency)
     .filter((event): event is Exclude<InventoryEvent, { type: "sale_expense" | "valuation" }> =>
       event.type !== "sale_expense" && event.type !== "valuation");
 

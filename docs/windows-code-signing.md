@@ -6,7 +6,7 @@ Card Vault 的 Windows 代码签名是可选增强。`npm run release:win` 在�
 
 ## 执行前提
 
-当前 v1.3.1 已经用户确认生成未签名安装包和便携包，版本、包内运行及 SHA-256 验证通过；仅作源码审查时使用 `npm run check:release`，不生成安装文件。
+v1.3.2 已于 2026-09-09 生成 Windows x64 未签名安装包与便携包，安装器和便携主程序均为 NotSigned；版本、包内运行、文件内容及 SHA-256 检查通过，详见[本版发布说明](./release-v1.3.2.md)。真实全新安装与覆盖升级验收仍暂缓。仅作源码审查时使用 `npm run check:release`，不生成安装文件。分发过滤排除 `scripts/benchmark-*`、`scripts/check-*`、UI 测试启动器和固定测试时钟；包内仍保留数据库初始化、存储校验及包内业务验收脚本。文件卫生检查同步拒绝这些开发文件意外进入分发包，本次已对打包目录及最终便携 ZIP 完成复核。
 
 ## 无证书发布
 
@@ -67,7 +67,7 @@ npm.cmd run release:win
 2. 执行完整测试、编码检查和生产构建；CI 额外执行全部依赖审计，本地发布前运行 `npm run audit:all`。
 3. 使用 electron-builder 生成 Windows 安装版。
 4. 签名模式验证安装器和主程序的签名者与 RFC 3161 时间戳；未签名模式验证两者均为 `NotSigned`。
-5. 验证打包文件，运行卡片、分享、数据管理 HTTP 流程及包内健康端点冒烟测试。
+5. 验证打包文件，运行卡片、分享、数据管理、流式导出 HTTP 流程及包内健康端点冒烟测试。
 6. 生成便携 ZIP 和 SHA-256 校验值，并再次验证 ZIP 内主程序与本次签名模式一致。
 
 `npm run package:win` 只执行基础 electron-builder 打包，适合本机快速检查。对外发布应使用 `npm run release:win`，即使没有证书，也能获得完整门禁、冒烟测试、便携 ZIP 和 SHA-256 清单。
@@ -88,7 +88,7 @@ npm.cmd run release:win
 发布后可再次检查安装包签名：
 
 ```powershell
-Get-AuthenticodeSignature -LiteralPath '.\dist\card-vault-1.3.1-setup.exe' |
+Get-AuthenticodeSignature -LiteralPath '.\dist\card-vault-1.3.2-setup.exe' |
   Format-List Status,StatusMessage,SignerCertificate,TimeStamperCertificate
 ```
 

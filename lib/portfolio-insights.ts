@@ -1,3 +1,4 @@
+import { createPortfolioHistoryCursor } from "./portfolio-history-cursor.ts";
 import { isOwnedCollectionStatus } from "./card-stats.ts";
 import { minorMoneyToNumber, normalizeCurrency, selectLatestValuation } from "./financial-history.ts";
 import { roundPortfolioValue as money } from "./portfolio-number.ts";
@@ -118,16 +119,14 @@ export function buildPortfolioFinancialHistory(
   const months: string[] = [];
   for (let month = firstMonth; month <= lastMonth; month = nextMonth(month)) months.push(month);
 
+  const cursors = cards.map(createPortfolioHistoryCursor);
   return months.map((month) => {
     const at = monthCutoff(month, asOf);
     const totals = new Map<string, PortfolioFinancialHistoryCurrency>();
     const coverage = new Map<string, { currency: string; active: number; valued: number; costKnown: number }>();
-    for (const card of cards) {
+    for (const [index, card] of cards.entries()) {
+      const { positions, valuations } = cursors[index](at);
       if (!cardExistedAt(card, at)) continue;
-      const transactions = card.transactions.filter((record) => recordDate(record).getTime() <= at.getTime());
-      const expenses = card.expenses.filter((record) => recordDate(record).getTime() <= at.getTime());
-      const valuations = card.valuations.filter((record) => record.valuedAt.getTime() <= at.getTime());
-      const positions = calculatePositions({ transactions, expenses, valuations });
       for (const position of positions) {
         const fallbackQuantity = card.transactions.length === 0 && isOwnedCollectionStatus(card.collectionStatus)
           ? Math.max(0, card.holdingQuantity ?? 1)

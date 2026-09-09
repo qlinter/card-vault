@@ -37,7 +37,7 @@ export function normalizeCurrency(value: string | null | undefined): string {
   return currency;
 }
 
-export function currencyMinorUnitDigits(currencyValue: string): number {
+function currencyMinorUnitDigits(currencyValue: string): number {
   normalizeCurrency(currencyValue);
   return 2;
 }
@@ -119,13 +119,6 @@ export function normalizeOptionalHistoryText(value: string | null | undefined): 
   return trimmed || null;
 }
 
-export type HistoryMoneyEntry = {
-  amountMinor: bigint;
-  currency: string;
-};
-
-export type HistoryTotals = Record<string, bigint>;
-
 export type DatedValuation = {
   available?: boolean;
   valuedAt: Date;
@@ -151,14 +144,6 @@ export function selectLatestValuation<T extends DatedValuation>(
   }
 
   return latest?.available === false ? null : latest;
-}
-
-export function sumHistoryMoney(entries: readonly HistoryMoneyEntry[]): HistoryTotals {
-  return entries.reduce<HistoryTotals>((totals, entry) => {
-    const currency = normalizeCurrency(entry.currency);
-    totals[currency] = (totals[currency] ?? BigInt(0)) + entry.amountMinor;
-    return totals;
-  }, {});
 }
 
 export function formatMinorMoney(amountMinor: bigint, currencyValue: string): string {

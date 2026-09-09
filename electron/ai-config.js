@@ -1,5 +1,5 @@
 const fs = require("node:fs");
-const path = require("node:path");
+const { writeJsonAtomic } = require("../lib/atomic-json");
 const { normalizeProvider, normalizeSettings } = require("../lib/ai-settings-core");
 
 function publicSettings(settings, keyRecoveryRequired = false) {
@@ -105,8 +105,7 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
         apiKeyEncrypted: encryptKey(apiKey)
       }))
     };
-    fs.mkdirSync(path.dirname(configPath), { recursive: true });
-    fs.writeFileSync(configPath, JSON.stringify(stored, null, 2));
+    writeJsonAtomic(configPath, stored);
   }
 
   function save(value) {

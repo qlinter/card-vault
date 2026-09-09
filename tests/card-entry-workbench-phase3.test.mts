@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  applyCardEntryTemplateValues,
   normalizeCardEntryTemplateName,
   normalizeCardEntryTemplateValues
 } from "../lib/card-entry-template-domain.ts";
@@ -32,12 +31,6 @@ test("entry templates keep only reusable public fields", () => {
   assert.equal("playerName" in template, false);
   assert.equal("cardNumber" in template, false);
   assert.equal(normalizeCardEntryTemplateName("  同套   Prizm  "), "同套 Prizm");
-
-  const current = normalizeCardFormValues({ playerName: "Kobe", cardNumber: "8" });
-  const applied = applyCardEntryTemplateValues(current, template);
-  assert.equal(applied.playerName, "Kobe");
-  assert.equal(applied.cardNumber, "8");
-  assert.equal(applied.team, "Lakers");
 });
 
 test("duplicate scoring is deterministic and non-blocking", () => {

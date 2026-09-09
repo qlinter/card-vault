@@ -113,7 +113,7 @@ function verifyPackagedFiles() {
 
 function smokeTestPackagedRuntime(executablePath) {
   const packagedScriptsDir = path.join(unpackedDir, "resources", "app", "scripts");
-  for (const scriptName of ["test-card-flow.js", "test-share-flow.js", "test-management-flow.js"]) {
+  for (const scriptName of ["test-card-flow.js", "test-share-flow.js", "test-management-flow.js", "test-streaming-export-flow.js"]) {
     run(executablePath, [path.join(packagedScriptsDir, scriptName)], {
       timeout: 120000,
       env: { ELECTRON_RUN_AS_NODE: "1" }

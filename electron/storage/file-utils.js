@@ -1,20 +1,20 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { writeJsonAtomic } = require("../../lib/atomic-json");
 
 function loadJson(filePath) {
   try { return JSON.parse(fs.readFileSync(filePath, "utf8")); } catch { return {}; }
 }
 
 function saveJson(filePath, value) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, JSON.stringify(value, null, 2));
+  writeJsonAtomic(filePath, value);
 }
 
-function pathsEqual(leftPath, rightPath) { return path.resolve(leftPath) === path.resolve(rightPath); }
+function pathsEqual(leftPath, rightPath) { return path.relative(path.resolve(leftPath), path.resolve(rightPath)) === ""; }
 
 function isSubPath(parentPath, childPath) {
   const relativePath = path.relative(parentPath, childPath);
-  return relativePath !== "" && !relativePath.startsWith("..") && !path.isAbsolute(relativePath);
+  return relativePath !== "" && relativePath !== ".." && !relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath);
 }
 
 function resolveSelectedDataDir(selectedPath) {

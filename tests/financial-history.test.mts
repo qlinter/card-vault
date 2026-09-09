@@ -8,8 +8,7 @@ import {
   moneyValue,
   normalizeCurrency,
   parseMoneyToMinor,
-  selectLatestValuation,
-  sumHistoryMoney
+  selectLatestValuation
 } from "../lib/financial-history.ts";
 
 test("money values use exact integer minor units", () => {
@@ -32,17 +31,6 @@ test("money validation rejects negative, imprecise, and invalid currency values"
   assert.throws(() => assertExpenseKind("purchase"), /费用类型/);
   assert.equal(assertValuationSource("平台报价"), "平台报价");
   assert.throws(() => assertValuationSource("拍卖参考"), /估值来源必须选择/);
-});
-
-test("history totals never mix currencies", () => {
-  assert.deepEqual(
-    sumHistoryMoney([
-      { amountMinor: BigInt(100), currency: "CNY" },
-      { amountMinor: BigInt(250), currency: "cny" },
-      { amountMinor: BigInt(900), currency: "USD" }
-    ]),
-    { CNY: BigInt(350), USD: BigInt(900) }
-  );
 });
 
 test("latest valuation selection uses business date then creation time without mutating input", () => {

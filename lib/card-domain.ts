@@ -66,7 +66,7 @@ export function normalizeCardCollectionStatus(value: string | null | undefined):
   return normalized as CardCollectionStatus;
 }
 
-export function hasSerialNumberingEvidence(
+function hasSerialNumberingEvidence(
   serialNumber: string | null | undefined,
   serialRange: string | null | undefined
 ): boolean {

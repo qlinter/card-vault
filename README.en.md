@@ -6,20 +6,22 @@ Card Vault is a local-first Windows sports-card collection application built wit
 
 ## Current status
 
-Source version: `1.3.1` (2026-09-08). This release combines startup and reliability fixes, current-format cleanup and code optimization. See the [v1.3.1 release notes](./docs/release-v1.3.1.md) for source acceptance results. 
+Source version: `1.3.2` (2026-09-09), a security, reliability and large-collection performance update. See the [v1.3.2 release notes](./docs/release-v1.3.2.md) for review scope, changes and validation.
 
-Distribution artifacts are `dist/card-vault-1.3.1-setup.exe`, `dist/card-vault-1.3.1-portable.zip` and `dist/SHA256SUMS.txt`. Previously generated v1.3.0 packages exclude these changes; their original checksums remain in the historical release notes, which do not imply current download availability.
+Unsigned Windows x64 artifacts were generated on 2026-09-09: `dist/card-vault-1.3.2-setup.exe`, `dist/card-vault-1.3.2-portable.zip` and `dist/SHA256SUMS.txt`. Full release checks, packaged runtime, version, bundle contents and SHA-256 verification passed.
 
-## Latest version: v1.3.1
+## Latest version: v1.3.2
 
-1. **Reliable startup**: an OS-assigned loopback port is used when preferred ports are occupied or reserved by Windows. Startup port races can be retried, fixing `No available local port found for Card Vault`. Service restarts after backups and AI-setting changes preserve the address and session protection.
-2. **Accurate finance and reminders**: missing exchange rates affect only the relevant month/currency amounts; purchase/sale counts and other months remain visible. Independent status-start dates prevent ordinary edits from resetting grading/listing timers, and recurring conditions reopen reminders.
-3. **Export and restore protection**: exports respect cross-page selections and public-only filtering; deleted or filtered selections never widen the scope. Restore retains original data until final validation succeeds, rolls back on failure, and reports retained temporary directories if cleanup fails.
-4. **Code optimization**: a persistent financial-index queue processes affected cards in batches of 250, without loading card text or images. Valuation history uses one sorted chronological pass; rate lookup uses a linear scan. Historical trends find the earliest business date directly, and individual reminder actions read only their card. Financial semantics, missing-value handling and confirmed UI behavior are preserved.
-5. **Performance validation**: five alternating timed rounds after warmup on identical synthetic data reduced median financial-projection function time by about 25% with 24 valuations per card and 70% with 240. These are function benchmarks, not whole-page speedups. A local 10,000-card dense-history comparison measured full index/Home at 5.26 → 4.02 seconds and Portfolio at 6.13 → 5.95 seconds; see the [release notes](./docs/release-v1.3.1.md) for conditions and limitations.
-6. **Current format and documentation**: removed historical database upgrades/backfills, old AI/desktop configuration conversion and retired batch/gallery conversion. New databases receive the full current structure; existing databases are validated without rewriting, and restore requires a valid manifest. Current backup/restore and storage moves remain. Packages explicitly exclude development databases and database snapshots, with packaged-content checks. About, both READMEs and specifications are aligned; duplicate audit/progress records are merged into release notes while all version history is retained.
+1. **Dependency security**: Next.js 16.3.3, sharp 0.35.4 and js-yaml 4.3.2 address known advisories while retaining the full audit scope and failure threshold.
+2. **Startup diagnostics**: preparation failures include the underlying error and actual log path, with complete UTF-8 output handling.
+3. **Data protection**: AI and storage settings are written to a complete temporary file before replacement; restore rechecks the copied manifest before switching data to reject corrupted media.
+4. **Paths and digests**: correctly handle Windows path case and child names starting with two dots; exclude future dates from collection digests while supporting SQLite text and numeric timestamps.
+5. **Code optimization**: derive reminders in batches of 250 cards, query unknown-purchase existence, count digest events in the database and scan valuations once. Share grouping avoids repeated array copies.
+6. **Portfolio history**: advance through records chronologically and reuse balances when transactions and expenses have not changed, preserving monthly amounts, missing markers and coverage.
+7. **Large exports**: CSV/XLSX use a consistent database snapshot, bounded reads and streamed temporary files, then download in chunks. Cancellation cleanup and automatic worksheet splitting are included.
+8. **Code cleanup**: remove obsolete queries and helpers, share streamed ZIP generation between galleries and XLSX, consolidate memory sampling, narrow internal exports, and exclude development checks and benchmarks from distribution packages.
 
-Mixed-currency payments, moving-average cost, direct-valuation priority and business-date manual FX rules are unchanged. Main currency and rates remain separate settings under Finance. See [backup compatibility](./docs/data-backup-guide.md) and the [financial model](./docs/financial-history-model.md).
+Financial accounting, database structure and current-format validation remain unchanged. This patch adds no automatic historical upgrades or page layout changes. Historical release and distribution facts remain in their respective notes.
 
 ## Features
 
@@ -55,10 +57,12 @@ API keys reside in the local user configuration and are encrypted with Windows s
 | --- | --- |
 | `npm run check:release` | Encoding, docs, metadata, lint, types, coverage, production build, desktop startup and all HTTP/UI checks; does not package. |
 | `npm test` | Unit and module tests. |
-| `npm run test:card` / `test:share` / `test:security` / `test:management` | Business and security HTTP flows using isolated data. |
+| `npm run test:card` / `test:share` / `test:security` / `test:management` / `test:export` | Business and security HTTP flows using isolated data. |
 | `npm run test:ui` | Desktop UI, minimum-window checks, narrow share previews and strict screenshot comparisons. |
 | `npm run test:desktop` | Real-server startup with port contention, session checks and service restart. |
 | `npm run benchmark` | Isolated 1k/5k/10k synthetic collection benchmarks. |
+| `npm run benchmark:portfolio-history` | Compare complete monthly output and timings with the frozen former implementation. |
+| `npm run benchmark:export` | Validate streamed exports for 1k/10k cards, including duration and server memory. |
 | `npm run benchmark:dense` | Dense financial history and synthetic-image benchmarks at 1k/5k/10k cards. |
 | `npm run audit:all` / `audit:prod` | Online audit of all dependencies or production dependencies only; CI audits all dependencies, including packaging tools. |
 | `npm run release:win` | After confirmation: full checks, installer, portable ZIP, packaged smoke tests and SHA-256. |
@@ -70,10 +74,11 @@ Keep a full backup before upgrades or moving computers. CSV/XLSX files omit medi
 
 ## Historical releases
 
-All 25 earlier versions are retained below, newest first. These summaries describe each release at the time; current behavior and compatibility follow the latest documentation. The original bilingual summaries were recovered from the v1.2.1 README files, with v1.3.0 added from its release notes. Early standalone release notes were not found; see [historical sources and gaps](./docs/version-history-sources.md).
+All 26 earlier versions are retained below, newest first. These summaries describe each release at the time; current behavior and compatibility follow the latest documentation. The original bilingual summaries were recovered from the v1.2.1 README files, with v1.3.0 and v1.3.1 added from their release notes. Early standalone release notes were not found; see [historical sources and gaps](./docs/version-history-sources.md).
 
 | Version | Main changes | Source |
 | --- | --- | --- |
+| `1.3.1` | Fixed startup ports, recurring reminders, export scope and restore rollback; optimized financial indexing/history and consolidated current-format validation and documentation. | [Release notes](./docs/release-v1.3.1.md) |
 | `1.3.0` | Unified mixed-currency accounting and manual FX; import previews/undo, reminders and plans, Home pagination, Portfolio/gallery refinements and local security improvements. | [Release notes](./docs/release-v1.3.0.md) |
 | `1.2.1` | Added bilingual UI, consolidated Share Gallery and preview/export improvements, optional Windows signing, and unified code and product documentation. | [Release notes](./docs/release-v1.2.1.md) |
 | `1.2.0` | Completed the Portfolio Center, saved views, point-in-time snapshots, true historical trends and comparison, plus image rotation, card-subject terminology, and Showcase refinements. | [Release notes](./docs/release-v1.2.0.md) |
@@ -104,7 +109,7 @@ All 25 earlier versions are retained below, newest first. These summaries descri
 
 - [Historical sources and gaps](./docs/version-history-sources.md): recovered README history and documentation policy.
 - [Documentation index](./docs/README.md): current specifications and release history.
-- [v1.3.1 release notes](./docs/release-v1.3.1.md): fixes, code optimization, acceptance and distribution status.
+- [v1.3.2 release notes](./docs/release-v1.3.2.md): fixes, code optimization, acceptance and distribution status.
 - [Product roadmap](./docs/product-roadmap.en.md); [中文](./docs/product-roadmap.md).
 
 Application source lives in `app`, `components`, `lib` and `electron`. `scripts` handles preparation, tests and distribution; `tests` contains regressions and visual baselines. Git ignores personal data, secrets, `node_modules`, `.next`, `logs`, `dist` and test runtime files. Both READMEs retain detailed notes for the latest version and concise entries for every earlier version. Full release notes and source provenance remain in `docs`; a new release must not remove older entries.

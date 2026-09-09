@@ -2,7 +2,7 @@ export function safeText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export function stripThinkingText(value: unknown): string {
+function stripThinkingText(value: unknown): string {
   let text = safeText(value);
   if (!text) {
     return "";
@@ -36,7 +36,7 @@ export function cleanGeneratedText(value: unknown): string {
     .trim();
 }
 
-export function contentToText(content: unknown): string {
+function contentToText(content: unknown): string {
   if (typeof content === "string") {
     return content;
   }
@@ -121,7 +121,7 @@ export function responseFinishReason(data: unknown): string | null {
   return null;
 }
 
-export function findJsonSlice(value: unknown): string | null {
+function findJsonSlice(value: unknown): string | null {
   const withoutFence = safeText(value)
     .replace(/^```(?:json)?/i, "")
     .replace(/```$/i, "")

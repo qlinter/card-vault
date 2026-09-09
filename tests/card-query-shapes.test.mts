@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { homeCardInclude, portfolioAnalysisCardSelect } from "../lib/card-query-shapes.ts";
+import { financialCardSelect, portfolioAnalysisCardSelect } from "../lib/card-query-shapes.ts";
 
-test("homepage query retains currency alternatives and payment history for unified reporting", () => {
-  assert.equal("transactions" in homeCardInclude, true);
-  assert.equal("expenses" in homeCardInclude, true);
-  assert.equal("take" in homeCardInclude.valuations, false);
-  assert.deepEqual(homeCardInclude.valuations.orderBy, [{ valuedAt: "desc" }, { createdAt: "desc" }]);
+test("report-index query retains complete currency and payment facts without image or text payloads", () => {
+  assert.equal(financialCardSelect.transactions.select.paymentsJson, true);
+  assert.equal(financialCardSelect.transactions.select.amountKnown, true);
+  assert.equal(financialCardSelect.expenses.select.currency, true);
+  assert.equal(financialCardSelect.valuations.select.currency, true);
+  assert.equal("take" in financialCardSelect.valuations, false);
+  assert.equal("images" in financialCardSelect, false);
+  assert.equal("notes" in financialCardSelect, false);
 });
 
 test("portfolio analysis query retains the history required by the v2 snapshot", () => {

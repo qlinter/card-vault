@@ -36,25 +36,26 @@ function runCommand(label, command, args) {
 async function main() {
   if (!fs.existsSync(envPath) && fs.existsSync(envExamplePath)) {
     fs.copyFileSync(envExamplePath, envPath);
-    process.stdout.write("[1/5] Created local .env file.\n");
+    process.stdout.write("[1/4] Created local .env file.\n");
   } else {
-    process.stdout.write("[1/5] .env file already exists.\n");
+    process.stdout.write("[1/4] .env file already exists.\n");
   }
 
   fs.mkdirSync(uploadsDir, { recursive: true });
   fs.mkdirSync(thumbnailsDir, { recursive: true });
   fs.mkdirSync(shareCoversDir, { recursive: true });
   fs.mkdirSync(shareBackgroundsDir, { recursive: true });
-  process.stdout.write("[2/5] App data directory is ready.\n");
+  process.stdout.write("[2/4] App data directory is ready.\n");
+
+  await runCommand("[3/4] Initializing local database...", "node", ["scripts/init-db.js"]);
 
   if (fs.existsSync(nextDir)) {
     fs.rmSync(nextDir, { recursive: true, force: true });
     process.stdout.write("[prep] Removed old build cache.\n");
   }
 
-  await runCommand("[3/5] Generating Prisma client...", "npm.cmd", ["run", "prisma:generate"]);
-  await runCommand("[4/5] Initializing local database...", "node", ["scripts/init-db.js"]);
-  await runCommand("[5/5] Building app...", "npm.cmd", ["run", "build"]);
+  // npm prebuild already generates Prisma once.
+  await runCommand("[4/4] Building app...", "npm.cmd", ["run", "build"]);
 
   if (!fs.existsSync(path.join(nextDir, "BUILD_ID"))) {
     throw new Error("Build completed but .next/BUILD_ID was not created.");

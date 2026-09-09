@@ -229,7 +229,9 @@ export async function exportShareCollection(
   const subjectPageNames = new Set<string>();
   const subjectsByName = new Map<string, string[]>();
   for (const card of cards) {
-    subjectsByName.set(card.playerName, [...(subjectsByName.get(card.playerName) ?? []), card.id]);
+    const ids = subjectsByName.get(card.playerName);
+    if (ids) ids.push(card.id);
+    else subjectsByName.set(card.playerName, [card.id]);
   }
 
   const data: ExportData = {

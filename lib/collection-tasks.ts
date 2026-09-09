@@ -7,7 +7,8 @@ export type TaskCard = {
 export type CollectionTask = { id: string; cardId: string; playerName: string; cardTitle: string; kind: "images" | "purchase" | "valuation" | "stale" | "grading" | "listed"; fingerprint: string; days: number; state?: string; dateEstimated?: boolean };
 export function deriveCollectionTasks(cards: TaskCard[], now = new Date()): CollectionTask[] {
   const tasks: CollectionTask[] = [];
-  const age = (date: Date) => Math.max(0, Math.floor((now.getTime() - date.getTime()) / 86400000));
+  const nowTime = now.getTime();
+  const age = (date: Date) => Math.max(0, Math.floor((nowTime - date.getTime()) / 86400000));
   for (const card of cards) {
     const add = (kind: CollectionTask["kind"], date: Date) => {
       const revisionKey = kind === "images" ? "imagesRevision" : kind === "purchase" ? "purchaseRevision" : ["valuation", "stale"].includes(kind) ? "valuationRevision" : "statusRevision";
@@ -17,7 +18,12 @@ export function deriveCollectionTasks(cards: TaskCard[], now = new Date()): Coll
     if (!card._count.images) add("images", card.createdAt);
     if (["holding", "listed", "grading"].includes(card.collectionStatus)) {
       if (!card._count.transactions || card.hasUnknownPurchase) add("purchase", card.createdAt);
-      const latest = card.valuations.filter(row => row.valuedAt <= now).sort((a, b) => b.valuedAt.getTime() - a.valuedAt.getTime())[0];
+      let latest: { valuedAt: Date } | undefined;
+      let latestTime = -Infinity;
+      for (const row of card.valuations) {
+        const time = row.valuedAt.getTime();
+        if (time <= nowTime && time > latestTime) { latest = row; latestTime = time; }
+      }
       if (!latest) add("valuation", card.createdAt);
       else if (age(latest.valuedAt) >= 180) add("stale", latest.valuedAt);
     }

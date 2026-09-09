@@ -9,7 +9,7 @@ function getEnvValue(env: StorageEnv, key: keyof StorageEnv): string | null {
   return value ? value : null;
 }
 
-export function resolveStorageConfigPath(env: StorageEnv = process.env): string | null {
+function resolveStorageConfigPath(env: StorageEnv = process.env): string | null {
   const customPath = getEnvValue(env, "CARD_VAULT_STORAGE_CONFIG_PATH");
   if (customPath) {
     return customPath;

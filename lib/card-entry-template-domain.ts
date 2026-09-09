@@ -64,10 +64,3 @@ export function parseCardEntryTemplateValues(value: string): CardEntryTemplateVa
     return normalizeCardEntryTemplateValues({});
   }
 }
-
-export function applyCardEntryTemplateValues(
-  current: CardFormValues,
-  template: CardEntryTemplateValues
-): CardFormValues {
-  return normalizeCardFormValues({ ...current, ...template });
-}

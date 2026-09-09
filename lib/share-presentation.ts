@@ -90,7 +90,7 @@ function boundedNumber(value: unknown, fallback: number, min: number, max: numbe
   return Number.isFinite(number) ? Math.min(max, Math.max(min, Math.round(number))) : fallback;
 }
 
-export function normalizeShareLayout(value: unknown): ShareLayoutId {
+function normalizeShareLayout(value: unknown): ShareLayoutId {
   return typeof value === "string" && layoutIds.has(value) ? (value as ShareLayoutId) : "stage";
 }
 

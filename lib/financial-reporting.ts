@@ -26,7 +26,7 @@ export function paymentComponents(row: MoneyComponent & { paymentsJson?: string 
   return [primary, ...extra];
 }
 
-export function businessDate(row: { occurredAt?: Date; createdAt?: Date }): Date {
+function businessDate(row: { occurredAt?: Date; createdAt?: Date }): Date {
   return row.occurredAt ?? row.createdAt ?? new Date(0);
 }
 

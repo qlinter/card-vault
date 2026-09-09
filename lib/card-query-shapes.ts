@@ -8,17 +8,6 @@ export const financialCardSelect = Prisma.validator<Prisma.CardSelect>()({
   valuations: { select: { amountMinor: true, currency: true, valuedAt: true, createdAt: true, source: true } }
 });
 
-export const homeCardInclude = Prisma.validator<Prisma.CardInclude>()({
-  _count: { select: { images: true } },
-  images: { take: 1, orderBy: { createdAt: "asc" } },
-  transactions: financialCardSelect.transactions,
-  expenses: financialCardSelect.expenses,
-  valuations: {
-    select: { amountMinor: true, currency: true, valuedAt: true, createdAt: true, source: true },
-    orderBy: [{ valuedAt: "desc" }, { createdAt: "desc" }]
-  }
-});
-
 export const portfolioAnalysisCardSelect = Prisma.validator<Prisma.CardSelect>()({
   id: true,
   createdAt: true,

@@ -9,34 +9,42 @@ const managementCardSelect = Prisma.validator<Prisma.CardSelect>()({
   id: true, playerName: true, cardTitle: true, collectionStatus: true,
   createdAt: true, updatedAt: true, tracking: true,
   _count: { select: { images: true, transactions: { where: { kind: "purchase", amountKnown: true } } } },
-  transactions: { select: { kind: true, occurredAt: true, amountKnown: true } },
+  transactions: { where: { kind: "purchase", amountKnown: false }, take: 1, select: { id: true } },
   valuations: { select: { valuedAt: true } }
 });
 
 function taskCard(card: Prisma.CardGetPayload<{ select: typeof managementCardSelect }>): TaskCard {
-  return { ...card, hasUnknownPurchase: card.transactions.some(row => row.kind === "purchase" && !row.amountKnown) };
+  return { ...card, hasUnknownPurchase: card.transactions.length > 0 };
 }
 
 export async function loadCollectionManagement() {
-  const cards: Array<Prisma.CardGetPayload<{ select: typeof managementCardSelect }>> = [];
+  const now = new Date();
+  const derived: ReturnType<typeof deriveCollectionTasks> = [];
   let cursor: string | undefined;
   for (;;) {
     const page = await prisma.card.findMany({ take: 250, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}), orderBy: { id: "asc" }, select: managementCardSelect });
-    cards.push(...page); if (page.length < 250) break; cursor = page.at(-1)!.id;
+    derived.push(...deriveCollectionTasks(page.map(taskCard), now));
+    if (page.length < 250) break; cursor = page.at(-1)!.id;
   }
-  const now = new Date();
   const [states, plans, settings] = await Promise.all([prisma.collectionTaskState.findMany(), prisma.collectionPlan.findMany({ orderBy: [{ status: "desc" }, { targetDate: "asc" }, { createdAt: "desc" }] }), prisma.managementSettings.findUnique({ where: { id: "default" } })]);
   const stateMap = new Map(states.map(state => [state.id, state]));
-  const tasks = deriveCollectionTasks(cards.map(taskCard), now).map(task => ({ ...task, state: taskIsVisible(task, stateMap.get(task.id), now) ? "open" : stateMap.get(task.id)!.status }));
+  const tasks = derived.sort((a, b) => b.days - a.days || a.id.localeCompare(b.id)).map(task => ({ ...task, state: taskIsVisible(task, stateMap.get(task.id), now) ? "open" : stateMap.get(task.id)!.status }));
   const days = settings?.digestCadence === "monthly" ? 30 : 7;
   const since = new Date(now.getTime() - days * 86400000);
-  const transactions = cards.flatMap(card => card.transactions).filter(row => row.occurredAt >= since && row.occurredAt <= now);
-  const purchases = transactions.filter(row => row.kind === "purchase").length;
-  const sales = transactions.filter(row => row.kind === "sale").length;
-  const valuations = cards.flatMap(card => card.valuations).filter(row => row.valuedAt >= since && row.valuedAt <= now).length;
+  // SQLite also contains text timestamps written by defaults and older tools.
+  const counts = await prisma.$queryRaw<Array<{ kind: string; total: bigint }>>`
+    SELECT kind, COUNT(*) total FROM (
+      SELECT 'newCards' kind, createdAt eventDate FROM Card
+      UNION ALL SELECT kind, occurredAt FROM CardTransaction
+      UNION ALL SELECT 'valuations', valuedAt FROM CardValuation
+    ) WHERE CASE WHEN typeof(eventDate)='integer' THEN eventDate
+      ELSE CAST(strftime('%s',eventDate) AS INTEGER)*1000 + CAST(substr(strftime('%f',eventDate),4,3) AS INTEGER) END BETWEEN ${since.getTime()} AND ${now.getTime()}
+    GROUP BY kind`;
+  const count = (kind: string) => Number(counts.find(row => row.kind === kind)?.total ?? 0);
+  const newCards = count('newCards'), purchases = count('purchase'), sales = count('sale'), valuations = count('valuations');
   const budgets: Record<string, string> = {};
   for (const plan of plans.filter(plan => plan.status === "planned")) if (plan.budgetMinor !== null) budgets[plan.currency] = (BigInt(budgets[plan.currency] ?? "0") + plan.budgetMinor).toString();
-  return { tasks, plans: plans.map(plan => ({ ...plan, budgetMinor: plan.budgetMinor?.toString() ?? null, targetDate: plan.targetDate?.toISOString().slice(0, 10) ?? null })), budgets, settings: { digestCadence: settings?.digestCadence ?? "weekly" }, digest: { days, newCards: cards.filter(card => card.createdAt >= since).length, purchases, sales, valuations } };
+  return { tasks, plans: plans.map(plan => ({ ...plan, budgetMinor: plan.budgetMinor?.toString() ?? null, targetDate: plan.targetDate?.toISOString().slice(0, 10) ?? null })), budgets, settings: { digestCadence: settings?.digestCadence ?? "weekly" }, digest: { days, newCards, purchases, sales, valuations } };
 }
 export async function mutateCollectionManagement(body: Record<string, unknown>) {
   if (body.action === "task") {
@@ -45,8 +53,9 @@ export async function mutateCollectionManagement(body: Record<string, unknown>) 
     // completing one reminder must not reload every card, plan and digest.
     const id = typeof body.id === "string" ? body.id : "";
     const cardId = id.slice(0, Math.max(0, id.lastIndexOf(":")));
+    const now = new Date();
     const card = cardId ? await prisma.card.findUnique({ where: { id: cardId }, select: managementCardSelect }) : null;
-    const task = card ? deriveCollectionTasks([taskCard(card)]).find(task => task.id === id) : undefined;
+    const task = card ? deriveCollectionTasks([taskCard(card)], now).find(task => task.id === id) : undefined;
     if (!task || task.fingerprint !== body.fingerprint) throw new Error("提醒已变化，请刷新后重试。");
     const data = { status: String(body.status), fingerprint: task.fingerprint, snoozedUntil: body.status === "snoozed" ? new Date(Date.now() + 7 * 86400000) : null };
     await prisma.collectionTaskState.upsert({ where: { id: task.id }, create: { id: task.id, ...data }, update: data });

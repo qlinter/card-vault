@@ -44,6 +44,7 @@ function createRestoreService({ config, backupDataFolder, repairDataLayout }) {
     fs.mkdirSync(parentDir, { recursive: true });
     try {
       fs.cpSync(sourceDataDir, stagingDir, { recursive: true });
+      verifyBackupManifest(stagingDir);
       if (inspectDataFolder(stagingDir, mapProgress(onProgress, 64, 80)).integrity !== "ok") throw new Error("备份复制到临时目录后完整性检查失败。");
       reportProgress(onProgress, 81, "正在验证恢复数据的数据库结构...");
       schema = validateDatabase(path.join(stagingDir, "dev.db"));

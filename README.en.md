@@ -8,7 +8,7 @@ Card Vault is a local-first Windows sports-card collection application built wit
 
 Source version: `1.3.3` (2026-09-11), combining DeepSeek support, UI improvements and architecture cleanup. Scope and validation are recorded in the [v1.3.3 release notes](./docs/release-v1.3.3.md).
 
-Following user confirmation, unsigned Windows x64 artifacts were generated on 2026-09-11: `dist/card-vault-1.3.3-setup.exe`, `dist/card-vault-1.3.3-portable.zip` and `dist/SHA256SUMS.txt`. Full release checks, packaged business flows, version, bundle contents and SHA-256 verification passed. Artifacts have not been uploaded. Earlier distribution facts remain in their historical release notes.
+Following user confirmation, unsigned Windows x64 artifacts were generated on 2026-09-11: `dist/card-vault-1.3.3-setup.exe`, `dist/card-vault-1.3.3-portable.zip` and `dist/SHA256SUMS.txt`. Full release checks, packaged business flows, version, bundle contents and SHA-256 verification passed. Earlier distribution facts remain in their historical release notes.
 
 ## Latest version: v1.3.3
 

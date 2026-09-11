@@ -134,15 +134,15 @@ function FinancialHistoryChart({ points, currency, range }: { points: PortfolioF
       return item ? item[key as keyof typeof financialTrendMeta] : null;
     })
   }));
-  return <LineChart months={months} series={series} currency={currency} coverage={visiblePoints.map((point) => point.coverage?.find((item) => item.currency === currency))} ariaLabel={`${currency} 组合财务历史趋势`} emptyLabel={`暂无 ${currency} 可重建的财务历史。`} />;
+  return <LineChart months={months} series={series} currency={currency} coverage={visiblePoints.map((point) => point.coverage?.find((item) => item.currency === currency))} ariaLabel={`${currency} 组合财务趋势`} emptyLabel={`暂无 ${currency} 可重建的财务历史。`} />;
 }
 
 export function PortfolioFinancialHistorySection({ points, currencies }: { points: PortfolioFinancialHistoryPoint[]; currencies: string[] }) {
   const [range, setRange] = useState<PortfolioTrendRange>(12);
   return <section className={styles.section}>
     <header className={styles.sectionHeader}>
-      <div><h2><UiText text={"财务历史趋势"} /></h2></div>
-      <UiElement as="select" uiAttributes={["aria-label"]} className={styles.rangeSelect} aria-label="财务历史趋势时间范围" value={range} onChange={(event) => setRange(event.target.value === "all" ? "all" : Number(event.target.value) as 12 | 24)}>
+      <div><h2><UiText text={"财务趋势"} /></h2></div>
+      <UiElement as="select" uiAttributes={["aria-label"]} className={styles.rangeSelect} aria-label="财务趋势时间范围" value={range} onChange={(event) => setRange(event.target.value === "all" ? "all" : Number(event.target.value) as 12 | 24)}>
         <option value={12}><UiText text={"近12个月"} /></option><option value={24}><UiText text={"近24个月"} /></option><option value="all"><UiText text={"所有"} /></option>
       </UiElement>
     </header>

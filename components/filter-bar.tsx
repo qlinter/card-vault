@@ -62,9 +62,10 @@ export function FilterBar({
   return (
     <form className="panel" method="get">
       <div className="filters">
-        <UiElement as="input" uiAttributes={["placeholder"]}
+        <UiElement as="input" uiAttributes={["placeholder", "aria-label"]}
+          aria-label="搜索收藏"
           name="q"
-          placeholder="搜索卡片主体 / 卡名 / 品牌 / 产品线 / 卡号 / 标签 / 年份 / 评级 / 证书号"
+          placeholder="搜索收藏"
           defaultValue={query.q ?? ""}
         />
 
@@ -108,10 +109,10 @@ export function FilterBar({
           <option value="newest">{<UiText text={"最新录入"} />}</option>
           <option value="yearAsc">{<UiText text={"年份升序"} />}</option>
           <option value="yearDesc">{<UiText text={"年份降序"} />}</option>
-          <option value="costCnyAsc">{<UiText text={"报表币种剩余成本升序"} />}</option>
-          <option value="costCnyDesc">{<UiText text={"报表币种剩余成本降序"} />}</option>
-          <option value="valueCnyAsc">{<UiText text={"报表币种持仓估值升序"} />}</option>
-          <option value="valueCnyDesc">{<UiText text={"报表币种持仓估值降序"} />}</option>
+          <option value="costCnyAsc">{<UiText text={"成本升序"} />}</option>
+          <option value="costCnyDesc">{<UiText text={"成本降序"} />}</option>
+          <option value="valueCnyAsc">{<UiText text={"估值升序"} />}</option>
+          <option value="valueCnyDesc">{<UiText text={"估值降序"} />}</option>
         </select>
       </div>
 

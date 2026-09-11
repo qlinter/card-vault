@@ -1,61 +1,22 @@
 import fs from "fs";
-import { normalizeCustom, normalizeCustomProviders, normalizeEndpoint, normalizeProvider, normalizeSettings } from "./ai-settings-core.js";
+import { normalizeCustom, normalizeCustomProviders, normalizeEndpoint, normalizeProvider, normalizeSettings, publicAiSettings, mergeAiSettings, builtInAiProviders } from "./ai-settings-core.js";
 
-export type AiProvider = "azure" | "minimax" | "custom";
+import type { CoreAiProvider, CoreAiSettings, CoreAiSettingsDraft, CoreAzureSettings, CoreMiniMaxSettings, CoreDeepSeekSettings, CoreCustomSettings, CorePublicAiSettings } from "./ai-settings-core.js";
 
-export type AzureProviderSettings = {
-  endpoint: string;
-  apiKey: string;
-  deployment: string;
-};
-
-export type MiniMaxProviderSettings = {
-  endpoint: string;
-  apiKey: string;
-  model: string;
-};
-
-export type CustomProviderSettings = {
-  id: string;
-  name: string;
-  endpoint: string;
-  modelsEndpoint: string;
-  apiKey: string;
-  model: string;
-  apiKeyHeader: string;
-  apiKeyPrefix: string;
-};
-
-export type AiSettingsFile = {
-  provider: AiProvider;
-  activeCustomId: string;
-  azure: AzureProviderSettings;
-  minimax: MiniMaxProviderSettings;
-  customProviders: CustomProviderSettings[];
-};
-
+export type AiProvider = CoreAiProvider;
+export type AzureProviderSettings = CoreAzureSettings;
+export type MiniMaxProviderSettings = CoreMiniMaxSettings;
+export type DeepSeekProviderSettings = CoreDeepSeekSettings;
+export type CustomProviderSettings = CoreCustomSettings;
+export type AiSettingsFile = CoreAiSettings;
+export type PublicAiSettings = CorePublicAiSettings;
+export type PublicCustomProviderSettings = PublicAiSettings["customProviders"][number];
+export type AiSettingsDraft = CoreAiSettingsDraft;
 export type ActiveAiSettings =
   | ({ provider: "azure" } & AzureProviderSettings)
   | ({ provider: "minimax" } & MiniMaxProviderSettings)
+  | ({ provider: "deepseek" } & DeepSeekProviderSettings)
   | ({ provider: "custom" } & CustomProviderSettings);
-
-export type PublicCustomProviderSettings = Omit<CustomProviderSettings, "apiKey"> & { hasApiKey: boolean };
-
-export type PublicAiSettings = {
-  provider: AiProvider;
-  activeCustomId: string;
-  azure: Omit<AzureProviderSettings, "apiKey"> & { hasApiKey: boolean };
-  minimax: Omit<MiniMaxProviderSettings, "apiKey"> & { hasApiKey: boolean };
-  customProviders: PublicCustomProviderSettings[];
-};
-
-export type AiSettingsDraft = {
-  provider?: AiProvider;
-  activeCustomId?: string;
-  azure?: Partial<AzureProviderSettings>;
-  minimax?: Partial<MiniMaxProviderSettings>;
-  customProviders?: Array<Partial<CustomProviderSettings> & { id?: string }>;
-};
 
 function loadSettingsFile(): AiSettingsDraft {
   const configPath = process.env.CARD_VAULT_AI_CONFIG_PATH;
@@ -108,71 +69,45 @@ function getAiSettingsFile(): AiSettingsFile {
       apiKey: process.env.MINIMAX_API_KEY || fileSettings.minimax.apiKey,
       model: process.env.MINIMAX_MODEL || fileSettings.minimax.model
     },
+    deepseek: {
+      endpoint: process.env.DEEPSEEK_API_ENDPOINT || fileSettings.deepseek.endpoint,
+      apiKey: process.env.DEEPSEEK_API_KEY || fileSettings.deepseek.apiKey,
+      model: process.env.DEEPSEEK_MODEL || fileSettings.deepseek.model
+    },
     customProviders: runtimeCustomProviders ?? customEnvProfile ?? fileSettings.customProviders
   });
 }
 
-export function getAiSettings(): ActiveAiSettings {
-  const settings = getAiSettingsFile();
+function activeAiSettings(settings: AiSettingsFile): ActiveAiSettings {
   if (settings.provider === "custom") {
     const active = settings.customProviders.find((item) => item.id === settings.activeCustomId) ?? settings.customProviders[0];
     return { provider: "custom", ...normalizeCustom(active, settings.activeCustomId || "custom-1") };
   }
-  if (settings.provider === "minimax") return { provider: "minimax", ...settings.minimax };
+  if (settings.provider === "minimax" || settings.provider === "deepseek") return { provider: settings.provider, ...settings[settings.provider] };
   return { provider: "azure", ...settings.azure };
 }
 
+export function getAiSettings(): ActiveAiSettings {
+  return activeAiSettings(getAiSettingsFile());
+}
+
 export function getActiveAiSettingsFromDraft(payload: AiSettingsDraft): ActiveAiSettings {
-  const saved = getAiSettingsFile();
-  const provider = normalizeProvider(payload.provider ?? saved.provider);
-  if (provider === "custom") {
-    const activeCustomId = (payload.activeCustomId ?? saved.activeCustomId).trim();
-    const draft = payload.customProviders?.find((item) => item.id === activeCustomId);
-    const fallback = saved.customProviders.find((item) => item.id === activeCustomId);
-    const merged = normalizeCustom({
-      ...(fallback || {}),
-      ...(draft || {}),
-      id: activeCustomId || draft?.id || fallback?.id,
-      apiKey: draft?.apiKey === undefined ? fallback?.apiKey : draft.apiKey
-    }, activeCustomId || "custom-1");
-    return { provider: "custom", ...merged };
-  }
-  if (provider === "minimax") {
-    return {
-      provider: "minimax",
-      endpoint: (payload.minimax?.endpoint ?? saved.minimax.endpoint).trim(),
-      apiKey: (payload.minimax?.apiKey === undefined ? saved.minimax.apiKey : payload.minimax.apiKey).trim(),
-      model: (payload.minimax?.model ?? saved.minimax.model).trim()
-    };
-  }
-  return {
-    provider: "azure",
-    endpoint: (payload.azure?.endpoint ?? saved.azure.endpoint).trim(),
-    apiKey: (payload.azure?.apiKey === undefined ? saved.azure.apiKey : payload.azure.apiKey).trim(),
-    deployment: (payload.azure?.deployment ?? saved.azure.deployment).trim()
-  };
+  return activeAiSettings(mergeAiSettings(getAiSettingsFile(), payload));
 }
 
 export function getPublicAiSettings(): PublicAiSettings {
-  const settings = getAiSettingsFile();
-  return {
-    provider: settings.provider,
-    activeCustomId: settings.activeCustomId,
-    azure: { endpoint: settings.azure.endpoint, deployment: settings.azure.deployment, hasApiKey: Boolean(settings.azure.apiKey) },
-    minimax: { endpoint: settings.minimax.endpoint, model: settings.minimax.model, hasApiKey: Boolean(settings.minimax.apiKey) },
-    customProviders: settings.customProviders.map(({ apiKey, ...item }) => ({ ...item, hasApiKey: Boolean(apiKey) }))
-  };
+  return publicAiSettings(getAiSettingsFile());
 }
 
 export function ensureCompleteAiSettings(settings: ActiveAiSettings): ActiveAiSettings {
   const missing = settings.provider === "custom"
     ? [!settings.name ? "名称" : null, !settings.endpoint ? "Endpoint" : null, !settings.model ? "Model" : null, settings.apiKey && !isValidHeaderName(settings.apiKeyHeader) ? "有效的 API Key Header" : null]
-    : settings.provider === "minimax"
+    : settings.provider === "minimax" || settings.provider === "deepseek"
       ? [!settings.endpoint ? "Endpoint" : null, !settings.apiKey ? "API Key" : null, !settings.model ? "Model" : null]
       : [!settings.endpoint ? "Endpoint" : null, !settings.apiKey ? "API Key" : null, !settings.deployment ? "Deployment" : null];
   const missingLabels = missing.filter(Boolean);
   if (missingLabels.length > 0) {
-    const providerName = settings.provider === "custom" ? settings.name : settings.provider === "minimax" ? "MiniMax" : "Azure OpenAI";
+    const providerName = settings.provider === "custom" ? settings.name : builtInAiProviders[settings.provider].name;
     throw new Error(`${providerName} 设置不完整：缺少 ${missingLabels.join("、")}。`);
   }
   return settings;
@@ -183,7 +118,7 @@ export function ensureAiSettings(): ActiveAiSettings {
 }
 
 export function getChatCompletionsUrl(settings: ActiveAiSettings): string {
-  if (settings.provider === "minimax" || settings.provider === "custom") return settings.endpoint;
+  if (settings.provider !== "azure") return settings.endpoint;
   return `${getAzureV1BaseUrl(settings.endpoint)}/chat/completions`;
 }
 
@@ -196,7 +131,7 @@ export function getChatCompletionsHeaders(settings: ActiveAiSettings): Record<st
     }
     return headers;
   }
-  if (settings.provider === "minimax") return { "Content-Type": "application/json", Authorization: `Bearer ${settings.apiKey}` };
+  if (settings.provider === "minimax" || settings.provider === "deepseek") return { "Content-Type": "application/json", Authorization: `Bearer ${settings.apiKey}` };
   return { "Content-Type": "application/json", "api-key": settings.apiKey };
 }
 
@@ -211,7 +146,7 @@ export function getModelsUrl(settings: ActiveAiSettings): string {
     if (inferred === settings.endpoint) throw new Error("无法从 Chat Completions Endpoint 推断模型列表地址，请填写“模型列表 Endpoint”。");
     return inferred;
   }
-  if (settings.provider === "minimax") return settings.endpoint.replace(/\/chat\/completions\/?$/i, "/models");
+  if (settings.provider === "minimax" || settings.provider === "deepseek") return settings.endpoint.replace(/\/chat\/completions\/?$/i, "/models");
   return `${getAzureV1BaseUrl(settings.endpoint)}/models`;
 }
 

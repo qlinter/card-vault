@@ -514,7 +514,7 @@ async function main() {
     if (detailChecks.some((check) => !check)) {
       throw new Error(`Updated card detail page does not show the saved values: ${detailChecks.join(",")}`);
     }
-    if (!detailPage.includes("<summary>编辑</summary>") || detailPage.includes("纠错与删除") || detailPage.includes("保存纠错")) {
+    if (!/<button\b[^>]*class="[^"]*financial-edit-trigger[^"]*"[^>]*aria-expanded="false"[^>]*>编辑<\/button>/.test(detailPage) || detailPage.includes("纠错与删除") || detailPage.includes("保存纠错")) {
       throw new Error("Financial history does not use the expected edit wording.");
     }
     const entryReturnTo = "/cards/new?draft=e2e-return-draft&queue=e2e-return-queue";
@@ -756,8 +756,8 @@ async function main() {
     const portfolioPage = await fetchPage(baseUrl, "/portfolio");
     for (const marker of [
       "portfolio-page",
-      "持仓财务",
-      "财务历史趋势",
+      "持仓",
+      "财务趋势",
       "估值来源",
       "活动趋势",
       "收藏结构",
@@ -765,8 +765,8 @@ async function main() {
       "卡片属性",
       "高价值持仓",
       "高成本持仓",
-      "已售卡片复盘",
-      "数据待完善",
+      "售出复盘",
+      "待完善数据",
       "E2E Filtered Player"
     ]) {
       if (!portfolioPage.includes(marker)) {
@@ -776,7 +776,7 @@ async function main() {
     if (!portfolioPage.includes('href="/portfolio"') || !portfolioPage.includes("CNY")) {
       throw new Error("Portfolio center navigation or currency-separated summary is missing.");
     }
-    for (const marker of ['aria-label="财务历史趋势时间范围"', 'aria-label="活动趋势时间范围"', 'aria-label="收藏结构维度"', "近12个月", "近24个月", "所有", '/?q=E2E%20Filtered%20Player']) {
+    for (const marker of ['aria-label="财务趋势时间范围"', 'aria-label="活动趋势时间范围"', 'aria-label="收藏结构维度"', "近12个月", "近24个月", "所有", '/?q=E2E%20Filtered%20Player']) {
       if (!portfolioPage.includes(marker)) {
         throw new Error(`Portfolio center interactive controls or filter links are missing: ${marker}`);
       }

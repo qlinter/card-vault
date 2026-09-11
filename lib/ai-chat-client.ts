@@ -36,6 +36,7 @@ export class AiUpstreamError extends Error {
 
 export function aiProviderName(provider: string, customName?: string): string {
   if (provider === "custom") return safeText(customName) || "自定义 AI";
+  if (provider === "deepseek") return "DeepSeek";
   return provider === "minimax" ? "MiniMax" : "Azure OpenAI";
 }
 
@@ -87,6 +88,7 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
     body: JSON.stringify({
       ...(model ? { model } : {}),
       messages: request.messages,
+      ...(settings.provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
       [tokenField]: request.maxTokens,
       ...(!includeTemperature || request.temperature === undefined ? {} : { temperature: request.temperature }),
       ...(!includeResponseFormat ? {} : { response_format: { type: request.responseFormat } })
@@ -94,7 +96,7 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
   });
 
   try {
-    let tokenField: "max_completion_tokens" | "max_tokens" = "max_completion_tokens";
+    let tokenField: "max_completion_tokens" | "max_tokens" = settings.provider === "deepseek" ? "max_tokens" : "max_completion_tokens";
     let includeTemperature = request.temperature !== undefined && !isAzureReasoningDeployment(settings);
     let includeResponseFormat = request.responseFormat !== undefined;
     let response: Response | null = null;

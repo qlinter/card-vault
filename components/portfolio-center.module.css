@@ -18,7 +18,6 @@
 
 .overviewGrid span,
 .sectionHeader > div > span,
-.allocationCard header div span,
 .emptyPortfolio > span {
   color: var(--teal);
   font-size: 0.72rem;
@@ -260,7 +259,7 @@
 }
 
 .allocationGrid {
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
 }
 
 .structureControls {
@@ -279,6 +278,7 @@
 }
 
 .currencyCard {
+  min-width: 0;
   padding: 1rem;
 }
 
@@ -306,9 +306,13 @@
 }
 
 .primaryValue {
-  display: grid;
-  gap: 0.25rem;
-  margin: 1.1rem 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin: 1rem 0;
+  padding-bottom: 0.25rem;
 }
 
 .primaryValue span {
@@ -317,20 +321,23 @@
 }
 
 .primaryValue strong {
+  overflow-wrap: anywhere;
   font-size: clamp(1.55rem, 3vw, 2.25rem);
 }
 
 .currencyCard dl {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 1.5rem;
   margin: 0;
 }
 
 .currencyCard dl div {
   display: grid;
-  gap: 0.2rem;
-  padding-top: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  align-items: baseline;
+  gap: 0.4rem 0.6rem;
+  padding: 0.75rem 0;
   border-top: 1px solid var(--line);
 }
 
@@ -341,6 +348,7 @@
 
 .currencyCard dd {
   margin: 0;
+  overflow-wrap: anywhere;
   font-weight: 780;
 }
 
@@ -474,7 +482,7 @@
   border-radius: 10px;
 }
 
-.allocationCard { padding: 0.9rem; }
+.allocationCard { display: flex; flex-direction: column; min-width: 0; padding: 0.9rem; }
 
 .allocationCard header h3 {
   margin: 0.15rem 0 0;
@@ -484,31 +492,29 @@
 .allocationBars {
   display: grid;
   gap: 0.75rem;
-  min-height: 228px;
+  min-height: 0;
+  align-content: start;
+  flex: 1;
   margin: 1rem 0;
 }
 
 .allocationRow > div {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
   gap: 0.5rem;
   margin-bottom: 0.28rem;
   font-size: 0.8rem;
 }
 
-.allocationRow > div span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.allocationRow > div span { min-width: 0; overflow-wrap: anywhere; }
 
 .allocationRow > div a {
-  overflow: hidden;
+  min-width: 0;
   color: var(--ink);
   font-weight: 700;
   text-decoration: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .allocationRow > div a:hover {
@@ -533,20 +539,25 @@
 
 .allocationCard footer {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.35rem;
   padding-top: 0.8rem;
   border-top: 1px solid var(--line);
 }
 
-.allocationCard footer span {
+.allocationCard footer > div {
   display: grid;
   gap: 0.15rem;
   color: var(--muted-ink);
   font-size: 0.7rem;
 }
 
+.allocationCard footer > div { grid-template-rows: minmax(2.5em, auto) auto; align-content: start; }
+.allocationCard footer > div > span { line-height: 1.25; }
+
 .allocationCard footer strong {
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
   color: var(--ink);
   font-size: 0.82rem;
 }
@@ -628,7 +639,9 @@
 .positionList a > span { color: var(--muted-ink); font-size: 0.72rem; }
 .positionList a > div { display: grid; gap: 0.15rem; min-width: 0; }
 .positionList a > div:last-child { text-align: right; }
-.positionList small { overflow: hidden; color: var(--muted-ink); font-size: 0.72rem; text-overflow: ellipsis; white-space: nowrap; }
+.positionList small { color: var(--muted-ink); font-size: 0.72rem; overflow-wrap: anywhere; }
+.soldReviewList a { grid-template-columns: 5.25rem minmax(0, 1fr) minmax(0, 0.8fr); }
+.soldReviewList a > span { white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 .positionCurrencyGroup + .positionCurrencyGroup { margin-top: 0.75rem; }
 .positionCurrencyGroup h3 { margin: 0; padding: 0.35rem 0; color: var(--teal); font-size: 0.75rem; letter-spacing: 0.08em; }
@@ -1012,15 +1025,8 @@
   .savedItems span { align-items: flex-start; flex-direction: column; gap: 0.1rem; }
 }
 
-.currencyCard { display: grid; grid-template-columns: minmax(180px, 0.8fr) minmax(0, 2.5fr); gap: 1rem 1.5rem; }
-.currencyCard > header { grid-column: 1 / -1; }
-.currencyCard .primaryValue { align-self: center; }
-.currencyCard dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 900px) {
-  .currencyCard { grid-template-columns: minmax(0, 1fr); }
-  .currencyCard dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 400px) { .currencyCard dl { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1100px) { .currencyCard dl { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 650px) { .currencyCard dl { grid-template-columns: minmax(0, 1fr); } }
 
 .currentDataHeader { align-items: center; flex-wrap: wrap; gap: .75rem; }
 
@@ -1028,5 +1034,5 @@
 .comparisonWorkspace > .zoneHeader { min-height: var(--control-height); align-items: center; padding: 0; }
 .zoneContent { padding-top: var(--section-gap); }
 .zoneSummary :global(.disclosure-button) { color: var(--slate); background: transparent; }
-.currencyCard dd, .currencyCard .primaryValue, .positionList a > div:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.currencyCard dd, .currencyCard .primaryValue strong, .positionList a > div:last-child { text-align: right; font-variant-numeric: tabular-nums; }
 .positionList a > div:first-of-type { min-width: 0; overflow-wrap: anywhere; }

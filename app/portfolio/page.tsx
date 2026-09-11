@@ -78,7 +78,7 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
 
       <section className={styles.portfolioZone} aria-labelledby="portfolio-current-title">
         <header className={`${styles.zoneHeader} ${styles.currentDataHeader}`}>
-          <div><h2 id="portfolio-current-title"><UiText text={"当前组合数据"} /></h2></div>
+          <div><h2 id="portfolio-current-title"><UiText text={"当前组合"} /></h2></div>
           <PortfolioAnalysisButton cardCount={result.snapshot.cardCount} query={query} scope={result.snapshot.scope} />
         </header>
         <PortfolioCenter

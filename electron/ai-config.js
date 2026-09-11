@@ -1,24 +1,9 @@
 const fs = require("node:fs");
 const { writeJsonAtomic } = require("../lib/atomic-json");
-const { normalizeProvider, normalizeSettings } = require("../lib/ai-settings-core");
+const { normalizeProvider, normalizeSettings, publicAiSettings, mergeAiSettings } = require("../lib/ai-settings-core");
 
 function publicSettings(settings, keyRecoveryRequired = false) {
-  return {
-    provider: settings.provider,
-    activeCustomId: settings.activeCustomId,
-    keyRecoveryRequired,
-    azure: {
-      endpoint: settings.azure.endpoint,
-      deployment: settings.azure.deployment,
-      hasApiKey: Boolean(settings.azure.apiKey)
-    },
-    minimax: {
-      endpoint: settings.minimax.endpoint,
-      model: settings.minimax.model,
-      hasApiKey: Boolean(settings.minimax.apiKey)
-    },
-    customProviders: settings.customProviders.map(({ apiKey, ...item }) => ({ ...item, hasApiKey: Boolean(apiKey) }))
-  };
+  return { ...publicAiSettings(settings), keyRecoveryRequired };
 }
 
 function createAiConfigManager(configPath, cryptoAdapter = {}) {
@@ -63,6 +48,7 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
     const provider = normalizeProvider(raw.provider);
     const azureRaw = raw.azure || {};
     const minimaxRaw = raw.minimax || {};
+    const deepseekRaw = raw.deepseek || {};
     if (fs.existsSync(configPath) && raw.version !== 5) throw new Error("AI 配置格式不受支持，仅接受当前版本配置。");
     const customRawItems = Array.isArray(raw.customProviders) ? raw.customProviders : [];
     return normalizeSettings({
@@ -77,6 +63,11 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
         endpoint: minimaxRaw.endpoint,
         apiKey: minimaxRaw.apiKeyEncrypted ? decryptKey(minimaxRaw.apiKeyEncrypted) : "",
         model: minimaxRaw.model
+      },
+      deepseek: {
+        endpoint: deepseekRaw.endpoint,
+        apiKey: deepseekRaw.apiKeyEncrypted ? decryptKey(deepseekRaw.apiKeyEncrypted) : "",
+        model: deepseekRaw.model
       },
       customProviders: customRawItems.map((item) => ({
         ...item,
@@ -100,6 +91,11 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
         apiKeyEncrypted: encryptKey(settings.minimax.apiKey),
         model: settings.minimax.model
       },
+      deepseek: {
+        endpoint: settings.deepseek.endpoint,
+        apiKeyEncrypted: encryptKey(settings.deepseek.apiKey),
+        model: settings.deepseek.model
+      },
       customProviders: settings.customProviders.map(({ apiKey, ...item }) => ({
         ...item,
         apiKeyEncrypted: encryptKey(apiKey)
@@ -110,26 +106,7 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
 
   function save(value) {
     const current = load();
-    const currentCustomById = new Map(current.customProviders.map((item) => [item.id, item]));
-    const requestedCustomProviders = Array.isArray(value.customProviders) ? value.customProviders : current.customProviders;
-    const next = normalizeSettings({
-      provider: value.provider,
-      activeCustomId: value.activeCustomId,
-      azure: {
-        endpoint: value.azure?.endpoint,
-        apiKey: value.azure?.apiKey === undefined ? current.azure.apiKey : value.azure.apiKey,
-        deployment: value.azure?.deployment
-      },
-      minimax: {
-        endpoint: value.minimax?.endpoint,
-        apiKey: value.minimax?.apiKey === undefined ? current.minimax.apiKey : value.minimax.apiKey,
-        model: value.minimax?.model
-      },
-      customProviders: requestedCustomProviders.map((item) => ({
-        ...item,
-        apiKey: item.apiKey === undefined ? currentCustomById.get(item.id)?.apiKey || "" : item.apiKey
-      }))
-    });
+    const next = mergeAiSettings(current, value);
     writeEncrypted(next);
     return publicSettings(next, false);
   }
@@ -145,6 +122,9 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
       MINIMAX_API_ENDPOINT: settings.minimax.endpoint,
       MINIMAX_API_KEY: settings.minimax.apiKey,
       MINIMAX_MODEL: settings.minimax.model,
+      DEEPSEEK_API_ENDPOINT: settings.deepseek.endpoint,
+      DEEPSEEK_API_KEY: settings.deepseek.apiKey,
+      DEEPSEEK_MODEL: settings.deepseek.model,
       CARD_VAULT_CUSTOM_AI_ACTIVE_ID: settings.activeCustomId,
       CARD_VAULT_CUSTOM_AI_PROFILES_JSON: JSON.stringify(settings.customProviders),
       CARD_VAULT_CUSTOM_AI_NAME: activeCustom?.name || "",

@@ -135,10 +135,10 @@ test("mixed payment and cross-currency sale share one holding and one reporting 
   await expect(page.locator(".valuation-total-list")).toContainText("CNY 500.00");
   await page.goto("/portfolio?q=Finance%20Player");
   await expect(page.locator(".portfolio-page")).toContainText("CNY +390.00");
-  const financial = page.getByRole("heading", { name: "持仓财务", exact: true }).locator("xpath=ancestor::section[1]");
+  const financial = page.getByRole("heading", { name: "持仓", exact: true }).locator("xpath=ancestor::section[1]");
   await expect(financial).not.toContainText("本次使用的汇率");
   await expect(financial.locator("dt")).toHaveText(["累计买入金额", "累计费用", "净现金投入", "累计出售金额", "剩余成本", "已实现盈亏", "总盈亏", "未实现盈亏", "未实现回报率"]);
-  for (const heading of ["财务历史趋势", "活动趋势"]) {
+  for (const heading of ["财务趋势", "活动趋势"]) {
     const section = page.getByRole("heading", { name: heading, exact: true }).locator("xpath=ancestor::section[1]");
     for (const range of ["12", "24", "all"]) {
       await section.getByRole("combobox").selectOption(range);

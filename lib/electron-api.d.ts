@@ -1,4 +1,4 @@
-export {};
+import type { AiSettingsDraft, PublicAiSettings } from "./ai-settings";
 
 type DesktopMediaFile = { type: string; path: string };
 
@@ -45,79 +45,8 @@ declare global {
         schemaVersion?: string;
       }>;
       onStorageProgress: (callback: (progress: DesktopStorageProgress) => void) => () => void;
-      getAiSettings: () => Promise<{
-        provider: "azure" | "minimax" | "custom";
-        activeCustomId: string;
-        keyRecoveryRequired?: boolean;
-        azure: {
-          endpoint: string;
-          deployment: string;
-          hasApiKey: boolean;
-        };
-        minimax: {
-          endpoint: string;
-          model: string;
-          hasApiKey: boolean;
-        };
-        customProviders: Array<{
-          id: string;
-          name: string;
-          endpoint: string;
-          modelsEndpoint: string;
-          model: string;
-          apiKeyHeader: string;
-          apiKeyPrefix: string;
-          hasApiKey: boolean;
-        }>;
-      }>;
-      saveAiSettings: (settings: {
-        provider: "azure" | "minimax" | "custom";
-        activeCustomId: string;
-        azure: {
-          endpoint: string;
-          apiKey?: string;
-          deployment: string;
-        };
-        minimax: {
-          endpoint: string;
-          apiKey?: string;
-          model: string;
-        };
-        customProviders: Array<{
-          id: string;
-          name: string;
-          endpoint: string;
-          modelsEndpoint: string;
-          apiKey?: string;
-          model: string;
-          apiKeyHeader: string;
-          apiKeyPrefix: string;
-        }>;
-      }) => Promise<{
-        provider: "azure" | "minimax" | "custom";
-        activeCustomId: string;
-        keyRecoveryRequired?: boolean;
-        azure: {
-          endpoint: string;
-          deployment: string;
-          hasApiKey: boolean;
-        };
-        minimax: {
-          endpoint: string;
-          model: string;
-          hasApiKey: boolean;
-        };
-        customProviders: Array<{
-          id: string;
-          name: string;
-          endpoint: string;
-          modelsEndpoint: string;
-          model: string;
-          apiKeyHeader: string;
-          apiKeyPrefix: string;
-          hasApiKey: boolean;
-        }>;
-      }>;
+      getAiSettings: () => Promise<PublicAiSettings & { keyRecoveryRequired?: boolean }>;
+      saveAiSettings: (settings: AiSettingsDraft) => Promise<PublicAiSettings & { keyRecoveryRequired?: boolean }>;
     };
   }
 }

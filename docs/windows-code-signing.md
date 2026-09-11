@@ -6,7 +6,9 @@ Card Vault 的 Windows 代码签名是可选增强。`npm run release:win` 在�
 
 ## 执行前提
 
-v1.3.2 已于 2026-09-09 生成 Windows x64 未签名安装包与便携包，安装器和便携主程序均为 NotSigned；版本、包内运行、文件内容及 SHA-256 检查通过，详见[本版发布说明](./release-v1.3.2.md)。真实全新安装与覆盖升级验收仍暂缓。仅作源码审查时使用 `npm run check:release`，不生成安装文件。分发过滤排除 `scripts/benchmark-*`、`scripts/check-*`、UI 测试启动器和固定测试时钟；包内仍保留数据库初始化、存储校验及包内业务验收脚本。文件卫生检查同步拒绝这些开发文件意外进入分发包，本次已对打包目录及最终便携 ZIP 完成复核。
+v1.3.3 已按用户确认于 2026-09-11 生成 Windows x64 未签名安装包与便携包；安装器和主程序均为 NotSigned。完整源码门槛、包内业务流程、健康端点、版本、分发内容和 SHA-256 检查通过，详见 [v1.3.3 发布说明](./release-v1.3.3.md)。真实 Windows 全新安装与覆盖升级验收仍暂缓。
+
+v1.3.2 已于 2026-09-09 生成 Windows x64 未签名安装包与便携包，安装器和便携主程序均为 NotSigned；版本、包内运行、文件内容及 SHA-256 检查通过，详见[该版发布说明](./release-v1.3.2.md)。真实全新安装与覆盖升级验收仍暂缓。仅作源码审查时使用 `npm run check:release`，不生成安装文件。分发过滤排除 `scripts/benchmark-*`、`scripts/check-*`、UI 测试启动器和固定测试时钟；包内仍保留数据库初始化、存储校验及包内业务验收脚本。文件卫生检查同步拒绝这些开发文件意外进入分发包，本次已对打包目录及最终便携 ZIP 完成复核。
 
 ## 无证书发布
 
@@ -88,7 +90,7 @@ npm.cmd run release:win
 发布后可再次检查安装包签名：
 
 ```powershell
-Get-AuthenticodeSignature -LiteralPath '.\dist\card-vault-1.3.2-setup.exe' |
+Get-AuthenticodeSignature -LiteralPath '.\dist\card-vault-1.3.3-setup.exe' |
   Format-List Status,StatusMessage,SignerCertificate,TimeStamperCertificate
 ```
 

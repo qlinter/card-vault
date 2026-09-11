@@ -6,22 +6,20 @@ Card Vault is a local-first Windows sports-card collection application built wit
 
 ## Current status
 
-Source version: `1.3.2` (2026-09-09), a security, reliability and large-collection performance update. See the [v1.3.2 release notes](./docs/release-v1.3.2.md) for review scope, changes and validation.
+Source version: `1.3.3` (2026-09-11), combining DeepSeek support, UI improvements and architecture cleanup. Scope and validation are recorded in the [v1.3.3 release notes](./docs/release-v1.3.3.md).
 
-Unsigned Windows x64 artifacts were generated on 2026-09-09: `dist/card-vault-1.3.2-setup.exe`, `dist/card-vault-1.3.2-portable.zip` and `dist/SHA256SUMS.txt`. Full release checks, packaged runtime, version, bundle contents and SHA-256 verification passed.
+Following user confirmation, unsigned Windows x64 artifacts were generated on 2026-09-11: `dist/card-vault-1.3.3-setup.exe`, `dist/card-vault-1.3.3-portable.zip` and `dist/SHA256SUMS.txt`. Full release checks, packaged business flows, version, bundle contents and SHA-256 verification passed. Artifacts have not been uploaded. Earlier distribution facts remain in their historical release notes.
 
-## Latest version: v1.3.2
+## Latest version: v1.3.3
 
-1. **Dependency security**: Next.js 16.3.3, sharp 0.35.4 and js-yaml 4.3.2 address known advisories while retaining the full audit scope and failure threshold.
-2. **Startup diagnostics**: preparation failures include the underlying error and actual log path, with complete UTF-8 output handling.
-3. **Data protection**: AI and storage settings are written to a complete temporary file before replacement; restore rechecks the copied manifest before switching data to reject corrupted media.
-4. **Paths and digests**: correctly handle Windows path case and child names starting with two dots; exclude future dates from collection digests while supporting SQLite text and numeric timestamps.
-5. **Code optimization**: derive reminders in batches of 250 cards, query unknown-purchase existence, count digest events in the database and scan valuations once. Share grouping avoids repeated array copies.
-6. **Portfolio history**: advance through records chronologically and reuse balances when transactions and expenses have not changed, preserving monthly amounts, missing markers and coverage.
-7. **Large exports**: CSV/XLSX use a consistent database snapshot, bounded reads and streamed temporary files, then download in chunks. Cancellation cleanup and automatic worksheet splitting are included.
-8. **Code cleanup**: remove obsolete queries and helpers, share streamed ZIP generation between galleries and XLSX, consolidate memory sampling, narrow internal exports, and exclude development checks and benchmarks from distribution packages.
+1. **DeepSeek**: dedicated settings default to the official `deepseek-flash` model, with native image input, connection testing, model discovery and Windows encrypted credential storage.
+2. **Financial layouts**: align history amounts and edit actions; use consistent label/value columns for holdings and keep edit buttons stable when forms expand.
+3. **Portfolio and filters**: shorten cost/valuation sorting and section names; fix concentration alignment, long product names and sales-review dates, and remove duplicate wording and excess space.
+4. **Shared AI configuration**: Electron, server and UI reuse defaults, types, public settings and draft merging. Omitted keys remain saved, explicit empty keys clear credentials, and custom profiles merge by ID.
+5. **Architecture**: remove six obsolete financial actions, separate gallery HTML, CSS and browser scripts, and eliminate two type-dependency cycles while retaining the rendering interface and generated output.
+6. **Maintenance gates**: add dependency-cycle and client/server boundary checks to release validation, with credential-compatibility and financial/Portfolio UI regressions.
 
-Financial accounting, database structure and current-format validation remain unchanged. This patch adds no automatic historical upgrades or page layout changes. Historical release and distribution facts remain in their respective notes.
+Database structure, accounting rules and backup formats remain unchanged. DeepSeek settings are compatible with existing version-5 configuration files; live recognition quality requires the user's own key. Source and packaged-runtime validation are complete for this version; real Windows installation and upgrade tests remain deferred.
 
 ## Features
 
@@ -49,13 +47,14 @@ npm run electron
 
 Alternatively, start the desktop development app with `start-desktop.bat`. The launcher prefers ports 3000–3019 and falls back to an OS-assigned loopback port when that range is occupied or reserved by Windows; system port exclusions need no changes. Development configuration uses `%APPDATA%\Card Vault Development`. The actual collection directory is shown under Settings → Data → Storage. Use the application migration controls to change it.
 
-API keys reside in the local user configuration and are encrypted with Windows safeStorage, not stored in the collection database. Optional AI supports Azure OpenAI, MiniMax and OpenAI Chat Completions-compatible services. Relevant images or content are sent to the selected provider only when a feature is called. Manual entry does not require AI.
+API keys reside in the local user configuration and are encrypted with Windows safeStorage, not stored in the collection database. Optional AI supports Azure OpenAI, MiniMax, DeepSeek and OpenAI Chat Completions-compatible services. Relevant images or content are sent to the selected provider only when a feature is called. Manual entry does not require AI.
 
 ## Validation and distribution
 
 | Command | Purpose |
 | --- | --- |
-| `npm run check:release` | Encoding, docs, metadata, lint, types, coverage, production build, desktop startup and all HTTP/UI checks; does not package. |
+| `npm run check:release` | Encoding, docs, metadata, architecture, lint, types, coverage, production build, desktop startup and all HTTP/UI checks; does not package. |
+| `npm run check:architecture` | Check source cycles and client imports of Node.js/database modules. |
 | `npm test` | Unit and module tests. |
 | `npm run test:card` / `test:share` / `test:security` / `test:management` / `test:export` | Business and security HTTP flows using isolated data. |
 | `npm run test:ui` | Desktop UI, minimum-window checks, narrow share previews and strict screenshot comparisons. |
@@ -74,10 +73,11 @@ Keep a full backup before upgrades or moving computers. CSV/XLSX files omit medi
 
 ## Historical releases
 
-All 26 earlier versions are retained below, newest first. These summaries describe each release at the time; current behavior and compatibility follow the latest documentation. The original bilingual summaries were recovered from the v1.2.1 README files, with v1.3.0 and v1.3.1 added from their release notes. Early standalone release notes were not found; see [historical sources and gaps](./docs/version-history-sources.md).
+All 27 earlier versions are retained below, newest first. These summaries describe each release at the time; current behavior and compatibility follow the latest documentation. The original bilingual summaries were recovered from the v1.2.1 README files, with v1.3.0, v1.3.1 and v1.3.2 added from their release notes. Early standalone release notes were not found; see [historical sources and gaps](./docs/version-history-sources.md).
 
 | Version | Main changes | Source |
 | --- | --- | --- |
+| `1.3.2` | Security and startup fixes, settings/restore protection, dense Portfolio history and streamed exports, with shared ZIP and performance helpers. | [Release notes](./docs/release-v1.3.2.md) |
 | `1.3.1` | Fixed startup ports, recurring reminders, export scope and restore rollback; optimized financial indexing/history and consolidated current-format validation and documentation. | [Release notes](./docs/release-v1.3.1.md) |
 | `1.3.0` | Unified mixed-currency accounting and manual FX; import previews/undo, reminders and plans, Home pagination, Portfolio/gallery refinements and local security improvements. | [Release notes](./docs/release-v1.3.0.md) |
 | `1.2.1` | Added bilingual UI, consolidated Share Gallery and preview/export improvements, optional Windows signing, and unified code and product documentation. | [Release notes](./docs/release-v1.2.1.md) |
@@ -109,7 +109,7 @@ All 26 earlier versions are retained below, newest first. These summaries descri
 
 - [Historical sources and gaps](./docs/version-history-sources.md): recovered README history and documentation policy.
 - [Documentation index](./docs/README.md): current specifications and release history.
-- [v1.3.2 release notes](./docs/release-v1.3.2.md): fixes, code optimization, acceptance and distribution status.
+- [v1.3.3 release notes](./docs/release-v1.3.3.md): DeepSeek, UI changes, architecture cleanup, validation and distribution status.
 - [Product roadmap](./docs/product-roadmap.en.md); [中文](./docs/product-roadmap.md).
 
 Application source lives in `app`, `components`, `lib` and `electron`. `scripts` handles preparation, tests and distribution; `tests` contains regressions and visual baselines. Git ignores personal data, secrets, `node_modules`, `.next`, `logs`, `dist` and test runtime files. Both READMEs retain detailed notes for the latest version and concise entries for every earlier version. Full release notes and source provenance remain in `docs`; a new release must not remove older entries.

@@ -1,5 +1,4 @@
-import type { ExportData } from "./share-export-types.ts";
-import type { ShareExportIssue } from "./share-export-validation.ts";
+import type { ExportData, ShareExportIssue } from "./share-export-types.ts";
 
 export function auditShareAccessibility(data: ExportData): ShareExportIssue[] {
   const issues: ShareExportIssue[] = [];

@@ -1,6 +1,6 @@
 # Card Vault Product Roadmap
 
-Updated 2026-09-09. Current version is v1.3.2; installer and portable artifacts were generated and verified, but have not been uploaded. See the [release notes](./release-v1.3.2.md) for current review and validation; previous distribution facts remain in historical notes.
+Updated 2026-09-11. Current source version is v1.3.3, combining DeepSeek, UI improvements and architecture cleanup. Following user confirmation, unsigned Windows x64 installer and portable artifacts were generated. Full release checks, packaged runtime, version, contents and SHA-256 verification passed; artifacts have not been uploaded. See the [release notes](./release-v1.3.3.md); historical distribution facts remain in their own notes.
 
 ## Completed capabilities
 
@@ -28,11 +28,17 @@ This batch includes startup/restore fixes, reminder and export correctness, incr
 Security updates, atomic settings writes, copied-backup verification, Windows path fixes, collection queries, dense portfolio-history reuse and large CSV/XLSX streaming exports are included. Monthly output equivalence, 1k/10k HTTP exports, cancellation cleanup and full Portfolio page benchmarks are complete. The follow-up cleanup removes obsolete queries and helpers, consolidates ZIP generation and memory sampling, narrows internal interfaces and trims development-only package files. Independent accounting references and current restore protections remain. Following user confirmation, unsigned Windows x64 installer and portable artifacts were generated. Full release checks, packaged card/share/management/streaming-export flows, version, bundle contents and SHA-256 verification passed. Results and remaining manual checks are recorded in the release notes.
 
 
+## v1.3.3 distribution completed
+
+Add DeepSeek with the official deepseek-flash model and vision input, retaining Windows encrypted key storage and version-5 settings compatibility. Align financial-history amounts and edit actions, redesign holding metrics, shorten sorting and portfolio labels, and fix concentration alignment, long product lines and sales-review dates. Also remove duplicate valuation titles, shorten the Home search placeholder and reduce unused space in structure cards. Instructions remain centralized in Settings. Official references: [V4.1 Flash announcement](https://deepseek.com/news/deepseek-v4-1-flash/) and [vision API guide](https://api-docs.deepseek.com/guides/vision/). These changes are included in v1.3.3; installer and portable artifacts were generated and verified. Live DeepSeek calls require a user-configured key.
+
+Architecture cleanup consolidates AI defaults, public projections and draft merging; removes six obsolete financial actions; separates gallery HTML/CSS/browser scripts; and removes two type-dependency cycles. The new architecture check is part of the release gate. Preserve independent accounting references and existing streamed exports. Source and distribution validation are recorded in the [v1.3.3 release notes](./release-v1.3.3.md).
+
 ## Next priorities
 
 | Priority | Direction | Conditions and acceptance |
 | --- | --- | --- |
-| Deferred | Real Windows installation and upgrade validation | Deferred by user agreement. Artifacts are available; schedule real clean-install, upgrade, portable-migration and data-retention checks separately. |
+| Deferred | Real Windows installation and upgrade validation | Deferred by user agreement. The v1.3.3 artifacts are available and packaged-runtime checks passed. Schedule real clean-install, upgrade, portable-migration and data-retention checks separately. |
 | 1 | Scale and failure recovery | Dense-history reuse and disk-backed streaming exports are complete. Next profile Portfolio queries, reporting projection and rendering separately, assess task pagination, and validate large real photos and power interruption. |
 | 2 | Feedback-driven usability | Record actual entry, search and maintenance problems. Retain current layout and typography unless feedback supports further changes. |
 | 3 | Data rule extensions | Define the model and compatibility requirements for full status-transition history beyond the implemented status start dates, additional import fields and more detailed correction flows. |

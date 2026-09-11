@@ -78,6 +78,30 @@ test("AI settings encrypt API keys at rest and expose them only to the runtime e
   assert.deepEqual(runtimeProfiles.map((item) => item.name), ["Local Vision", "Cloud Vision"]);
 });
 
+test("DeepSeek preserves version-5 providers and encrypts its key across partial saves", (t) => {
+  const { configPath, manager } = testConfig(t);
+  manager.save({ provider: "azure", azure: { endpoint: "https://azure.test", deployment: "vision", apiKey: "azure-key" } });
+  const legacy = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  delete legacy.deepseek;
+  fs.writeFileSync(configPath, JSON.stringify(legacy));
+  assert.equal(manager.getPublicSettings().deepseek.model, "deepseek-flash");
+  manager.save({ provider: "deepseek", deepseek: { apiKey: "deepseek-secret" } });
+  manager.save({ deepseek: { model: "deepseek-flash" } });
+  const saved = manager.getPublicSettings();
+  const runtime = manager.getRuntimeEnv();
+  assert.equal(saved.provider, "deepseek");
+  assert.equal(saved.deepseek.hasApiKey, true);
+  assert.equal(runtime.DEEPSEEK_API_KEY, "deepseek-secret");
+  assert.equal(runtime.DEEPSEEK_API_ENDPOINT, "https://api.deepseek.com/chat/completions");
+  assert.equal(runtime.AZURE_OPENAI_API_KEY, "azure-key");
+  assert.equal(runtime.AZURE_OPENAI_DEPLOYMENT, "vision");
+  assert.equal(runtime.AZURE_OPENAI_ENDPOINT, "https://azure.test");
+  assert.equal(JSON.stringify(saved).includes("deepseek-secret"), false);
+  assert.equal(fs.readFileSync(configPath, "utf8").includes("deepseek-secret"), false);
+  manager.save({ deepseek: { apiKey: "" } });
+  assert.equal(manager.getPublicSettings().deepseek.hasApiKey, false);
+});
+
 
 
 test("undecryptable API keys do not prevent desktop startup or settings recovery", (t) => {

@@ -108,3 +108,10 @@ export type ShareExportResult = {
     changed: number;
   };
 };
+
+export type ShareExportIssue = {
+  level: "error" | "warning";
+  code: string;
+  message: string;
+  file?: string;
+};

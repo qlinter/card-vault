@@ -2,18 +2,13 @@ import fs from "fs";
 import { readFile, stat } from "fs/promises";
 import path from "path";
 import { listRelativeFiles } from "./file-tree.ts";
-import type { ExportData } from "./share-export-types.ts";
+import type { ExportData, ShareExportIssue } from "./share-export-types.ts";
 import { auditExportHtmlAccessibility } from "./share-accessibility.ts";
 
 export const cloudflareStaticAssetFileLimit = 20_000;
 export const cloudflareStaticAssetMaxBytes = 25 * 1024 * 1024;
 
-export type ShareExportIssue = {
-  level: "error" | "warning";
-  code: string;
-  message: string;
-  file?: string;
-};
+export type { ShareExportIssue } from "./share-export-types.ts";
 
 export type ShareExportValidation = {
   valid: boolean;

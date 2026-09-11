@@ -45,3 +45,9 @@ Both READMEs must retain detailed notes for the latest version and concise entri
 v1.3.1 的详细发布事实保留于其发布说明，并加入双语 README 历史表；当前历史表包含 26 个旧版本。9 月 9 日的安全、可靠性、密集组合历史与流式导出更新统一见 [v1.3.2](./release-v1.3.2.md)，不沿用旧分发包验证结论。
 
 Both README history tables now contain 26 earlier versions, including v1.3.1. The v1.3.2 source changes and the unsigned Windows x64 artifacts generated on 2026-09-09 are recorded in its own release notes, separately from previous distribution artifacts.
+
+## v1.3.3 更新整理
+
+v1.3.2 的发布与产物事实保留于其发布说明，并加入双语 README 历史表。两份表当前均包含 27 个历史版本；DeepSeek、页面改进与架构整理统一纳入 [v1.3.3](./release-v1.3.3.md)，经用户确认，Windows x64 未签名安装包与便携包已于 2026-09-11 生成并通过产物验证。
+
+Both README histories now contain 27 earlier versions, including v1.3.2. DeepSeek, UI improvements and architecture cleanup are combined in v1.3.3; unsigned Windows x64 installer and portable artifacts were generated and verified on 2026-09-11 following user confirmation.

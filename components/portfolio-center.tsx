@@ -239,7 +239,7 @@ export function PortfolioCenter({ snapshot, qualityCards, incompleteCards, valua
       >
       <section className={styles.section}>
         <header className={styles.sectionHeader}>
-          <div><h2><UiText text={"持仓财务"} /></h2></div>
+          <div><h2><UiText text={"持仓"} /></h2></div>
         </header>
         <div className={styles.currencyGrid}>
           {currencies.map((item) => (
@@ -400,7 +400,7 @@ export function PortfolioCenter({ snapshot, qualityCards, incompleteCards, valua
                   <Link href={`/cards/${item.cardId}?returnTo=${encodeURIComponent(returnTo)}`} key={`${item.cardId}-${item.currency}`}>
                     <span>{String(index + 1).padStart(2, "0")}</span>
                     <div><strong>{item.playerName}</strong><small>{item.cardTitle} · {item.quantity}<UiText text={" 张"} /></small></div>
-                    <div><strong>{money(item.remainingCost, item.currency)}</strong><small><UiText text={"单张均价 "} />{money(item.averageCost, item.currency)}</small></div>
+                    <div><strong>{money(item.remainingCost, item.currency)}</strong><small><UiText text={"均价 "} />{money(item.averageCost, item.currency)}</small></div>
                   </Link>
                 ))}
               </div>
@@ -422,9 +422,9 @@ export function PortfolioCenter({ snapshot, qualityCards, incompleteCards, valua
         >
         <section className={styles.section}>
           <header className={styles.sectionHeader}>
-            <div><h2><UiText text={"已售卡片复盘"} /></h2></div>
+            <div><h2><UiText text={"售出复盘"} /></h2></div>
           </header>
-          <div className={styles.positionList}>
+          <div className={`${styles.positionList} ${styles.soldReviewList}`}>
             {[...new Set(soldReviews.map((item) => item.currency))].map((currency) => (
               <div className={styles.positionCurrencyGroup} key={currency}>
                 <h3>{currency}</h3>

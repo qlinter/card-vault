@@ -1,4 +1,4 @@
-import type { PortfolioFilterCriterion, PortfolioFilterField, PortfolioScope } from "./portfolio-analysis.ts";
+import type { PortfolioFilterCriterion, PortfolioFilterField, PortfolioScope } from "./portfolio-analysis-types.ts";
 
 export const portfolioFilterDefinitions = {
   q: "搜索关键词",

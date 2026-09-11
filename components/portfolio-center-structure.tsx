@@ -48,7 +48,7 @@ function AllocationCard({ title, items, concentration, currency, filterField }: 
     : right.countShare - left.countShare).slice(0, 5);
   const hhi = concentration.hhiByCurrency[currency] ?? 0;
   return <article className={styles.allocationCard}>
-    <header><div><span><UiText text={"结构分布"} /></span><h3><UiText text={title} /></h3></div></header>
+    <header><div><h3><UiText text={title} /></h3></div></header>
     <div className={styles.allocationBars}>
       {topItems.map((item) => {
         const share = hasValues ? item.valueShare[currency] ?? 0 : item.countShare;
@@ -60,9 +60,9 @@ function AllocationCard({ title, items, concentration, currency, filterField }: 
       {topItems.length === 0 ? <p className={styles.emptyText}><UiText text={"暂无分布数据。"} /></p> : null}
     </div>
     <footer>
-      <span>Top 1 <strong>{formatPercentage(hasValues ? concentration.top1ValueShare[currency] ?? 0 : concentration.top1CountShare)}</strong></span>
-      <span>Top 3 <strong>{formatPercentage(hasValues ? concentration.top3ValueShare[currency] ?? 0 : concentration.top3CountShare)}</strong></span>
-      <span><UiText text={"集中度 "} /><strong><UiText text={hhi > 0 ? concentrationLevel(hhi) : "—"} /></strong></span>
+      <div><span>Top 1</span><strong>{formatPercentage(hasValues ? concentration.top1ValueShare[currency] ?? 0 : concentration.top1CountShare)}</strong></div>
+      <div><span>Top 3</span><strong>{formatPercentage(hasValues ? concentration.top3ValueShare[currency] ?? 0 : concentration.top3CountShare)}</strong></div>
+      <div><span><UiText text={"集中度"} /></span><strong><UiText text={hhi > 0 ? concentrationLevel(hhi) : "—"} /></strong></div>
     </footer>
   </article>;
 }
@@ -75,7 +75,7 @@ function AttributeCard({ snapshot }: { snapshot: PortfolioSnapshot }) {
     { label: "限量卡", count: snapshot.quality.serialNumberedCount, field: "isSerialNumbered" }
   ] as const;
   return <article className={styles.allocationCard}>
-    <header><div><span><UiText text={"结构分布"} /></span><h3><UiText text={"卡片属性"} /></h3></div></header>
+    <header><div><h3><UiText text={"卡片属性"} /></h3></div></header>
     <div className={styles.attributeList}>{items.map((item) => {
       const share = snapshot.activeCount > 0 ? item.count / snapshot.activeCount * 100 : 0;
       return <Link href={`/?${item.field}=true`} key={item.field}><span><UiText text={item.label} /></span><strong>{item.count}<UiText text={" 张"} /></strong><small>{formatPercentage(share, { fractionDigits: 1 })}</small></Link>;

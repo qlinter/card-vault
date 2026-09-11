@@ -15,6 +15,37 @@ const settings: ActiveAiSettings = {
   deployment: "test-model"
 };
 
+test("DeepSeek vision uses the official model, Bearer auth and non-thinking JSON output", async (t) => {
+  const deepseek: ActiveAiSettings = {
+    provider: "deepseek", endpoint: "https://api.deepseek.com/chat/completions",
+    apiKey: "mock-deepseek-key", model: "deepseek-flash"
+  };
+  const messages = [{ role: "user" as const, content: [
+    { type: "text", text: "Read the card and return JSON." },
+    { type: "image_url", image_url: { url: "data:image/png;base64,bW9jaw==", detail: "high" } }
+  ] }];
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+  let calls = 0;
+  globalThis.fetch = async (input, init) => {
+    calls++;
+    assert.equal(String(input), deepseek.endpoint);
+    assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer mock-deepseek-key");
+    const body = JSON.parse(String(init?.body));
+    assert.equal(body.model, "deepseek-flash");
+    assert.equal(body.max_tokens, 4096);
+    assert.equal(body.max_completion_tokens, undefined);
+    assert.deepEqual(body.thinking, { type: "disabled" });
+    assert.deepEqual(body.response_format, { type: "json_object" });
+    assert.deepEqual(body.messages, messages);
+    return Response.json({ choices: [{ message: { content: '{"playerName":"Test Player"}' } }] });
+  };
+  const result = await requestAiChatText(deepseek, { messages, maxTokens: 4096, operation: "识图", responseFormat: "json_object" });
+  assert.equal(JSON.parse(result).playerName, "Test Player");
+  assert.equal(calls, 1);
+  assert.equal(getModelsUrl(deepseek), "https://api.deepseek.com/models");
+});
+
 test("AI client retries with max_tokens when max_completion_tokens is unsupported", async (t) => {
   const originalFetch = globalThis.fetch;
   const requestBodies: Array<Record<string, unknown>> = [];

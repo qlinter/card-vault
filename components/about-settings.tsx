@@ -13,19 +13,19 @@ type AboutSettingsProps = {
 export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
   const { locale } = useLanguage();
   const releaseHighlights = locale === "en" ? [
-    "Updated Next.js, sharp and js-yaml to security-patched versions.",
-    "Startup failures show the underlying error and actual log path.",
-    "AI and storage settings are saved atomically; restore verifies copied files before switching data.",
-    "Fixed Windows path boundaries and future-date counts in collection digests.",
-    "Optimized dense portfolio history and added streamed CSV/XLSX generation with cancellation cleanup.",
-    "Removed obsolete helpers and consolidated ZIP generation, performance sampling and packaging rules."
+    "Added DeepSeek V4.1 Flash image recognition with encrypted local credentials.",
+    "Aligned financial-history amounts and edit actions, and redesigned holding metrics.",
+    "Simplified sorting and Portfolio labels; fixed structure alignment and long product names.",
+    "Consolidated AI configuration rules and removed obsolete financial submission actions.",
+    "Separated gallery HTML, styles and scripts while preserving generated output.",
+    "Added automated dependency-cycle and client/server boundary checks."
   ] : [
-    "更新 Next.js、sharp 和 js-yaml，修复已知依赖安全问题。",
-    "启动失败显示底层错误及实际日志路径。",
-    "AI 与存储配置完整写入后替换；恢复切换前再次校验复制文件。",
-    "修正 Windows 路径边界及收藏摘要的未来日期计数。",
-    "优化密集组合历史，支持 CSV/XLSX 流式生成与取消清理。",
-    "移除无用旧代码，统一 ZIP 归档、性能采样与打包内容管理。"
+    "新增 DeepSeek V4.1 Flash 图像识别配置，沿用本机密钥加密存储。",
+    "对齐财务历史金额与编辑入口，重新整理持仓指标布局。",
+    "精简排序及组合文案，修复收藏结构对齐和长产品线显示。",
+    "统一 AI 配置规则，移除过时的财务提交入口。",
+    "拆分分享 HTML、样式与脚本，保持生成内容一致。",
+    "增加循环依赖与客户端/服务端边界自动检查。"
   ];
   const [expanded, setExpanded] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
@@ -57,7 +57,7 @@ export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
 
           {showReleaseNotes ? (
             <UiElement as="div" uiMessages={{"aria-label": {text:"Card Vault v{0} 更新说明",values:[defaultVersion],translateValues:[]}}} className="about-release-notes" role="region" >
-              <div><h3>v{defaultVersion}<UiText text={" 主要更新"} /></h3><small>2026-09-08</small></div>
+              <div><h3>v{defaultVersion}<UiText text={" 主要更新"} /></h3><small>2026-09-11</small></div>
               <ul data-i18n-skip>{releaseHighlights.map((item) => <li key={item}>{item}</li>)}</ul>
             </UiElement>
           ) : null}

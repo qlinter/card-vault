@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { paymentComponents } from "@/lib/financial-reporting";
 import { useLanguage } from "./language-provider";
-import { HistoryCurrencySelect, ValuationSourceSelect } from "@/components/financial-history-selects";
+import { ExpenseKindSelect, HistoryCurrencySelect, ValuationSourceSelect } from "@/components/financial-history-selects";
 import { formatMinorMoney } from "@/lib/financial-history";
 import {
   expenseContextDescriptions,
@@ -112,7 +112,7 @@ export function ExpenseForm({
         </select>
         <small className="field-help"><UiText text={expenseContextDescriptions[context]} /></small>
       </label>
-      <label className="field"><span><UiText text={"费用类型"} /></span><select name="kind" defaultValue={record?.kind ?? "grading"}><option value="grading"><UiText text={"评级费"} /></option><option value="shipping"><UiText text={"运费"} /></option><option value="tax"><UiText text={"税费"} /></option><option value="insurance"><UiText text={"保险费"} /></option><option value="storage"><UiText text={"存储费"} /></option><option value="marketplace_fee"><UiText text={"平台费用"} /></option><option value="other"><UiText text={"其他费用"} /></option></select></label>
+      <label className="field"><span><UiText text={"费用类型"} /></span><ExpenseKindSelect name="kind" defaultValue={record?.kind ?? "grading"} /></label>
       <label className="field"><span><UiText text={"金额"} /></span><input name="amount" inputMode="decimal" defaultValue={record ? amountInput(record.amountMinor, record.currency) : undefined} required /></label>
       <CurrencyField value={record?.currency === "USD" ? "USD" : "CNY"} />
       <label className="field"><span><UiText text={"日期"} /></span><input name="occurredAt" type="date" defaultValue={formatHistoryDateInput(record?.occurredAt)} required /></label>

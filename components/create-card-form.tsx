@@ -115,7 +115,6 @@ export function CreateCardForm({
 
     const url = new URL(window.location.href);
     url.searchParams.set("draft", result.id);
-    url.searchParams.delete("copyFrom");
     window.history.replaceState(
       null,
       "",
@@ -301,7 +300,6 @@ export function CreateCardForm({
         <div className="entry-draft-heading">
           <div>
             <strong><UiText text={"录入草稿"} /></strong>
-            <p className="muted"><UiText text={"最多显示最近 8 项"} /></p>
           </div>
           <a href="/cards/new" className="btn btn-secondary"><UiText text={"新建空白"} /></a>
         </div>

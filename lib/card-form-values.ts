@@ -29,6 +29,7 @@
   historyCurrency: string;
   valuationDate: string;
   valuationSource: string;
+  financialRecords: string;
   tags: string;
   publicDescription: string;
   notes: string;
@@ -70,6 +71,7 @@ export const emptyCardFormValues: CardFormValues = {
   historyCurrency: "CNY",
   valuationDate: "",
   valuationSource: "个人估计",
+  financialRecords: "[]",
   tags: "",
   publicDescription: "",
   notes: "",

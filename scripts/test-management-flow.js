@@ -71,6 +71,17 @@ async function main() {
     }
     await post({ action: "task", id: reminder.id, fingerprint: reminder.fingerprint, status: "snoozed" }, "/api/collection-management"); assert.equal((await get("/api/collection-management")).tasks.find(task => task.id === reminder.id).state, "snoozed");
     await post({ action: "plan", title: "愿望清单", budget: "123.45", currency: "CNY" }, "/api/collection-management"); assert.equal((await get("/api/collection-management")).budgets.CNY, "12345");
+    const wishId = (await get("/api/collection-management")).plans.find(plan => plan.title === "愿望清单").id;
+    await post({ action: "plan", title: "保留心愿", budget: "10.00", currency: "CNY" }, "/api/collection-management");
+    for (const id of ["", "missing-wish"]) {
+      const response = await fetch(base + "/api/collection-management", { method: "POST", headers: { "Content-Type": "application/json", Origin: base }, body: JSON.stringify({ action: "plan-delete", id }) });
+      assert.equal(response.status, 400);
+    }
+    await post({ action: "plan-delete", id: wishId }, "/api/collection-management");
+    const afterWishDelete = await get("/api/collection-management");
+    assert.equal(afterWishDelete.plans.some(plan => plan.id === wishId), false);
+    assert.equal(afterWishDelete.plans.some(plan => plan.title === "保留心愿"), true);
+    assert.equal(afterWishDelete.budgets.CNY, "1000");
     await post({ action: "task", id: reminder.id, fingerprint: reminder.fingerprint, status: "open" }, "/api/collection-management");
     await post({ action: "task", id: reminder.id, fingerprint: reminder.fingerprint, status: "done" }, "/api/collection-management");
     db.prepare("INSERT INTO CardImage(id,cardId,path) VALUES('recurring-image',?,'/media/example.webp')").run(cardId);

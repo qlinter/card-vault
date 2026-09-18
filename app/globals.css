@@ -302,13 +302,13 @@ form.panel {
 
 .entry-workbench-layout {
   display: grid;
-  grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
+  grid-template-columns: 210px minmax(0, 1fr);
   align-items: start;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .entry-queue-panel {
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .entry-queue-header,
@@ -702,15 +702,12 @@ form.panel {
 
 .entry-draft-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
-.entry-draft-heading p {
-  margin: 0.2rem 0 0;
-  font-size: 0.8rem;
-}
 
 .entry-draft-heading .btn {
   min-height: 32px;
@@ -821,11 +818,6 @@ form.panel {
   margin-top: 1rem;
 }
 
-.entry-keyboard-hint {
-  align-self: center;
-  color: var(--muted-ink);
-  font-size: 0.72rem;
-}
 
 .summary-grid .panel {
   position: relative;
@@ -2386,14 +2378,12 @@ body:has(.showcase-backdrop) main.container {
 
 .ai-recognition-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.6fr);
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 0.8rem;
   align-items: end;
 }
 
-.ai-checkbox-field small {
-  font-weight: 500;
-}
+.ai-checkbox-field { align-self: end; min-height: var(--control-height); justify-content: center; }
 
 .ai-existing-image-option {
   margin-top: 0.75rem;
@@ -2403,7 +2393,7 @@ body:has(.showcase-backdrop) main.container {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
-  margin-top: 0.8rem;
+  align-self: end;
 }
 
 @media (max-width: 980px) {
@@ -3137,6 +3127,8 @@ form.showcase-search > .btn { flex: 0 0 auto; }
 .export-controls .export-public { display: flex; align-items: center; justify-content: center; gap: .5rem; height: 40px; padding-inline: .85rem; border: 1px solid var(--line); border-radius: 9px; white-space: nowrap; background: var(--surface-soft); font-size: .85rem; }
 .export-controls > .btn, .export-controls .export-search input { height: 40px; min-height: 40px; box-sizing: border-box; }
 .export-controls > .btn { display: inline-flex; align-items: center; justify-content: center; }
+.export-controls > .management-toolbar { margin: 0; align-items: center; }
+.export-controls > .management-toolbar .btn { min-height: 40px; height: 40px; }
 .export-pagination { display: flex; align-items: center; gap: .6rem; margin-top: 1rem; }
 .export-pagination > * { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; }
 .export-pagination > span { min-width: 64px; font-size: .85rem; font-variant-numeric: tabular-nums; }
@@ -3165,10 +3157,11 @@ form.showcase-search > .btn { flex: 0 0 auto; }
 
 /* Wishlist disclosures and card-info navigation. */
 .wish-disclosure { border-top: 1px solid var(--line); margin-top: .85rem; padding-top: .2rem; }
-.wish-disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem 0; font-weight: 600; cursor: pointer; list-style: none; }
+.wish-disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .5rem 0; font-weight: 600; cursor: pointer; list-style: none; }
 .wish-disclosure > summary::-webkit-details-marker { display: none; }
 .wish-disclosure[open] > summary .disclosure-icon { transform: rotate(180deg); }
 .wish-disclosure > form { padding-bottom: .25rem; }
+.wish-disclosure > form > .btn + .btn { margin-inline-start: .5rem; }
 .wish-disclosure .mapping-grid { margin-top: .25rem; }
 .management-card-list .export-card-link { flex: 1; min-width: 0; overflow-wrap: anywhere; padding: 0; line-height: 1.4; }
 .export-card-link { color: inherit; text-decoration: none; }
@@ -3196,7 +3189,6 @@ details[open] > summary .disclosure-icon { transform: rotate(180deg); }
 .about-toggle { min-height: 72px; padding: var(--panel-space); }
 .about-toggle-end { display: flex; align-items: center; gap: .75rem; }
 .disclosure-button { width: 24px; height: 24px; padding: 0; border: 0; background: transparent; border-radius: 0; color: var(--slate); }
-.wish-disclosure > summary { padding: .5rem 0; }
 .settings-disclosure-content, .filter-details-grid { margin-top: var(--section-gap); }
 
 body:has(.portfolio-page, .settings-page, .shares-page, .entry-page, .plans-page) { --shadow-soft: 0 4px 14px rgb(28 34 45 / .035); --shadow: 0 6px 18px rgb(28 34 45 / .055); background: #f7f9fb; }
@@ -3223,6 +3215,81 @@ body:has(.portfolio-page) .site-bg { background-image: linear-gradient(180deg, #
 .wish-meta { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem .75rem; font-size: .85rem; }
 .wish-meta time { min-width: 10ch; font-variant-numeric: tabular-nums; color: var(--muted-ink); }
 .record-status { min-width: 5em; text-align: right; color: var(--muted-ink); }
+
+/* Share one row for wishlist subject, budget and actions, even when titles wrap. */
+.wish-list .management-task { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; column-gap: .75rem; }
+.wish-list .management-task > div:first-child, .wish-list .wish-meta { display: contents; }
+.wish-list .management-task strong { grid-row: 1; grid-column: 1 / -1; overflow-wrap: anywhere; }
+.wish-list .wish-meta > span:first-child { grid-row: 2; grid-column: 1; min-width: 0; overflow-wrap: anywhere; }
+.wish-list .wish-meta .numeric-value { grid-row: 2; grid-column: 2; white-space: nowrap; }
+.wish-list .wish-meta time { grid-row: 3; grid-column: 1; }
+.wish-list .wish-meta .record-status { grid-row: 3; grid-column: 2; }
+.wish-list .management-task > .management-toolbar { grid-row: 2; grid-column: 3; margin: 0; flex-wrap: nowrap; }
+.wish-list .management-task small { grid-row: 4; grid-column: 1 / -1; overflow-wrap: anywhere; }
+.wish-list .management-task small:empty { display: none; }
 .management-table th, .management-table td { vertical-align: top; text-align: left; }
 
 .btn:not(.btn-primary):not(.btn-secondary):not(.btn-danger) { color: var(--ink); background: var(--surface-soft); border-color: var(--line); }
+
+.card-attribute-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; padding-block: 0.4rem; }
+.card-attribute-options label.field > span, .card-numbered-option > span, .ai-checkbox-field > span { display: flex; align-items: center; gap: 0.45rem; }
+.card-attribute-options label.field { justify-content: center; }
+.card-attribute-options input[type="checkbox"], .card-numbered-option input[type="checkbox"] { margin: 0; flex-shrink: 0; }
+.card-numbered-option { padding-block: 0.15rem; }
+@media (max-width: 520px) { .card-attribute-options { grid-template-columns: 1fr; } }
+
+/* Entry fields share column tracks and control baselines, including wrapped labels. */
+.entry-page > .title-row { padding-block: 0.75rem; margin-bottom: 0.75rem; }
+.entry-page .h1 { font-size: 1.65rem; line-height: 1.2; }
+.entry-draft-panel > .muted { margin-bottom: 0; font-size: 0.8rem; }
+.card-entry-form { --control-height: 38px; }
+form.card-entry-form { gap: 0.75rem; }
+.card-entry-form .entry-template-panel,
+.card-entry-form .ai-recognition-panel { margin-bottom: 0; padding: 0.75rem; }
+.card-entry-form .form-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem 0.75rem; }
+.card-entry-form .card-field-wide { grid-column: span 2; }
+.card-entry-form label.field { min-width: 0; gap: 0.3rem; }
+.card-entry-form label.field > span { font-size: 0.82rem; line-height: 1.4; }
+.card-entry-form label.field > :is(input:not([type=checkbox]), select, textarea) { margin-top: auto; width: 100%; }
+.card-entry-form :is(input:not([type=checkbox]), select) { height: var(--control-height); padding-block: 0.45rem; font-size: 0.875rem; }
+.card-entry-form input[type=file] { padding: 0.3rem 0.45rem; }
+.card-entry-form textarea { min-height: 76px; font-size: 0.875rem; padding: 0.5rem 0.65rem; }
+.card-entry-form .card-numbered-option { justify-content: center; padding: 0; }
+.card-entry-form .card-attribute-options { padding-block: 0.25rem; }
+.card-entry-form .card-finance-fields { min-width: 0; margin-block: 0.2rem; }
+.card-entry-form .form-section-heading { margin: 0 0 0.65rem; padding: 0.55rem 0.7rem; border-radius: 8px; }
+.card-entry-form .form-grid > .form-section-heading { margin-bottom: 0; }
+.card-entry-form .form-section-heading h2 { font-size: 0.95rem; line-height: 1.4; }
+.card-entry-form .card-finance-grid > .field:last-child { grid-column: span 2; }
+.card-entry-form .ai-recognition-grid { gap: 0.6rem; }
+.card-entry-form .ai-actions .btn { min-height: var(--control-height); }
+.card-entry-form .card-image-upload { padding-top: 0.65rem; border-top: 1px solid var(--line); }
+.card-entry-form .card-image-editor .gallery { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.card-entry-form .card-form-actions { margin-top: 0; padding-top: 0.65rem; border-top: 1px solid var(--line); align-items: center; }
+
+@media (max-width: 1200px) {
+  .card-entry-form .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .card-entry-form .card-field-wide { grid-column: auto; }
+  .card-entry-form .field:has(> input[name=tags]) { grid-column: 1 / -1; }
+  .card-entry-form .ai-recognition-grid { grid-template-columns: minmax(0, 1fr) auto; }
+  .card-entry-form .ai-recognition-grid > .field:first-child { grid-column: 1 / -1; }
+  .card-entry-form .ai-actions { justify-self: end; }
+}
+
+@media (max-width: 600px) {
+  .card-entry-form .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .card-entry-form .card-finance-grid > .field:last-child { grid-column: auto; }
+  .card-entry-form .card-attribute-options { grid-template-columns: minmax(0, 1fr); }
+  .card-entry-form .ai-recognition-grid { grid-template-columns: minmax(0, 1fr); }
+  .card-entry-form .ai-actions { justify-self: start; }
+}
+
+.valuation-summary-label { display: flex; align-items: center; gap: 0.4rem; }
+.valuation-visibility-toggle { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 5px; border: 0; border-radius: 6px; color: var(--muted-ink); background: transparent; cursor: pointer; }
+.valuation-visibility-toggle:hover { background: var(--surface-soft); color: var(--ink); }
+.valuation-visibility-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.entry-financial-records { margin-top: 0.75rem; }
+.entry-financial-record-toolbar, .entry-financial-record-types { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+.entry-financial-record { min-width: 0; margin: 0.75rem 0 0; padding: 0.75rem; border: 1px solid var(--line); border-radius: 8px; }
+.entry-financial-record legend { padding-inline: 0.35rem; font-size: 0.85rem; }
+.entry-financial-remove { margin-top: 0.65rem; }

@@ -2,6 +2,7 @@ import { CollectionViewProvider } from "@/components/view-mode-toggle";
 import { UiText } from "@/components/ui-text";
 import { FilterBar } from "@/components/filter-bar";
 import { HomeCardGrid } from "@/components/home-card-grid";
+import { HomeValuation } from "@/components/home-valuation";
 import { PortfolioAnalysisButton } from "@/components/portfolio-analysis";
 import { formatMinorMoneyGrouped } from "@/lib/financial-history";
 import { buildPortfolioScope } from "@/lib/portfolio-analysis";
@@ -63,26 +64,15 @@ export default async function Home({ searchParams }: HomeProps) {
     <CollectionViewProvider scope="home"><div className="page home-page">
       <div className="summary-grid">
         <div className="panel">
-          <strong>{<UiText text={"卡片数量"} />}</strong>
+          <strong>{<UiText text={"卡片"} />}</strong>
           <p className="h1" style={{ marginTop: "0.35rem" }}>
             {totalCount}
           </p>
         </div>
         <div className="panel valuation-summary-card">
-          <div className="valuation-summary-head">
-            <strong>{<UiText text={"总估值"} />}</strong>
-            <div className="valuation-summary-actions">
-              <a className="btn btn-secondary" data-testid="home-portfolio-link" href={returnSuffix ? `/portfolio?${returnSuffix}` : "/portfolio"}><UiText text={"组合"} /></a>
-              <PortfolioAnalysisButton cardCount={totalCount} query={query} scope={portfolioScope} />
-            </div>
-          </div>
-          <div className="valuation-total-list">
-            {valuationCurrencies.length > 0 ? valuationCurrencies.map((currency) => (
-              <p className="h1 valuation-total-item" key={currency}>
-                {formatMinorMoneyGrouped(valuationTotals.totals[currency], currency)}
-              </p>
-            )) : <p className="h1 valuation-total-item">—</p>}
-          </div>
+          <HomeValuation amounts={valuationCurrencies.map(currency => formatMinorMoneyGrouped(valuationTotals.totals[currency], currency))}>
+            <PortfolioAnalysisButton cardCount={totalCount} query={query} scope={portfolioScope} />
+          </HomeValuation>
           <small className="muted valuation-coverage"><UiText text={"估值覆盖"} />{" "}{valuationTotals.valuedCardCount}/{totalCount}
             {" · "}{config.reportingCurrency}
           </small>

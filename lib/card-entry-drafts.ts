@@ -8,6 +8,7 @@ import {
   serializeCardEntryDraftValues
 } from "@/lib/card-entry-domain";
 import { prisma } from "@/lib/prisma";
+import { parseEntryFinance } from "@/lib/card-entry-finance";
 
 export type CardEntryDraftSummary = {
   id: string;
@@ -22,6 +23,8 @@ export async function saveCardEntryDraft(input: {
   const id = input.id ? normalizeCardEntryId(input.id) : undefined;
   if (input.id && !id) throw new Error("草稿编号无效。");
   const values = normalizeCardFormValues(input.values);
+  // Reject an invalid draft explicitly instead of accepting JSON that cannot be restored.
+  parseEntryFinance(values.financialRecords);
   const data = {
     schemaVersion: cardEntryDraftSchemaVersion,
     status: "draft",

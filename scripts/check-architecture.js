@@ -67,7 +67,7 @@ function checkClientBoundary(file, stack = []) {
   if (directives.get(file).has("use server") || checkedClientFiles.has(file)) return;
   checkedClientFiles.add(file);
   for (const specifier of runtimeImports.get(file)) {
-    assert.ok(!nodeModules.has(specifier.replace(/^node:/, "")) && specifier !== "@prisma/client",
+    assert.ok(!nodeModules.has(specifier.replace(/^node:/, "")) && specifier !== "@prisma/client" && specifier !== "server-only",
       `Server dependency in client code: ${[...stack, file, specifier].join(" -> ")}`);
     const dependency = resolve(file, specifier);
     if (dependency) checkClientBoundary(dependency, [...stack, file]);

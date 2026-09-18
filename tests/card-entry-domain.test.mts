@@ -3,7 +3,6 @@ import test from "node:test";
 import {
   buildCardData,
   cardEntryDraftTitle,
-  copyCommonCardValues,
   hasCardEntryDraftContent,
   normalizeCardEntryId,
   normalizeCardFormValues,
@@ -49,35 +48,14 @@ test("draft content and title reflect meaningful entry fields", () => {
   );
 });
 
-test("copy mode carries common set fields but resets unique and financial fields", () => {
-  const values = copyCommonCardValues({
-    sport: "Basketball",
-    team: "Test Team",
-    year: "2026",
-    brand: "Brand",
-    productLine: "Product",
-    subsetName: "Subset",
-    visibility: "public",
-    collectionStatus: "holding"
-  });
-
-  assert.equal(values.sport, "Basketball");
-  assert.equal(values.productLine, "Product");
-  assert.equal(values.visibility, "public");
-  assert.equal(values.playerName, "");
-  assert.equal(values.serialNumber, "");
-  assert.equal(values.certNumber, "");
-  assert.equal(values.purchasePrice, "");
-  assert.equal(values.initialQuantity, "1");
-  assert.equal(values.currentValue, "");
-});
-
 test("entry intent is allowlisted and domain validation remains centralized", () => {
   assert.equal(normalizeCardEntryId(" valid-id_1 "), "valid-id_1");
   assert.equal(normalizeCardEntryId("../invalid"), undefined);
   const formData = new FormData();
   formData.set("saveIntent", "copy");
-  assert.equal(readCardEntrySaveIntent(formData), "copy");
+  assert.equal(readCardEntrySaveIntent(formData), "view");
+  formData.set("saveIntent", "continue");
+  assert.equal(readCardEntrySaveIntent(formData), "continue");
   formData.set("saveIntent", "unexpected");
   assert.equal(readCardEntrySaveIntent(formData), "view");
 
@@ -89,6 +67,14 @@ test("entry intent is allowlisted and domain validation remains centralized", ()
     serialRange: "/99"
   });
   assert.equal(card.isSerialNumbered, true);
+  for (const [autoType, patchType, expected] of [["on-card", "logo patch", true], ["  ", "  ", false]] as const) {
+    const typedCard = buildCardData({ ...emptyCardFormValues, playerName: "Player", cardTitle: "Card", sport: "Basketball", autoType, patchType });
+    assert.equal(typedCard.isAutograph, expected);
+    assert.equal(typedCard.isPatch, expected);
+  }
+  const manuallyChecked = buildCardData({ ...emptyCardFormValues, playerName: "Player", cardTitle: "Card", sport: "Basketball", isAutograph: true, isPatch: true });
+  assert.equal(manuallyChecked.isAutograph, true);
+  assert.equal(manuallyChecked.isPatch, true);
   assert.throws(
     () => buildCardData({ ...emptyCardFormValues, cardTitle: "Card", sport: "Basketball" }),
     /卡片主体/

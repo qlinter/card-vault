@@ -13,19 +13,17 @@ type AboutSettingsProps = {
 export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
   const { locale } = useLanguage();
   const releaseHighlights = locale === "en" ? [
-    "Added DeepSeek V4.1 Flash image recognition with encrypted local credentials.",
-    "Aligned financial-history amounts and edit actions, and redesigned holding metrics.",
-    "Simplified sorting and Portfolio labels; fixed structure alignment and long product names.",
-    "Consolidated AI configuration rules and removed obsolete financial submission actions.",
-    "Separated gallery HTML, styles and scripts while preserving generated output.",
-    "Added automated dependency-cycle and client/server boundary checks."
+    "Grouped entry into card, grading and financial sections with automatic attribute checks.",
+    "Added supplementary transactions, expenses and valuations during entry, including draft recovery.",
+    "Added a remembered valuation visibility toggle and simplified Home labels.",
+    "Unified export controls and added confirmed wish deletion in the editor.",
+    "Consolidated financial processing and documentation, removed redundant code and fixed stale AI attributes."
   ] : [
-    "新增 DeepSeek V4.1 Flash 图像识别配置，沿用本机密钥加密存储。",
-    "对齐财务历史金额与编辑入口，重新整理持仓指标布局。",
-    "精简排序及组合文案，修复收藏结构对齐和长产品线显示。",
-    "统一 AI 配置规则，移除过时的财务提交入口。",
-    "拆分分享 HTML、样式与脚本，保持生成内容一致。",
-    "增加循环依赖与客户端/服务端边界自动检查。"
+    "录入页按卡片、评级和财务分区，字段关联属性自动勾选。",
+    "录入时可补充交易、费用与估值记录，并随草稿恢复。",
+    "首页估值增加可记忆的显隐切换，精简首页栏目名称。",
+    "统一导出操作与视图切换，心愿编辑区支持确认删除。",
+    "收敛财务处理与文档，清理重复代码并修复 AI 属性残留。"
   ];
   const [expanded, setExpanded] = useState(false);
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
@@ -57,7 +55,7 @@ export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
 
           {showReleaseNotes ? (
             <UiElement as="div" uiMessages={{"aria-label": {text:"Card Vault v{0} 更新说明",values:[defaultVersion],translateValues:[]}}} className="about-release-notes" role="region" >
-              <div><h3>v{defaultVersion}<UiText text={" 主要更新"} /></h3><small>2026-09-11</small></div>
+              <div><h3>v{defaultVersion}<UiText text={" 主要更新"} /></h3><small>2026-09-18</small></div>
               <ul data-i18n-skip>{releaseHighlights.map((item) => <li key={item}>{item}</li>)}</ul>
             </UiElement>
           ) : null}

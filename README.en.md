@@ -6,20 +6,20 @@ Card Vault is a local-first Windows sports-card collection application built wit
 
 ## Current status
 
-Source version: `1.3.3` (2026-09-11), combining DeepSeek support, UI improvements and architecture cleanup. Scope and validation are recorded in the [v1.3.3 release notes](./docs/release-v1.3.3.md).
+Source version: `1.3.4` (2026-09-18), covering entry sections, supplementary financial records, Home valuation visibility, wish deletion and code cleanup. See the [v1.3.4 release notes](./docs/release-v1.3.4.md).
 
-Following user confirmation, unsigned Windows x64 artifacts were generated on 2026-09-11: `dist/card-vault-1.3.3-setup.exe`, `dist/card-vault-1.3.3-portable.zip` and `dist/SHA256SUMS.txt`. Full release checks, packaged business flows, version, bundle contents and SHA-256 verification passed. Earlier distribution facts remain in their historical release notes.
+The unsigned Windows x64 installer `dist/card-vault-1.3.4-setup.exe`, portable package `dist/card-vault-1.3.4-portable.zip` and `dist/SHA256SUMS.txt` have been generated and passed packaged-runtime and artifact checks. Previous v1.3.3 artifacts are preserved unchanged in `backups/releases/v1.3.3`.
 
-## Latest version: v1.3.3
+## Latest version: v1.3.4
 
-1. **DeepSeek**: dedicated settings default to the official `deepseek-flash` model, with native image input, connection testing, model discovery and Windows encrypted credential storage.
-2. **Financial layouts**: align history amounts and edit actions; use consistent label/value columns for holdings and keep edit buttons stable when forms expand.
-3. **Portfolio and filters**: shorten cost/valuation sorting and section names; fix concentration alignment, long product names and sales-review dates, and remove duplicate wording and excess space.
-4. **Shared AI configuration**: Electron, server and UI reuse defaults, types, public settings and draft merging. Omitted keys remain saved, explicit empty keys clear credentials, and custom profiles merge by ID.
-5. **Architecture**: remove six obsolete financial actions, separate gallery HTML, CSS and browser scripts, and eliminate two type-dependency cycles while retaining the rendering interface and generated output.
-6. **Maintenance gates**: add dependency-cycle and client/server boundary checks to release validation, with credential-compatibility and financial/Portfolio UI regressions.
+1. **Entry layout**: Card Information, Grading Information and Financial Records sections, four columns in wide windows and two in narrower windows, aligned controls and side-by-side descriptions and notes. Serial numbers, autograph types and Patch types automatically select their attributes.
+2. **Additional records**: retain quick financial inputs and add supplementary transactions, expenses and valuations. Drafts retain them and card creation commits them atomically. Existing detail-page workflows remain available.
+3. **Home**: the sort prompt reads Order, retaining Recently Added as the default. Rename the metrics to Cards and Valuation, keep Portfolio Analysis, and remember visibility selected with the eye icon.
+4. **UI cleanup**: remove Save and Add a Copy, centralize guidance, remove redundant sharing and portfolio copy, align CSV/XLSX controls and use Home's compact view toggle.
+5. **Wishlist**: replace Cancel Wish and Cancel Edit with Delete Wish in the editor; confirmation refreshes the list and budgets. Previously cancelled wishes remain available.
+6. **Maintainability**: share initial financial processing between entry and import, reuse expense options and remove unused branches and repeated styles. Fix stale attributes after replacing AI images, strengthen financial payload and client-boundary checks, and consolidate documentation.
 
-Database structure, accounting rules and backup formats remain unchanged. DeepSeek settings are compatible with existing version-5 configuration files; live recognition quality requires the user's own key. Source and packaged-runtime validation are complete for this version; real Windows installation and upgrade tests remain deferred.
+Database structure, existing accounting rules and backup formats are unchanged. Packaged-runtime validation passed; real Windows installation/upgrade tests remain deferred.
 
 ## Features
 
@@ -73,10 +73,11 @@ Keep a full backup before upgrades or moving computers. CSV/XLSX files omit medi
 
 ## Historical releases
 
-All 27 earlier versions are retained below, newest first. These summaries describe each release at the time; current behavior and compatibility follow the latest documentation. The original bilingual summaries were recovered from the v1.2.1 README files, with v1.3.0, v1.3.1 and v1.3.2 added from their release notes. Early standalone release notes were not found; see [historical sources and gaps](./docs/version-history-sources.md).
+All 28 earlier versions are retained below, newest first. These summaries describe each release at the time; current behavior and compatibility follow the latest documentation. The original bilingual summaries were recovered from the v1.2.1 README files, with v1.3.0–v1.3.3 added from their release notes. Early standalone release notes were not found; see [historical sources and gaps](./docs/version-history-sources.md).
 
 | Version | Main changes | Source |
 | --- | --- | --- |
+| `1.3.3` | Added DeepSeek, improved financial and Portfolio layouts, and consolidated AI configuration and architecture. | [Release notes](./docs/release-v1.3.3.md) |
 | `1.3.2` | Security and startup fixes, settings/restore protection, dense Portfolio history and streamed exports, with shared ZIP and performance helpers. | [Release notes](./docs/release-v1.3.2.md) |
 | `1.3.1` | Fixed startup ports, recurring reminders, export scope and restore rollback; optimized financial indexing/history and consolidated current-format validation and documentation. | [Release notes](./docs/release-v1.3.1.md) |
 | `1.3.0` | Unified mixed-currency accounting and manual FX; import previews/undo, reminders and plans, Home pagination, Portfolio/gallery refinements and local security improvements. | [Release notes](./docs/release-v1.3.0.md) |
@@ -109,7 +110,7 @@ All 27 earlier versions are retained below, newest first. These summaries descri
 
 - [Historical sources and gaps](./docs/version-history-sources.md): recovered README history and documentation policy.
 - [Documentation index](./docs/README.md): current specifications and release history.
-- [v1.3.3 release notes](./docs/release-v1.3.3.md): DeepSeek, UI changes, architecture cleanup, validation and distribution status.
+- [v1.3.4 release notes](./docs/release-v1.3.4.md): entry, supplementary finance, valuation visibility, validation and distribution status.
 - [Product roadmap](./docs/product-roadmap.en.md); [中文](./docs/product-roadmap.md).
 
 Application source lives in `app`, `components`, `lib` and `electron`. `scripts` handles preparation, tests and distribution; `tests` contains regressions and visual baselines. Git ignores personal data, secrets, `node_modules`, `.next`, `logs`, `dist` and test runtime files. Both READMEs retain detailed notes for the latest version and concise entries for every earlier version. Full release notes and source provenance remain in `docs`; a new release must not remove older entries.

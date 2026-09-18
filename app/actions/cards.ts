@@ -63,7 +63,6 @@ export async function createCardFormAction(
       redirectPath = `/cards/${card.id}?success=created`;
     } else {
       const params = new URLSearchParams({ success: "created" });
-      if (saveIntent === "copy") params.set("copyFrom", card.id);
       if (nextQueueItemId) params.set("queue", nextQueueItemId);
       redirectPath = `/cards/new?${params.toString()}`;
     }

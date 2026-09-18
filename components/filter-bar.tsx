@@ -105,7 +105,8 @@ export function FilterBar({
           ))}
         </select>
 
-        <select name="sort" defaultValue={query.sort ?? "newest"}>
+        <UiElement as="select" uiAttributes={["aria-label"]} aria-label="排序" name="sort" defaultValue={query.sort || ""}>
+          <option value="" disabled hidden><UiText text={"排序"} /></option>
           <option value="newest">{<UiText text={"最新录入"} />}</option>
           <option value="yearAsc">{<UiText text={"年份升序"} />}</option>
           <option value="yearDesc">{<UiText text={"年份降序"} />}</option>
@@ -113,7 +114,7 @@ export function FilterBar({
           <option value="costCnyDesc">{<UiText text={"成本降序"} />}</option>
           <option value="valueCnyAsc">{<UiText text={"估值升序"} />}</option>
           <option value="valueCnyDesc">{<UiText text={"估值降序"} />}</option>
-        </select>
+        </UiElement>
       </div>
 
       <details className="filter-details" open={advancedOpen}>

@@ -128,7 +128,6 @@ export function InvestmentInputs({
       <label className="field" data-i18n-skip>
         <span>{text("另一币种购买金额（可选）", "Additional purchase payment (optional)")} · {currencyValue === "CNY" ? "USD" : "CNY"}</span>
         <input name="secondaryPurchasePrice" inputMode="decimal" defaultValue={secondaryPurchasePrice} />
-        <small>{text("两项为同一次购入的付款组成，数量仅计算一次。全部留空表示成本未知；赠品请填 0。", "Both amounts belong to one purchase; quantity is counted once. Leave both blank for unknown cost; enter 0 for a gift.")}</small>
       </label>
 
       <label className="field">

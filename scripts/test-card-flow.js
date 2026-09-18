@@ -117,7 +117,7 @@ async function main() {
     await waitForServer(baseUrl, output, serverProcess, "Card flow");
 
     const newPage = await fetchPage(baseUrl, "/cards/new");
-    for (const marker of ["录入工作台", "批量录入", "导入并预处理", "保存并查看", "保存并继续", "保存并复制新增", "录入草稿", "模板", "Ctrl + Enter 保存并继续"]) {
+    for (const marker of ["录入工作台", "批量录入", "导入并预处理", "保存并查看", "保存并继续", "录入草稿", "模板"]) {
       if (!newPage.includes(marker)) {
         throw new Error(`Entry workbench is missing the expected marker: ${marker}`);
       }
@@ -398,9 +398,9 @@ async function main() {
       !thumbnailHomePage.includes('data-testid="home-filter-actions"') ||
       !thumbnailHomePage.includes('href="/cards/new"') ||
       !thumbnailHomePage.includes("filter-add-card") ||
-      !/data-testid="home-portfolio-link"[^>]*href="\/portfolio"/.test(thumbnailHomePage)
+      !thumbnailHomePage.includes("组合分析") || thumbnailHomePage.includes('data-testid="home-portfolio-link"')
     ) {
-      throw new Error("Home page did not keep the create-card and Portfolio Center actions available.");
+      throw new Error("Home page did not keep create-card and analysis actions, or retained the removed portfolio link.");
     }
     const thumbnailPath = thumbnailHomePage.match(/\/thumbnails\/[^"']+\.home\.webp/)?.[0];
     if (!thumbnailPath || thumbnailHomePage.includes('src="/media/')) {
@@ -617,9 +617,9 @@ async function main() {
       !filteredHomePage.includes(filteredCardHref) ||
       !filteredHomeText.includes("CNY 360.00") ||
       !filteredHomeText.includes("估值覆盖 1/1") ||
-      !filteredHomePage.includes('href="/portfolio?sport=Basketball&amp;sort=valueDesc"')
+      !filteredHomePage.includes("组合分析")
     ) {
-      throw new Error(`Filtered home page mismatch: link=${filteredHomePage.includes(filteredCardHref)}, amount=${filteredHomeText.includes("CNY 360.00")}, coverage=${filteredHomeText.includes("估值覆盖 1/1")}\n${filteredHomeText.match(/总估值.{0,180}/)?.[0] || "no valuation text"}`);
+      throw new Error(`Filtered home page mismatch: link=${filteredHomePage.includes(filteredCardHref)}, amount=${filteredHomeText.includes("CNY 360.00")}, coverage=${filteredHomeText.includes("估值覆盖 1/1")}\n${filteredHomeText.match(/估值.{0,180}/)?.[0] || "no valuation text"}`);
     }
     const filteredDetailPage = await fetchPage(baseUrl, filteredCardHref);
     if (!filteredDetailPage.includes('href="/?sport=Basketball&amp;sort=valueDesc"')) {

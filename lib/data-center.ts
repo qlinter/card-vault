@@ -6,7 +6,7 @@ import { prisma } from "./prisma";
 import { parseCsv, validateTable, validateXlsxArchive } from "./tabular-data.js";
 import { importFields, type ImportMapping } from "./data-center-fields";
 import { buildCardData, normalizeCardFormValues } from "./card-entry-domain";
-import { createInitialFinancialHistory } from "./card-entry-service";
+import { createInitialFinancialHistory } from "./card-entry-finance-service";
 import { parseInitialCardQuantity } from "./card-quantity";
 import { optionalCardDate } from "./card-domain";
 import { moneyValue } from "./financial-history";

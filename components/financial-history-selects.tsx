@@ -1,5 +1,6 @@
 import { UiText } from "@/components/ui-text";
 import { supportedHistoryCurrencies, valuationSources } from "@/lib/financial-history";
+import { expenseKindLabels } from "@/lib/financial-history-presentation";
 
 const currencyLabels: Record<(typeof supportedHistoryCurrencies)[number], string> = {
   CNY: "CNY - 人民币",
@@ -28,4 +29,12 @@ export function ValuationSourceSelect({ name, defaultValue = "个人估计", req
       {valuationSources.map((source) => <option value={source} key={source}><UiText text={source} /></option>)}
     </select>
   );
+}
+
+export function ExpenseKindSelect({ name, defaultValue = "grading" }: SelectProps) {
+  return <select name={name} defaultValue={defaultValue}>
+    {Object.entries(expenseKindLabels).map(([value, label]) => (
+      <option key={value} value={value}><UiText text={label} /></option>
+    ))}
+  </select>;
 }

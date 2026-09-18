@@ -61,6 +61,14 @@ const historyVersions = file => [...fs.readFileSync(path.join(rootDir, file), "u
 const history = historyVersions("README.md");
 assert.deepEqual(history, historyVersions("README.en.md"), "README histories must contain the same versions in the same order");
 assert.equal(new Set(history).size, history.length, "README history contains duplicate versions");
+for (const [file, pattern] of [["README.md", /全部 (\d+) 个历史版本/], ["README.en.md", /All (\d+) earlier versions/]]) {
+  const declaredCount = fs.readFileSync(path.join(rootDir, file), "utf8").match(pattern)?.[1];
+  assert.equal(Number(declaredCount), history.length, `${file} historical version count is stale`);
+}
+for (const file of ["share-gallery.md", "cloudflare-drop-publishing.md", "data-backup-guide.md", "financial-history-model.md"]) {
+  const version = fs.readFileSync(path.join(docsDir, file), "utf8").match(/(?:源码版本|产品版本)：`([^`]+)`/)?.[1];
+  assert.equal(version, currentVersion, `${file} applicable product version is stale`);
+}
 const recoveredVersions = [...Array.from({ length: 20 }, (_, index) => `1.0.${index}`), "1.1.0", "1.1.1", "1.2.0", "1.2.1", "1.3.0"];
 for (const version of recoveredVersions) assert.ok(history.includes(version), `README history lost version ${version}`);
 for (const file of fs.readdirSync(docsDir)) {

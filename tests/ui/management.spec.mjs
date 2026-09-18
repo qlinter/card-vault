@@ -270,6 +270,30 @@ test("wishlist input and display fold independently and editing opens the form",
   await expect(page.getByLabel("心愿名称", { exact: true })).toBeVisible();
   await expect(page.getByLabel("心愿名称", { exact: true })).toHaveValue("UI wishlist");
   await expect(inputSection.locator("summary")).toHaveText("编辑");
+  await expect(page.getByRole("button", { name: "取消心愿", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "取消编辑", exact: true })).toHaveCount(0);
+  const deleteWish = page.getByRole("button", { name: "删除心愿", exact: true });
+  page.once("dialog", dialog => dialog.dismiss());
+  await deleteWish.click();
+  await expect(displaySection.getByText("UI wishlist", { exact: true })).toBeVisible();
+  await page.route("**/api/collection-management", async route => {
+    if (route.request().method() === "POST" && route.request().postDataJSON().action === "plan-delete") {
+      await route.fulfill({ status: 400, json: { error: "删除失败，请重试。" } });
+    } else await route.continue();
+  });
+  page.once("dialog", dialog => dialog.accept());
+  await deleteWish.click();
+  await expect(page.locator(".plans-page").getByRole("alert")).toHaveText("删除失败，请重试。");
+  await expect(page.getByLabel("心愿名称", { exact: true })).toHaveValue("UI wishlist");
+  await expect(displaySection.getByText("UI wishlist", { exact: true })).toBeVisible();
+  await page.unroute("**/api/collection-management");
+  page.once("dialog", dialog => dialog.accept());
+  await deleteWish.click();
+  await expect(displaySection.getByText("UI wishlist", { exact: true })).toHaveCount(0);
+  await expect(inputSection.locator("summary")).toHaveText("新增");
+  expect(fixture(db => db.prepare("SELECT COUNT(*) n FROM CollectionPlan WHERE title='UI wishlist'").get().n)).toBe(0);
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(displaySection.getByText("UI wishlist", { exact: true })).toHaveCount(0);
 });
 
 test("share inline actions keep equal fonts, alignment and targeted deletion", async ({ page }, testInfo) => {

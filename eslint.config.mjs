@@ -30,7 +30,7 @@ export default tseslint.config(
     rules: {
       "jsx-a11y/label-has-associated-control": ["error", {
         assert: "either",
-        controlComponents: ["HistoryCurrencySelect", "ValuationSourceSelect"],
+        controlComponents: ["ExpenseKindSelect", "HistoryCurrencySelect", "ValuationSourceSelect"],
         depth: 4
       }]
     }

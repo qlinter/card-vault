@@ -1,4 +1,3 @@
-import type { Card } from "@prisma/client";
 import type { CardFormValues } from "./card-form-values.ts";
 import { emptyCardFormValues } from "./card-form-values.ts";
 import {
@@ -11,10 +10,11 @@ import {
   resolveIsSerialNumbered
 } from "./card-domain.ts";
 import { normalizeHttpUrl } from "./http-url.ts";
+import { readEntryFinance } from "./card-entry-finance.ts";
 
 export const cardEntryDraftSchemaVersion = 1;
 
-export const cardFormStringFields = [
+const cardFormStringFields = [
   "playerName",
   "cardTitle",
   "sport",
@@ -44,6 +44,7 @@ export const cardFormStringFields = [
   "historyCurrency",
   "valuationDate",
   "valuationSource",
+  "financialRecords",
   "tags",
   "publicDescription",
   "notes",
@@ -51,11 +52,11 @@ export const cardFormStringFields = [
   "patchType"
 ] as const satisfies readonly (keyof CardFormValues)[];
 
-export const cardFormBooleanFields = [
+const cardFormBooleanFields = [
   "isSerialNumbered", "isRookie", "isAutograph", "isPatch"
 ] as const satisfies readonly (keyof CardFormValues)[];
 
-export type CardEntrySaveIntent = "view" | "continue" | "copy";
+type CardEntrySaveIntent = "view" | "continue";
 
 const maxDraftFieldLength = 10_000;
 
@@ -80,7 +81,9 @@ export function normalizeCardFormValues(input: unknown): CardFormValues {
   const values = freshEmptyValues();
 
   for (const field of cardFormStringFields) {
-    const value = boundedDraftString(source[field]);
+    const value = field === "financialRecords" && typeof source[field] === "string"
+      ? source[field]
+      : boundedDraftString(source[field]);
     values[field] = value || emptyCardFormValues[field];
   }
   for (const field of cardFormBooleanFields) {
@@ -99,12 +102,13 @@ export function readCardFormValues(formData: FormData): CardFormValues {
   for (const field of cardFormBooleanFields) {
     source[field] = formData.get(field) === "on" || formData.get(field) === "true";
   }
+  source.financialRecords = readEntryFinance(formData);
   return normalizeCardFormValues(source);
 }
 
 export function readCardEntrySaveIntent(formData: FormData): CardEntrySaveIntent {
   const value = formData.get("saveIntent");
-  return value === "continue" || value === "copy" ? value : "view";
+  return value === "continue" ? value : "view";
 }
 
 export function serializeCardEntryDraftValues(values: CardFormValues): string {
@@ -135,32 +139,6 @@ export function cardEntryDraftTitle(values: CardFormValues): string {
   return parts.slice(0, 3).join(" · ") || "未命名草稿";
 }
 
-type CardCopySource = Pick<
-  Card,
-  | "sport"
-  | "team"
-  | "year"
-  | "brand"
-  | "productLine"
-  | "subsetName"
-  | "visibility"
-  | "collectionStatus"
->;
-
-export function copyCommonCardValues(card: CardCopySource): CardFormValues {
-  return normalizeCardFormValues({
-    ...emptyCardFormValues,
-    sport: card.sport,
-    team: card.team ?? "",
-    year: card.year ?? "",
-    brand: card.brand ?? "",
-    productLine: card.productLine ?? "",
-    subsetName: card.subsetName ?? "",
-    visibility: card.visibility,
-    collectionStatus: card.collectionStatus
-  });
-}
-
 export function buildCardData(values: CardFormValues) {
   const serialNumber = optionalCardText(values.serialNumber, "编号");
   const serialRange = optionalCardText(values.serialRange, "编号范围");
@@ -189,9 +167,9 @@ export function buildCardData(values: CardFormValues) {
     serialNumber,
     serialRange,
     isRookie: values.isRookie,
-    isAutograph: values.isAutograph,
+    isAutograph: values.isAutograph || Boolean(values.autoType.trim()),
     autoType: optionalCardText(values.autoType, "签字类型"),
-    isPatch: values.isPatch,
+    isPatch: values.isPatch || Boolean(values.patchType.trim()),
     patchType: optionalCardText(values.patchType, "Patch 类型"),
     gradingCompany: optionalCardText(values.gradingCompany, "评级机构"),
     grade: optionalCardText(values.grade, "评级"),

@@ -21,7 +21,6 @@ export function PortfolioQualitySection({ snapshot, qualityCards, returnTo }: {
       {qualityCards.slice(0, 8).map((card) => <Link key={card.id} href={`/cards/${card.id}?returnTo=${encodeURIComponent(returnTo)}`}>
         <div><strong>{card.playerName}</strong><small>{card.cardTitle}</small></div><span><UiText text={card.issues.join(" · ")} /></span>
       </Link>)}
-      {qualityCards.length === 0 ? <p className={styles.qualityComplete}><UiText text={"当前卡片没有待处理的数据质量问题。"} /></p> : null}
     </div>
   </section>;
 }

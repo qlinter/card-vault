@@ -101,17 +101,12 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages 
 
   return (
     <>
-      <div className="field full">
+      <label className="field full card-image-upload">
         <span>
           {mode === "create" ? queuedImages.length > 0 ? <UiText text={"队列已有 {0} 张图片，可追加至总计 5 张"} values={[queuedImages.length]} /> : <UiText text={"上传图片（1-5 张）*"} /> : <UiText text={"新增图片（可选，单张卡总计最多 5 张）"} />}
         </span>
         <input ref={fileInput} name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={selectNewImages} />
-        {mode === "create" ? (
-          <small className="muted">
-            <UiText text="提交失败时会保留本页文字、勾选项和已选图片；刷新页面后需重新选择本地图片。" />
-          </small>
-        ) : null}
-      </div>
+      </label>
 
       <input type="hidden" name="existingImageRotations" value={JSON.stringify(Object.fromEntries(
         Object.entries(existingRotations).map(([id, rotation]) => [id, toPersistedCardImageRotation(rotation)])

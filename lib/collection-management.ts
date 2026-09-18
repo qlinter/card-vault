@@ -66,6 +66,9 @@ export async function mutateCollectionManagement(body: Record<string, unknown>) 
     const data = { title, currency, budgetMinor, playerName: optionalCardText(String(body.playerName ?? ""), "卡片主体"), notes: optionalCardText(String(body.notes ?? ""), "备注", 10000), targetDate: optionalCardDate(String(body.targetDate ?? ""), "目标日期") };
     if (body.id) await prisma.collectionPlan.update({ where: { id: String(body.id) }, data });
     else await prisma.collectionPlan.create({ data });
+  } else if (body.action === "plan-delete") {
+    const id = requiredCardText(typeof body.id === "string" ? body.id : "", "心愿 ID");
+    await prisma.collectionPlan.delete({ where: { id } });
   } else if (body.action === "plan-status") {
     if (!["planned", "acquired", "cancelled"].includes(String(body.status))) throw new Error("计划状态无效。");
     if (body.cardId) await prisma.card.findUniqueOrThrow({ where: { id: String(body.cardId) } });

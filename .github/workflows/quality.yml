@@ -22,14 +22,19 @@ jobs:
       - run: npm ci
       - run: npx playwright install chromium
       - run: npm run audit:all
-      - run: npm run check:release
+      - name: Run npm run check:release
+        run: |
+          New-Item -ItemType Directory -Force -Path logs | Out-Null
+          npm run check:release 2>&1 | Tee-Object -FilePath logs/release-check.log
+          exit $LASTEXITCODE
         env:
           CARD_VAULT_UI_SCREENSHOT_MODE: compare
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: card-vault-ui-regression-${{ github.sha }}
+          name: card-vault-release-check-${{ github.sha }}
           path: |
+            logs/release-check.log
             test-results
             playwright-report
           if-no-files-found: ignore

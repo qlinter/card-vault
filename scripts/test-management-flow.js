@@ -2,14 +2,14 @@ const assert = require("node:assert/strict"), fs = require("node:fs"), os = requ
 const { DatabaseSync } = require("node:sqlite");
 const ExcelJS = require("exceljs");
 const { parseCsv } = require("../lib/tabular-data");
-const { fileDatabaseUrl, findAvailablePort, initializeTestDatabase, removeTempRoot, startTestServer, stopServer, waitForServer } = require("./test-http-flow-utils");
+const { fetchTestServer: fetch, fileDatabaseUrl, findAvailablePort, initializeTestDatabase, removeTempRoot, startTestServer, stopServer, waitForServer } = require("./test-http-flow-utils");
 async function main() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "card-vault-management-")), dataDir = path.join(root, "data"), dbPath = path.join(dataDir, "dev.db");
   const port = await findAvailablePort(3370), base = `http://127.0.0.1:${port}`, output = [];
   const env = { ...process.env, CARD_VAULT_DATA_DIR: dataDir, DATABASE_URL: fileDatabaseUrl(dbPath), NODE_ENV: "production" };
   let server, db;
   async function post(body, route = "/api/data-center") { const response = await fetch(base + route, { method: "POST", headers: { "Content-Type": "application/json", Origin: base }, body: JSON.stringify(body) }); const data = await response.json(); assert.equal(response.status, 200, JSON.stringify(data)); return data; }
-  async function get(route) { const response = await fetch(base + route); assert.equal(response.status, 200, await response.clone().text()); return response.json(); }
+  async function get(route) { const response = await fetch(base + route); const body = await response.text(); assert.equal(response.status, 200, body); return JSON.parse(body); }
   async function all(id, action) { let cursor, result; do { result = await post({ id, action, cursor }); cursor = result.nextCursor ?? undefined; } while (cursor !== undefined); return result; }
   try {
     initializeTestDatabase(env); server = startTestServer(port, env, output); await waitForServer(base, output, server, "Management"); db = new DatabaseSync(dbPath);

@@ -51,6 +51,19 @@ async function waitForServer(baseUrl, output, serverProcess, label) {
   throw new Error(`Timed out waiting for the ${label.toLowerCase()} server.\n${output.join("")}`);
 }
 
+async function fetchTestServer(url, options = {}) {
+  // Synchronous SQLite fixtures can block the client past the server's idle
+  // timeout. Avoid reusing a socket whose close event has not been processed.
+  const headers = new Headers(options.headers);
+  headers.set("Connection", "close");
+  try {
+    return await fetch(url, { ...options, headers });
+  } catch (error) {
+    // Never retry writes: the server may already have committed the request.
+    throw new Error(`${options.method || "GET"} ${url} failed`, { cause: error });
+  }
+}
+
 async function fetchPage(baseUrl, route) {
   const response = await fetch(`${baseUrl}${route}`);
   const html = await response.text();
@@ -98,6 +111,7 @@ async function removeTempRoot(tempRoot) {
 module.exports = {
   decodeHtmlAttribute,
   fetchPage,
+  fetchTestServer,
   fileDatabaseUrl,
   findAvailablePort,
   initializeTestDatabase,

@@ -29,8 +29,6 @@ Initial build, 2026-09-18: completed three entry sections, automatic attribute c
 
 Maintenance update on 2026-09-19: restored scoped portfolio navigation from Home, a filtered badge and a return link preserving sorting; moved Portfolio before Showcase. Removed related notices, link arrows and underlines, and the Full Collection view shortcut. Home, Portfolio, saved views and snapshot actions share query-link construction; unused styles are removed and missing English empty-state text is corrected. Bilingual documentation, guidance and About are synchronized. Repackaging, packaged-runtime tests and new artifact validation are complete under the same v1.3.4 version.
 
-Post-release CI fix: management HTTP tests use separate connections to avoid stale socket reuse after synchronous fixture writes. Added request diagnostics and regression coverage; the workflow retains full failure logs. Changes affect testing and checks only, with existing distribution packages unchanged. Reproduction and validation are recorded in the [v1.3.4 release notes](./release-v1.3.4.md).
-
 ## Next priorities
 
 | Priority | Direction | Conditions and acceptance |

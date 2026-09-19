@@ -6,7 +6,7 @@ import { HomeValuation } from "@/components/home-valuation";
 import { PortfolioAnalysisButton } from "@/components/portfolio-analysis";
 import { formatMinorMoneyGrouped } from "@/lib/financial-history";
 import { buildPortfolioScope } from "@/lib/portfolio-analysis";
-import { toScalar } from "@/lib/query-params";
+import { buildQueryHref, toScalar } from "@/lib/query-params";
 import { commonSuccessMessages, resolveSuccessMessage } from "@/lib/feedback-messages";
 
 import { loadHomeData, loadHomeOptions } from "@/lib/home-data";
@@ -52,12 +52,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const successMessage = resolveSuccessMessage(toScalar(params.success), commonSuccessMessages, { passthroughUnknown: true });
   const errorMessage = toScalar(params.error);
   const portfolioScope = buildPortfolioScope(query);
-  const returnParams = new URLSearchParams();
-  for (const [key, value] of Object.entries(query)) {
-    if (value) returnParams.set(key, value);
-  }
-  const returnSuffix = returnParams.toString();
-  const cardListReturnHref = returnSuffix ? `/?${returnSuffix}` : "/";
+  const cardListReturnHref = buildQueryHref("/", query);
 
 
   return (

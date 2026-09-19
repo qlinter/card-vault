@@ -6,11 +6,13 @@ Card Vault is a local-first Windows sports-card collection application built wit
 
 ## Current status
 
-Source version: `1.3.4` (2026-09-18), covering entry sections, supplementary financial records, Home valuation visibility, wish deletion and code cleanup. See the [v1.3.4 release notes](./docs/release-v1.3.4.md).
+Source version: `1.3.4` (maintenance update, 2026-09-19), covering entry sections, supplementary financial records, Home valuation visibility, wish deletion, filtered portfolio navigation and code cleanup. See the [v1.3.4 release notes](./docs/release-v1.3.4.md). Following user confirmation, the installer and portable package were rebuilt under the same v1.3.4 version.
 
-The unsigned Windows x64 installer `dist/card-vault-1.3.4-setup.exe`, portable package `dist/card-vault-1.3.4-portable.zip` and `dist/SHA256SUMS.txt` have been generated and passed packaged-runtime and artifact checks. Previous v1.3.3 artifacts are preserved unchanged in `backups/releases/v1.3.3`.
+The unsigned Windows x64 installer `dist/card-vault-1.3.4-setup.exe`, portable package `dist/card-vault-1.3.4-portable.zip` and `dist/SHA256SUMS.txt` now contain the 2026-09-19 maintenance update and passed packaged-runtime and artifact checks. The 2026-09-18 build is preserved unchanged in `backups/releases/v1.3.4-2026-09-18`; v1.3.3 artifacts remain in `backups/releases/v1.3.3`.
 
 ## Latest version: v1.3.4
+
+This maintenance update restores scoped portfolio navigation from Home and a return to results, using text links without arrows or underlines. Navigation reads Home, Portfolio, Showcase, Sharing, Plans, Settings. It removes the applied-filter notice, sold-review empty message and Full Collection view shortcut, consolidates query-link construction and synchronizes bilingual guidance.
 
 1. **Entry layout**: Card Information, Grading Information and Financial Records sections, four columns in wide windows and two in narrower windows, aligned controls and side-by-side descriptions and notes. Serial numbers, autograph types and Patch types automatically select their attributes.
 2. **Additional records**: retain quick financial inputs and add supplementary transactions, expenses and valuations. Drafts retain them and card creation commits them atomically. Existing detail-page workflows remain available.
@@ -19,7 +21,7 @@ The unsigned Windows x64 installer `dist/card-vault-1.3.4-setup.exe`, portable p
 5. **Wishlist**: replace Cancel Wish and Cancel Edit with Delete Wish in the editor; confirmation refreshes the list and budgets. Previously cancelled wishes remain available.
 6. **Maintainability**: share initial financial processing between entry and import, reuse expense options and remove unused branches and repeated styles. Fix stale attributes after replacing AI images, strengthen financial payload and client-boundary checks, and consolidate documentation.
 
-Database structure, existing accounting rules and backup formats are unchanged. Packaged-runtime validation passed; real Windows installation/upgrade tests remain deferred.
+Database structure, existing accounting rules and backup formats are unchanged. Packaged-runtime validation for this maintenance update passed; real Windows installation/upgrade tests remain deferred.
 
 ## Features
 

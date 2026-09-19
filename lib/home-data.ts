@@ -4,6 +4,7 @@ import { prisma } from "./prisma";
 import { buildCardFilters, buildCardSorting, splitTagString } from "./card-helpers";
 import { ensureCardReports } from "./card-report-index";
 import { homeThumbnailPublicPath } from "./card-thumbnail-core.js";
+import { buildQueryHref } from "./query-params";
 
 export const homePageSize = 24;
 export const optionFields = ["sport", "team", "year", "brand", "productLine", "subsetName", "parallel", "gradingCompany", "grade", "autoType", "patchType"] as const;
@@ -27,8 +28,7 @@ export async function loadHomeData(query: Query, page = 0, attempt = 0): Promise
     if (attempt >= 2) throw new Error("收藏数据正在连续变化，请稍后刷新。");
     return loadHomeData(query, page, attempt + 1);
   }
-  const params = new URLSearchParams(Object.entries(query).filter((entry): entry is [string, string] => Boolean(entry[1])));
-  const returnTo = params.size ? `/?${params}` : "/";
+  const returnTo = buildQueryHref("/", query);
   return {
     cards: cards.map(card => ({ id: card.id, playerName: card.playerName, cardTitle: card.cardTitle, details: [card.year, card.team, card.productLine].filter(Boolean).join(" / "), tags: splitTagString(card.tags).slice(0, 4), imagePath: card.images[0] ? homeThumbnailPublicPath(card.images[0].path) : null, imageRotation: card.images[0]?.rotation ?? 0, href: `/cards/${card.id}?returnTo=${encodeURIComponent(returnTo)}` })),
     totalCount, currency: settings?.reportingCurrency ?? "CNY",

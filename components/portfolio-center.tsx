@@ -223,7 +223,7 @@ export function PortfolioCenter({ snapshot, qualityCards, incompleteCards, valua
         <article><span><UiText text={"全部卡片"} /></span><strong>{snapshot.cardCount}</strong><small>{snapshot.playerCount}<UiText text={" 个卡片主体"} /></small></article>
         <article><span><UiText text={"当前持有"} /></span><strong>{snapshot.activeCount}</strong><small><UiText text={"已售 "} />{snapshot.soldCount}<UiText text={" · 目标 "} />{snapshot.targetCount}</small></article>
         <article><span><UiText text={"估值覆盖"} /></span><strong>{countPercent(snapshot.financials.valuationCoverageCount, snapshot.cardCount)}</strong><small>{snapshot.financials.valuationCoverageCount}/{snapshot.cardCount}<UiText text={" 张"} /></small></article>
-        <article><span><UiText text={"最新估值"} /></span><strong className={styles.dateValue}>{shortDate(snapshot.financials.latestValuationAt)}</strong><small><UiText text={"90 天内 "} />{snapshot.financials.freshValuationCount}<UiText text={" 张"} /></small></article>
+        <article><span><UiText text={"最新估值"} /></span><strong className={styles.dateValue}><UiText text={shortDate(snapshot.financials.latestValuationAt)} /></strong><small><UiText text={"90 天内 "} />{snapshot.financials.freshValuationCount}<UiText text={" 张"} /></small></article>
       </UiElement>
 
       <div className={styles.sortableFullLayout}>
@@ -440,7 +440,6 @@ export function PortfolioCenter({ snapshot, qualityCards, incompleteCards, valua
                 ))}
               </div>
             ))}
-            {soldReviews.length === 0 ? <p className={styles.emptyText}><UiText text={"暂无已售卡片。"} /></p> : null}
           </div>
         </section>
         </SortablePortfolioItem>

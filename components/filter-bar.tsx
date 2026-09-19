@@ -1,6 +1,8 @@
 import { DisclosureIcon } from "./disclosure-icon";
 import { CollectionViewToggle } from "./view-mode-toggle";
 import { UiText, UiElement } from "@/components/ui-text";
+import { buildPortfolioScope } from "@/lib/portfolio-analysis-scope";
+import { buildQueryHref } from "@/lib/query-params";
 type FilterBarProps = {
   query: Record<string, string | undefined>;
   sports: string[];
@@ -55,9 +57,11 @@ export function FilterBar({
   patchTypes
 }: FilterBarProps) {
   const advancedOpen = hasAdvancedFilters(query);
-  const hasAnyFilter = Boolean(
-    query.q || query.sport || query.team || query.year || query.productLine || query.sort || advancedOpen
-  );
+  const portfolioScope = buildPortfolioScope(query);
+  const portfolioHref = buildQueryHref("/portfolio", {
+    ...Object.fromEntries(portfolioScope.criteria.map(({ field }) => [field, query[field]])),
+    sort: query.sort
+  });
 
   return (
     <form className="panel" method="get">
@@ -208,17 +212,15 @@ export function FilterBar({
           <a href="/" className="btn btn-secondary">
             {<UiText text={"清空条件"} />}
           </a>
+          <a href={portfolioHref} className="scope-navigation-link filter-portfolio-link">
+            <UiText text={portfolioScope.isFiltered ? "查看筛选组合" : "查看组合"} />
+          </a>
         </div>
         <div className="filter-display-actions"><a href="/cards/new" className="btn btn-primary filter-add-card">
           {<UiText text={"新增卡片"} />}
         </a><CollectionViewToggle compact /></div>
       </div>
 
-      {hasAnyFilter ? (
-        <p className="muted" style={{ marginTop: "0.7rem" }}>
-          {<UiText text={"当前已应用筛选条件"} />}
-        </p>
-      ) : null}
     </form>
   );
 }

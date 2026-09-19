@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { encodeReturnTo, normalizeReturnTo } from "../lib/query-params.ts";
+import { buildQueryHref, encodeReturnTo, normalizeReturnTo } from "../lib/query-params.ts";
+
+test("collection navigation round-trips special characters without injecting query fields", () => {
+  const query = { q: "卡片 & + / #?viewId=other", isAutograph: "false", sort: "yearAsc", viewId: "view&1", error: undefined, sport: "" };
+  const href = buildQueryHref("/portfolio", query);
+  const url = new URL(href, "http://localhost");
+  assert.equal(url.pathname, "/portfolio");
+  assert.equal(url.hash, "");
+  assert.deepEqual(Object.fromEntries(url.searchParams), { q: query.q, isAutograph: "false", sort: "yearAsc", viewId: "view&1" });
+  assert.equal(buildQueryHref("/", { q: "", sort: undefined }), "/");
+  assert.equal(buildQueryHref("/portfolio", {}), "/portfolio");
+});
 
 test("return context accepts home filters and entry workbench drafts", () => {
   assert.equal(normalizeReturnTo("/"), "/");

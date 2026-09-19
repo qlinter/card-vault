@@ -10,10 +10,8 @@ test("home load-more label is fully localized with its dynamic count", () => {
 
 test("expanded settings and portfolio status text have complete English translations", () => {
   assert.equal(translateUiText("视图与比较"), "Views & comparison");
-  assert.equal(translateUiText("暂无已售卡片。"), "No sold cards.");
   const samples = [
     "估值超过 360 天",
-    "暂无已售卡片。",
     "当前不是桌面端环境，界面内保存不可用；开发态可通过 .env.local 配置 AI 服务商。",
     "新增录入工作台 2.0：SQLite 草稿、连续录入、公共字段模板和批量图片 WebP 队列。",
     "Card Vault v1.2.1 更新说明",

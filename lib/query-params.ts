@@ -2,6 +2,14 @@ export function toScalar(value: string | string[] | undefined): string | undefin
   return Array.isArray(value) ? value[0] : value;
 }
 
+export function buildQueryHref(pathname: string, query: Record<string, string | undefined>): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value) params.set(key, value);
+  }
+  return params.size ? `${pathname}?${params}` : pathname;
+}
+
 export function normalizeReturnTo(value: string | undefined): string | undefined {
   if (
     value === "/" ||

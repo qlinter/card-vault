@@ -9,15 +9,8 @@ import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import type { PortfolioFilterInput } from "@/lib/portfolio-analysis";
 import type { SavedPortfolioView, StoredPortfolioSnapshot } from "@/lib/portfolio-persistence";
 import { formatPortfolioDateTime as dateTime } from "@/lib/portfolio-presentation";
+import { buildQueryHref } from "@/lib/query-params";
 import styles from "./portfolio-center.module.css";
-
-function portfolioHref(query: PortfolioFilterInput, viewId?: string): string {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query)) if (value) params.set(key, value);
-  if (viewId) params.set("viewId", viewId);
-  const suffix = params.toString();
-  return suffix ? `/portfolio?${suffix}` : "/portfolio";
-}
 
 function hiddenQueryFields(query: PortfolioFilterInput) {
   return Object.entries(query).map(([key, value]) => value
@@ -57,18 +50,17 @@ export function PortfolioWorkspaceControls({
 
   return (
     <section className={`${styles.section} ${styles.workspaceSection}`}>
-      <UiElement as="nav" uiAttributes={["aria-label"]} className={styles.viewTabs} aria-label="收藏视图">
-        <a className={!activeViewId ? styles.activeView : undefined} href="/portfolio"><UiText text={"全部收藏"} /></a>
+      {views.length > 0 ? <UiElement as="nav" uiAttributes={["aria-label"]} className={styles.viewTabs} aria-label="收藏视图">
         {views.map((view) => (
           <a
             className={activeViewId === view.id ? styles.activeView : undefined}
-            href={portfolioHref(view.query, view.id)}
+            href={buildQueryHref("/portfolio", { ...view.query, viewId: view.id })}
             key={view.id}
           >
             {view.name}
           </a>
         ))}
-      </UiElement>
+      </UiElement> : null}
 
       <div className={styles.workspaceActions}>
         <form action={createPortfolioViewAction} className={styles.workspaceForm}>

@@ -752,8 +752,6 @@
   gap: 0.9rem;
 }
 
-.workspaceSection .sectionHeader { margin-bottom: 0; }
-
 .viewTabs {
   display: flex;
   gap: 0.45rem;
@@ -1026,6 +1024,9 @@
 @media (max-width: 650px) { .currencyCard dl { grid-template-columns: minmax(0, 1fr); } }
 
 .currentDataHeader { align-items: center; flex-wrap: wrap; gap: .75rem; }
+.currentDataTitle, .currentDataActions { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+.currentDataActions { margin-left: auto; }
+.currentDataTitle .filteredBadge { padding: .2rem .5rem; border-radius: 5px; background: #eaf3f1; color: var(--teal); font-size: .75rem; font-weight: 400; letter-spacing: normal; }
 
 .overviewGrid article, .section { padding: var(--panel-space); border-radius: 12px; }
 .comparisonWorkspace > .zoneHeader { min-height: var(--control-height); align-items: center; padding: 0; }

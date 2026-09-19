@@ -42,6 +42,6 @@ Both READMEs must retain detailed notes for the latest version and concise entri
 
 ## 当前维护状态 / Current maintenance status
 
-当前版本为 v1.3.4；双语 README 历史表均包含从 v1.0.0 到 v1.3.3 的 28 个旧版本。v1.3.1–v1.3.3 的版本事实来自对应发布说明，本地标签均可用。功能和分发验证不在此重复，参见[文档索引](./README.md)；v1.3.4 已于 2026-09-18 经确认完成打包与产物校验。
+当前版本为 v1.3.4；双语 README 历史表均包含从 v1.0.0 到 v1.3.3 的 28 个旧版本。v1.3.1–v1.3.3 的版本事实来自对应发布说明，本地标签均可用。功能和分发验证不在此重复，参见[文档索引](./README.md)；v1.3.4 的 2026-09-18 产物已归档，2026-09-19 小更新沿用版本号，经确认完成重新打包与产物校验，不新增独立历史版本。
 
-The current version is v1.3.4. Both README histories retain 28 earlier versions, from v1.0.0 through v1.3.3. Later entries use their release notes, and local tags for v1.3.1–v1.3.3 are available. Feature and distribution facts stay in the [documentation index](./README.md) and linked release notes. Following user confirmation, v1.3.4 packaging and artifact validation completed on 2026-09-18.
+The current version is v1.3.4. Both README histories retain 28 earlier versions, from v1.0.0 through v1.3.3. Later entries use their release notes, and local tags for v1.3.1–v1.3.3 are available. Feature and distribution facts stay in the [documentation index](./README.md) and linked release notes. The v1.3.4 artifacts from 2026-09-18 are archived. Following confirmation, the maintenance update from 2026-09-19 was repackaged and validated under the same version number; it is not a separate historical version.

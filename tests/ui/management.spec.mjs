@@ -9,6 +9,61 @@ test.beforeEach(() => fixture(db => {
   db.prepare("INSERT INTO CardImage(id,cardId,path) VALUES('management-ui-image','management-ui','/media/ui-card-1.webp')").run();
 }));
 test.afterEach(() => fixture(db => { db.exec("DELETE FROM Card WHERE id='management-ui' OR playerName='Import UI'; DELETE FROM ShareCollection WHERE id='more-actions-ui'; DELETE FROM BulkJob; DELETE FROM CollectionPlan WHERE title='UI wishlist'; DELETE FROM CollectionTaskState WHERE id LIKE 'management-ui:%';"); }));
+for (const locale of ["zh", "en"]) {
+  test(`home portfolio navigation preserves applied scope and sorting (${locale})`, async ({ page, context }, testInfo) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    if (locale === "en") await context.addCookies([{ name: "card_vault_ui_locale", value: "en", url: "http://127.0.0.1:3360" }]);
+    fixture(db => {
+      const insert = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,team) VALUES(?,'Import UI',?,'Basketball','A&B / 队')");
+      for (let i = 0; i < 25; i++) insert.run(`portfolio-scope-${i}`, `Scoped ${i}`);
+    });
+    const labels = locale === "en"
+      ? { all: "View portfolio", filtered: "View filtered portfolio", badge: "Filtered", back: "Back to results", count: "All Cards" }
+      : { all: "查看组合", filtered: "查看筛选组合", badge: "已筛选", back: "返回筛选结果", count: "全部卡片" };
+    await page.goto("/?sort=yearAsc", { waitUntil: "networkidle" });
+    await expect(page.getByRole("link", { name: labels.all, exact: true })).toHaveAttribute("href", "/portfolio?sort=yearAsc");
+    await expect(page.locator(".nav-links a")).toHaveText(locale === "en"
+      ? ["Home", "Portfolio", "Showcase", "Sharing", "Plans", "Settings"]
+      : ["首页", "组合", "展示", "分享", "计划", "设置"]);
+    const query = new URLSearchParams({ q: "Import UI", team: "A&B / 队", isAutograph: "false", sort: "yearAsc" });
+    await page.goto(`/?${query}`, { waitUntil: "networkidle" });
+    await expect(page.getByTestId("home-card-grid").locator(".card-item")).toHaveCount(24);
+    const link = page.getByRole("link", { name: labels.filtered, exact: true });
+    // Unsaved form changes must not silently alter the scope of the displayed results.
+    await page.locator('input[name="q"]').fill("Not applied");
+    await expect(link).toHaveAttribute("href", `/portfolio?${query}`);
+    for (const width of [1440, 1024]) {
+      await page.setViewportSize({ width, height: 1000 });
+      const actions = page.getByTestId("home-filter-actions");
+      const rectangles = await actions.locator(".filter-main-actions > *, .filter-display-actions > *").evaluateAll(elements => elements.map(element => {
+        const rect = element.getBoundingClientRect();
+        return { center: rect.y + rect.height / 2, right: rect.right };
+      }));
+      expect(Math.max(...rectangles.map(item => item.center)) - Math.min(...rectangles.map(item => item.center))).toBeLessThan(2);
+      expect(Math.max(...rectangles.map(item => item.right))).toBeLessThanOrEqual(width);
+    }
+    await page.screenshot({ path: testInfo.outputPath(`filtered-home-${locale}.png`), animations: "disabled" });
+    await link.click();
+    await expect(page.getByText(labels.badge, { exact: true })).toBeVisible();
+    await expect(page.locator("article").filter({ has: page.getByText(labels.count, { exact: true }) }).locator("strong")).toHaveText("25");
+    if (locale === "en") {
+      await expect(page.getByText("No financial records.", { exact: true })).toBeVisible();
+      await expect(page.locator("article").filter({ has: page.getByText("Latest Valuation", { exact: true }) }).locator("strong")).toHaveText("None");
+    }
+    await page.screenshot({ path: testInfo.outputPath(`filtered-portfolio-${locale}.png`), animations: "disabled" });
+    await page.getByRole("link", { name: labels.back, exact: true }).click();
+    expect(new URL(page.url()).searchParams.toString()).toBe(query.toString());
+    await expect(page.locator('input[name="q"]')).toHaveValue("Import UI");
+    await expect(page.locator('select[name="sort"]')).toHaveValue("yearAsc");
+    await page.goto("/?q=no-matching-scope", { waitUntil: "networkidle" });
+    await page.getByRole("link", { name: labels.filtered, exact: true }).click();
+    await expect(page.getByText(labels.badge, { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: labels.back, exact: true })).toHaveAttribute("href", "/?q=no-matching-scope");
+    await page.goto("/portfolio", { waitUntil: "networkidle" });
+    await expect(page.getByText(labels.badge, { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: labels.back, exact: true })).toHaveCount(0);
+  });
+}
 test("language switches leave dictionary-like user content unchanged", async ({ page }) => {
   await page.goto("/?q=卡片数量", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "选择语言" }).click(); await page.getByRole("menuitemradio", { name: "English" }).click();

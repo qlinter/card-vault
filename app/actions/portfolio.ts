@@ -12,6 +12,7 @@ import {
   getSavedPortfolioView
 } from "@/lib/portfolio-persistence";
 import { loadPortfolioSnapshot } from "@/lib/portfolio-snapshot-service";
+import { buildQueryHref } from "@/lib/query-params";
 
 function textValue(value: FormDataEntryValue | null): string {
   return typeof value === "string" ? value.trim() : "";
@@ -27,11 +28,7 @@ function queryFromJson(value: FormDataEntryValue | null): PortfolioFilterInput {
 }
 
 function portfolioPath(query: PortfolioFilterInput, values: Record<string, string | undefined> = {}): string {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query)) if (value) params.set(key, value);
-  for (const [key, value] of Object.entries(values)) if (value) params.set(key, value);
-  const suffix = params.toString();
-  return suffix ? `/portfolio?${suffix}` : "/portfolio";
+  return buildQueryHref("/portfolio", { ...query, ...values });
 }
 
 export async function createPortfolioViewAction(formData: FormData): Promise<void> {

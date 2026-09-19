@@ -876,8 +876,24 @@ form.panel {
 
 .filter-main-actions {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+.scope-navigation-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-height);
+  color: var(--teal);
+  font-size: 0.875rem;
+  font-weight: 400;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.scope-navigation-link:hover { color: var(--ink); }
+.filter-portfolio-link { margin-left: 0.5rem; }
 
 .filter-add-card {
   margin-left: auto;
@@ -1575,6 +1591,8 @@ textarea {
     display: grid;
     grid-template-columns: 1fr 1fr;
   }
+
+  .filter-portfolio-link { grid-column: 1 / -1; margin-left: 0; }
 
   .filter-main-actions .btn,
   .filter-add-card {

@@ -4,6 +4,7 @@ import { useLanguage } from "@/components/language-provider";
 
 const sections = [
   { id: "home", zh: "首页", en: "Home", items: [
+    ["筛选操作栏的查看组合打开全部收藏；应用筛选后，查看筛选组合打开全部匹配卡片的组合，不限于已加载的卡片。入口使用已应用的条件，修改条件后需先点击搜索 / 筛选。组合页标注已筛选，返回筛选结果会保留条件与排序。估值旁的组合分析用于 AI 分析。", "View portfolio in the filter toolbar opens the full collection. After applying filters, View filtered portfolio includes all matching cards, not just those loaded on Home. Apply changed fields with Search / Filter first. The portfolio is marked Filtered; Back to results preserves filters and sorting. Portfolio Analysis beside the valuation opens AI analysis."],
     ["首页汇总当前筛选范围的卡片数量和估值。使用搜索、筛选和排序定位收藏，继续加载可查看更多卡片；筛选操作栏右侧切换卡片/列表视图，点击卡片进入详情；估值旁的眼睛图标切换金额显示，本机会记忆该选择。", "Home summarizes card counts and valuations in the current filter scope. Search, filter and sort to find cards, load more to continue browsing, switch Cards/List beside Add card, and open a card for details. The eye icon toggles the valuation amount and remembers the choice on this computer."],
     ["右上角语言菜单切换中文或英文，仅改变界面文字，不改写卡名、主体、标签或备注。", "The language menu switches interface text between Chinese and English without changing card titles, subjects, tags or notes."]
   ] },

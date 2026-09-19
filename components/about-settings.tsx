@@ -16,12 +16,14 @@ export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
     "Grouped entry into card, grading and financial sections with automatic attribute checks.",
     "Added supplementary transactions, expenses and valuations during entry, including draft recovery.",
     "Added a remembered valuation visibility toggle and simplified Home labels.",
+    "Restored filtered portfolio navigation and return to results, moved Portfolio before Showcase and simplified navigation copy.",
     "Unified export controls and added confirmed wish deletion in the editor.",
     "Consolidated financial processing and documentation, removed redundant code and fixed stale AI attributes."
   ] : [
     "录入页按卡片、评级和财务分区，字段关联属性自动勾选。",
     "录入时可补充交易、费用与估值记录，并随草稿恢复。",
     "首页估值增加可记忆的显隐切换，精简首页栏目名称。",
+    "恢复首页筛选组合与返回结果入口，组合导航前移，精简相关提示和链接样式。",
     "统一导出操作与视图切换，心愿编辑区支持确认删除。",
     "收敛财务处理与文档，清理重复代码并修复 AI 属性残留。"
   ];
@@ -55,7 +57,7 @@ export function AboutSettings({ defaultVersion }: AboutSettingsProps) {
 
           {showReleaseNotes ? (
             <UiElement as="div" uiMessages={{"aria-label": {text:"Card Vault v{0} 更新说明",values:[defaultVersion],translateValues:[]}}} className="about-release-notes" role="region" >
-              <div><h3>v{defaultVersion}<UiText text={" 主要更新"} /></h3><small>2026-09-18</small></div>
+              <div><h3>v{defaultVersion}<UiText text={" 主要更新"} /></h3><small>2026-09-19</small></div>
               <ul data-i18n-skip>{releaseHighlights.map((item) => <li key={item}>{item}</li>)}</ul>
             </UiElement>
           ) : null}

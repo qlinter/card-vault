@@ -8,7 +8,7 @@ import { errorMessage } from "@/lib/feedback-messages";
 import { normalizePortfolioFilterInput } from "@/lib/portfolio-analysis";
 import { listSavedPortfolioViews, listStoredPortfolioSnapshots } from "@/lib/portfolio-persistence";
 import { loadPortfolioComparison, loadPortfolioSnapshot } from "@/lib/portfolio-snapshot-service";
-import { toScalar } from "@/lib/query-params";
+import { buildQueryHref, toScalar } from "@/lib/query-params";
 import styles from "@/components/portfolio-center.module.css";
 
 export const dynamic = "force-dynamic";
@@ -43,12 +43,15 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
   }
   const success = toScalar(params.success);
   const error = toScalar(params.error) ?? (activeViewId && !activeView ? "收藏视图不存在或已删除。" : null);
-  const returnParams = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    const scalar = toScalar(value);
-    if (scalar && key !== "success" && key !== "error") returnParams.set(key, scalar);
-  }
-  const returnTo = returnParams.size > 0 ? `/portfolio?${returnParams}` : "/portfolio";
+  const returnTo = buildQueryHref("/portfolio", {
+    ...Object.fromEntries(Object.entries(params).map(([key, value]) => [key, toScalar(value)])),
+    success: undefined,
+    error: undefined
+  });
+  const homeHref = buildQueryHref("/", {
+    ...query,
+    sort: activeView ? undefined : toScalar(params.sort)
+  });
 
   return (
     <div className="page portfolio-page">
@@ -78,8 +81,14 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
 
       <section className={styles.portfolioZone} aria-labelledby="portfolio-current-title">
         <header className={`${styles.zoneHeader} ${styles.currentDataHeader}`}>
-          <div><h2 id="portfolio-current-title"><UiText text={"当前组合"} /></h2></div>
-          <PortfolioAnalysisButton cardCount={result.snapshot.cardCount} query={query} scope={result.snapshot.scope} />
+          <div className={styles.currentDataTitle}>
+            <h2 id="portfolio-current-title"><UiText text={"当前组合"} /></h2>
+            {result.snapshot.scope.isFiltered ? <span className={styles.filteredBadge}><UiText text="已筛选" /></span> : null}
+          </div>
+          <div className={styles.currentDataActions}>
+            {result.snapshot.scope.isFiltered ? <a href={homeHref} className="scope-navigation-link"><UiText text="返回筛选结果" /></a> : null}
+            <PortfolioAnalysisButton cardCount={result.snapshot.cardCount} query={query} scope={result.snapshot.scope} />
+          </div>
         </header>
         <PortfolioCenter
           snapshot={result.snapshot}

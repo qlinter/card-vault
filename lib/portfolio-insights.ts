@@ -21,7 +21,6 @@ function cardExistedAt(card: PortfolioCardRecord, at: Date): boolean {
 }
 
 function historicalQuantity(card: PortfolioCardRecord, _currency: string, at: Date): number {
-  if (card.collectionStatus === "target") return 0;
   const transactions = card.transactions.filter((transaction) =>
     recordDate(transaction).getTime() <= at.getTime()
   );
@@ -332,7 +331,7 @@ export type PortfolioComparisonPoint = {
   cardCount: number;
   activeCount: number;
   soldCount: number;
-  targetCount: number;
+  pendingGradingCount: number;
   playerCount: number;
   currencies: Array<{
     currency: string;
@@ -394,7 +393,7 @@ export function buildPortfolioComparisonPoint(
     cardCount: snapshot.cardCount,
     activeCount: snapshot.activeCount,
     soldCount: snapshot.soldCount,
-    targetCount: snapshot.targetCount,
+    pendingGradingCount: snapshot.pendingGradingCount,
     playerCount: snapshot.playerCount,
     currencies: snapshot.financials.currencies.map((summary) => ({
       currency: summary.currency,

@@ -1,8 +1,24 @@
 export const cardVisibilities = ["private", "public", "linkOnly"] as const;
-export const cardCollectionStatuses = ["holding", "listed", "sold", "grading", "target"] as const;
+export const cardCollectionStatuses = ["holding", "pending_grading", "grading", "listed", "sold"] as const;
 
 export type CardVisibility = (typeof cardVisibilities)[number];
 export type CardCollectionStatus = (typeof cardCollectionStatuses)[number];
+
+const collectionStatusLabels: Record<CardCollectionStatus, string> = {
+  holding: "持有", pending_grading: "待送评", grading: "送评中", listed: "待售", sold: "已售"
+};
+
+export function collectionStatusText(value: string): string {
+  return Object.hasOwn(collectionStatusLabels, value) ? collectionStatusLabels[value as CardCollectionStatus] : value;
+}
+
+export function compareCollectionStatuses(left: string, right: string): number {
+  const rank = (value: string) => {
+    const index = cardCollectionStatuses.indexOf(value as CardCollectionStatus);
+    return index < 0 ? cardCollectionStatuses.length : index;
+  };
+  return rank(left) - rank(right);
+}
 
 export const cardTextLimits = {
   required: 160,

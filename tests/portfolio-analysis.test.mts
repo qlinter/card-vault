@@ -75,7 +75,7 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
     {
       playerName: "Player D",
       sport: "Basketball",
-      collectionStatus: "target",
+      collectionStatus: "pending_grading",
       gradingCompany: null,
       grade: null,
       isRookie: false,
@@ -88,9 +88,9 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
   ], undefined, asOf);
 
   assert.equal(snapshot.cardCount, 5);
-  assert.equal(snapshot.activeCount, 3);
+  assert.equal(snapshot.activeCount, 4);
   assert.equal(snapshot.soldCount, 1);
-  assert.equal(snapshot.targetCount, 1);
+  assert.equal(snapshot.pendingGradingCount, 1);
   assert.equal(snapshot.playerCount, 4);
   assert.deepEqual(snapshot.financials.currencies, [
     {
@@ -102,7 +102,7 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
       saleExpenseAmount: 0,
       netCashInvested: -40,
       latestValue: 150,
-      valuedCardCount: 2,
+      valuedCardCount: 1,
       activeCostBasis: 160,
       activeLatestValue: 150,
       activeValuedCardCount: 1,
@@ -123,11 +123,11 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
       inventoryExpenseAmount: 0,
       saleExpenseAmount: 0,
       netCashInvested: 200,
-      latestValue: 180,
+      latestValue: 980,
       valuedCardCount: 2,
       activeCostBasis: 200,
-      activeLatestValue: 180,
-      activeValuedCardCount: 1,
+      activeLatestValue: 980,
+      activeValuedCardCount: 2,
       comparableCardCount: 1,
       comparableCostBasis: 200,
       comparableValue: 180,
@@ -140,9 +140,9 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
   ]);
   assert.equal(snapshot.financials.transactionCoverageCount, 4);
   assert.equal(snapshot.financials.expenseCoverageCount, 1);
-  assert.equal(snapshot.financials.valuationCoverageCount, 4);
+  assert.equal(snapshot.financials.valuationCoverageCount, 3);
   assert.equal(snapshot.financials.freshValuationCount, 2);
-  assert.equal(snapshot.financials.staleValuationCount, 2);
+  assert.equal(snapshot.financials.staleValuationCount, 1);
   assert.deepEqual(snapshot.players[0], { name: "Player A", count: 2, values: { CNY: 150, USD: 180 } });
   assert.equal(snapshot.quality.gradedCount, 2);
   assert.equal(snapshot.quality.rookieCount, 1);
@@ -375,7 +375,7 @@ test("portfolio scope records active filters and excludes sorting", () => {
       { field: "sport", label: "运动类型", value: "足球" },
       { field: "isSerialNumbered", label: "限量卡", value: "否" },
       { field: "isAutograph", label: "签名卡", value: "是" },
-      { field: "collectionStatus", label: "收藏状态", value: "持有中" }
+      { field: "collectionStatus", label: "收藏状态", value: "持有" }
     ]
   });
 
@@ -502,7 +502,7 @@ test("portfolio snapshot normalization drops unknown fields and bounds nested va
     cardCount: 3,
     activeCount: 9,
     soldCount: 1,
-    targetCount: 1,
+    pendingGradingCount: 1,
     playerCount: 2,
     scope: {
       criteria: [

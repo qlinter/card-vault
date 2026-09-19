@@ -1,5 +1,6 @@
 import { DisclosureIcon } from "./disclosure-icon";
 import { CollectionViewToggle } from "./view-mode-toggle";
+import { cardCollectionStatuses, collectionStatusText } from "@/lib/card-domain";
 import { UiText, UiElement } from "@/components/ui-text";
 import { buildPortfolioScope } from "@/lib/portfolio-analysis-scope";
 import { buildQueryHref } from "@/lib/query-params";
@@ -195,11 +196,7 @@ export function FilterBar({
 
           <select name="collectionStatus" defaultValue={query.collectionStatus ?? ""}>
             <option value="">{<UiText text={"收藏状态"} />}</option>
-            <option value="holding">{<UiText text={"持有中"} />}</option>
-            <option value="listed">{<UiText text={"在售"} />}</option>
-            <option value="sold">{<UiText text={"已售出"} />}</option>
-            <option value="grading">{<UiText text={"送评中"} />}</option>
-            <option value="target">{<UiText text={"目标卡"} />}</option>
+            {cardCollectionStatuses.map(status => <option key={status} value={status}><UiText text={collectionStatusText(status)} /></option>)}
           </select>
         </div>
       </details>

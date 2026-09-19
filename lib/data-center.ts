@@ -46,13 +46,13 @@ export async function readImportFile(file: File) {
 
 function normalizeValues(raw: Record<string, string | boolean>) {
   const values = normalizeCardFormValues(raw);
-  if (!("initialQuantity" in raw) && ["sold", "target"].includes(values.collectionStatus)) values.initialQuantity = "0";
+  if (!("initialQuantity" in raw) && values.collectionStatus === "sold") values.initialQuantity = "0";
   return values;
 }
 function validateInitial(raw: Record<string, string | boolean>) {
   const values = normalizeValues(raw), data = buildCardData(values);
   const quantity = parseInitialCardQuantity(values.initialQuantity, data.collectionStatus);
-  if (quantity > 100000 || (["sold", "target"].includes(data.collectionStatus) && quantity !== 0)) throw new Error("初始数量与收藏状态不一致或超过限制。");
+  if (quantity > 100000 || (data.collectionStatus === "sold" && quantity !== 0)) throw new Error("初始数量与收藏状态不一致或超过限制。");
   const purchaseDate = optionalCardDate(values.purchaseDate, "购买日期"), valuedAt = optionalCardDate(values.valuationDate, "估值日期");
   if ((values.purchasePrice || quantity > 1) && !purchaseDate) throw new Error("填写购买价格或多张数量时需要购买日期。");
   if (values.purchasePrice && !quantity) throw new Error("数量为 0 时不能填写购买价格。");

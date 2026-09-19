@@ -1,3 +1,4 @@
+import { collectionStatusText } from "./card-domain.ts";
 import type { PortfolioFilterCriterion, PortfolioFilterField, PortfolioScope } from "./portfolio-analysis-types.ts";
 
 export const portfolioFilterDefinitions = {
@@ -29,6 +30,7 @@ export type PortfolioFilterInput = Record<string, string | undefined>;
 
 const maximumFilterValueLength = 160;
 const booleanFilterFields = new Set<PortfolioFilterField>(["isRookie", "isSerialNumbered", "isOneOfOne", "isAutograph", "isPatch", "isGraded"]);
+const visibilityLabels: Record<string, string> = { private: "私密", public: "公开", linkOnly: "仅链接可见" };
 
 function isBooleanFilterValue(value: string): boolean {
   return value === "true" || value === "false";
@@ -62,8 +64,8 @@ export function normalizePortfolioFilterInput(value: unknown): PortfolioFilterIn
 
 function displayFilterValue(field: PortfolioFilterField, value: string): string {
   if (booleanFilterFields.has(field)) return value === "true" ? "是" : value === "false" ? "否" : value;
-  if (field === "visibility") return { private: "私密", public: "公开", linkOnly: "仅链接可见" }[value] ?? value;
-  if (field === "collectionStatus") return { holding: "持有中", listed: "在售", grading: "送评中", sold: "已售出", target: "目标卡" }[value] ?? value;
+  if (field === "visibility") return Object.hasOwn(visibilityLabels, value) ? visibilityLabels[value] : value;
+  if (field === "collectionStatus") return collectionStatusText(value);
   return value;
 }
 

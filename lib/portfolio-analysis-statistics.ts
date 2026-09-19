@@ -1,3 +1,4 @@
+import { isOwnedCollectionStatus } from "./card-stats.ts";
 import { normalizeCurrency, selectLatestValuation } from "./financial-history.ts";
 import { portfolioMoneyAmount as moneyAmount, roundPortfolioValue as money } from "./portfolio-number.ts";
 import type {
@@ -8,7 +9,8 @@ import type {
   PortfolioConcentrationDimension,
   PortfolioMoneyRecord,
   PortfolioTimeSeriesPoint,
-  PortfolioTopPosition
+  PortfolioTopPosition,
+  PortfolioValuationRecord
 } from "./portfolio-analysis-types.ts";
 import {
   calculatePositions,
@@ -16,25 +18,28 @@ import {
   type CurrencyPosition
 } from "./position-accounting.ts";
 
-export type PortfolioPositionMap = ReadonlyMap<PortfolioCardRecord, CurrencyPosition[]>;
+export type PortfolioCardFacts = ReadonlyMap<PortfolioCardRecord, {
+  positions: CurrencyPosition[];
+  valuation: PortfolioValuationRecord | null;
+  quantity: number;
+  value: number;
+}>;
 
-export function createPortfolioPositionMap(cards: PortfolioCardRecord[]): PortfolioPositionMap {
-  return new Map(cards.map((card) => [card, calculatePositions(card)]));
-}
-
-export function portfolioCardQuantity(
-  card: PortfolioCardRecord,
-  currency: string,
-  positions: PortfolioPositionMap
-): number {
-  const position = positions.get(card)?.find((item) => item.currency === normalizeCurrency(currency));
-  return resolvePositionQuantity(position, card.holdingQuantity ?? 1);
+/** Request-local facts shared by summaries, allocations and rankings. */
+export function createPortfolioCardFacts(cards: PortfolioCardRecord[]): PortfolioCardFacts {
+  return new Map(cards.map(card => {
+    const positions = calculatePositions(card);
+    const valuation = selectLatestValuation(card.valuations);
+    const quantity = isOwnedCollectionStatus(card.collectionStatus)
+      ? resolvePositionQuantity(positions[0], card.holdingQuantity ?? 1) : 0;
+    return [card, { positions, valuation, quantity, value: valuation ? money(moneyAmount(valuation) * quantity) : 0 }];
+  }));
 }
 
 export function allocationBreakdown(
   cards: PortfolioCardRecord[],
   key: (card: PortfolioCardRecord) => string,
-  positions: PortfolioPositionMap
+  facts: PortfolioCardFacts
 ): PortfolioAllocationBreakdown[] {
   const groups = new Map<string, PortfolioAllocationBreakdown>();
   const totalCount = cards.length || 1;
@@ -43,11 +48,9 @@ export function allocationBreakdown(
     const name = key(card).trim() || "未填写";
     const current = groups.get(name) ?? { name, count: 0, values: {}, countShare: 0, valueShare: {}, averageValue: {}, valuedCount: 0 };
     current.count += 1;
-    const valuation = selectLatestValuation(card.valuations);
-    if (valuation) {
+    const { valuation, quantity, value } = facts.get(card)!;
+    if (valuation && quantity > 0) {
       const currency = normalizeCurrency(valuation.currency);
-      const quantity = portfolioCardQuantity(card, currency, positions);
-      const value = money(moneyAmount(valuation) * quantity);
       current.values[currency] = (current.values[currency] ?? 0) + value;
       totals[currency] = (totals[currency] ?? 0) + value;
       current.valuedCount += 1;
@@ -191,15 +194,12 @@ export function monthlyActivitySeries(cards: PortfolioCardRecord[]): {
 export function topPositions(
   cards: PortfolioCardRecord[],
   asOf: Date,
-  positions: PortfolioPositionMap
+  facts: PortfolioCardFacts
 ): PortfolioTopPosition[] {
-  return cards.filter((card) => selectLatestValuation(card.valuations) !== null).map((card) => {
-    const valuation = selectLatestValuation(card.valuations);
+  return cards.filter((card) => facts.get(card)!.valuation !== null).map((card) => {
+    const { valuation, value } = facts.get(card)!;
     const fields = [card.playerName, card.cardTitle, card.sport, card.team, card.year, card.brand, card.productLine, card.subsetName, card.parallel, card.cardNumber];
     const fieldCompleteness = money(fields.filter((field) => Boolean(String(field ?? "").trim())).length / fields.length * 100);
-    const quantity = valuation
-      ? portfolioCardQuantity(card, valuation.currency, positions)
-      : card.holdingQuantity ?? 1;
     return {
       playerName: card.playerName,
       cardTitle: card.cardTitle ?? "",
@@ -218,7 +218,7 @@ export function topPositions(
       isPatch: card.isPatch,
       isSerialNumbered: Boolean(card.isSerialNumbered),
       currency: valuation ? normalizeCurrency(valuation.currency) : "CNY",
-      latestValue: valuation ? money(moneyAmount(valuation) * quantity) : 0,
+      latestValue: value,
       valuedAt: valuation?.valuedAt.toISOString() ?? "",
       valuationAgeDays: valuation ? Math.max(0, Math.floor((asOf.getTime() - valuation.valuedAt.getTime()) / 86_400_000)) : 99999,
       fieldCompleteness

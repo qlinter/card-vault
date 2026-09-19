@@ -43,7 +43,7 @@ export function PortfolioComparisonPanel({ comparison }: { comparison: Portfolio
     ["全部卡片", comparison.left.cardCount, comparison.right.cardCount],
     ["当前持有", comparison.left.activeCount, comparison.right.activeCount],
     ["已售", comparison.left.soldCount, comparison.right.soldCount],
-    ["目标卡", comparison.left.targetCount, comparison.right.targetCount],
+    ["待送评", comparison.left.pendingGradingCount, comparison.right.pendingGradingCount],
     ["卡片主体", comparison.left.playerCount, comparison.right.playerCount]
   ] as const;
   return (

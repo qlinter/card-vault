@@ -1,3 +1,4 @@
+import { isOwnedCollectionStatus } from "./card-stats";
 import "server-only";
 import { prisma } from "./prisma";
 import { financialCardSelect } from "./card-query-shapes";
@@ -31,7 +32,7 @@ async function rebuild() {
       const pending = await prisma.cardReportDirty.findMany({ take: 250, orderBy: { cardId: "asc" }, include: { card: { select: financialCardSelect } } });
       if (!pending.length) break;
       const reports = pending.map(({ card }) => {
-        const history = reportingHistory({ ...card, holdingQuantity: ["sold", "target"].includes(card.collectionStatus) ? 0 : card.holdingQuantity }, config, now);
+        const history = reportingHistory({ ...card, holdingQuantity: !isOwnedCollectionStatus(card.collectionStatus) ? 0 : card.holdingQuantity }, config, now);
         const position = calculateCurrencyPosition(history, config.reportingCurrency);
         return { cardId: card.id, currency: config.reportingCurrency, quantity: position.remainingQuantity, remainingCostMinor: position.costComplete ? position.remainingCostMinor : null, valueMinor: position.remainingQuantity > 0 ? position.currentValueMinor : null };
       });

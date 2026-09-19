@@ -31,6 +31,8 @@ Maintenance update on 2026-09-19: restored scoped portfolio navigation from Home
 
 Post-release CI fix: management HTTP tests use separate connections to avoid stale socket reuse after synchronous fixture writes. Added request diagnostics and regression coverage; the workflow retains full failure logs. Changes affect testing and checks only, with existing distribution packages unchanged. Reproduction and validation are recorded in the [v1.3.4 release notes](./release-v1.3.4.md).
 
+Collection status and statistics cleanup: unify Holding, Awaiting Grading, At Grading, Pending Sale and Sold, with the first four counting as owned. Reuse portfolio quantities and latest quotes, centralize coverage populations, and add status/quantity consistency checks and regression tests. See the [v1.3.4 release notes](./release-v1.3.4.md).
+
 ## Next priorities
 
 | Priority | Direction | Conditions and acceptance |

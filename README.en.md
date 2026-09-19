@@ -12,6 +12,8 @@ The unsigned Windows x64 installer `dist/card-vault-1.3.4-setup.exe`, portable p
 
 ## Latest version: v1.3.4
 
+This update adds unified statuses: Holding, Awaiting Grading, At Grading, Pending Sale and Sold; Wanted is removed. The first four count as owned holdings and in valuation coverage. Sold retains historical cash flows and realized profit; status edits validate remaining quantity. Portfolio summaries, distributions and rankings reuse precomputed quantities and quotes, with one shared coverage-population rule. See the [financial model](./docs/financial-history-model.md).
+
 This maintenance update restores scoped portfolio navigation from Home and a return to results, using text links without arrows or underlines. Navigation reads Home, Portfolio, Showcase, Sharing, Plans, Settings. It removes the applied-filter notice, sold-review empty message and Full Collection view shortcut, consolidates query-link construction and synchronizes bilingual guidance.
 
 1. **Entry layout**: Card Information, Grading Information and Financial Records sections, four columns in wide windows and two in narrower windows, aligned controls and side-by-side descriptions and notes. Serial numbers, autograph types and Patch types automatically select their attributes.

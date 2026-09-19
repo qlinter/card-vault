@@ -1,14 +1,15 @@
+import { isOwnedCollectionStatus } from "./card-stats.ts";
 import { accountingVersion, reportingHistory, type FinancialConfig } from "./financial-reporting.ts";
 import { buildPortfolioSnapshot } from "./portfolio-analysis-snapshot.ts";
 import type { PortfolioCardRecord, PortfolioScope } from "./portfolio-analysis-types.ts";
 import { calculateCurrencyPosition } from "./position-accounting.ts";
 
 export function buildReportingPortfolio(cards: PortfolioCardRecord[], scope: PortfolioScope, config: FinancialConfig, asOf = new Date()) {
-  const projected = cards.map((card) => reportingHistory({ ...card, holdingQuantity: card.collectionStatus === "target" ? 0 : card.holdingQuantity }, config, asOf));
+  const projected = cards.map((card) => reportingHistory({ ...card, holdingQuantity: isOwnedCollectionStatus(card.collectionStatus) ? card.holdingQuantity : 0 }, config, asOf));
   const positions = projected.map((card) => calculateCurrencyPosition(card, config.reportingCurrency));
   const incomplete = projected.filter((card) => card.missing.length > 0);
   const incompleteCosts = projected.filter((card) => card.costMissing.length > 0);
-  const unvalued = projected.filter((card, index) => positions[index].remainingQuantity > 0 && card.collectionStatus !== "target" && positions[index].currentValueMinor === null);
+  const unvalued = projected.filter((card, index) => positions[index].remainingQuantity > 0 && isOwnedCollectionStatus(card.collectionStatus) && positions[index].currentValueMinor === null);
   const snapshot = buildPortfolioSnapshot(projected, scope, asOf);
   snapshot.accounting = {
     version: accountingVersion,

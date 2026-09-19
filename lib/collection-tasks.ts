@@ -1,3 +1,5 @@
+import { isOwnedCollectionStatus } from "./card-stats.ts";
+
 export type TaskCard = {
   id: string; playerName: string; cardTitle: string; collectionStatus: string;
   updatedAt: Date; createdAt: Date; _count: { images: number; transactions: number };
@@ -16,7 +18,7 @@ export function deriveCollectionTasks(cards: TaskCard[], now = new Date()): Coll
       tasks.push({ id: `${card.id}:${kind}`, cardId: card.id, playerName: card.playerName, cardTitle: card.cardTitle, kind, days: age(date), fingerprint: `${kind}:${date.toISOString()}${revision ? `:${revision}` : ""}`, dateEstimated: ["grading", "listed"].includes(kind) && (card.tracking?.statusDateEstimated ?? true) });
     };
     if (!card._count.images) add("images", card.createdAt);
-    if (["holding", "listed", "grading"].includes(card.collectionStatus)) {
+    if (isOwnedCollectionStatus(card.collectionStatus)) {
       if (!card._count.transactions || card.hasUnknownPurchase) add("purchase", card.createdAt);
       let latest: { valuedAt: Date } | undefined;
       let latestTime = -Infinity;

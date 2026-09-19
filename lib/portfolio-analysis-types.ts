@@ -1,8 +1,8 @@
 import type { PortfolioScorecardKey, PortfolioSectionKey } from "./portfolio-analysis-protocol.ts";
 
 export type PortfolioMoneyRecord = { amountMinor: bigint; currency: string; occurredAt?: Date; createdAt?: Date; amountKnown?: boolean };
-export type PortfolioTransactionRecord = PortfolioMoneyRecord & { kind: string; quantity?: number; paymentsJson?: string | null; amountKnown?: boolean };
-export type PortfolioExpenseRecord = PortfolioMoneyRecord & { kind?: string; context?: string; amountKnown?: boolean };
+export type PortfolioTransactionRecord = PortfolioMoneyRecord & { kind: string; quantity?: number; paymentsJson?: string | null };
+export type PortfolioExpenseRecord = PortfolioMoneyRecord & { kind?: string; context?: string };
 export type PortfolioValuationRecord = PortfolioMoneyRecord & { valuedAt: Date; createdAt: Date; source: string; available?: boolean };
 
 export type PortfolioCardRecord = {
@@ -64,8 +64,8 @@ export type PortfolioAnalysisAction = { priority: number; action: string; reason
 
 export type PortfolioSnapshot = {
   accounting?: { version: string; currency: string; incompleteCardCount: number; missing: string[]; rates: Array<{ id: string; effectiveDate: string; rateMicros: string; revision: number; source: string }> };
-  cardCount: number; activeCount: number; soldCount: number; targetCount: number; playerCount: number; scope: PortfolioScope;
-  financials: { currencies: PortfolioCurrencySummary[]; transactionCoverageCount: number; expenseCoverageCount: number; valuationCoverageCount: number; freshValuationCount: number; staleValuationCount: number; latestValuationAt: string | null; oldestLatestValuationAt: string | null; valuationSources: PortfolioSourceBreakdown[] };
+  cardCount: number; activeCount: number; soldCount: number; pendingGradingCount: number; playerCount: number; scope: PortfolioScope;
+  financials: { currencies: PortfolioCurrencySummary[]; transactionCoverageCount: number; expenseCoverageCount: number; valuationCoverageCount: number; valuationEligibleCount?: number; freshValuationCount: number; staleValuationCount: number; latestValuationAt: string | null; oldestLatestValuationAt: string | null; valuationSources: PortfolioSourceBreakdown[] };
   quality: { gradedCount: number; rookieCount: number; autographCount: number; patchCount: number; serialNumberedCount: number; gradingCompanies: PortfolioAllocationBreakdown[]; grades: PortfolioAllocationBreakdown[]; autoTypes: PortfolioAllocationBreakdown[]; patchTypes: PortfolioAllocationBreakdown[] };
   sports: PortfolioBreakdown[]; players: PortfolioBreakdown[]; statuses: PortfolioBreakdown[]; allocation: PortfolioAllocation; concentration: PortfolioConcentration;
   coverage: { imageCount: number; imageCoverageCount: number; publicDescriptionCoverageCount: number; coreFieldCompletenessAverage: number; incompleteCardCount: number };

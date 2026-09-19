@@ -6,6 +6,10 @@ import { buildReportingPortfolio } from "../lib/portfolio-reporting.ts";
 import { normalizePortfolioSnapshot } from "../lib/portfolio-analysis.ts";
 import { buildPortfolioFinancialHistory } from "../lib/portfolio-insights.ts";
 import { selectLatestValuation } from "../lib/financial-history.ts";
+import { cardCollectionStatuses, collectionStatusText, normalizeCardCollectionStatus } from "../lib/card-domain.ts";
+import { resolvePositionCollectionStatus } from "../lib/position-accounting.ts";
+import { deriveCollectionTasks } from "../lib/collection-tasks.ts";
+import { portfolioValuationEligibleCount } from "../lib/portfolio-coverage.ts";
 
 const at = (day: string) => new Date(day + "T00:00:00Z");
 const config: FinancialConfig = { reportingCurrency: "CNY", rates: [
@@ -27,6 +31,109 @@ const history = () => ({
   ], holdingQuantity: 1
 });
 const card = () => ({ ...history(), id: "card", playerName: "A", cardTitle: "B", sport: "Basketball", collectionStatus: "holding", gradingCompany: null, grade: null, isRookie: false, isAutograph: false, isPatch: false });
+
+test("组合各维度共用最新持仓事实，下一次计算不会复用旧数量或报价", () => {
+  const source = card();
+  const scope = { isFiltered: false, criteria: [] };
+  const previous = buildReportingPortfolio([source], scope, config, at("2026-04-01")).snapshot;
+  source.transactions[0].quantity = 3;
+  source.valuations[0].amountMinor = 90000n;
+  const current = buildReportingPortfolio([source], scope, config, at("2026-04-01")).snapshot;
+  assert.equal(previous.financials.currencies[0].activeLatestValue, 650);
+  assert.equal(current.financials.currencies[0].activeLatestValue, 1800);
+  assert.equal(current.financials.currencies[0].activeCostBasis, 626.67);
+  assert.equal(current.topPositions[0].latestValue, 1800);
+  assert.equal(current.players[0].values.CNY, 1800);
+  assert.equal(current.allocation.bySport[0].values.CNY, 1800);
+  assert.equal(current.allocation.byStatus[0].values.CNY, 1800);
+  assert.equal(current.financials.valuationCoverageCount, 1);
+});
+
+test("四种持有状态共用双币核算、覆盖、部分出售及提醒规则", () => {
+  assert.deepEqual(cardCollectionStatuses.map(collectionStatusText), ["持有", "待送评", "送评中", "待售", "已售"]);
+  assert.throws(() => normalizeCardCollectionStatus("target"), /不支持/);
+  const owned = cardCollectionStatuses.filter(status => status !== "sold");
+  const reports = owned.map(collectionStatus => buildReportingPortfolio([{ ...card(), collectionStatus }], { isFiltered: false, criteria: [] }, config, at("2026-04-01")));
+  for (const [index, report] of reports.entries()) {
+    assert.equal(report.snapshot.activeCount, 1);
+    assert.equal(report.snapshot.financials.valuationCoverageCount, 1);
+    assert.equal(report.snapshot.financials.valuationEligibleCount, 1);
+    assert.deepEqual(report.snapshot.financials, reports[0].snapshot.financials);
+    const value = report.snapshot.financials.currencies[0];
+    assert.equal(value.activeCostBasis, 470);
+    assert.equal(value.activeLatestValue, 650);
+    assert.equal(value.realizedProfit, 58);
+    assert.equal(value.unrealizedDifference, 180);
+    assert.equal(value.totalProfit, 238);
+    assert.equal(resolvePositionCollectionStatus(owned[index], history()), owned[index]);
+    const taskCard = { ...card(), collectionStatus: owned[index], createdAt: at("2026-03-01"), updatedAt: at("2026-03-01"), valuations: [], _count: { images: 1, transactions: 0 } };
+    assert.deepEqual(deriveCollectionTasks([taskCard], at("2026-04-01")).map(task => task.kind).sort(), ["purchase", "valuation"]);
+    const missing = buildReportingPortfolio([{ ...card(), collectionStatus: owned[index], valuations: [] }], { isFiltered: false, criteria: [] }, config, at("2026-04-01"));
+    assert.equal(missing.snapshot.financials.valuationEligibleCount, 1);
+    assert.equal(missing.snapshot.financials.valuationCoverageCount, 0);
+    assert.equal(missing.snapshot.financials.currencies[0].unrealizedDifference, null);
+  }
+  const combined = buildReportingPortfolio(owned.map(collectionStatus => ({ ...card(), id: collectionStatus, collectionStatus })), { isFiltered: false, criteria: [] }, config, at("2026-04-01")).snapshot;
+  assert.equal(combined.activeCount, 4);
+  assert.equal(combined.pendingGradingCount, 1);
+  assert.deepEqual(combined.allocation.byStatus.map(item => item.name), owned);
+  assert.deepEqual(combined.statuses.map(item => item.name), owned);
+});
+
+test("全部出售移出当前覆盖及估值，但保留现金流、收益与出售前历史", () => {
+  const sold = { ...card(), collectionStatus: "sold", holdingQuantity: 0 };
+  sold.transactions.push({ kind: "sale", currency: "CNY", amountMinor: 70000n, paymentsJson: null, quantity: 1, occurredAt: at("2026-03-05"), amountKnown: true });
+  for (const status of cardCollectionStatuses) assert.equal(resolvePositionCollectionStatus(status, sold), "sold");
+  const { snapshot, cards } = buildReportingPortfolio([sold], { isFiltered: false, criteria: [] }, config, at("2026-04-01"));
+  assert.equal(snapshot.cardCount, 1);
+  assert.equal(snapshot.activeCount, 0);
+  assert.equal(snapshot.soldCount, 1);
+  assert.equal(snapshot.financials.valuationEligibleCount, 0);
+  assert.equal(snapshot.financials.valuationCoverageCount, 0);
+  assert.equal(snapshot.financials.freshValuationCount, 0);
+  assert.equal(snapshot.allocation.byStatus[0].valuedCount, 0);
+  const value = snapshot.financials.currencies[0];
+  assert.equal(value.activeLatestValue, 0);
+  assert.equal(value.activeCostBasis, 0);
+  assert.equal(value.purchaseAmount, 800);
+  assert.equal(value.salesAmount, 1300);
+  assert.equal(value.expenseAmount, 212);
+  assert.equal(value.realizedProfit, 288);
+  assert.equal(value.totalProfit, 288);
+  const trend = buildPortfolioFinancialHistory(cards, at("2026-04-01"));
+  assert.equal(trend.find(point => point.month === "2026-02")?.currencies[0].portfolioValue, 650);
+  assert.equal(trend.find(point => point.month === "2026-03")?.currencies[0].portfolioValue, 0);
+  const oldSnapshot = structuredClone(snapshot);
+  delete oldSnapshot.financials.valuationEligibleCount;
+  oldSnapshot.financials.valuationCoverageCount = 1;
+  assert.equal(normalizePortfolioSnapshot(oldSnapshot).financials.valuationEligibleCount, undefined);
+  assert.equal(normalizePortfolioSnapshot(oldSnapshot).financials.valuationCoverageCount, 1);
+  assert.equal(portfolioValuationEligibleCount(snapshot), 0);
+  assert.equal(portfolioValuationEligibleCount(oldSnapshot), 1);
+});
+
+test("已售卡过往报价缺汇率不阻断已知收益，也不稀释持仓覆盖率", () => {
+  const sold = { ...card(), id: "sold", collectionStatus: "sold", holdingQuantity: 0,
+    transactions: [
+      { kind: "purchase", currency: "CNY", amountMinor: 10000n, quantity: 1, occurredAt: at("2026-01-01") },
+      { kind: "sale", currency: "CNY", amountMinor: 15000n, quantity: 1, occurredAt: at("2026-03-01") }
+    ], expenses: [], valuations: [history().valuations[1]]
+  };
+  const configWithoutFx = { reportingCurrency: "CNY", rates: [] };
+  const scope = { isFiltered: false, criteria: [] };
+  const closed = buildReportingPortfolio([sold], scope, configWithoutFx, at("2026-04-01"));
+  assert.equal(closed.incompleteCards.length, 0);
+  assert.equal(closed.snapshot.financials.currencies[0].realizedProfit, 50);
+  assert.equal(closed.snapshot.financials.currencies[0].totalProfit, 50);
+  const owned = { ...sold, id: "owned", collectionStatus: "pending_grading", holdingQuantity: 1,
+    transactions: sold.transactions.slice(0, 1), valuations: [history().valuations[0]] };
+  const combined = buildReportingPortfolio([sold, owned], scope, configWithoutFx, at("2026-04-01")).snapshot;
+  assert.equal(combined.cardCount, 2);
+  assert.equal(combined.activeCount, 1);
+  assert.equal(combined.financials.valuationCoverageCount, 1);
+  assert.equal(combined.financials.valuationEligibleCount, 1);
+  assert.equal(combined.financials.currencies[0].activeLatestValue, 650);
+});
 
 test("historical quote reconstruction matches independent date cutoffs, ties and unavailable quotes", () => {
   const quotes = Array.from({ length: 80 }, (_, index) => ({

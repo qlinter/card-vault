@@ -114,6 +114,8 @@ export function reportingHistory<T extends FinancialHistory>(history: T, config:
     // as the latest quote. Historical cutoffs before this marker still work.
     valuations.push({ ...quote, currency: target, amountMinor: result.amountMinor ?? 0n, available: result.amountMinor !== null });
   }
-  if (latestOriginal) convert(latestOriginal, latestOriginal.valuedAt);
+  // Historical quotes remain available to charts, but a closed position does
+  // not need a current valuation rate to report its realized return.
+  if (latestOriginal && holdingQuantity !== 0) convert(latestOriginal, latestOriginal.valuedAt);
   return { ...history, holdingQuantity, collectionStatus, transactions: transactions as T["transactions"], expenses: expenses as T["expenses"], valuations: valuations as T["valuations"], costMissing, missing: [...missing], evidence: [...evidence.values()], reportingCurrency: target };
 }

@@ -1,3 +1,4 @@
+import { collectionStatusText } from "@/lib/card-domain";
 import { UiText } from "@/components/ui-text";
 import { BackButton } from "@/components/back-button";
 import { CardFinancialHistory } from "@/components/card-financial-history";
@@ -36,23 +37,6 @@ function visibilityText(value: string): string {
       return "仅链接可见";
     case "private":
       return "私密";
-    default:
-      return value;
-  }
-}
-
-function collectionStatusText(value: string): string {
-  switch (value) {
-    case "holding":
-      return "持有中";
-    case "listed":
-      return "在售";
-    case "sold":
-      return "已售出";
-    case "grading":
-      return "送评中";
-    case "target":
-      return "目标卡";
     default:
       return value;
   }

@@ -27,7 +27,7 @@ export default function FinanceRulesPage() {
     <section className="panel"><h2>{t("2. 投入、成本与盈亏", "2. Investment, costs and profit")}</h2><dl className="finance-rules-metrics">{metrics.map(([zh, en, zhRule, enRule]) => <div key={en}><dt>{t(zh, en)}</dt><dd>{t(zhRule, enRule)}</dd></div>)}</dl></section>
     <section className="panel"><h2>{t("3. 双币估值怎么选", "3. Choosing between currency quotes")}</h2>
       <p>{t("优先使用主币种最新的直接估值，即使另一币种报价更晚。没有主币种报价时，才折算另一币种的最新报价。相同估值日期按录入时间取较新记录。CNY 与 USD 报价是同一资产的两种价格，不能相加。", "The latest direct quote in the primary currency takes priority, even if another currency has a newer quote. Only when no direct quote exists is the latest alternative quote converted. Ties use the later entry time. CNY and USD quotes price the same asset and are never added together.")}</p>
-      <p>{t("持仓估值 = 选定的单张估值 × 剩余张数。已全部售出或列为目标的卡片不计入当前持仓估值。", "Holding value = selected unit quote × remaining quantity. Fully sold cards and collection targets do not contribute to current holding value.")}</p>
+      <p>{t("持仓估值 = 选定的单张估值 × 剩余张数。持有、待送评、送评中和待售均计入当前持仓；已售不计入当前持仓估值，但保留历史现金流与已实现盈亏。", "Holding value = selected unit quote × remaining quantity. Holding, Awaiting Grading, At Grading and Pending Sale all count as owned. Sold cards contribute no current holding value, but retain historical cash flows and realized profit.")}</p>
     </section>
     <section className="panel"><h2>{t("4. 主币种与人工汇率", "4. Primary currency and manual exchange rates")}</h2>
       <p>{t("主币种可选 CNY 或 USD。人工汇率固定填写“1 USD = 多少 CNY”：美元转人民币乘以该汇率，人民币转美元除以该汇率。系统不自动获取汇率；来源说明可留空。", "Choose CNY or USD as the primary currency. Enter rates as 1 USD = an amount of CNY: multiply to convert USD to CNY, divide for CNY to USD. Rates are entered manually; source notes are optional.")}</p>

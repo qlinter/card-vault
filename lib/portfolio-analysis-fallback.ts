@@ -1,3 +1,4 @@
+import { portfolioValuationEligibleCount } from "./portfolio-coverage.ts";
 import { normalizePortfolioAnalysis } from "./portfolio-analysis-normalization.ts";
 import type {
   PortfolioAnalysis,
@@ -49,7 +50,7 @@ function fallbackActions(snapshot: PortfolioSnapshot): PortfolioAnalysisAction[]
   const defaults: Omit<PortfolioAnalysisAction, "priority">[] = [
     {
       action: "建立定期估值复核节奏",
-      reason: `当前有 ${snapshot.financials.freshValuationCount}/${snapshot.cardCount} 张卡片具备 90 天内估值。`,
+      reason: `当前有 ${snapshot.financials.freshValuationCount}/${portfolioValuationEligibleCount(snapshot)} 张卡片具备 90 天内估值。`,
       expectedBenefit: "保持组合价值概览的时效性，并减少过期估值造成的偏差。",
       sourcePath: "financials.freshValuationCount",
     },
@@ -82,9 +83,9 @@ function fallbackActions(snapshot: PortfolioSnapshot): PortfolioAnalysisAction[]
 /** Provides a complete, transparent statistical report when all remote AI attempts fail. */
 export function buildFallbackPortfolioAnalysis(snapshot: PortfolioSnapshot): PortfolioAnalysis {
   const activeCount = Math.max(snapshot.activeCount, 1);
-  const valuationCoverage = ratio(snapshot.financials.valuationCoverageCount, snapshot.cardCount);
+  const valuationCoverage = ratio(snapshot.financials.valuationCoverageCount, portfolioValuationEligibleCount(snapshot));
   const transactionCoverage = ratio(Math.min(snapshot.financials.transactionCoverageCount, snapshot.cardCount - (snapshot.accounting?.incompleteCardCount ?? 0)), snapshot.cardCount);
-  const freshCoverage = ratio(snapshot.financials.freshValuationCount, snapshot.cardCount);
+  const freshCoverage = ratio(snapshot.financials.freshValuationCount, portfolioValuationEligibleCount(snapshot));
   const imageCoverage = ratio(snapshot.coverage.imageCoverageCount, snapshot.cardCount);
   const topPlayerShare = snapshot.concentration.player.top1CountShare;
   const topThreePlayerShare = snapshot.concentration.player.top3CountShare;
@@ -171,7 +172,7 @@ export function buildFallbackPortfolioAnalysis(snapshot: PortfolioSnapshot): Por
           evidence(
             "financials.valuationCoverageCount",
             "有估值记录",
-            `${snapshot.financials.valuationCoverageCount}/${snapshot.cardCount}`,
+            `${snapshot.financials.valuationCoverageCount}/${portfolioValuationEligibleCount(snapshot)}`,
           ),
         ],
       },
@@ -191,7 +192,7 @@ export function buildFallbackPortfolioAnalysis(snapshot: PortfolioSnapshot): Por
           evidence(
             "financials.freshValuationCount",
             "新鲜估值",
-            `${snapshot.financials.freshValuationCount}/${snapshot.cardCount}`,
+            `${snapshot.financials.freshValuationCount}/${portfolioValuationEligibleCount(snapshot)}`,
           ),
         ],
       },

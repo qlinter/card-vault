@@ -26,7 +26,7 @@ export function CollectionWorkspace() {
       setWishFormOpen(false);
     }
   }
-  const kinds = { images: l("补充卡图", "Add images"), purchase: l("补充购买记录", "Add purchase history"), valuation: l("补充估值", "Add valuation"), stale: l("更新过期估值", "Refresh valuation"), grading: l("跟进送评进度", "Follow up grading"), listed: l("检查在售状态", "Review listing") };
+  const kinds = { images: l("补充卡图", "Add images"), purchase: l("补充购买记录", "Add purchase history"), valuation: l("补充估值", "Add valuation"), stale: l("更新过期估值", "Refresh valuation"), grading: l("跟进送评进度", "Follow up grading"), listed: l("检查待售状态", "Review listing") };
   const taskStatus: Record<string, string> = { open: l("待处理", "Open"), done: l("已完成", "Done"), snoozed: l("已延后", "Snoozed"), dismissed: l("已忽略", "Dismissed") };
   const wishStatus: Record<string, string> = { planned: l("待实现", "Planned"), acquired: l("已实现", "Acquired"), cancelled: l("已取消", "Cancelled") };
   const money = (minor: string, currency: string) => formatMinorMoneyGrouped(BigInt(minor), currency);

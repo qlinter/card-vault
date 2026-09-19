@@ -1,5 +1,6 @@
 "use client";
 
+import { cardCollectionStatuses, collectionStatusText } from "@/lib/card-domain";
 import { UiText, UiElement } from "@/components/ui-text";
 import { Card, CardImage } from "@prisma/client";
 import { useEffect, useRef, type FormEventHandler, type Ref } from "react";
@@ -304,11 +305,7 @@ export function CardForm({
         <label className="field">
           <span><UiText text={"收藏状态"} /></span>
           <select name="collectionStatus" defaultValue={collectionStatus}>
-            <option value="holding"><UiText text={"持有中"} /></option>
-            <option value="listed"><UiText text={"在售"} /></option>
-            <option value="sold"><UiText text={"已售出"} /></option>
-            <option value="grading"><UiText text={"送评中"} /></option>
-            <option value="target"><UiText text={"目标卡"} /></option>
+            {cardCollectionStatuses.map(status => <option key={status} value={status}><UiText text={collectionStatusText(status)} /></option>)}
           </select>
         </label>
 

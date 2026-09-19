@@ -1,5 +1,6 @@
 "use server";
 
+import { assertCollectionStatusQuantity } from "@/lib/card-quantity";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { CardFormValues } from "@/lib/card-form-values";
@@ -112,6 +113,10 @@ export async function updateCardFormAction(cardId: string, _previousState: Creat
     const imagePaths = await saveCardUploads(files);
     try {
       await prisma.$transaction(async (transaction) => {
+        const current = await transaction.card.findUniqueOrThrow({ where: { id: cardId }, select: { collectionStatus: true, holdingQuantity: true } });
+        if (current.collectionStatus !== cardData.collectionStatus) {
+          assertCollectionStatusQuantity(cardData.collectionStatus, current.holdingQuantity);
+        }
         await transaction.card.update({
           where: { id: cardId },
           data: cardData

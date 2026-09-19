@@ -4,7 +4,7 @@ export function denseHistoryCards(count = 100, quotes = 240): PortfolioCardRecor
   return Array.from({length: count}, (_,i) => ({
     id: `history-${i}`, playerName: "Fixture", sport: "Basketball", gradingCompany: null, grade: null,
     isRookie: false, isAutograph: false, isPatch: false, createdAt: date(10),
-    collectionStatus: i % 7 === 0 ? "target" : i % 5 === 0 ? "sold" : "holding", holdingQuantity: i % 7 === 0 ? 0 : 2,
+    collectionStatus: i % 7 === 0 ? "pending_grading" : i % 5 === 0 ? "sold" : "holding", holdingQuantity: 2,
     transactions: i % 11 === 0 ? [] : [
       { kind: "sale", quantity: i % 5 === 0 ? 3 : 1, amountMinor: 17431n, currency: "USD", occurredAt: date(30), createdAt: date(32) },
       { kind: "purchase", quantity: 3, amountMinor: BigInt(10001 + i), currency: "CNY", occurredAt: date(0), createdAt: date(1), amountKnown: i % 13 !== 0,

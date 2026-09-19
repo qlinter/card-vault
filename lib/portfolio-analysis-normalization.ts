@@ -246,7 +246,7 @@ export function normalizePortfolioSnapshot(value: unknown): PortfolioSnapshot {
     cardCount,
     activeCount,
     soldCount: boundedCount(snapshot.soldCount, cardCount),
-    targetCount: boundedCount(snapshot.targetCount, cardCount),
+    pendingGradingCount: boundedCount(snapshot.pendingGradingCount, cardCount),
     playerCount: boundedCount(snapshot.playerCount, cardCount),
     scope: normalizePortfolioScope(snapshot.scope),
     financials: {
@@ -254,6 +254,7 @@ export function normalizePortfolioSnapshot(value: unknown): PortfolioSnapshot {
       transactionCoverageCount: boundedCount(financials.transactionCoverageCount, cardCount),
       expenseCoverageCount: boundedCount(financials.expenseCoverageCount, cardCount),
       valuationCoverageCount: boundedCount(financials.valuationCoverageCount, cardCount),
+      ...(typeof financials.valuationEligibleCount === "number" ? { valuationEligibleCount: boundedCount(financials.valuationEligibleCount, cardCount) } : {}),
       freshValuationCount: boundedCount(financials.freshValuationCount, cardCount),
       staleValuationCount: boundedCount(financials.staleValuationCount, cardCount),
       latestValuationAt: normalizeDateText(financials.latestValuationAt),

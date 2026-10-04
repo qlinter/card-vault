@@ -131,7 +131,7 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
   async function startServer() {
     logger.appendLog("desktop.log", "Starting local Next server.");
     const dataDir = storage.getDataDir();
-    storage.repairDataLayout(dataDir);
+    storage.ensureDataLayout(dataDir);
     fs.mkdirSync(dataDir, { recursive: true });
     fs.mkdirSync(storage.getUploadsDir(), { recursive: true });
     fs.mkdirSync(storage.getShareCoversDir(), { recursive: true });

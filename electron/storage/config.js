@@ -1,7 +1,7 @@
 const path = require("node:path");
 const { resolveDbPath, resolveShareBackgroundsDir, resolveShareCoversDir, resolveThumbnailsDir, resolveUploadsDir } = require("../../scripts/storage-paths");
 const { isSubPath, loadJson, pathsEqual, saveJson } = require("./file-utils");
-const { repairDataLayout: repairLayout } = require("./layout");
+const { ensureDataLayout } = require("./layout");
 
 function createStorageConfig({ appDataRoot, projectRoot }) {
   const storageConfigPath = path.join(appDataRoot, "storage-config.json");
@@ -21,8 +21,7 @@ function createStorageConfig({ appDataRoot, projectRoot }) {
     const resolvedBackupDir = path.resolve(backupDir);
     if (pathsEqual(dataDir, resolvedBackupDir) || isSubPath(dataDir, resolvedBackupDir)) throw new Error("Backup path cannot be inside the current data folder.");
   };
-  const repairDataLayout = (dataDir) => repairLayout(dataDir);
-  return { storageConfigPath, loadStorageConfig, getDataDir, getBackupDir, getUploadsDir, getThumbnailsDir, getShareCoversDir, getShareBackgroundsDir, getDbPath, getEnv, saveStorageConfig, saveBackupConfig, validateBackupDir, repairDataLayout };
+  return { storageConfigPath, loadStorageConfig, getDataDir, getBackupDir, getUploadsDir, getThumbnailsDir, getShareCoversDir, getShareBackgroundsDir, getDbPath, getEnv, saveStorageConfig, saveBackupConfig, validateBackupDir, ensureDataLayout };
 }
 
 module.exports = { createStorageConfig };

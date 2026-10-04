@@ -6,6 +6,7 @@ import { AboutSettings } from "@/components/about-settings";
 import packageInfo from "@/package.json";
 import { FinancialSettings } from "@/components/financial-settings";
 import { loadFinancialSettings } from "@/lib/financial-settings";
+import { ThemeSettings } from "@/components/theme-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function SettingsPage() {
     <div className="page settings-page">
       <h1 className="sr-only"><UiText text="设置" /></h1>
 
+      <ThemeSettings />
       <DataSettings><DataWorkspace embedded /></DataSettings>
       <AiSettings />
       <FinancialSettings config={financialConfig} />

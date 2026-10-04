@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
-import { deriveCardFinancialSummary } from "@/lib/financial-history-snapshot";
 import {
   createCardExpense,
   createCardTransaction,
@@ -18,7 +17,7 @@ import { transactionInput, expenseInput, valuationInput, optionalText } from "@/
 import { prisma } from "@/lib/prisma";
 import { errorMessage } from "@/lib/feedback-messages";
 import { normalizeReturnTo } from "@/lib/query-params";
-import { resolvePositionCollectionStatus } from "@/lib/position-accounting";
+import { calculatePositions, resolvePositionCollectionStatus } from "@/lib/position-accounting";
 
 type FinancialRecordType = "transaction" | "expense" | "valuation";
 
@@ -33,7 +32,7 @@ async function mutateHistory(
     await transaction.card.update({
       where: { id: cardId },
       data: {
-        ...deriveCardFinancialSummary(history),
+        ...(history.transactions.length ? { holdingQuantity: calculatePositions(history)[0]?.remainingQuantity ?? 0 } : {}),
         collectionStatus: resolvePositionCollectionStatus(card.collectionStatus, history)
       }
     });

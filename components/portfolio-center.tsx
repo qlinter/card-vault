@@ -1,6 +1,5 @@
 "use client";
 
-import { portfolioValuationEligibleCount } from "@/lib/portfolio-coverage";
 import { UiElement, UiText } from "@/components/ui-text";
 import Link from "next/link";
 import type { DragEvent, ReactNode } from "react";
@@ -223,7 +222,7 @@ export function PortfolioCenter({ snapshot, qualityCards, incompleteCards, valua
       <UiElement as="section" uiAttributes={["aria-label"]} className={styles.overviewGrid} aria-label="组合概览">
         <article><span><UiText text={"全部卡片"} /></span><strong>{snapshot.cardCount}</strong><small>{snapshot.playerCount}<UiText text={" 个卡片主体"} /></small></article>
         <article><span><UiText text={"当前持有"} /></span><strong>{snapshot.activeCount}</strong><small><UiText text={"已售 "} />{snapshot.soldCount}<UiText text={" · 待送评 "} />{snapshot.pendingGradingCount}</small></article>
-        <article><span><UiText text={"估值覆盖"} /></span><strong>{countPercent(snapshot.financials.valuationCoverageCount, portfolioValuationEligibleCount(snapshot))}</strong><small>{snapshot.financials.valuationCoverageCount}/{portfolioValuationEligibleCount(snapshot)}<UiText text={" 张"} /></small></article>
+        <article><span><UiText text={"估值覆盖"} /></span><strong>{countPercent(snapshot.financials.valuationCoverageCount, snapshot.financials.valuationEligibleCount)}</strong><small>{snapshot.financials.valuationCoverageCount}/{snapshot.financials.valuationEligibleCount}<UiText text={" 张"} /></small></article>
         <article><span><UiText text={"最新估值"} /></span><strong className={styles.dateValue}><UiText text={shortDate(snapshot.financials.latestValuationAt)} /></strong><small><UiText text={"90 天内 "} />{snapshot.financials.freshValuationCount}<UiText text={" 张"} /></small></article>
       </UiElement>
 

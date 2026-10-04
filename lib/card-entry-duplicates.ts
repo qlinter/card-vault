@@ -1,5 +1,4 @@
 import { normalizeCardFormValues } from "@/lib/card-entry-domain";
-import { normalizeImagePath } from "@/lib/image-path";
 import { prisma } from "@/lib/prisma";
 import {
   scoreCardEntryDuplicate,
@@ -39,7 +38,7 @@ export async function findCardEntryDuplicates(
       cardTitle: card.cardTitle,
       ...result,
       imageUrl: card.images[0]?.path
-        ? normalizeImagePath(card.images[0].path)
+        ? card.images[0].path
         : undefined
     }];
   }).sort((left, right) => right.score - left.score).slice(0, 5);

@@ -76,14 +76,14 @@ test("DeepSeek settings select, test and save the official defaults without clea
   await page.goto("/settings", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "展开 AI" }).click();
   await page.getByRole("combobox", { name: "当前服务", exact: true }).selectOption("deepseek");
-  await expect(page.getByLabel("DeepSeek Endpoint")).toHaveValue("https://api.deepseek.com/chat/completions");
+  await expect(page.getByLabel("Endpoint", { exact: true })).toHaveValue("https://api.deepseek.com/chat/completions");
   await expect(page.getByLabel("Model", { exact: true })).toHaveValue("deepseek-flash");
-  await page.getByLabel("DeepSeek API Key").fill("mock-key");
+  await page.getByLabel("API Key", { exact: true }).fill("mock-key");
   await page.getByRole("button", { name: "测试连接", exact: true }).click();
   await expect(page.getByText("DeepSeek 连接测试通过。", { exact: true })).toBeVisible();
   expect(tested.deepseek.model).toBe("deepseek-flash");
   await page.getByRole("button", { name: "保存设置", exact: true }).click();
-  await expect(page.getByLabel("DeepSeek API Key")).toHaveValue("");
+  await expect(page.getByLabel("API Key", { exact: true })).toHaveValue("");
   const saved = await page.evaluate(() => window.__savedAiDraft);
   expect(saved.provider).toBe("deepseek");
   expect(saved.azure.endpoint).toBe("https://azure.test");

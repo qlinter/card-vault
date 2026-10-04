@@ -4,7 +4,7 @@ export type { PortfolioScorecardKey, PortfolioSectionKey } from "./portfolio-ana
 export { buildPortfolioScope, normalizePortfolioFilterInput, portfolioScopeInstructions } from "./portfolio-analysis-scope.ts";
 export type { PortfolioFilterInput } from "./portfolio-analysis-scope.ts";
 export { buildPortfolioSnapshot } from "./portfolio-analysis-snapshot.ts";
-export { normalizePortfolioAnalysis, normalizePortfolioSnapshot } from "./portfolio-analysis-normalization.ts";
+export { normalizePortfolioAnalysis, normalizePortfolioSnapshot, normalizeStoredPortfolioSnapshot } from "./portfolio-analysis-normalization.ts";
 export { buildPortfolioAnalysisInput, buildPortfolioClientSnapshot, portfolioAnalysisPrompt } from "./portfolio-analysis-prompt.ts";
 export { buildFallbackPortfolioAnalysis } from "./portfolio-analysis-fallback.ts";
 export { completePortfolioAnalysis } from "./portfolio-analysis-completion.ts";

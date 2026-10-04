@@ -34,12 +34,6 @@ model Card {
   visibility        String                @default("private")
   collectionStatus  String                @default("holding")
   holdingQuantity   Int                   @default(1)
-  purchaseDate      DateTime?
-  purchasePrice     Float?
-  gradingFee        Float?
-  totalCost         Float?
-  currentValue      Float?
-  purchaseSource    String?
   tags              String?
   publicDescription String?
   notes             String?
@@ -411,7 +405,5 @@ model CollectionPlan {
 
 model ManagementSettings {
   id String @id @default("default")
-  notifications Boolean @default(false)
   digestCadence String @default("weekly")
-  lastNotifiedAt DateTime?
 }

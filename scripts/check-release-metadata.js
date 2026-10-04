@@ -7,6 +7,7 @@ const rootDir = path.resolve(__dirname, "..");
 const packageJson = require(path.join(rootDir, "package.json"));
 const packageLock = require(path.join(rootDir, "package-lock.json"));
 const version = packageJson.version;
+const { currentReleaseNotes } = require("../lib/release-notes.ts");
 
 assert.match(version, /^\d+\.\d+\.\d+$/, "package.json version must use x.y.z format");
 assert.equal(packageLock.version, version, "package-lock.json top-level version is stale");
@@ -23,6 +24,12 @@ for (const readmeName of ["README.md", "README.en.md"]) {
 
 const releaseNotesPath = path.join(rootDir, "docs", `release-v${version}.md`);
 assert.ok(fs.existsSync(releaseNotesPath), `missing release notes: ${releaseNotesPath}`);
+assert.match(currentReleaseNotes.date, /^\d{4}-\d{2}-\d{2}$/, "release date must use YYYY-MM-DD format");
+assert.ok(fs.readFileSync(releaseNotesPath, "utf8").includes(currentReleaseNotes.date), "in-app release date does not match release documentation");
+assert.equal(currentReleaseNotes.highlights.zh.length, currentReleaseNotes.highlights.en.length, "release highlight languages must stay aligned");
+for (const highlights of Object.values(currentReleaseNotes.highlights)) {
+  assert.ok(highlights.length > 0 && highlights.every(value => typeof value === "string" && value.trim()), "release highlights must be non-empty");
+}
 
 // A local build can succeed even when an overly broad ignore rule omits a route
 // from clean checkouts. Only inspect source files, never collection directories.

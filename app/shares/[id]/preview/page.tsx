@@ -1,7 +1,6 @@
 import { UiText, UiElement } from "@/components/ui-text";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { normalizeImagePath } from "@/lib/image-path";
 import { prisma } from "@/lib/prisma";
 import { toPublicExportCard } from "@/lib/share-export-data";
 import { renderPreviewDocument } from "@/lib/share-export-render";
@@ -37,15 +36,15 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
   const coverImagePath = share.coverImagePath?.startsWith("/share-covers/") ? share.coverImagePath : fallbackCover;
   const theme = normalizeShareTheme(share.theme);
   const customBackground = share.backgroundImagePath?.startsWith("/share-backgrounds/")
-    ? normalizeImagePath(share.backgroundImagePath)
+    ? share.backgroundImagePath
     : null;
   const cards = share.items.map((item) =>
     toPublicExportCard({
       item,
       href: `#card-${item.cardId}`,
       images: item.card.images.map((image) => ({
-        src: normalizeImagePath(image.path),
-        thumbnailSrc: normalizeImagePath(image.path),
+        src: image.path,
+        thumbnailSrc: image.path,
         width: 0,
         height: 0,
         rotation: image.rotation,
@@ -62,7 +61,7 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
     themeNarrative: share.themeNarrative,
     themeHighlights: share.themeHighlights,
     groupNotes: share.groupNotes,
-    coverImage: coverImagePath ? normalizeImagePath(coverImagePath) : null,
+    coverImage: coverImagePath ? coverImagePath : null,
     coverRotation: share.coverImagePath?.startsWith("/share-covers/") ? 0 : fallbackCoverImage?.rotation ?? 0,
     backgroundImage: customBackground ?? shareThemeBackgroundPath(theme),
     generatedAt: new Date().toISOString(),

@@ -353,7 +353,7 @@ async function main() {
     }
 
     db = new DatabaseSync(dbPath, { readOnly: true });
-    const created = db.prepare("SELECT playerName, cardTitle, year, grade, totalCost, holdingQuantity, isSerialNumbered FROM Card WHERE id = ?").get(cardId);
+    const created = db.prepare("SELECT playerName, cardTitle, year, grade, holdingQuantity, isSerialNumbered FROM Card WHERE id = ?").get(cardId);
     const createdImages = db.prepare("SELECT id, path, rotation FROM CardImage WHERE cardId = ? ORDER BY createdAt, rowid").all(cardId);
     const createdTransaction = db.prepare("SELECT kind, amountMinor, currency, quantity, provenance FROM CardTransaction WHERE cardId = ?").get(cardId);
     const createdExpense = db.prepare("SELECT kind, context, amountMinor, currency, provenance FROM CardExpense WHERE cardId = ?").get(cardId);
@@ -362,7 +362,7 @@ async function main() {
     const completedQueueCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardEntryQueueItem WHERE id = ?").get(readyQueueItem.id).count);
     const completedRecognitionCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardEntryRecognition WHERE itemId = ?").get(readyQueueItem.id).count);
     db.close();
-    if (created?.playerName !== "E2E Create Player" || created?.year !== "2016-17" || created?.grade !== "Auto Auth" || created?.totalCost !== 120 || created?.holdingQuantity !== 2 || created?.isSerialNumbered !== 1) {
+    if (created?.playerName !== "E2E Create Player" || created?.year !== "2016-17" || created?.grade !== "Auto Auth" || created?.holdingQuantity !== 2 || created?.isSerialNumbered !== 1) {
       throw new Error(`Card create did not persist the expected fields: ${JSON.stringify(created)}.`);
     }
     if (
@@ -501,7 +501,7 @@ async function main() {
       detailPage.includes("E2E Updated Card"),
       detailPage.includes("Authentic"),
       detailPage.includes("返回上一页"),
-      detailPage.includes("财务历史"),
+      detailPage.includes("<h2>财务</h2>"),
       detailPage.includes("新增记录"),
       detailPage.includes("持仓成本与估值变化"),
       detailPage.includes("累计成本构成"),
@@ -545,10 +545,9 @@ async function main() {
     }
     db = new DatabaseSync(dbPath, { readOnly: true });
     const latestValuation = db.prepare("SELECT id, amountMinor, source FROM CardValuation WHERE cardId = ? ORDER BY valuedAt DESC LIMIT 1").get(cardId);
-    const syncedSnapshot = db.prepare("SELECT currentValue FROM Card WHERE id = ?").get(cardId);
     db.close();
-    if (latestValuation?.amountMinor !== 21050 || latestValuation?.source !== "平台报价" || syncedSnapshot?.currentValue !== 210.5) {
-      throw new Error("Detail financial action did not persist the valuation and synchronize the compatibility snapshot.");
+    if (latestValuation?.amountMinor !== 21050 || latestValuation?.source !== "平台报价") {
+      throw new Error("Detail financial action did not persist the valuation.");
     }
 
     const historyDetailPage = await fetchPage(baseUrl, `/cards/${cardId}?success=history-added`);
@@ -581,10 +580,10 @@ async function main() {
     }
     db = new DatabaseSync(dbPath, { readOnly: true });
     const remainingValuationCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardValuation WHERE cardId = ?").get(cardId).count);
-    const revertedSnapshot = db.prepare("SELECT currentValue FROM Card WHERE id = ?").get(cardId);
+    const remainingValuation = db.prepare("SELECT amountMinor FROM CardValuation WHERE cardId = ?").get(cardId);
     db.close();
-    if (remainingValuationCount !== 1 || revertedSnapshot?.currentValue !== 180) {
-      throw new Error("Valuation deletion did not restore the previous compatibility snapshot.");
+    if (remainingValuationCount !== 1 || remainingValuation?.amountMinor !== 18000) {
+      throw new Error("Valuation deletion did not preserve the previous valuation.");
     }
     const showcaseDetailPage = await fetchPage(baseUrl, `/showcase/cards/${cardId}?group=E2E%20Updated%20Player&q=Updated`);
     if (

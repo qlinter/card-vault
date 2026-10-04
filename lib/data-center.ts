@@ -146,7 +146,7 @@ export async function applyJob(id: string, undo = false, cursor?: number) {
           if (!row.beforeJson) await tx.card.delete({ where: { id: current.id } });
           else {
             const before = JSON.parse(row.beforeJson) as Card;
-            await tx.card.update({ where: { id: current.id }, data: { ...before, purchaseDate: before.purchaseDate ? new Date(before.purchaseDate) : null, createdAt: new Date(before.createdAt), updatedAt: new Date(before.updatedAt) } });
+            await tx.card.update({ where: { id: current.id }, data: { ...before, createdAt: new Date(before.createdAt), updatedAt: new Date(before.updatedAt) } });
           }
           await tx.bulkJobRow.update({ where: { id: row.id }, data: { status: "undone", error: null } });
           return;

@@ -3,7 +3,6 @@
 import { UiElement } from "@/components/ui-text";
 import { useState } from "react";
 import { cardImageRotationStyle, rotateCardImageDegrees } from "@/lib/card-image-rotation";
-import { normalizeImagePath } from "@/lib/image-path";
 
 type ShowcaseGalleryProps = {
   cardTitle: string;
@@ -36,7 +35,7 @@ export function ShowcaseGallery({ cardTitle, images }: ShowcaseGalleryProps) {
       <div className="showcase-detail-main">
         <div className="showcase-detail-main-frame">
           <img
-            src={normalizeImagePath(activeImage.path)}
+            src={activeImage.path}
             alt={`${cardTitle} - ${activeIndex + 1}`}
             className="showcase-detail-main-image"
             style={cardImageRotationStyle(displayedRotation, { continuous: true })}
@@ -77,7 +76,7 @@ export function ShowcaseGallery({ cardTitle, images }: ShowcaseGalleryProps) {
               }}
 
             >
-              <img src={normalizeImagePath(image.path)} alt={`${cardTitle} thumbnail ${index + 1}`} className="showcase-thumb" style={cardImageRotationStyle(image.rotation)} />
+              <img src={image.path} alt={`${cardTitle} thumbnail ${index + 1}`} className="showcase-thumb" style={cardImageRotationStyle(image.rotation)} />
             </UiElement>
           ))}
         </div>

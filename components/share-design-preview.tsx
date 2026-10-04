@@ -4,7 +4,6 @@ import { UiText, UiElement } from "@/components/ui-text";
 import { useMemo, useState, type CSSProperties } from "react";
 import type { ShareCardDraft, SharePickerCard } from "@/components/share-card-picker";
 import type { ShareThemeValues } from "@/components/share-theme-generator";
-import { normalizeImagePath } from "@/lib/image-path";
 import { sharePreviewSandboxPolicy } from "@/lib/share-preview-policy";
 import { getSharePreviewDevice, sharePreviewDevices, type SharePreviewDeviceId } from "@/lib/share-preview-devices";
 import { renderPreviewDocument } from "@/lib/share-export-render";
@@ -65,8 +64,8 @@ export function ShareDesignPreview({
         certNumber: card.certNumber,
         href: `#card-${card.id}`,
         images: card.imagePath ? [{
-          src: normalizeImagePath(card.imagePath),
-          thumbnailSrc: normalizeImagePath(card.imagePath),
+          src: card.imagePath,
+          thumbnailSrc: card.imagePath,
           width: 0,
           height: 0,
           rotation: card.imageRotation,
@@ -83,9 +82,9 @@ export function ShareDesignPreview({
       themeNarrative: values.themeNarrative || null,
       themeHighlights: values.themeHighlights || null,
       groupNotes: values.groupNotes || null,
-      coverImage: coverImagePath ? normalizeImagePath(coverImagePath) : exportCards.find((card) => card.images.length > 0)?.images[0]?.src ?? null,
+      coverImage: coverImagePath ? coverImagePath : exportCards.find((card) => card.images.length > 0)?.images[0]?.src ?? null,
       coverRotation: coverImagePath ? 0 : exportCards.find((card) => card.images.length > 0)?.images[0]?.rotation ?? 0,
-      backgroundImage: backgroundImagePath ? normalizeImagePath(backgroundImagePath) : shareThemeBackgroundPath(theme),
+      backgroundImage: backgroundImagePath ? backgroundImagePath : shareThemeBackgroundPath(theme),
       generatedAt: new Date(0).toISOString(),
       mode: "static",
       sections: sections.map((section) => ({ ...section })),

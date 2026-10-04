@@ -1,7 +1,7 @@
 import "server-only";
 
 import { Prisma, type PortfolioSavedView, type PortfolioSnapshotRecord } from "@prisma/client";
-import { normalizePortfolioSnapshot, type PortfolioFilterInput, type PortfolioSnapshot } from "./portfolio-analysis.ts";
+import { normalizeStoredPortfolioSnapshot, type PortfolioFilterInput, type PortfolioSnapshot } from "./portfolio-analysis.ts";
 import { normalizePortfolioFilterInput } from "./portfolio-analysis-scope.ts";
 import { prisma } from "./prisma";
 
@@ -25,9 +25,9 @@ function parseQueryJson(value: string): PortfolioFilterInput {
 
 function parseSnapshotJson(value: string): PortfolioSnapshot {
   try {
-    return normalizePortfolioSnapshot(JSON.parse(value));
+    return normalizeStoredPortfolioSnapshot(JSON.parse(value));
   } catch {
-    throw new Error("时间点组合快照已损坏，无法用于比较。");
+    throw new Error("时间点组合快照格式不受支持或已损坏，无法用于比较，请重新保存当前快照。");
   }
 }
 
@@ -124,6 +124,7 @@ export async function createStoredPortfolioSnapshot(input: {
   snapshot: PortfolioSnapshot;
   savedViewId?: string | null;
 }): Promise<StoredPortfolioSnapshot> {
+  const snapshot = normalizeStoredPortfolioSnapshot(input.snapshot);
   if (await prisma.portfolioSnapshotRecord.count() >= maximumStoredSnapshots) {
     throw new Error(`时间点快照最多保存 ${maximumStoredSnapshots} 个，请先删除不再使用的快照。`);
   }
@@ -143,7 +144,7 @@ export async function createStoredPortfolioSnapshot(input: {
       savedViewId: savedView?.id ?? null,
       name,
       queryJson: JSON.stringify(query),
-      snapshotJson: JSON.stringify(input.snapshot),
+      snapshotJson: JSON.stringify(snapshot),
       capturedAt
     }
   }));

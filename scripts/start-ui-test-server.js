@@ -127,9 +127,9 @@ async function startUiTestServer() {
   fs.rmSync(runtimeRoot, { recursive: true, force: true });
   const uploadsDir = path.join(dataDir, "uploads");
   fs.mkdirSync(uploadsDir, { recursive: true });
-  fs.copyFileSync(path.join(rootDir, "public", "showcase-bg.webp"), path.join(uploadsDir, "ui-card-1.webp"));
+  fs.copyFileSync(path.join(rootDir, "tests", "fixtures", "ui-media", "showcase-bg.webp"), path.join(uploadsDir, "ui-card-1.webp"));
   fs.copyFileSync(path.join(rootDir, "public", "home-bg.webp"), path.join(uploadsDir, "ui-card-2.webp"));
-  fs.copyFileSync(path.join(rootDir, "public", "shares-bg.webp"), path.join(uploadsDir, "ui-card-3.webp"));
+  fs.copyFileSync(path.join(rootDir, "tests", "fixtures", "ui-media", "shares-bg.webp"), path.join(uploadsDir, "ui-card-3.webp"));
 
   const env = {
     ...process.env,

@@ -22,7 +22,7 @@ function createTestManager(t) {
 }
 
 function seedData(manager) {
-  manager.repairDataLayout(manager.getDataDir());
+  manager.ensureDataLayout(manager.getDataDir());
   initializeDatabase(manager.getDbPath());
   fs.writeFileSync(path.join(manager.getUploadsDir(), "card.jpg"), "card");
   fs.writeFileSync(path.join(manager.getThumbnailsDir(), "card.jpg.home.webp"), "thumbnail-cache");
@@ -41,14 +41,14 @@ test("unsupported media layouts are rejected without moving or deleting files", 
   fs.mkdirSync(path.join(uploads, "uploads"), { recursive: true });
   fs.writeFileSync(path.join(uploads, "dev.db"), "keep database");
   fs.writeFileSync(path.join(uploads, "uploads", "card.jpg"), "keep image");
-  assert.throws(() => manager.repairDataLayout(manager.getDataDir()), /不是当前布局/);
+  assert.throws(() => manager.ensureDataLayout(manager.getDataDir()), /不是当前布局/);
   assert.equal(fs.readFileSync(path.join(uploads, "dev.db"), "utf8"), "keep database");
   assert.equal(fs.readFileSync(path.join(uploads, "uploads", "card.jpg"), "utf8"), "keep image");
   assert.equal(fs.existsSync(manager.getDbPath()), false);
 });
 
 function seedCardVaultData(manager, playerName = "Card Vault Player") {
-  manager.repairDataLayout(manager.getDataDir());
+  manager.ensureDataLayout(manager.getDataDir());
   initializeDatabase(manager.getDbPath());
   fs.writeFileSync(path.join(manager.getUploadsDir(), "card.jpg"), "card-image");
   fs.writeFileSync(path.join(manager.getShareCoversDir(), "cover.jpg"), "cover-image");
@@ -249,22 +249,23 @@ test("data health reports missing references and unreferenced media", (t) => {
   assert.equal(unhealthy.missingFiles.length, 1);
 });
 
-test("legacy uploads paths remain referenced during health checks and cleanup", (t) => {
+test("unsupported media paths fail health checks and block cleanup without deleting files", (t) => {
   const { manager } = createTestManager(t);
   seedCardVaultData(manager);
 
-  const db = new DatabaseSync(manager.getDbPath());
-  db.prepare("UPDATE CardImage SET path = ? WHERE id = ?").run("/uploads/card.jpg", "image-1");
-  db.close();
+  for (const imagePath of ["/uploads/card.jpg", "/media/../card.jpg", "/media/..\\card.jpg"]) {
+    const db = new DatabaseSync(manager.getDbPath());
+    try { db.prepare("UPDATE CardImage SET path = ? WHERE id = ?").run(imagePath, "image-1"); }
+    finally { db.close(); }
 
-  const health = manager.inspectDataFolder();
-  assert.equal(health.ok, true);
-  assert.equal(health.missingFiles.length, 0);
-  assert.equal(health.orphanFiles.some((file) => file.path === path.join("uploads", "card.jpg")), false);
+    const health = manager.inspectDataFolder();
+    assert.equal(health.ok, false);
+    assert.equal(health.missingFiles.length, 0);
+    assert.match(health.issues.join(" "), /图片路径格式无效/);
 
-  const cleanup = manager.cleanOrphanFiles();
-  assert.equal(cleanup.deletedFiles.length, 0);
-  assert.equal(fs.existsSync(path.join(manager.getUploadsDir(), "card.jpg")), true);
+    assert.throws(() => manager.cleanOrphanFiles(), /数据健康检查未通过/);
+    assert.equal(fs.existsSync(path.join(manager.getUploadsDir(), "card.jpg")), true);
+  }
 });
 
 test("entry queue sources and processed images remain referenced during health checks", (t) => {

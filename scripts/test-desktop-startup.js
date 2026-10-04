@@ -14,7 +14,7 @@ async function main() {
     app: { isPackaged: false }, rootDir: path.resolve(__dirname, ".."),
     storage: {
       getEnv: () => ({ CARD_VAULT_DATA_DIR: data, DATABASE_URL: `file:${path.join(data, "dev.db").replaceAll("\\", "/")}` }), getDataDir: () => data,
-      getDbPath: () => path.join(data, "dev.db"), repairDataLayout: () => {},
+      getDbPath: () => path.join(data, "dev.db"), ensureDataLayout: () => {},
       getUploadsDir: () => path.join(data, "uploads"),
       getShareCoversDir: () => path.join(data, "share-covers"),
       getShareBackgroundsDir: () => path.join(data, "share-backgrounds")

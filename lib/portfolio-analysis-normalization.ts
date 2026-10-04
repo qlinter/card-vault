@@ -2,6 +2,7 @@ import { portfolioScorecardKeys, portfolioSectionKeys } from "./portfolio-analys
 import { displayPortfolioFilterValue, portfolioFilterDefinitions } from "./portfolio-analysis-scope.ts";
 import { emptyAllocation, normalizeConcentration } from "./portfolio-analysis-statistics.ts";
 import { roundPortfolioValue as money } from "./portfolio-number.ts";
+import { accountingVersion } from "./financial-reporting.ts";
 import type {
   PortfolioAnalysis,
   PortfolioAnalysisAction,
@@ -214,13 +215,19 @@ function normalizeValuationSources(value: unknown, cardCount: number): Portfolio
 function normalizeAccounting(value: unknown, cardCount: number): PortfolioSnapshot["accounting"] {
   if (value === undefined) return undefined;
   const record = objectRecord(value);
-  if (typeof record.version !== "string" || !portfolioCurrencies.includes(record.currency as "CNY" | "USD") || !Array.isArray(record.rates)) throw new Error("快照财务口径无效。");
+  if (record.version !== accountingVersion || !portfolioCurrencies.includes(record.currency as "CNY" | "USD") || !Array.isArray(record.rates)) throw new Error("快照财务口径无效。");
   const rates = record.rates.map((entry) => {
     const rate = objectRecord(entry);
     if (typeof rate.rateMicros !== "string" || !/^[1-9]\d{0,11}$/.test(rate.rateMicros) || typeof rate.effectiveDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(rate.effectiveDate)) throw new Error("快照汇率记录无效。");
     return { id: safeText(rate.id, 100), effectiveDate: rate.effectiveDate, rateMicros: rate.rateMicros, revision: boundedCount(rate.revision, 1000000), source: safeText(rate.source, 200) };
   });
   return { version: safeText(record.version, 100), currency: String(record.currency), incompleteCardCount: boundedCount(record.incompleteCardCount, cardCount), missing: Array.isArray(record.missing) ? record.missing.map((reason) => safeText(reason, 500)) : [], rates };
+}
+
+export function normalizeStoredPortfolioSnapshot(value: unknown): PortfolioSnapshot {
+  const snapshot = normalizePortfolioSnapshot(value);
+  if (!snapshot.accounting) throw new Error("组合快照格式不受支持，缺少当前财务口径。");
+  return snapshot;
 }
 
 export function normalizePortfolioSnapshot(value: unknown): PortfolioSnapshot {
@@ -240,6 +247,9 @@ export function normalizePortfolioSnapshot(value: unknown): PortfolioSnapshot {
   const activeCount = boundedCount(snapshot.activeCount, cardCount);
   const financials = objectRecord(snapshot.financials);
   const quality = objectRecord(snapshot.quality);
+  if (typeof financials.valuationEligibleCount !== "number" || !Number.isInteger(financials.valuationEligibleCount) || financials.valuationEligibleCount < 0 || financials.valuationEligibleCount > cardCount) {
+    throw new Error("组合快照格式不受支持，缺少有效的估值覆盖分母。");
+  }
 
   return {
     accounting: normalizeAccounting(snapshot.accounting, cardCount),
@@ -254,7 +264,7 @@ export function normalizePortfolioSnapshot(value: unknown): PortfolioSnapshot {
       transactionCoverageCount: boundedCount(financials.transactionCoverageCount, cardCount),
       expenseCoverageCount: boundedCount(financials.expenseCoverageCount, cardCount),
       valuationCoverageCount: boundedCount(financials.valuationCoverageCount, cardCount),
-      ...(typeof financials.valuationEligibleCount === "number" ? { valuationEligibleCount: boundedCount(financials.valuationEligibleCount, cardCount) } : {}),
+      valuationEligibleCount: financials.valuationEligibleCount,
       freshValuationCount: boundedCount(financials.freshValuationCount, cardCount),
       staleValuationCount: boundedCount(financials.staleValuationCount, cardCount),
       latestValuationAt: normalizeDateText(financials.latestValuationAt),

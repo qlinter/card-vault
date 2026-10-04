@@ -19,7 +19,7 @@ function uniqueBackupTarget(dateDir) {
   }
 }
 
-function createBackupService({ config, repairDataLayout }) {
+function createBackupService({ config, ensureDataLayout }) {
   function chooseBackupDir(selectedPath) {
     const backupDir = path.resolve(selectedPath);
     config.validateBackupDir(backupDir);
@@ -33,7 +33,7 @@ function createBackupService({ config, repairDataLayout }) {
     const sourceDbPath = config.getDbPath();
     const backupDir = config.getBackupDir();
     config.validateBackupDir(backupDir);
-    repairDataLayout(sourceDataDir);
+    ensureDataLayout(sourceDataDir);
     if (!fs.existsSync(sourceDataDir)) throw new Error("Data folder does not exist.");
     const dateDir = path.join(backupDir, dateFolderName());
     fs.mkdirSync(dateDir, { recursive: true });

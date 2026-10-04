@@ -1,5 +1,4 @@
 import "server-only";
-import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { buildCardFilters, buildCardSorting, splitTagString } from "./card-helpers";
 import { ensureCardReports } from "./card-report-index";
@@ -13,10 +12,7 @@ type Query = Parameters<typeof buildCardFilters>[0];
 export async function loadHomeData(query: Query, page = 0, attempt = 0): Promise<{ cards: Array<{ id: string; playerName: string; cardTitle: string; details: string; tags: string[]; imagePath: string | null; imageRotation: number; href: string }>; totalCount: number; currency: string; totalValue: string | null; valuedCount: number }> {
   await ensureCardReports();
   const where = buildCardFilters(query);
-  const financialSort = /^(?:price|costCny|valueCny)(?:Asc|Desc)$/.test(query.sort ?? "");
-  const orderBy: Prisma.CardOrderByWithRelationInput[] = financialSort
-    ? [{ report: { [query.sort?.startsWith("value") ? "valueMinor" : "remainingCostMinor"]: { sort: query.sort?.endsWith("Desc") ? "desc" : "asc", nulls: "last" } } }, { id: "asc" }]
-    : [...buildCardSorting(query.sort), { id: "asc" }];
+  const orderBy = buildCardSorting(query.sort);
   const [cards, totalCount, summary, settings, meta] = await prisma.$transaction([
     prisma.card.findMany({ where, take: homePageSize, skip: Math.max(0, Math.trunc(page)) * homePageSize, orderBy, select: { id: true, playerName: true, cardTitle: true, year: true, team: true, productLine: true, tags: true, images: { take: 1, orderBy: { createdAt: "asc" }, select: { path: true, rotation: true } } } }),
     prisma.card.count({ where }),

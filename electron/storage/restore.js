@@ -16,7 +16,7 @@ function resolveRestoreSourcePath(selectedPath) {
   return entries.filter((entry) => entry.isDirectory() && /^data(?:-\d{6}(?:-\d+)?)?$/.test(entry.name)).map((entry) => path.join(selectedDir, entry.name)).filter((candidate) => fs.existsSync(path.join(candidate, "dev.db"))).map((candidate) => ({ path: candidate, modifiedAt: fs.statSync(candidate).mtimeMs })).sort((left, right) => right.modifiedAt - left.modifiedAt || right.path.localeCompare(left.path))[0]?.path ?? null;
 }
 
-function createRestoreService({ config, backupDataFolder, repairDataLayout }) {
+function createRestoreService({ config, backupDataFolder, ensureDataLayout }) {
   function restoreDataFolder(selectedPath, onProgress) {
     reportProgress(onProgress, 2, "正在验证恢复来源...");
     const sourceDataDir = resolveRestoreSourcePath(selectedPath);
@@ -55,7 +55,7 @@ function createRestoreService({ config, backupDataFolder, repairDataLayout }) {
       try {
         reportProgress(onProgress, 88, "正在切换到恢复后的数据目录...");
         fs.renameSync(stagingDir, targetDataDir);
-        repairDataLayout(targetDataDir);
+        ensureDataLayout(targetDataDir);
         restoredHealth = inspectDataFolder(targetDataDir, mapProgress(onProgress, 92, 99));
         if (restoredHealth.integrity !== "ok") throw new Error("恢复后的数据库校验失败，正在还原原数据。");
       } catch (error) {

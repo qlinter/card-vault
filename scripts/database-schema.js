@@ -9,8 +9,7 @@ const requiredSchema = {
     "id", "playerName", "cardTitle", "sport", "team", "year", "brand", "productLine", "subsetName",
     "parallel", "cardNumber", "isSerialNumbered", "serialNumber", "serialRange", "isRookie",
     "isAutograph", "autoType", "isPatch", "patchType", "gradingCompany", "grade", "certNumber",
-    "gradingLink", "visibility", "collectionStatus", "holdingQuantity", "purchaseDate", "purchasePrice", "gradingFee",
-    "totalCost", "currentValue", "purchaseSource", "tags", "publicDescription", "notes", "createdAt", "updatedAt"
+    "gradingLink", "visibility", "collectionStatus", "holdingQuantity", "tags", "publicDescription", "notes", "createdAt", "updatedAt"
   ],
   CardImage: ["id", "cardId", "path", "rotation", "createdAt"],
   CardTransaction: ["id", "cardId", "kind", "amountMinor", "currency", "quantity", "paymentsJson", "amountKnown", "occurredAt", "source", "notes", "provenance", "externalKey", "createdAt", "updatedAt"],
@@ -87,8 +86,7 @@ function createCurrentSchema(db) {
       isPatch BOOLEAN NOT NULL DEFAULT 0, patchType TEXT, gradingCompany TEXT, grade TEXT, certNumber TEXT,
       gradingLink TEXT, visibility TEXT NOT NULL DEFAULT 'private', collectionStatus TEXT NOT NULL DEFAULT 'holding',
       holdingQuantity INTEGER NOT NULL DEFAULT 1 CHECK (typeof(holdingQuantity) = 'integer' AND holdingQuantity >= 0),
-      purchaseDate DATETIME, purchasePrice REAL, gradingFee REAL, totalCost REAL, currentValue REAL,
-      purchaseSource TEXT, tags TEXT, publicDescription TEXT, notes TEXT,
+      tags TEXT, publicDescription TEXT, notes TEXT,
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE IF NOT EXISTS CardImage (

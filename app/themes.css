@@ -1,0 +1,80 @@
+/* Application palettes come from lib/app-themes.ts. Classic uses the shared homepage background and original colors. */
+html[data-app-theme]:not([data-app-theme="classic"]) {
+  color-scheme: var(--theme-color-scheme);
+}
+html[data-app-theme]:not([data-app-theme="classic"]) body {
+  background: var(--theme-canvas);
+  --shadow: var(--theme-shadow);
+  --shadow-soft: var(--theme-shadow);
+}
+html[data-app-theme]:not([data-app-theme="classic"]) body .site-bg {
+  background-image: linear-gradient(var(--theme-shade), var(--theme-shade)), var(--theme-background);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: .42;
+}
+html[data-app-theme]:not([data-app-theme="classic"]) body:has(.home-page, .showcase-backdrop) .site-bg { opacity: 1; }
+html[data-app-theme]:not([data-app-theme="classic"]) .topbar {
+  background: rgba(var(--theme-surface-rgb), .88);
+  border-color: var(--line);
+  box-shadow: var(--shadow-soft);
+}
+html[data-app-theme]:not([data-app-theme="classic"]) .page > .title-row {
+  background: rgba(var(--theme-surface-rgb), .92);
+  border-color: var(--line);
+}
+html[data-app-theme]:not([data-app-theme="classic"]) :is(.home-page, .showcase-backdrop) :is(.panel, .showcase-card, .card-item) {
+  background: rgba(var(--theme-surface-rgb), .9);
+  border-color: var(--line);
+  box-shadow: var(--shadow-soft);
+}
+html[data-app-theme]:not([data-app-theme="classic"]) :is(.btn-primary, .btn-primary:hover) {
+  color: var(--theme-on-accent);
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: var(--shadow-soft);
+}
+html[data-app-theme]:not([data-app-theme="classic"]) .btn-primary:hover { background: var(--theme-accent-hover); }
+html[data-app-theme]:not([data-app-theme="classic"]) :is(.nav-links a.active, .showcase-chip.active, .financial-record-tabs button[aria-selected="true"], .financial-history-filters button[aria-pressed="true"]) {
+  background: var(--accent);
+  color: var(--theme-on-accent);
+  border-color: var(--accent);
+}
+html[data-app-theme]:not([data-app-theme="classic"]) :is(input, select, textarea) { accent-color: var(--teal); }
+html[data-app-theme]:not([data-app-theme="classic"]) select:not([multiple]) { background-image: var(--theme-select-arrow); }
+html[data-app-theme]:not([data-app-theme="classic"]) .share-wizard-step.active span { color: var(--theme-on-strong); }
+html[data-app-theme]:not([data-app-theme="classic"]) :is(input, textarea)::placeholder { color: var(--muted-ink); opacity: 1; }
+html[data-app-theme]:not([data-app-theme="classic"]) :is(input, select, textarea):focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 20%, transparent);
+}
+html[data-app-theme]:not([data-app-theme="classic"]) .share-list-actions .btn-danger {
+  color: var(--theme-negative);
+  background: var(--surface-soft);
+  border-color: var(--line);
+}
+html[data-app-theme]:not([data-app-theme="classic"]) .share-list-actions .btn-danger:hover { background: color-mix(in srgb, var(--theme-negative) 12%, var(--surface)); }
+
+.theme-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .85rem; min-width: 0; margin: 0; padding: 0; border: 0; }
+.theme-option { position: relative; display: grid; align-content: start; min-width: 0; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); cursor: pointer; }
+.theme-option:has(input:checked) { border-color: var(--teal); box-shadow: 0 0 0 2px var(--teal); }
+.theme-option:has(input:focus-visible) { outline: 3px solid var(--ink); outline-offset: 4px; }
+.theme-option input { position: absolute; z-index: 1; top: .6rem; right: .6rem; width: 18px; height: 18px; margin: 0; accent-color: var(--teal); }
+.theme-preview { display: grid; place-items: center; aspect-ratio: 1.85; background-size: cover; background-position: center; }
+.theme-preview-window { display: grid; gap: 9px; width: 69%; padding: 12px; background: rgb(255 255 255 / .82); border: 1px solid rgb(255 255 255 / .45); border-radius: 6px; box-shadow: 0 7px 15px rgb(0 0 0 / .12); }
+.theme-preview-window > i { display: block; height: 5px; width: 45%; background: #d9531e; border-radius: 2px; }
+.theme-preview-window > span { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.theme-preview-window b { display: block; aspect-ratio: .8; border-radius: 3px; background: #e4e9ee; }
+.theme-preview-gallery > i { background: #24676a; }
+.theme-preview-gallery b { background: #d2e0df; }
+.theme-preview-midnight { background: rgb(21 35 50 / .9); border-color: rgb(215 183 122 / .3); }
+.theme-preview-midnight > i { background: #d7b77a; }
+.theme-preview-midnight b { background: #314459; }
+.theme-preview-archive { background: rgb(255 252 245 / .9); }
+.theme-preview-archive > i { background: #886034; }
+.theme-preview-archive b { background: #e5d7bf; }
+.theme-option-copy { display: grid; gap: .45rem; padding: .9rem; }
+.theme-option-copy strong { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; font-size: .95rem; }
+@media (max-width: 900px) { .theme-options { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .theme-options { grid-template-columns: minmax(0, 1fr); } .theme-preview { aspect-ratio: 2.2; } }

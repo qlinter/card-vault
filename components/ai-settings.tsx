@@ -157,7 +157,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
       };
     });
     setModelOptions([]);
-    setMessage("已新增一项自定义配置，请填写名称、Endpoint 和 Model 后保存。");
+    setMessage(null);
   }
 
   function deleteCurrentCustomProvider() {
@@ -288,7 +288,6 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   }
 
   const builtInProvider = settings.provider === "deepseek" ? "deepseek" : "minimax";
-  const builtInName = providerName(builtInProvider);
   const builtInSettings = settings[builtInProvider];
   const builtInApiKey = builtInProvider === "deepseek" ? deepseekApiKey : minimaxApiKey;
   const setBuiltInApiKey = builtInProvider === "deepseek" ? setDeepSeekApiKey : setMiniMaxApiKey;
@@ -325,7 +324,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
 
       {isOpen ? (
         <>
-          <div className="form-grid">
+          <div className="ai-provider-picker">
             <label className="field">
               <span><UiText text={"当前服务"} /></span>
               <select value={selectedProviderValue} onChange={(event) => handleProviderChange(event.target.value)} disabled={!isDesktop}>
@@ -336,20 +335,19 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
               </select>
             </label>
 
-            <div className="field">
-              <span><UiText text={"自定义配置"} /></span>
-              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                <button type="button" className="btn btn-secondary" onClick={addCustomProvider} disabled={!isDesktop}><UiText text={"新增自定义 AI"} /></button>
-                {settings.provider === "custom" && currentCustom ? (
-                  <button type="button" className="btn btn-danger" onClick={deleteCurrentCustomProvider} disabled={!isDesktop}><UiText text={"删除当前配置"} /></button>
-                ) : null}
-              </div>
+            <div className="ai-provider-actions">
+              <button type="button" className="btn btn-secondary" onClick={addCustomProvider} disabled={!isDesktop}><UiText text={"新增自定义 AI"} /></button>
+              {settings.provider === "custom" && currentCustom ? (
+                <button type="button" className="btn btn-danger" onClick={deleteCurrentCustomProvider} disabled={!isDesktop}><UiText text={"删除当前配置"} /></button>
+              ) : null}
             </div>
+          </div>
 
+          <div className="form-grid">
             {settings.provider === "azure" ? (
               <>
                 <label className="field">
-                  <span>Azure Endpoint</span>
+                  <span>Endpoint</span>
                   <UiElement as="input" uiAttributes={["placeholder"]} value={settings.azure.endpoint} onChange={(event) => setSettings((current) => ({ ...current, azure: { ...current.azure, endpoint: event.target.value } }))} placeholder="https://your-resource.openai.azure.com 或 https://your-resource.services.ai.azure.com" disabled={!isDesktop} />
                 </label>
                 <label className="field">
@@ -357,14 +355,14 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
                   <UiElement as="input" uiAttributes={["placeholder"]} value={settings.azure.deployment} onChange={(event) => setSettings((current) => ({ ...current, azure: { ...current.azure, deployment: event.target.value } }))} placeholder="你的部署名称" disabled={!isDesktop} />
                 </label>
                 <label className="field">
-                  <span>Azure API Key</span>
+                  <span>API Key</span>
                   <UiElement as="input" uiAttributes={["placeholder"]} value={azureApiKey} type="password" onChange={(event) => setAzureApiKey(event.target.value)} placeholder={settings.azure.hasApiKey ? "已保存；留空则不修改" : "请输入 API Key"} disabled={!isDesktop} />
                 </label>
               </>
             ) : settings.provider === "minimax" || settings.provider === "deepseek" ? (
               <>
                 <label className="field">
-                  <span>{builtInName} Endpoint</span>
+                  <span>Endpoint</span>
                   <input value={builtInSettings.endpoint} onChange={(event) => setSettings((current) => ({ ...current, [builtInProvider]: { ...current[builtInProvider], endpoint: event.target.value } }))} placeholder={emptySettings[builtInProvider].endpoint} disabled={!isDesktop} />
                 </label>
                 <label className="field">
@@ -372,7 +370,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
                   <input value={builtInSettings.model} onChange={(event) => setSettings((current) => ({ ...current, [builtInProvider]: { ...current[builtInProvider], model: event.target.value } }))} placeholder={emptySettings[builtInProvider].model} disabled={!isDesktop} />
                 </label>
                 <label className="field">
-                  <span>{builtInName} API Key</span>
+                  <span>API Key</span>
                   <UiElement as="input" uiAttributes={["placeholder"]} value={builtInApiKey} type="password" onChange={(event) => setBuiltInApiKey(event.target.value)} placeholder={builtInSettings.hasApiKey ? "已保存；留空则不修改" : "请输入 API Key"} disabled={!isDesktop} />
                 </label>
               </>
@@ -383,7 +381,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
                   <UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.name} onChange={(event) => updateCurrentCustom({ name: event.target.value })} placeholder="例如 OpenRouter、DeepSeek 或本地模型" disabled={!isDesktop} />
                 </label>
                 <label className="field">
-                  <span>Chat Completions Endpoint *</span>
+                  <span>Endpoint</span>
                   <input value={currentCustom.endpoint} onChange={(event) => updateCurrentCustom({ endpoint: event.target.value })} placeholder="https://example.com/v1/chat/completions" disabled={!isDesktop} />
                 </label>
                 <label className="field">
@@ -391,7 +389,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
                   <UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.model} onChange={(event) => updateCurrentCustom({ model: event.target.value })} placeholder="服务商提供的模型 ID" disabled={!isDesktop} />
                 </label>
                 <label className="field">
-                  <span><UiText text={"API Key（可选）"} /></span>
+                  <span>API Key</span>
                   <UiElement as="input" uiAttributes={["placeholder"]}
                     value={customApiKeys[currentCustom.id] || ""}
                     type="password"
@@ -422,7 +420,6 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
                   <span><UiText text={"模型列表 Endpoint（可选）"} /></span>
                   <UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.modelsEndpoint} onChange={(event) => updateCurrentCustom({ modelsEndpoint: event.target.value })} placeholder="留空时从 /chat/completions 自动推断 /models" disabled={!isDesktop} />
                 </label>
-                <p className="muted full" style={{ margin: 0 }}><UiText text={"适用于 OpenAI Chat Completions 兼容服务；API Key 默认使用 Authorization: Bearer 发送。用于识图时，请选择支持图片输入的多模态模型。"} /></p>
               </>
             ) : (
               <p className="muted full"><UiText text={"尚未创建自定义配置，请点击“新增自定义 AI”。"} /></p>

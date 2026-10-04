@@ -215,7 +215,7 @@ test("Settings groups data management and fits the minimum Windows window", asyn
   await page.setViewportSize({ width: 1100, height: 760 });
   await page.goto("/settings", { waitUntil: "networkidle" });
   await expect(page.locator(".nav-links").getByRole("link", { name: "数据", exact: true })).toHaveCount(0);
-  await expect(page.locator(".settings-page > .settings-section")).toHaveText(["数据", "AI", "财务", "使用说明", `关于v${productVersion}`]);
+  await expect(page.locator(".settings-page > .settings-section")).toHaveText(["主题", "数据", "AI", "财务", "使用说明", `关于v${productVersion}`]);
   await page.getByRole("button", { name: "展开数据", exact: true }).click();
   await expect(page).toHaveURL(/settings$/);
   await expect(page.getByRole("heading", { name: "存储", exact: true })).toBeVisible();

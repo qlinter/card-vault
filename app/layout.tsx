@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import "./globals.css";
+import "./themes.css";
+import { ThemeProvider } from "@/components/theme-provider";
+import { APP_THEME_COOKIE, appThemeStyle, normalizeAppTheme } from "@/lib/app-themes";
 import { LanguageProvider } from "@/components/language-provider";
 import { SiteHeader } from "@/components/site-header";
 import { normalizeUiLocale, UI_LOCALE_COOKIE } from "@/lib/ui-locale";
@@ -19,13 +22,16 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
   const locale = normalizeUiLocale(cookieStore.get(UI_LOCALE_COOKIE)?.value);
+  const theme = normalizeAppTheme(cookieStore.get(APP_THEME_COOKIE)?.value);
   return (
-    <html lang={locale} data-ui-locale={locale} data-ui-ready={locale === "en" ? "false" : "true"}>
+    <html lang={locale} data-app-theme={theme} style={appThemeStyle(theme)} data-ui-locale={locale} data-ui-ready={locale === "en" ? "false" : "true"}>
       <body>
         <LanguageProvider initialLocale={locale}>
-          <div className="site-bg" />
-          <SiteHeader />
-          <main className="container">{children}</main>
+          <ThemeProvider initialTheme={theme}>
+            <div className="site-bg" />
+            <SiteHeader />
+            <main className="container">{children}</main>
+          </ThemeProvider>
         </LanguageProvider>
       </body>
     </html>

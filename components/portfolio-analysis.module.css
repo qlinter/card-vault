@@ -21,11 +21,11 @@
   max-height: min(880px, 94vh);
   overflow-y: auto;
   overscroll-behavior: contain;
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(var(--theme-surface-rgb, 255, 255, 255), 0.7);
   border-radius: 18px;
   background:
     radial-gradient(circle at 88% 4%, rgba(62, 168, 168, 0.16), transparent 27%),
-    linear-gradient(180deg, #fbfcfd, #f1f4f6);
+    linear-gradient(180deg, var(--theme-soft, #fbfcfd), var(--theme-soft, #f1f4f6));
   box-shadow: 0 30px 100px rgba(9, 13, 19, 0.35);
   animation: rise 240ms ease both;
 }
@@ -35,7 +35,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 1.3rem 1.4rem 1rem;
-  border-bottom: 1px solid rgba(16, 19, 26, 0.09);
+  border-bottom: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.09);
 }
 
 .modalHeader h2 {
@@ -60,9 +60,9 @@
   width: 38px;
   height: 38px;
   flex: 0 0 auto;
-  border: 1px solid rgba(16, 19, 26, 0.12);
+  border: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.12);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.82);
   color: var(--ink);
   cursor: pointer;
   font: 400 1.55rem/1 "Manrope", sans-serif;
@@ -74,9 +74,9 @@
   gap: 1px;
   margin: 0 1.4rem;
   overflow: hidden;
-  border: 1px solid rgba(16, 19, 26, 0.08);
+  border: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.08);
   border-radius: 10px;
-  background: rgba(16, 19, 26, 0.08);
+  background: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.08);
 }
 
 .snapshotStrip span {
@@ -84,7 +84,7 @@
   flex-direction: column;
   gap: 0.18rem;
   padding: 0.75rem 0.9rem;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.88);
 }
 
 .snapshotStrip small {
@@ -106,9 +106,9 @@
 
 .financialOverview > article {
   overflow: hidden;
-  border: 1px solid rgba(16, 19, 26, 0.09);
+  border: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.09);
   border-radius: 11px;
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.82);
 }
 
 .financialOverview header {
@@ -141,7 +141,7 @@
   display: grid;
   gap: 0.18rem;
   padding: 0.62rem 0.8rem;
-  border-top: 1px solid rgba(16, 19, 26, 0.06);
+  border-top: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.06);
 }
 
 .financialOverview dt {
@@ -161,7 +161,7 @@
   grid-column: 1 / -1;
   margin: 0;
   padding: 0.8rem;
-  border: 1px dashed rgba(16, 19, 26, 0.14);
+  border: 1px dashed rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.14);
   border-radius: 10px;
   color: var(--muted-ink);
   text-align: center;
@@ -177,7 +177,7 @@
 }
 
 .dataFreshness strong {
-  color: #405064;
+  color: var(--theme-text, #405064);
 }
 
 .scope {
@@ -188,7 +188,7 @@
   margin: 0.75rem 1.4rem 0;
   padding: 0.65rem 0.8rem;
   border-left: 3px solid var(--cyan);
-  color: #405064;
+  color: var(--theme-text, #405064);
   background: rgba(62, 168, 168, 0.08);
   font-size: 0.82rem;
   line-height: 1.55;
@@ -331,9 +331,9 @@
 
 .dimension {
   padding: 0.95rem 1rem;
-  border: 1px solid rgba(16, 19, 26, 0.09);
+  border: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.09);
   border-radius: 11px;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.78);
 }
 
 .dimensionHeader {
@@ -342,7 +342,7 @@
   gap: 0.8rem;
   align-items: flex-start;
   padding-bottom: 0.65rem;
-  border-bottom: 1px solid rgba(16, 19, 26, 0.08);
+  border-bottom: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.08);
 }
 
 .dimensionHeader > div:first-child {
@@ -380,7 +380,7 @@
 .dimensionSummary,
 .finding p {
   margin: 0.58rem 0 0;
-  color: #4a5769;
+  color: var(--theme-text, #4a5769);
   font-size: 0.9rem;
   line-height: 1.68;
 }
@@ -390,7 +390,7 @@
   gap: 0.35rem 0.8rem;
   flex-wrap: wrap;
   margin-top: 0.45rem;
-  color: #607083;
+  color: var(--theme-muted, #607083);
   font-size: 0.74rem;
 }
 
@@ -422,11 +422,11 @@
   gap: 0.5rem;
   margin: 0.65rem 0 0;
   padding-left: 1.2rem;
-  color: #3d4959;
+  color: var(--theme-text, #3d4959);
   line-height: 1.55;
 }
 
-.actions ul { display: grid; gap: 0.5rem; margin: 0; padding-left: 1.2rem; color: #3d4959; line-height: 1.55; }
+.actions ul { display: grid; gap: 0.5rem; margin: 0; padding-left: 1.2rem; color: var(--theme-text, #3d4959); line-height: 1.55; }
 .actions li small { display: block; margin-top: 0.18rem; }
 .attention { border-color: rgba(202, 123, 52, 0.22); background: rgba(202, 123, 52, 0.08); }
 

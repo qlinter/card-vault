@@ -31,7 +31,7 @@
 .editor :global(.share-draft-recovery) {
   justify-content: space-between;
   border-color: rgba(62, 168, 168, 0.45);
-  background: rgba(231, 249, 248, 0.92);
+  background: var(--theme-soft, rgba(231, 249, 248, 0.92));
 }
 
 .editor :global(.share-draft-recovery) p {
@@ -54,7 +54,7 @@
   gap: 0.15rem;
   padding: 0.55rem 0.65rem;
   border-left: 2px solid rgba(62, 168, 168, 0.5);
-  background: rgba(255, 255, 255, 0.56);
+  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.56);
 }
 
 .editor :global(.share-editor-v2-summary) small {
@@ -77,17 +77,17 @@
   align-content: center;
   gap: 0.2rem;
   padding: 0.7rem 0.85rem;
-  border: 1px solid rgba(36, 48, 67, 0.14);
+  border: 1px solid rgba(var(--theme-neutral-rgb, 36, 48, 67), 0.14);
   border-radius: 8px;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.7);
   text-align: left;
   cursor: pointer;
 }
 
 .editor :global(.share-editor-v2-tab):global(.active) {
   border-color: rgba(62, 168, 168, 0.65);
-  background: rgba(231, 249, 248, 0.92);
+  background: var(--theme-soft, rgba(231, 249, 248, 0.92));
   box-shadow: inset 0 0 0 1px rgba(62, 168, 168, 0.2);
 }
 
@@ -125,7 +125,7 @@
   padding: 0.3rem 0.55rem;
   border-radius: 999px;
   color: var(--muted);
-  background: rgba(36, 48, 67, 0.08);
+  background: rgba(var(--theme-neutral-rgb, 36, 48, 67), 0.08);
   font-size: 0.74rem;
   font-weight: 800;
 }
@@ -142,17 +142,17 @@
   grid-template-rows: 76px 1fr;
   padding: 0;
   overflow: hidden;
-  border: 1px solid rgba(36, 48, 67, 0.14);
+  border: 1px solid rgba(var(--theme-neutral-rgb, 36, 48, 67), 0.14);
   border-radius: 9px;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.78);
   text-align: left;
   cursor: pointer;
 }
 
 .editor :global(.share-template-option):global(.active) {
   border-color: rgba(62, 168, 168, 0.72);
-  box-shadow: inset 0 0 0 1px rgba(62, 168, 168, 0.24), 0 10px 24px rgba(36, 48, 67, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(62, 168, 168, 0.24), 0 10px 24px rgba(var(--theme-neutral-rgb, 36, 48, 67), 0.1);
 }
 
 .editor :global(.share-template-thumbnail) {
@@ -286,9 +286,9 @@
   display: grid;
   gap: 0.9rem;
   padding: 0.9rem;
-  border: 1px solid rgba(36, 48, 67, 0.12);
+  border: 1px solid rgba(var(--theme-neutral-rgb, 36, 48, 67), 0.12);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.64);
+  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.64);
 }
 
 .editor :global(.share-section-editor-toolbar),
@@ -303,7 +303,7 @@
 
 
 .editor :global(.share-section-card-assignment) {
-  border-top: 1px solid rgba(36, 48, 67, 0.1);
+  border-top: 1px solid rgba(var(--theme-neutral-rgb, 36, 48, 67), 0.1);
   padding-top: 0.75rem;
 }
 
@@ -331,10 +331,10 @@
   display: grid;
   gap: 0.75rem;
   padding: 0.8rem;
-  border: 1px solid rgba(36, 48, 67, 0.12);
+  border: 1px solid rgba(var(--theme-neutral-rgb, 36, 48, 67), 0.12);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: 0 14px 32px rgba(36, 48, 67, 0.1);
+  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.78);
+  box-shadow: 0 14px 32px rgba(var(--theme-neutral-rgb, 36, 48, 67), 0.1);
 }
 
 .editor :global(.share-live-preview-head) > div {
@@ -345,9 +345,9 @@
   display: inline-flex;
   flex: 0 0 auto;
   padding: 2px;
-  border: 1px solid rgba(36, 48, 67, 0.14);
+  border: 1px solid rgba(var(--theme-neutral-rgb, 36, 48, 67), 0.14);
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.7);
 }
 
 .editor :global(.share-preview-modes) button {
@@ -361,7 +361,7 @@
 }
 
 .editor :global(.share-preview-modes) button:global(.active) {
-  color: white;
+  color: var(--theme-on-strong, white);
   background: var(--ink);
 }
 

@@ -10,9 +10,9 @@
   gap: 0.35rem;
   min-height: 128px;
   padding: 1.05rem;
-  border: 1px solid rgba(16, 19, 26, 0.1);
+  border: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.1);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.9);
   box-shadow: var(--shadow-soft);
 }
 
@@ -42,9 +42,9 @@
 .section {
   margin-bottom: 1rem;
   padding: 1.1rem;
-  border: 1px solid rgba(16, 19, 26, 0.1);
+  border: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.1);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.92);
   box-shadow: var(--shadow-soft);
 }
 
@@ -99,8 +99,8 @@
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   color: var(--muted-ink);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 3px 9px rgba(16, 19, 26, 0.1);
+  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.96);
+  box-shadow: 0 3px 9px rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.1);
   font: inherit;
   font-size: 1rem;
   line-height: 1;
@@ -162,7 +162,7 @@
 
 .zoneSummary :global(.disclosure-button) {
   color: var(--teal);
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.8);
 }
 
 .comparisonWorkspace[open] > .zoneSummary :global(.disclosure-icon) {
@@ -215,7 +215,7 @@
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   color: var(--ink);
-  background-color: #fff;
+  background-color: var(--theme-surface, #fff);
   font: inherit;
   font-size: 0.82rem;
   font-weight: 750;
@@ -226,7 +226,7 @@
   padding: 0.2rem;
   border: 1px solid var(--line);
   border-radius: 9px;
-  background: #f1f3f5;
+  background: var(--theme-soft, #f1f3f5);
 }
 
 .currencySwitch button {
@@ -241,9 +241,9 @@
 }
 
 .currencySwitch button.active {
-  color: #fff;
+  color: var(--theme-on-strong, #fff);
   background: var(--ink);
-  box-shadow: 0 4px 10px rgba(16, 19, 26, 0.15);
+  box-shadow: 0 4px 10px rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.15);
 }
 
 .currencyGrid,
@@ -274,7 +274,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #fafbfc;
+  background: var(--theme-soft, #fafbfc);
 }
 
 .currencyCard {
@@ -293,7 +293,7 @@
 .currencyCard > header strong {
   padding: 0.28rem 0.55rem;
   border-radius: 6px;
-  color: #fff;
+  color: var(--theme-on-strong, #fff);
   background: var(--ink);
   font-size: 0.82rem;
   letter-spacing: 0.08em;
@@ -352,8 +352,8 @@
   font-weight: 780;
 }
 
-.positive { color: #14734d; }
-.negative { color: #b33a2b; }
+.positive { color: var(--theme-positive, #14734d); }
+.negative { color: var(--theme-negative, #b33a2b); }
 
 .chartCard {
   padding: 0.9rem;
@@ -404,7 +404,7 @@
 }
 
 .chart line {
-  stroke: rgba(16, 19, 26, 0.08);
+  stroke: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.08);
   stroke-width: 1;
 }
 
@@ -431,7 +431,7 @@
   padding: 0.4rem 0.55rem;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--theme-surface, #fff);
   font-size: 0.72rem;
 }
 
@@ -453,13 +453,13 @@
 }
 
 .chart .hoverLine {
-  stroke: rgba(16, 19, 26, 0.35);
+  stroke: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.35);
   stroke-dasharray: 4 4;
 }
 
 .dataPoint {
   pointer-events: none;
-  stroke: #fff;
+  stroke: var(--surface);
   stroke-width: 1.5;
 }
 
@@ -527,7 +527,7 @@
   overflow: hidden;
   height: 7px;
   border-radius: 999px;
-  background: #e6e9ed;
+  background: var(--theme-soft, #e6e9ed);
 }
 
 .allocationRow > i b {
@@ -578,7 +578,7 @@
   border: 1px solid var(--line);
   border-radius: 9px;
   color: inherit;
-  background: #fff;
+  background: var(--theme-surface, #fff);
   text-decoration: none;
 }
 
@@ -608,7 +608,7 @@
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: #e6e9ed;
+  background: var(--theme-soft, #e6e9ed);
 }
 
 .sourceList i b {
@@ -662,7 +662,7 @@
   border: 0;
   border-radius: 9px;
   color: var(--muted-ink);
-  background: #f1f3f5;
+  background: var(--theme-soft, #f1f3f5);
   font-family: inherit;
   font-size: 0.7rem;
   text-align: left;
@@ -679,9 +679,9 @@
   max-width: min(240px, calc(100vw - 3rem));
   padding: 0.5rem 0.65rem;
   border-radius: 7px;
-  color: #fff;
-  background: #202631;
-  box-shadow: 0 8px 20px rgba(16, 19, 26, 0.2);
+  color: var(--theme-on-strong, #fff);
+  background: var(--theme-text, #202631);
+  box-shadow: 0 8px 20px rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.2);
   font-size: 0.72rem;
   font-weight: 500;
   line-height: 1.45;
@@ -728,7 +728,7 @@
 .qualityList a:hover strong { color: var(--teal); }
 .qualityList a > div { display: grid; gap: 0.15rem; min-width: 0; }
 .qualityList small { overflow: hidden; color: var(--muted-ink); text-overflow: ellipsis; white-space: nowrap; }
-.qualityList a > span { color: #9a542e; font-size: 0.72rem; text-align: right; }
+.qualityList a > span { color: var(--theme-warning, #9a542e); font-size: 0.72rem; text-align: right; }
 .emptyText {
   margin: 0.5rem 0;
   color: var(--muted-ink);
@@ -765,7 +765,7 @@
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--muted-ink);
-  background: #fff;
+  background: var(--theme-surface, #fff);
   font-size: 0.78rem;
   font-weight: 700;
   text-decoration: none;
@@ -773,7 +773,7 @@
 
 .viewTabs a:hover,
 .viewTabs .activeView {
-  color: #fff;
+  color: var(--theme-on-strong, #fff);
   border-color: var(--teal);
   background: var(--teal);
 }
@@ -851,7 +851,7 @@
 .textButton {
   padding: 0;
   border: 0;
-  color: #a04435;
+  color: var(--theme-negative, #a04435);
   background: transparent;
   font: inherit;
   cursor: pointer;
@@ -869,7 +869,7 @@
   padding: 0.85rem;
   border: 1px solid var(--line);
   border-radius: 11px;
-  background: #fafbfc;
+  background: var(--theme-soft, #fafbfc);
 }
 
 .valuationChangeGrid article > header {
@@ -899,7 +899,7 @@
   gap: 0.2rem;
   padding: 0.75rem;
   border-radius: 10px;
-  background: #f1f3f5;
+  background: var(--theme-soft, #f1f3f5);
 }
 
 .comparisonSources span,
@@ -957,7 +957,7 @@
   padding: 0.75rem;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fafbfc;
+  background: var(--theme-soft, #fafbfc);
 }
 
 .structureComparisonGrid h4 {
@@ -1026,7 +1026,7 @@
 .currentDataHeader { align-items: center; flex-wrap: wrap; gap: .75rem; }
 .currentDataTitle, .currentDataActions { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
 .currentDataActions { margin-left: auto; }
-.currentDataTitle .filteredBadge { padding: .2rem .5rem; border-radius: 5px; background: #eaf3f1; color: var(--teal); font-size: .75rem; font-weight: 400; letter-spacing: normal; }
+.currentDataTitle .filteredBadge { padding: .2rem .5rem; border-radius: 5px; background: var(--theme-soft, #eaf3f1); color: var(--teal); font-size: .75rem; font-weight: 400; letter-spacing: normal; }
 
 .overviewGrid article, .section { padding: var(--panel-space); border-radius: 12px; }
 .comparisonWorkspace > .zoneHeader { min-height: var(--control-height); align-items: center; padding: 0; }

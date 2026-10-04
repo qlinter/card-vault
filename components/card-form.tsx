@@ -13,7 +13,6 @@ import { InvestmentInputs } from "@/components/investment-inputs";
 import { splitTagString, stringifyTags } from "@/lib/card-helpers";
 import { CardFormValues } from "@/lib/card-form-values";
 import { defaultInitialQuantityForStatus } from "@/lib/card-quantity";
-import { normalizeImagePath } from "@/lib/image-path";
 import { encodeReturnTo } from "@/lib/query-params";
 import type { CardEntryRecognitionSummary } from "@/lib/card-entry-queue-domain";
 
@@ -70,7 +69,7 @@ export function CardForm({
   const tags = splitTagString(card?.tags ?? null);
   const defaultAiImageUrls = queuedImages.length > 0
     ? queuedImages.slice(0, 2).map((image) => image.url)
-    : card?.images.slice(0, 2).map((image) => normalizeImagePath(image.path)) ?? [];
+    : card?.images.slice(0, 2).map((image) => image.path) ?? [];
   const collectionStatus = pickValue(values?.collectionStatus, card?.collectionStatus ?? "holding");
   const numberedRef = useRef<HTMLInputElement>(null);
   const hasSerial = Boolean(pickValue(values?.serialNumber, card?.serialNumber ?? "").trim() || pickValue(values?.serialRange, card?.serialRange ?? "").trim());
@@ -285,13 +284,7 @@ export function CardForm({
             </div>
             <CardEntryFinancialRecords initialValue={values?.financialRecords} />
           </section>
-        ) : (
-          <div className="history-edit-notice full">
-            <strong><UiText text={"财务记录已从卡片资料中分离"} /></strong>
-            <span><UiText text={"购买、费用和估值请在卡片详情页的“财务历史”中新增或编辑，保存本页不会改写历史记录。"} /></span>
-            <a href={`/cards/${card?.id}#financial-history`}><UiText text={"前往财务历史"} /></a>
-          </div>
-        )}
+        ) : null}
 
         <label className="field">
           <span><UiText text={"公开状态"} /></span>
@@ -332,7 +325,7 @@ export function CardForm({
           cardTitle={pickValue(values?.cardTitle, card?.cardTitle ?? "")}
           existingImages={(card?.images ?? []).map((image) => ({
             id: image.id,
-            url: normalizeImagePath(image.path),
+            url: image.path,
             rotation: image.rotation
           }))}
           queuedImages={queuedImages}

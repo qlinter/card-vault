@@ -12,11 +12,11 @@ const { createRestoreService, resolveRestoreSourcePath } = require("./storage/re
  */
 function createStorageManager({ appDataRoot, projectRoot }) {
   const config = createStorageConfig({ appDataRoot, projectRoot });
-  const repairDataLayout = config.repairDataLayout;
+  const ensureDataLayout = config.ensureDataLayout;
   const inspect = (dataDir = config.getDataDir(), onProgress) => inspectDataFolder(dataDir, onProgress);
-  const { chooseBackupDir, backupDataFolder } = createBackupService({ config, repairDataLayout });
-  const { migrateTo } = createMigrationService({ config, inspectDataFolder: inspect, repairDataLayout });
-  const { restoreDataFolder } = createRestoreService({ config, backupDataFolder, repairDataLayout });
+  const { chooseBackupDir, backupDataFolder } = createBackupService({ config, ensureDataLayout });
+  const { migrateTo } = createMigrationService({ config, inspectDataFolder: inspect, ensureDataLayout });
+  const { restoreDataFolder } = createRestoreService({ config, backupDataFolder, ensureDataLayout });
 
   return {
     getDataDir: config.getDataDir,
@@ -27,7 +27,7 @@ function createStorageManager({ appDataRoot, projectRoot }) {
     getShareBackgroundsDir: config.getShareBackgroundsDir,
     getDbPath: config.getDbPath,
     getEnv: config.getEnv,
-    repairDataLayout,
+    ensureDataLayout,
     chooseBackupDir,
     backupDataFolder,
     resolveRestoreSourcePath,

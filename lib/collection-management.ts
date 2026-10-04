@@ -75,7 +75,7 @@ export async function mutateCollectionManagement(body: Record<string, unknown>) 
     await prisma.collectionPlan.update({ where: { id: String(body.id) }, data: { status: String(body.status), cardId: body.cardId ? String(body.cardId) : null } });
   } else if (body.action === "settings") {
     if (!["weekly", "monthly"].includes(String(body.digestCadence))) throw new Error("摘要周期无效。");
-    const data = { notifications: false, digestCadence: String(body.digestCadence) };
+    const data = { digestCadence: String(body.digestCadence) };
     await prisma.managementSettings.upsert({ where: { id: "default" }, create: data, update: data });
   } else throw new Error("操作无效。");
 }

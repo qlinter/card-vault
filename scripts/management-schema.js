@@ -8,7 +8,7 @@ const managementTables = {
   BulkJobRow: ["id", "jobId", "rowNumber", "inputJson", "status", "error", "cardId", "beforeJson", "afterJson"],
   CollectionTaskState: ["id", "status", "snoozedUntil", "fingerprint", "updatedAt"],
   CollectionPlan: ["id", "title", "playerName", "sport", "budgetMinor", "currency", "targetDate", "notes", "status", "cardId", "createdAt", "updatedAt"],
-  ManagementSettings: ["id", "notifications", "digestCadence", "lastNotifiedAt"]
+  ManagementSettings: ["id", "digestCadence"]
 };
 function createManagementSchema(db) {
   db.exec(`
@@ -25,7 +25,7 @@ function createManagementSchema(db) {
     CREATE TABLE IF NOT EXISTS CollectionTaskState(id TEXT PRIMARY KEY NOT NULL, status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','dismissed','done','snoozed')), snoozedUntil DATETIME, fingerprint TEXT NOT NULL, updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
     CREATE TABLE IF NOT EXISTS CollectionPlan(id TEXT PRIMARY KEY NOT NULL, title TEXT NOT NULL, playerName TEXT, sport TEXT, budgetMinor INTEGER CHECK(budgetMinor IS NULL OR budgetMinor >= 0), currency TEXT NOT NULL DEFAULT 'CNY' CHECK(currency IN ('CNY','USD')), targetDate DATETIME, notes TEXT, status TEXT NOT NULL DEFAULT 'planned' CHECK(status IN ('planned','acquired','cancelled')), cardId TEXT, createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);
     CREATE INDEX IF NOT EXISTS CollectionPlan_status_targetDate_idx ON CollectionPlan(status,targetDate);
-    CREATE TABLE IF NOT EXISTS ManagementSettings(id TEXT PRIMARY KEY NOT NULL DEFAULT 'default', notifications BOOLEAN NOT NULL DEFAULT 0 CHECK(notifications IN(0,1)), digestCadence TEXT NOT NULL DEFAULT 'weekly' CHECK(digestCadence IN ('weekly','monthly')), lastNotifiedAt DATETIME);
+    CREATE TABLE IF NOT EXISTS ManagementSettings(id TEXT PRIMARY KEY NOT NULL DEFAULT 'default', digestCadence TEXT NOT NULL DEFAULT 'weekly' CHECK(digestCadence IN ('weekly','monthly')));
   `);
   for (const table of ["Card", "CardImage", "CardTransaction", "CardExpense", "CardValuation", "FinancialSettings", "ExchangeRate"]) {
     for (const operation of ["INSERT", "UPDATE", "DELETE"]) {

@@ -24,6 +24,28 @@ async function openComposer(page, type, navigate = true) {
   return page.locator("#financial-add-record form:visible");
 }
 
+for (const locale of ["zh", "en"]) {
+  test(`card details retain Finance editing without duplicate toolbar links (${locale})`, async ({ page, context }) => {
+    if (locale === "en") await context.addCookies([{ name: "card_vault_ui_locale", value: "en", url: "http://127.0.0.1:3360" }]);
+    const label = locale === "en" ? "Finance" : "财务";
+    const returnTo = "/?q=Finance&collectionStatus=holding&sort=newest";
+    const detailHref = `/cards/finance-ui?returnTo=${encodeURIComponent(returnTo)}`;
+    await page.goto(detailHref, { waitUntil: "networkidle" });
+    await expect(page.locator("#financial-history").getByRole("heading", { name: label, exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: locale === "en" ? "Financial History" : "财务历史", exact: true })).toHaveCount(0);
+    await expect(page.locator(".title-row").getByRole("link", { name: label, exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: locale === "en" ? "Back" : "返回上一页", exact: true })).toHaveAttribute("href", returnTo);
+    await page.locator(".title-row").getByRole("link", { name: locale === "en" ? "Edit" : "编辑", exact: true }).click();
+    await expect(page.locator(".title-row").getByRole("link", { name: label, exact: true })).toHaveCount(0);
+    await expect(page.getByText(locale === "en" ? "Financial records are managed separately from card details" : "财务记录已从卡片资料中分离", { exact: true })).toHaveCount(0);
+    const cancel = page.getByRole("link", { name: locale === "en" ? "Cancel" : "取消", exact: true });
+    await expect(cancel).toHaveAttribute("href", detailHref);
+    await cancel.click();
+    await page.locator(".financial-history-actions").getByRole("button").click();
+    await expect(page.locator("#financial-add-record")).toBeVisible();
+  });
+}
+
 test("consecutive transactions without a page reload receive different submission identifiers", async ({ page }) => {
   for (const count of [1, 2]) {
     const form = await openComposer(page, "交易", count === 1);

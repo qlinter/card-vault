@@ -215,7 +215,7 @@ export function FilterBar({
         </div>
         <div className="filter-display-actions"><a href="/cards/new" className="btn btn-primary filter-add-card">
           {<UiText text={"新增卡片"} />}
-        </a><CollectionViewToggle compact /></div>
+        </a><CollectionViewToggle /></div>
       </div>
 
     </form>

@@ -38,9 +38,16 @@ test("card tags are normalized, deduplicated, and bounded", () => {
   assert.throws(() => normalizeCardTags("x".repeat(41)), /单个标签/);
 });
 
-test("cost sorting uses the derived CNY financial summary", () => {
-  assert.deepEqual(buildCardSorting("costCnyAsc"), [{ totalCost: "asc" }, { createdAt: "desc" }]);
-  assert.deepEqual(buildCardSorting("priceDesc"), [{ totalCost: "desc" }, { createdAt: "desc" }]);
+test("cost sorting uses current reports with stable ordering", () => {
+  assert.deepEqual(buildCardSorting("costCnyAsc"), [{ report: { remainingCostMinor: { sort: "asc", nulls: "last" } } }, { id: "asc" }]);
+  assert.deepEqual(buildCardSorting("costCnyDesc"), [{ report: { remainingCostMinor: { sort: "desc", nulls: "last" } } }, { id: "asc" }]);
+  for (const sort of [undefined, "priceAsc", "priceDesc", "unknown"]) {
+    assert.deepEqual(buildCardSorting(sort), [{ createdAt: "desc" }, { id: "asc" }]);
+  }
+  assert.deepEqual(buildCardSorting("yearAsc"), [{ year: "asc" }, { createdAt: "desc" }, { id: "asc" }]);
+  assert.deepEqual(buildCardSorting("yearDesc"), [{ year: "desc" }, { createdAt: "desc" }, { id: "asc" }]);
+  const filter = buildCardFilters({ q: "dealer" });
+  assert.ok(JSON.stringify(filter).includes(JSON.stringify({ transactions: { some: { kind: "purchase", source: { contains: "dealer" } } } })));
 });
 
 test("serial-numbered filtering uses the derived boolean instead of numbering text", () => {
@@ -59,7 +66,7 @@ test("one-of-one filtering recognizes current serial-range formats", () => {
   assert.deepEqual(buildCardFilters({ isOneOfOne: "invalid" }), {});
 });
 
-test("valuation sorting uses the CNY current-value snapshot", () => {
-  assert.deepEqual(buildCardSorting("valueCnyAsc"), [{ currentValue: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }]);
-  assert.deepEqual(buildCardSorting("valueCnyDesc"), [{ currentValue: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }]);
+test("valuation sorting uses current reports and puts missing values last", () => {
+  assert.deepEqual(buildCardSorting("valueCnyAsc"), [{ report: { valueMinor: { sort: "asc", nulls: "last" } } }, { id: "asc" }]);
+  assert.deepEqual(buildCardSorting("valueCnyDesc"), [{ report: { valueMinor: { sort: "desc", nulls: "last" } } }, { id: "asc" }]);
 });

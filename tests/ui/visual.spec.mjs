@@ -43,6 +43,7 @@ test.beforeEach(async ({ page }) => {
 for (const target of pages) {
   test(`${target.name} visual baseline`, async ({ page }, testInfo) => {
     await page.goto(target.path, { waitUntil: "networkidle" });
+    await expect(page.locator(".site-bg")).toHaveCSS("background-image", /\/home-bg\.webp/);
     if (target.view === "list") await page.getByRole("button", { name: /^(列表视图|List view)$/ }).click();
     if (target.name === "share-editor") {
       await page.getByRole("button", { name: /内容修改/ }).click();
@@ -85,6 +86,7 @@ test.describe("English interface", () => {
         await expect(page.locator(".share-design-workspace")).toBeVisible();
       }
       if (target.name === "settings") {
+        await page.getByRole("button", { name: "Expand Theme", exact: true }).click();
         await page.getByRole("button", { name: "Expand AI" }).click();
         await page.getByRole("button", { name: "Expand Finance" }).click();
         await page.getByTestId("about-settings").locator("button.about-toggle").click();

@@ -22,7 +22,7 @@ test("failure after directory switch restores the original database and media", 
   const service = createRestoreService({
     config: { getDataDir: () => target, getDbPath: () => path.join(target, "dev.db"), getBackupDir: () => path.join(root, "backups") },
     backupDataFolder: () => { const backupPath = path.join(root, "safety"); fs.cpSync(target, backupPath, { recursive: true }); return { backupPath }; },
-    repairDataLayout: () => { throw Object.assign(new Error("simulated disk full"), { code: "ENOSPC" }); }
+    ensureDataLayout: () => { throw Object.assign(new Error("simulated disk full"), { code: "ENOSPC" }); }
   });
   assert.throws(() => service.restoreDataFolder(source), /simulated disk full/);
   const db = new DatabaseSync(path.join(target, "dev.db"), { readOnly: true });
@@ -50,7 +50,7 @@ test("restore rejects media changed during copying before switching current data
   const service = createRestoreService({
     config: { getDataDir: () => target, getDbPath: () => path.join(target, "dev.db"), getBackupDir: () => path.join(root, "backups") },
     backupDataFolder: () => ({ backupPath: "test-backup" }),
-    repairDataLayout: () => { switched = true; }
+    ensureDataLayout: () => { switched = true; }
   });
   assert.throws(() => service.restoreDataFolder(source), /备份文件校验失败/);
   assert.equal(switched, false);

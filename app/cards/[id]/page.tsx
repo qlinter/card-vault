@@ -4,7 +4,6 @@ import { BackButton } from "@/components/back-button";
 import { CardFinancialHistory } from "@/components/card-financial-history";
 import { cardImageRotationStyle } from "@/lib/card-image-rotation";
 import { splitTagString } from "@/lib/card-helpers";
-import { normalizeImagePath } from "@/lib/image-path";
 import { normalizeHttpUrl } from "@/lib/http-url";
 import { prisma } from "@/lib/prisma";
 import { loadFinancialSettings } from "@/lib/financial-settings";
@@ -75,7 +74,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
           <h1 className="h1">{card.playerName}</h1>
           <p className="muted">{card.cardTitle}</p>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
+        <div className="card-detail-actions">
           <BackButton href={returnHref} />
           <a href={`/cards/${card.id}/edit${encodeReturnTo(returnTo)}`} className="btn btn-secondary"><UiText text={"编辑"} /></a>
           <a href={`/cards/${card.id}/delete`} className="btn btn-danger"><UiText text={"删除"} /></a>
@@ -90,7 +89,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
           <h2><UiText text={"图片展示"} /></h2>
           <div className="gallery">
             {card.images.map((image) => (
-              <img key={image.id} src={normalizeImagePath(image.path)} alt={card.cardTitle} style={cardImageRotationStyle(image.rotation)} />
+              <img key={image.id} src={image.path} alt={card.cardTitle} style={cardImageRotationStyle(image.rotation)} />
             ))}
           </div>
         </section>

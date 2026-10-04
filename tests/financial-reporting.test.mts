@@ -3,13 +3,12 @@ import test from "node:test";
 import { convertMoney, parseFxRate, paymentComponents, rateForDate, reportingHistory, type FinancialConfig } from "../lib/financial-reporting.ts";
 import { calculateCurrencyPosition, calculatePositions } from "../lib/position-accounting.ts";
 import { buildReportingPortfolio } from "../lib/portfolio-reporting.ts";
-import { normalizePortfolioSnapshot } from "../lib/portfolio-analysis.ts";
+import { normalizePortfolioSnapshot, normalizeStoredPortfolioSnapshot } from "../lib/portfolio-analysis.ts";
 import { buildPortfolioFinancialHistory } from "../lib/portfolio-insights.ts";
 import { selectLatestValuation } from "../lib/financial-history.ts";
 import { cardCollectionStatuses, collectionStatusText, normalizeCardCollectionStatus } from "../lib/card-domain.ts";
 import { resolvePositionCollectionStatus } from "../lib/position-accounting.ts";
 import { deriveCollectionTasks } from "../lib/collection-tasks.ts";
-import { portfolioValuationEligibleCount } from "../lib/portfolio-coverage.ts";
 
 const at = (day: string) => new Date(day + "T00:00:00Z");
 const config: FinancialConfig = { reportingCurrency: "CNY", rates: [
@@ -58,6 +57,7 @@ test("四种持有状态共用双币核算、覆盖、部分出售及提醒规�
     assert.equal(report.snapshot.activeCount, 1);
     assert.equal(report.snapshot.financials.valuationCoverageCount, 1);
     assert.equal(report.snapshot.financials.valuationEligibleCount, 1);
+    assert.equal(normalizeStoredPortfolioSnapshot(report.snapshot).accounting?.version, "physical-position-v2");
     assert.deepEqual(report.snapshot.financials, reports[0].snapshot.financials);
     const value = report.snapshot.financials.currencies[0];
     assert.equal(value.activeCostBasis, 470);
@@ -103,13 +103,13 @@ test("全部出售移出当前覆盖及估值，但保留现金流、收益与�
   const trend = buildPortfolioFinancialHistory(cards, at("2026-04-01"));
   assert.equal(trend.find(point => point.month === "2026-02")?.currencies[0].portfolioValue, 650);
   assert.equal(trend.find(point => point.month === "2026-03")?.currencies[0].portfolioValue, 0);
-  const oldSnapshot = structuredClone(snapshot);
-  delete oldSnapshot.financials.valuationEligibleCount;
-  oldSnapshot.financials.valuationCoverageCount = 1;
-  assert.equal(normalizePortfolioSnapshot(oldSnapshot).financials.valuationEligibleCount, undefined);
-  assert.equal(normalizePortfolioSnapshot(oldSnapshot).financials.valuationCoverageCount, 1);
-  assert.equal(portfolioValuationEligibleCount(snapshot), 0);
-  assert.equal(portfolioValuationEligibleCount(oldSnapshot), 1);
+  const unsupportedSnapshot = structuredClone(snapshot);
+  Reflect.deleteProperty(unsupportedSnapshot.financials, "valuationEligibleCount");
+  assert.throws(() => normalizePortfolioSnapshot(unsupportedSnapshot), /估值覆盖分母/);
+  assert.equal(normalizePortfolioSnapshot(snapshot).financials.valuationEligibleCount, 0);
+  const withoutAccounting = { ...snapshot, accounting: undefined };
+  assert.throws(() => normalizeStoredPortfolioSnapshot(withoutAccounting), /财务口径/);
+  assert.throws(() => normalizeStoredPortfolioSnapshot({ ...snapshot, accounting: { ...snapshot.accounting, version: "physical-position-v1" } }), /财务口径/);
 });
 
 test("已售卡过往报价缺汇率不阻断已知收益，也不稀释持仓覆盖率", () => {

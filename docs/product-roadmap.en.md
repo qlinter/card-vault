@@ -1,6 +1,6 @@
 # Card Vault Product Roadmap
 
-Updated 2026-09-19. Following user confirmation, the v1.3.4 maintenance installer and portable package were rebuilt and passed source and packaged-runtime checks. See the [release notes](./release-v1.3.4.md) for scope and validation. The 2026-09-18 artifacts are preserved unchanged in `backups/releases/v1.3.4-2026-09-18`, with their checks documented as the earlier build.
+Updated 2026-10-04. Current source is v1.3.5, covering themes, interface and AI settings, dependency patches and obsolete compatibility cleanup. The [v1.3.5 release notes](./release-v1.3.5.md) record the full review and source validation. Unsigned Windows x64 installer and portable artifacts have been generated and passed packaged-runtime validation; earlier distribution facts remain in their release documents.
 
 ## Completed capabilities
 
@@ -21,23 +21,17 @@ The current implementation retains independent styles and themes, sections, card
 
 ## Historical distribution status
 
-Feature details, source checks and packaged-runtime results for v1.3.1–v1.3.3 are maintained in their release notes: [v1.3.1](./release-v1.3.1.md), [v1.3.2](./release-v1.3.2.md), [v1.3.3](./release-v1.3.3.md). The roadmap no longer duplicates release logs. Real Windows installation/upgrade and external AI checks with configured credentials remain separate follow-ups.
+Feature details, source checks and packaged-runtime results for v1.3.1–v1.3.4 are maintained in their release notes: [v1.3.1](./release-v1.3.1.md), [v1.3.2](./release-v1.3.2.md), [v1.3.3](./release-v1.3.3.md), [v1.3.4](./release-v1.3.4.md). The roadmap no longer duplicates release logs. Real Windows installation/upgrade and external AI checks with configured credentials remain separate follow-ups.
 
-## v1.3.4 development progress
+## Completed this release
 
-Initial build, 2026-09-18: completed three entry sections, automatic attribute checks, supplementary financial records, Home valuation visibility, export controls and wish deletion, including alignment of wish amounts and action buttons. Entry and import now share initial financial processing; expense options and form parsing are reused, while unused branches, internal exports and style overrides are removed. Fixed stale attributes after replacing AI images and strengthened payload and client-boundary checks. Existing quick inputs, detail-page workflows and data formats remain unchanged. Bilingual overviews, in-app guidance and development status are synchronized; repeated historical progress is consolidated into release notes. Validation is recorded in the [v1.3.4 release notes](./release-v1.3.4.md). Following user confirmation, the unsigned Windows x64 installer and portable package were generated and passed the full source gate, packaged-runtime tests and artifact checks. Previous v1.3.3 artifacts are preserved unchanged in `backups/releases/v1.3.3`.
-
-Maintenance update on 2026-09-19: restored scoped portfolio navigation from Home, a filtered badge and a return link preserving sorting; moved Portfolio before Showcase. Removed related notices, link arrows and underlines, and the Full Collection view shortcut. Home, Portfolio, saved views and snapshot actions share query-link construction; unused styles are removed and missing English empty-state text is corrected. Bilingual documentation, guidance and About are synchronized. Repackaging, packaged-runtime tests and new artifact validation are complete under the same v1.3.4 version.
-
-Post-release CI fix: management HTTP tests use separate connections to avoid stale socket reuse after synchronous fixture writes. Added request diagnostics and regression coverage; the workflow retains full failure logs. Changes affect testing and checks only, with existing distribution packages unchanged. Reproduction and validation are recorded in the [v1.3.4 release notes](./release-v1.3.4.md).
-
-Collection status and statistics cleanup: unify Holding, Awaiting Grading, At Grading, Pending Sale and Sold, with the first four counting as owned. Reuse portfolio quantities and latest quotes, centralize coverage populations, and add status/quantity consistency checks and regression tests. See the [v1.3.4 release notes](./release-v1.3.4.md).
+Today's changes are consolidated into v1.3.5. Themes, finance entry points, editing, view icons, AI settings and code cleanup are documented in [v1.3.5](./release-v1.3.5.md), with extension rules in [application themes](./app-themes.md). Earlier functionality, check fixes and distribution details stay in the [v1.3.4 release notes](./release-v1.3.4.md); this roadmap does not duplicate development logs.
 
 ## Next priorities
 
 | Priority | Direction | Conditions and acceptance |
 | --- | --- | --- |
-| Deferred | Real Windows installation and upgrade validation | Deferred by user agreement. The v1.3.4 maintenance update has been packaged and passed packaged-runtime checks. Schedule real clean-install, upgrade, portable-migration and data-retention checks separately. |
+| Deferred | Real Windows installation and upgrade validation | Deferred by user agreement. v1.3.5 packaging and packaged-runtime validation are complete. Schedule real clean-install, upgrade, portable-migration and data-retention checks separately. |
 | 1 | Scale and failure recovery | Dense-history reuse and disk-backed streaming exports are complete. Next profile Portfolio queries, reporting projection and rendering separately, assess task pagination, and validate large real photos and power interruption. |
 | 2 | Feedback-driven usability | Record actual entry, search and maintenance problems. Retain current layout and typography unless feedback supports further changes. |
 | 3 | Data rule extensions | Define the model and compatibility requirements for full status-transition history beyond the implemented status start dates, additional import fields and more detailed correction flows. |

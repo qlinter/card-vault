@@ -13,15 +13,15 @@ type TrendKind = "purchases" | "sales";
 type ChartSeries = { key: string; label: string; color: string; values: Array<number | null>; counts?: number[]; countUnit?: "cards" | "records" };
 
 const trendMeta: Record<TrendKind, { label: string; color: string }> = {
-  purchases: { label: "买入", color: "#277f7f" },
-  sales: { label: "出售", color: "#d9531e" }
+  purchases: { label: "买入", color: "var(--theme-link, #277f7f)" },
+  sales: { label: "出售", color: "var(--theme-orange, #d9531e)" }
 };
 
 const financialTrendMeta = {
-  portfolioValue: { label: "组合估值", color: "#2563a6" },
-  remainingCost: { label: "剩余成本", color: "#c2872d" },
-  realizedProfit: { label: "已实现盈亏", color: "#d9531e" },
-  unrealizedProfit: { label: "未实现盈亏", color: "#8a63d2" }
+  portfolioValue: { label: "组合估值", color: "var(--theme-blue, #2563a6)" },
+  remainingCost: { label: "剩余成本", color: "var(--theme-warning, #c2872d)" },
+  realizedProfit: { label: "已实现盈亏", color: "var(--theme-orange, #d9531e)" },
+  unrealizedProfit: { label: "未实现盈亏", color: "var(--theme-purple, #8a63d2)" }
 } as const;
 
 function trendValues(points: PortfolioTimeSeriesPoint[], months: string[], currency: string): Array<number | null> {

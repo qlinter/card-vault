@@ -5,13 +5,13 @@ const { copyDataFilesForBackup, createDatabaseSnapshot } = require("./database-s
 const { hasExistingStorageData, directoryHasEntries, isSubPath, pathsEqual, resolveSelectedDataDir } = require("./file-utils");
 const { mapProgress, reportProgress } = require("./progress");
 
-function createMigrationService({ config, inspectDataFolder, repairDataLayout }) {
+function createMigrationService({ config, inspectDataFolder, ensureDataLayout }) {
   function migrateTo(selectedPath, onProgress) {
     reportProgress(onProgress, 2, "正在检查新旧存储路径...");
     const targetDir = resolveSelectedDataDir(selectedPath);
     const sourceDataDir = config.getDataDir();
     const sourceDbPath = config.getDbPath();
-    repairDataLayout(sourceDataDir);
+    ensureDataLayout(sourceDataDir);
     if (pathsEqual(sourceDataDir, targetDir)) { reportProgress(onProgress, 100, "所选路径与当前存储路径相同。"); return { changed: false, currentPath: sourceDataDir }; }
     if (isSubPath(sourceDataDir, targetDir) || isSubPath(targetDir, sourceDataDir)) throw new Error("新路径和当前存储路径不能互相包含，请选择其他文件夹。");
     if (hasExistingStorageData(targetDir)) {

@@ -35,6 +35,8 @@ test("current baseline initializes the complete schema without migration metadat
   const templateIndexes = new Set(db.prepare("PRAGMA index_list(CardEntryTemplate)").all().map((row) => row.name));
   const recognitionIndexes = new Set(db.prepare("PRAGMA index_list(CardEntryRecognition)").all().map((row) => row.name));
   const cardImageColumns = new Set(db.prepare("PRAGMA table_info(CardImage)").all().map((row) => row.name));
+  const managementSettingColumns = db.prepare("PRAGMA table_info(ManagementSettings)").all().map((row) => row.name);
+  const cardColumns = new Set(db.prepare("PRAGMA table_info(Card)").all().map((row) => row.name));
   db.close();
 
   assert.equal(result.initialized, true);
@@ -49,6 +51,10 @@ test("current baseline initializes the complete schema without migration metadat
   assert.equal(templateIndexes.has("CardEntryTemplate_name_key"), true);
   assert.equal(recognitionIndexes.has("CardEntryRecognition_itemId_key"), true);
   assert.equal(cardImageColumns.has("rotation"), true);
+  assert.deepEqual(managementSettingColumns, ["id", "digestCadence"]);
+  for (const field of ["purchaseDate", "purchasePrice", "gradingFee", "totalCost", "currentValue", "purchaseSource"]) {
+    assert.equal(cardColumns.has(field), false, `${field} should not duplicate financial history`);
+  }
 });
 
 

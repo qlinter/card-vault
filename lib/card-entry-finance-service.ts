@@ -2,8 +2,7 @@ import "server-only";
 import type { CardFormValues } from "./card-form-values";
 import { optionalCardDate } from "./card-domain";
 import { normalizeCurrency } from "./financial-history";
-import { deriveCardFinancialSummary } from "./financial-history-snapshot";
-import { resolvePositionCollectionStatus } from "./position-accounting";
+import { calculatePositions, resolvePositionCollectionStatus } from "./position-accounting";
 import type { Prisma } from "@prisma/client";
 import { parseEntryFinance } from "./card-entry-finance.ts";
 import { transactionInput, expenseInput, valuationInput } from "./financial-history-input.ts";
@@ -111,7 +110,7 @@ export async function createInitialFinancialHistory(
   await transaction.card.update({
     where: { id: cardId },
     data: {
-      ...deriveCardFinancialSummary(history),
+      ...(history.transactions.length ? { holdingQuantity: calculatePositions(history)[0]?.remainingQuantity ?? 0 } : {}),
       ...(addedRecords ? { collectionStatus: resolvePositionCollectionStatus(values.collectionStatus, history) } : {})
     }
   });

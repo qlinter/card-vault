@@ -157,7 +157,7 @@ export function CardFinancialHistory(props: FinancialHistoryProps) {
   return (
     <section className="panel financial-history" id="financial-history">
       <div className="financial-history-heading">
-        <div><h2><UiText text={"财务历史"} /></h2></div>
+        <div><h2><UiText text="财务" /></h2></div>
         <div className="financial-history-actions">
           <span className="financial-history-count">{timeline.length}<UiText text={" 条记录"} /></span>
           <button

@@ -8,9 +8,10 @@ function tableExists(db, tableName) {
   return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(tableName));
 }
 
-function publicFileName(value, prefixes) {
-  const allowedPrefixes = Array.isArray(prefixes) ? prefixes : [prefixes];
-  return typeof value === "string" && allowedPrefixes.some((prefix) => value.startsWith(prefix)) ? path.basename(value) : null;
+function publicFileName(value, prefix) {
+  if (typeof value !== "string" || !value.startsWith(prefix)) return null;
+  const fileName = value.slice(prefix.length);
+  return fileName && fileName !== "." && fileName !== ".." && !fileName.includes("\0") && !/[\\/]/.test(fileName) ? fileName : null;
 }
 
 function inspectDataFolder(dataDir, onProgress) {
@@ -43,11 +44,11 @@ function inspectDataFolder(dataDir, onProgress) {
         const images = db.prepare("SELECT path FROM CardImage").all();
         counts.images = images.length;
         for (const image of images) {
-          const fileName = publicFileName(image.path, ["/media/", "/uploads/"]);
+          const fileName = publicFileName(image.path, "/media/");
           if (fileName) {
             referenced.uploads.add(fileName.toLowerCase());
             if (!fs.existsSync(path.join(resolvedDataDir, "uploads", fileName))) missingFiles.push({ type: "cardImage", path: image.path });
-          }
+          } else issues.push(`卡片图片路径格式无效：${image.path}`);
         }
       }
       if (tableExists(db, "ShareCollection")) {
@@ -56,19 +57,21 @@ function inspectDataFolder(dataDir, onProgress) {
         for (const share of shares) {
           const cover = publicFileName(share.coverImagePath, "/share-covers/");
           if (cover) { referenced.covers.add(cover.toLowerCase()); if (!fs.existsSync(path.join(resolvedDataDir, "share-covers", cover))) missingFiles.push({ type: "shareCover", path: share.coverImagePath }); }
+          else if (share.coverImagePath) issues.push(`分享封面路径格式无效：${share.coverImagePath}`);
           const background = publicFileName(share.backgroundImagePath, "/share-backgrounds/");
           if (background) { referenced.backgrounds.add(background.toLowerCase()); if (!fs.existsSync(path.join(resolvedDataDir, "share-backgrounds", background))) missingFiles.push({ type: "shareBackground", path: share.backgroundImagePath }); }
+          else if (share.backgroundImagePath) issues.push(`分享背景路径格式无效：${share.backgroundImagePath}`);
         }
       }
       if (tableExists(db, "CardEntryQueueItem") && tableExists(db, "CardEntryQueueImage")) {
         counts.queueItems = Number(db.prepare("SELECT COUNT(*) AS count FROM CardEntryQueueItem").get().count);
         const queueImages = db.prepare("SELECT sourcePath, processedPath FROM CardEntryQueueImage").all();
         for (const image of queueImages) {
-          const processed = publicFileName(image.processedPath, ["/media/", "/uploads/"]);
+          const processed = publicFileName(image.processedPath, "/media/");
           if (processed) {
             referenced.uploads.add(processed.toLowerCase());
             if (!fs.existsSync(path.join(resolvedDataDir, "uploads", processed))) missingFiles.push({ type: "queueImage", path: image.processedPath });
-          }
+          } else if (image.processedPath) issues.push(`队列图片路径格式无效：${image.processedPath}`);
           const source = typeof image.sourcePath === "string" ? path.basename(image.sourcePath) : null;
           if (source) {
             referenced.queueSources.add(source.toLowerCase());

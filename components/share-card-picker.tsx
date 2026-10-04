@@ -2,7 +2,6 @@
 
 import { UiText, UiElement } from "@/components/ui-text";
 import { useMemo, useState } from "react";
-import { normalizeImagePath } from "@/lib/image-path";
 
 export type SharePickerCard = {
   id: string;
@@ -180,7 +179,7 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
                           onChange={(event) => onSelectionChange(card.id, event.target.checked)}
                         />
                         {card.imagePath ? (
-                          <img src={normalizeImagePath(card.imagePath)} alt={card.cardTitle} />
+                          <img src={card.imagePath} alt={card.cardTitle} />
                         ) : (
                           <UiElement as="div" uiMessages={{"aria-label": {text:"{0} 暂无图片",values:[card.cardTitle],translateValues:[]}}} className="share-card-placeholder" role="img"  />
                         )}

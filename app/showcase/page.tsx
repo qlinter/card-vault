@@ -4,7 +4,6 @@ import { UiText, UiElement } from "@/components/ui-text";
 import Link from "next/link";
 import { ShowcaseGroupFilter } from "@/components/showcase-group-filter";
 import { cardImageRotationStyle } from "@/lib/card-image-rotation";
-import { normalizeImagePath } from "@/lib/image-path";
 import { prisma } from "@/lib/prisma";
 import { buildShowcaseCardHref, normalizeGroupName, toShowcaseWhere } from "@/lib/showcase";
 import { toScalar } from "@/lib/query-params";
@@ -84,7 +83,7 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
               {card.images[0] ? (
                 <img
                   className="showcase-card-image"
-                  src={normalizeImagePath(card.images[0].path)}
+                  src={card.images[0].path}
                   alt={card.cardTitle}
                   style={cardImageRotationStyle(card.images[0].rotation)}
                 />

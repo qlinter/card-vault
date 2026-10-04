@@ -77,7 +77,7 @@ export function buildCardFilters(input: CardFilterInput): Prisma.CardWhereInput 
         { certNumber: { contains: input.q } },
         { autoType: { contains: input.q } },
         { patchType: { contains: input.q } },
-        { purchaseSource: { contains: input.q } },
+        { transactions: { some: { kind: "purchase", source: { contains: input.q } } } },
         { tags: { contains: input.q } },
         { publicDescription: { contains: input.q } },
         { notes: { contains: input.q } }
@@ -159,20 +159,18 @@ export function buildCardFilters(input: CardFilterInput): Prisma.CardWhereInput 
 export function buildCardSorting(sort?: string): Prisma.CardOrderByWithRelationInput[] {
   switch (sort) {
     case "yearAsc":
-      return [{ year: "asc" }, { createdAt: "desc" }];
+      return [{ year: "asc" }, { createdAt: "desc" }, { id: "asc" }];
     case "yearDesc":
-      return [{ year: "desc" }, { createdAt: "desc" }];
-    case "priceAsc": // Preserve v1.0.18 bookmarked and shared URLs.
+      return [{ year: "desc" }, { createdAt: "desc" }, { id: "asc" }];
     case "costCnyAsc":
-      return [{ totalCost: "asc" }, { createdAt: "desc" }];
-    case "priceDesc": // Preserve v1.0.18 bookmarked and shared URLs.
+      return [{ report: { remainingCostMinor: { sort: "asc", nulls: "last" } } }, { id: "asc" }];
     case "costCnyDesc":
-      return [{ totalCost: "desc" }, { createdAt: "desc" }];
+      return [{ report: { remainingCostMinor: { sort: "desc", nulls: "last" } } }, { id: "asc" }];
     case "valueCnyAsc":
-      return [{ currentValue: { sort: "asc", nulls: "last" } }, { createdAt: "desc" }];
+      return [{ report: { valueMinor: { sort: "asc", nulls: "last" } } }, { id: "asc" }];
     case "valueCnyDesc":
-      return [{ currentValue: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }];
+      return [{ report: { valueMinor: { sort: "desc", nulls: "last" } } }, { id: "asc" }];
     default:
-      return [{ createdAt: "desc" }];
+      return [{ createdAt: "desc" }, { id: "asc" }];
   }
 }

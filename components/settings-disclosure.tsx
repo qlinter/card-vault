@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useLanguage } from "./language-provider";
 import { DisclosureIcon } from "./disclosure-icon";
 import { UserGuide } from "./user-guide";
-function SettingsDisclosure({ id, zh, en, children }: { id: string; zh: string; en: string; children: ReactNode }) {
+export function SettingsDisclosure({ id, zh, en, children }: { id: string; zh: string; en: string; children: ReactNode }) {
   const { locale } = useLanguage();
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);

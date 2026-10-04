@@ -65,7 +65,7 @@ for (const [file, pattern] of [["README.md", /全部 (\d+) 个历史版本/], ["
   const declaredCount = fs.readFileSync(path.join(rootDir, file), "utf8").match(pattern)?.[1];
   assert.equal(Number(declaredCount), history.length, `${file} historical version count is stale`);
 }
-for (const file of ["share-gallery.md", "cloudflare-drop-publishing.md", "data-backup-guide.md", "financial-history-model.md"]) {
+for (const file of ["share-gallery.md", "cloudflare-drop-publishing.md", "data-backup-guide.md", "financial-history-model.md", "app-themes.md"]) {
   const version = fs.readFileSync(path.join(docsDir, file), "utf8").match(/(?:源码版本|产品版本)：`([^`]+)`/)?.[1];
   assert.equal(version, currentVersion, `${file} applicable product version is stale`);
 }

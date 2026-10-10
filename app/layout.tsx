@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { APP_THEME_COOKIE, appThemeStyle, normalizeAppTheme } from "@/lib/app-themes";
 import { LanguageProvider } from "@/components/language-provider";
 import { SiteHeader } from "@/components/site-header";
+import { NavigationHistory } from "@/components/navigation-history";
 import { normalizeUiLocale, UI_LOCALE_COOKIE } from "@/lib/ui-locale";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -26,6 +27,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale} data-app-theme={theme} style={appThemeStyle(theme)} data-ui-locale={locale} data-ui-ready={locale === "en" ? "false" : "true"}>
       <body>
+        <NavigationHistory />
         <LanguageProvider initialLocale={locale}>
           <ThemeProvider initialTheme={theme}>
             <div className="site-bg" />

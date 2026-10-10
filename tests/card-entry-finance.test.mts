@@ -8,12 +8,12 @@ test("additional finance survives form extraction and draft round trips without 
   const form = new FormData();
   form.set("purchasePrice", "300");
   form.append("financialRecordId", "sale-1");
-  for (const [key,value] of Object.entries({type:"transaction",kind:"sale",amount:"200",secondaryAmount:"5",currency:"USD",quantity:"1",occurredAt:"2026-09-01",notes:"sale notes"})) form.set("finance.sale-1."+key,value);
+  for (const [key,value] of Object.entries({type:"transaction",kind:"sale",amount:"200",currency:"USD",quantity:"1",occurredAt:"2026-09-01",notes:"sale notes"})) form.set("finance.sale-1."+key,value);
   const values=readCardFormValues(form);
   const restored=parseCardEntryDraftValues(serializeCardEntryDraftValues(values));
   assert.equal(restored.purchasePrice,"300");
   const records=parseEntryFinance(restored.financialRecords);
-  assert.equal(records[0].values.secondaryAmount,"5");
+  assert.equal(records[0].values.currency,"USD");
   assert.equal(records[0].values.notes,"sale notes");
   assert.equal(readEntryFinance(new FormData()),"[]");
   assert.deepEqual(parseEntryFinance(normalizeCardFormValues({}).financialRecords),[]);
@@ -30,6 +30,28 @@ test("additional finance rejects malformed, duplicate and oversized record paylo
   assert.throws(()=>parseEntryFinance(" ".repeat(80001)));
 });
 
+test("retired incomplete-amount flags cannot survive draft recovery or change transaction accounting", () => {
+  const legacy = { id: "buy-1", type: "transaction", values: { kind: "purchase", amount: "0", currency: "CNY", quantity: "1", occurredAt: "2026-10-01", amountUnknown: "on" } };
+  const [record] = parseEntryFinance(JSON.stringify([legacy]));
+  assert.equal("amountUnknown" in record.values, false);
+
+  const form = new FormData();
+  form.append("financialRecordId", legacy.id);
+  form.set("finance.buy-1.type", legacy.type);
+  for (const [key, value] of Object.entries(legacy.values)) form.set("finance.buy-1." + key, value);
+  const [submitted] = JSON.parse(readEntryFinance(form));
+  assert.equal("amountUnknown" in submitted.values, false);
+
+  const transaction = new FormData();
+  for (const [key, value] of Object.entries(legacy.values)) transaction.set(key, value);
+  assert.equal(transactionInput(transaction).amountKnown, true);
+  assert.equal(transactionInput(transaction).amount, "0");
+  transaction.set("amount", "125");
+  assert.equal(transactionInput(transaction).amountKnown, true);
+  transaction.set("amount", "");
+  assert.throws(() => transactionInput(transaction), /金额不能为空/);
+});
+
 test("entry finance requires real dates, quantities and valuation sources", () => {
   const form=new FormData();
   for(const [key,value] of Object.entries({kind:"purchase",amount:"10",currency:"CNY",quantity:"1",occurredAt:"2026-02-30"})) form.set(key,value);
@@ -39,6 +61,9 @@ test("entry finance requires real dates, quantities and valuation sources", () =
   assert.throws(()=>transactionInput(form),/数量/);
   form.set("quantity","2");
   assert.equal(transactionInput(form).quantity,2);
+  form.set("secondaryAmount","5");
+  assert.throws(()=>transactionInput(form),/只能填写一种币种/);
+  form.delete("secondaryAmount");
   form.set("context","sale");form.set("transactionId","sale-1");
   assert.equal(expenseInput(form).transactionId,"sale-1");
   form.set("valuedAt","2026-03-01");

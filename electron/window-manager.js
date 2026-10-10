@@ -21,7 +21,7 @@ function createWindowManager({ serverRuntime, rootDir, logger }) {
     const guardNavigation = (event, url) => { if (isLocalAppUrl(url)) return; event.preventDefault(); openSafeExternalUrl(url); };
     mainWindow.webContents.on("will-navigate", guardNavigation);
     mainWindow.webContents.on("will-redirect", guardNavigation);
-    mainWindow.once("ready-to-show", () => mainWindow?.show());
+    mainWindow.once("ready-to-show", () => { if (process.env.CARD_VAULT_ACCEPTANCE_MODE !== "1") mainWindow?.show(); });
     const sessionCookie = serverRuntime.getSessionCookie();
     await mainWindow.webContents.session.cookies.set({
       url: serverRuntime.getServerUrl(),

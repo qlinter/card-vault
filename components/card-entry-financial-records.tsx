@@ -27,7 +27,7 @@ export function CardEntryFinancialRecords({ initialValue = "[]" }: { initialValu
     const input = event.target;
     if (!(input instanceof HTMLInputElement || input instanceof HTMLSelectElement || input instanceof HTMLTextAreaElement)) return;
     const key = input.name.slice(`finance.${id}.`.length) as keyof EntryFinanceValues;
-    const value = input instanceof HTMLInputElement && input.type === "checkbox" ? (input.checked ? "on" : "") : input.value;
+    const value = input.value;
     setRecords(current => current.map(row => row.id === id ? {...row,values:{...row.values,[key]:value}} : row));
   }
   return <div className="entry-financial-records" ref={panel}>

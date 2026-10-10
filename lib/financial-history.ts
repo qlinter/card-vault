@@ -1,3 +1,6 @@
+import { valuationSources } from "./valuation-sources.js";
+export { valuationSources };
+
 export const defaultHistoryCurrency = "CNY";
 export const supportedHistoryCurrencies = ["CNY", "USD"] as const;
 
@@ -11,7 +14,6 @@ export const expenseKinds = [
   "marketplace_fee",
   "other"
 ] as const;
-export const valuationSources = ["个人估计", "近期成交", "平台报价"] as const;
 export const expenseContexts = ["purchase", "grading", "sale"] as const;
 
 export type TransactionKind = (typeof transactionKinds)[number];
@@ -102,7 +104,7 @@ export function assertExpenseContext(value: string): ExpenseContext {
 
 export function assertValuationSource(value: string): ValuationSource {
   if (!valuationSources.includes(value as ValuationSource)) {
-    throw new Error("估值来源必须选择个人估计、近期成交或平台报价。");
+    throw new Error("估值来源必须选择个人估值、卡淘成交、eBay成交或 Others。");
   }
   return value as ValuationSource;
 }

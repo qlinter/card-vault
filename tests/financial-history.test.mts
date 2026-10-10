@@ -29,7 +29,11 @@ test("money validation rejects negative, imprecise, and invalid currency values"
   assert.throws(() => normalizeCurrency("EUR"), /仅支持 CNY 或 USD/);
   assert.throws(() => assertTransactionKind("trade"), /交易类型/);
   assert.throws(() => assertExpenseKind("purchase"), /费用类型/);
-  assert.equal(assertValuationSource("平台报价"), "平台报价");
+  assert.equal(assertValuationSource("eBay"), "eBay");
+  assert.equal(assertValuationSource("卡淘"), "卡淘");
+  assert.equal(assertValuationSource("Others"), "Others");
+  assert.throws(() => assertValuationSource("近期成交"), /估值来源必须选择/);
+  assert.throws(() => assertValuationSource("平台报价"), /估值来源必须选择/);
   assert.throws(() => assertValuationSource("拍卖参考"), /估值来源必须选择/);
 });
 

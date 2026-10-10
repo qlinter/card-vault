@@ -41,7 +41,7 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
       isPatch: false,
       transactions: [{ kind: "purchase", amountMinor: 20000n, currency: "USD" }],
       expenses: [],
-      valuations: [{ amountMinor: 18000n, currency: "USD", valuedAt: new Date("2026-05-20"), createdAt: new Date("2026-05-20"), source: "近期成交" }]
+      valuations: [{ amountMinor: 18000n, currency: "USD", valuedAt: new Date("2026-05-20"), createdAt: new Date("2026-05-20"), source: "卡淘" }]
     },
     {
       playerName: "Player B",
@@ -83,7 +83,7 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
       isPatch: false,
       transactions: [],
       expenses: [],
-      valuations: [{ amountMinor: 80000n, currency: "USD", valuedAt: new Date("2026-02-01"), createdAt: new Date("2026-02-01"), source: "平台报价" }]
+      valuations: [{ amountMinor: 80000n, currency: "USD", valuedAt: new Date("2026-02-01"), createdAt: new Date("2026-02-01"), source: "eBay" }]
     }
   ], undefined, asOf);
 
@@ -201,7 +201,7 @@ test("portfolio snapshot exposes multidimensional allocation, concentration, cov
       imageCount: 0,
       transactions: [],
       expenses: [],
-      valuations: [{ amountMinor: 10000n, currency: "CNY", valuedAt: new Date("2025-12-01"), createdAt: new Date("2025-12-01"), source: "平台报价" }]
+      valuations: [{ amountMinor: 10000n, currency: "CNY", valuedAt: new Date("2025-12-01"), createdAt: new Date("2025-12-01"), source: "eBay" }]
     },
     {
       playerName: "Player C",

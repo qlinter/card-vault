@@ -8,12 +8,9 @@ import {
   type PortfolioSnapshot
 } from "./portfolio-analysis";
 import { prisma } from "./prisma";
-import { buildPortfolioQualityCards, type PortfolioQualityCard } from "./portfolio-quality";
+import type { PortfolioQualityCard } from "./portfolio-quality";
 import {
   buildPortfolioComparisonPoint,
-  buildPortfolioFinancialHistory,
-  buildPortfolioPositionReviews,
-  buildPortfolioValuationChanges,
   type PortfolioComparison,
   type PortfolioComparisonPoint,
   type PortfolioCostPosition,
@@ -24,7 +21,7 @@ import {
 import { getSavedPortfolioView, getStoredPortfolioSnapshot } from "./portfolio-persistence";
 import type { PortfolioFilterInput } from "./portfolio-analysis";
 import { loadFinancialSettings } from "./financial-settings";
-import { buildReportingPortfolio } from "./portfolio-reporting";
+import { createPortfolioBatchAccumulator } from "./portfolio-batch";
 
 
 export type { PortfolioQualityCard } from "./portfolio-quality";
@@ -32,7 +29,7 @@ export type { PortfolioQualityCard } from "./portfolio-quality";
 export type PortfolioSnapshotResult = {
   snapshot: PortfolioSnapshot;
   qualityCards: PortfolioQualityCard[];
-  incompleteCards: ReturnType<typeof buildReportingPortfolio>["incompleteCards"];
+  incompleteCards: ReturnType<ReturnType<typeof createPortfolioBatchAccumulator>["finish"]>["incompleteCards"];
   query: PortfolioFilterInput;
   valuationChanges: PortfolioValuationChange[];
   financialHistory: PortfolioFinancialHistoryPoint[];
@@ -44,49 +41,47 @@ type LoadPortfolioSnapshotOptions = {
   allowEmpty?: boolean;
 };
 
-async function queryPortfolioCards(where: ReturnType<typeof buildCardFilters>) {
-  const cards = [];
-  let cursor: string | undefined;
-  for (;;) {
-    const page = await prisma.card.findMany({ where, select: portfolioAnalysisCardSelect, orderBy: { id: "asc" }, take: 250, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) });
-    cards.push(...page);
-    if (page.length < 250) return cards;
-    cursor = page.at(-1)!.id;
-  }
-}
-
 export async function loadPortfolioSnapshot(
   value: unknown,
   options: LoadPortfolioSnapshotOptions = {}
 ): Promise<PortfolioSnapshotResult> {
   const query = normalizePortfolioFilterInput(value);
   const where = buildCardFilters(query);
-  const cardCount = await prisma.card.count({ where });
+  const startedAt = performance.now();
+  const asOf = new Date();
+  const [cardCount, config, dates] = await Promise.all([
+    prisma.card.count({ where }), loadFinancialSettings(),
+    prisma.$queryRaw<Array<{ earliest: number | null }>>`SELECT MIN(at) earliest FROM (
+      SELECT CASE WHEN typeof(occurredAt)='integer' THEN occurredAt ELSE CAST(strftime('%s',occurredAt) AS INTEGER)*1000 END at FROM CardTransaction
+      UNION ALL SELECT CASE WHEN typeof(occurredAt)='integer' THEN occurredAt ELSE CAST(strftime('%s',occurredAt) AS INTEGER)*1000 END FROM CardExpense
+      UNION ALL SELECT CASE WHEN typeof(valuedAt)='integer' THEN valuedAt ELSE CAST(strftime('%s',valuedAt) AS INTEGER)*1000 END FROM CardValuation
+    ) WHERE at <= ${asOf.getTime()}`
+  ]);
 
   if (cardCount === 0 && !options.allowEmpty) {
     throw new Error("当前筛选范围内没有可分析的卡片。");
   }
 
 
-  const asOf = new Date();
-  const cards = await queryPortfolioCards(where);
-  const config = await loadFinancialSettings();
-  const { snapshot, cards: portfolioCards, incompleteCards } = buildReportingPortfolio(
-    cards.map((card) => ({ ...card, imageCount: card._count.images })), buildPortfolioScope(query), config, asOf);
-  const qualityCards = buildPortfolioQualityCards(cards.map((card) => ({
-    id: card.id,
-    playerName: card.playerName,
-    cardTitle: card.cardTitle,
-    sport: card.sport,
-    imageCount: card._count.images,
-    transactionCount: card.transactions.length,
-    valuations: card.valuations
-  })), asOf);
-  const valuationChanges = buildPortfolioValuationChanges(portfolioCards, asOf);
-  const financialHistory = buildPortfolioFinancialHistory(portfolioCards, asOf);
-  const { highCostPositions, soldReviews } = buildPortfolioPositionReviews(portfolioCards);
-
-  return { snapshot, qualityCards, incompleteCards, query, valuationChanges, financialHistory, highCostPositions, soldReviews };
+  const earliest = dates[0]?.earliest;
+  const accumulator = createPortfolioBatchAccumulator(buildPortfolioScope(query), config, asOf, earliest === null || earliest === undefined ? undefined : new Date(Number(earliest)).toISOString().slice(0, 7));
+  let queryMs = performance.now() - startedAt, computeMs = 0, cursor: string | undefined;
+  let batches = 0, maxBatchRecords = 0;
+  for (;;) {
+    const queryStart = performance.now();
+    const page = await prisma.card.findMany({ where, select: portfolioAnalysisCardSelect, orderBy: { id: "asc" }, take: 250, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) });
+    queryMs += performance.now() - queryStart;
+    const computeStart = performance.now();
+    accumulator.add(page.map(card => ({ ...card, imageCount: card._count.images })));
+    computeMs += performance.now() - computeStart;
+    batches++; maxBatchRecords = Math.max(maxBatchRecords, page.reduce((sum, card) => sum + card.transactions.length + card.expenses.length + card.valuations.length, 0));
+    if (page.length < 250) break;
+    cursor = page.at(-1)!.id;
+  }
+  const finalizeStart = performance.now();
+  const result = accumulator.finish();
+  if (process.env.CARD_VAULT_PROFILE_PORTFOLIO === "1") console.info(JSON.stringify({ event: "portfolio-profile", cards: result.snapshot.cardCount, batches, maxBatchRecords, queryMs: Math.round(queryMs), computeMs: Math.round(computeMs), finalizeMs: Math.round(performance.now() - finalizeStart), totalMs: Math.round(performance.now() - startedAt) }));
+  return { ...result, query };
 }
 
 async function loadComparisonPoint(

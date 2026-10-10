@@ -4,6 +4,7 @@ const { DatabaseSync } = require("node:sqlite");
 const { createManagementSchema, managementTables } = require("./management-schema");
 
 const schemaVersion = "1.3.0";
+const { normalizeValuationSourceSchema } = require("./valuation-source-schema");
 const requiredSchema = {
   Card: [
     "id", "playerName", "cardTitle", "sport", "team", "year", "brand", "productLine", "subsetName",
@@ -124,7 +125,7 @@ function createCurrentSchema(db) {
       amountMinor INTEGER NOT NULL CHECK (typeof(amountMinor) = 'integer' AND amountMinor >= 0),
       currency TEXT NOT NULL DEFAULT 'CNY' CHECK (length(currency) = 3 AND currency = upper(currency)),
       valuedAt DATETIME NOT NULL,
-      source TEXT NOT NULL DEFAULT '个人估计' CHECK (source IN ('个人估计', '近期成交', '平台报价')),
+      source TEXT NOT NULL DEFAULT '个人估计' CHECK (source IN ('个人估计', '卡淘', 'eBay', 'Others')),
       notes TEXT, provenance TEXT NOT NULL CHECK (length(trim(provenance)) > 0), externalKey TEXT,
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT CardValuation_cardId_fkey FOREIGN KEY (cardId) REFERENCES Card (id) ON DELETE CASCADE ON UPDATE CASCADE
@@ -291,7 +292,9 @@ function initializeDatabase(dbPath) {
       } catch (error) { db.exec("ROLLBACK;"); throw error; }
     }
   } finally { db.close(); }
-  return { ...validateDatabase(dbPath), initialized };
+  validateDatabase(dbPath);
+  const sourceUpdate = normalizeValuationSourceSchema(dbPath);
+  return { ...validateDatabase(dbPath), initialized, sourceUpdate };
 }
 
 module.exports = { initializeDatabase, validateDatabase, schemaVersion, validateCurrentSchema };

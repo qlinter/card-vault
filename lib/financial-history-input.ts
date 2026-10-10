@@ -27,13 +27,13 @@ function positiveInteger(formData: FormData, name: string): number {
 }
 
 export function transactionInput(formData: FormData): UpdateTransactionInput {
+  if (optionalText(formData, "secondaryAmount")) throw new Error("每笔交易只能填写一种币种的金额。");
   return {
     kind: requiredText(formData, "kind", "交易类型"),
     amount: requiredText(formData, "amount", "金额"),
     currency: requiredText(formData, "currency", "币种"),
     quantity: positiveInteger(formData, "quantity"),
-    secondaryAmount: optionalText(formData, "secondaryAmount"),
-    amountKnown: formData.get("amountUnknown") !== "on",
+    amountKnown: true,
     occurredAt: requiredDate(formData, "occurredAt"),
     source: optionalText(formData, "source"),
     notes: optionalText(formData, "notes")

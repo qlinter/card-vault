@@ -10,7 +10,7 @@ function fixtureDb(action) {
 
 test.beforeEach(() => fixtureDb((db) => {
   db.exec("DELETE FROM ExchangeRate; DELETE FROM FinancialSettings;");
-  db.prepare("INSERT INTO Card (id, playerName, cardTitle, sport, holdingQuantity) VALUES ('finance-ui', 'Finance Player', 'Mixed Payment', 'Basketball', 0)").run();
+  db.prepare("INSERT INTO Card (id, playerName, cardTitle, sport, holdingQuantity) VALUES ('finance-ui', 'Finance Player', 'Single-currency transactions', 'Basketball', 0)").run();
 }));
 test.afterEach(() => fixtureDb((db) => {
   db.prepare("DELETE FROM Card WHERE id='finance-ui'").run();
@@ -23,6 +23,29 @@ async function openComposer(page, type, navigate = true) {
   await page.getByRole("tab", { name: type, exact: true }).click();
   return page.locator("#financial-add-record form:visible");
 }
+
+test("valuation sources use four equal options with clear labels in both languages", async ({ page }) => {
+  for (const [index, source] of ["个人估计", "卡淘", "eBay", "Others"].entries()) {
+    const form = await openComposer(page, "估值");
+    const select = form.locator('[name="source"]');
+    await expect(select.locator(":scope > option")).toHaveText(["个人估值", "卡淘成交", "eBay成交", "Others"]);
+    await expect(select.locator("optgroup")).toHaveCount(0);
+    await select.selectOption(source);
+    await form.locator('[name="amount"]').fill(String(100 + index));
+    await form.locator('[name="valuedAt"]').fill(`2026-09-0${index + 1}`);
+    await form.getByRole("button", { name: "保存估值" }).click();
+    await expect.poll(() => fixtureDb(db => db.prepare("SELECT COUNT(*) n FROM CardValuation WHERE cardId='finance-ui' AND source=?").get(source).n)).toBe(1);
+    const saved = page.locator(".financial-timeline-valuation").first();
+    await saved.getByRole("button", { name: "编辑", exact: true }).click();
+    await expect(saved.locator(".financial-record-context")).toContainText(["个人估值", "卡淘成交", "eBay成交", "Others"][index]);
+  }
+  expect(fixtureDb(db => db.prepare("SELECT source FROM CardValuation WHERE cardId='finance-ui' ORDER BY valuedAt").all().map(row => row.source))).toEqual(["个人估计", "卡淘", "eBay", "Others"]);
+  await page.getByRole("button", { name: "选择语言" }).click();
+  await page.getByRole("menuitemradio", { name: "English" }).click();
+  await page.getByRole("button", { name: "+ Add Record", exact: true }).click();
+  await page.getByRole("tab", { name: "Valuation", exact: true }).click();
+  await expect(page.locator('#financial-add-record form:visible [name="source"] > option')).toHaveText(["Personal Valuation", "KaTao Sale", "eBay Sale", "Others"]);
+});
 
 for (const locale of ["zh", "en"]) {
   test(`card details retain Finance editing without duplicate toolbar links (${locale})`, async ({ page, context }) => {
@@ -59,6 +82,38 @@ test("consecutive transactions without a page reload receive different submissio
   expect(rows[0].externalKey).toBeTruthy();
   expect(rows[0].externalKey).not.toBe(rows[1].externalKey);
 });
+
+test("transaction amounts are complete without a checkbox and historical unknowns resolve when edited", async ({ page }, testInfo) => {
+  fixtureDb(db => {
+    db.exec("INSERT INTO CardTransaction(id,cardId,kind,amountMinor,currency,quantity,occurredAt,provenance,amountKnown) VALUES('unknown-purchase','finance-ui','purchase',10000,'CNY',1,'2026-01-01T00:00:00.000Z','manual',0); UPDATE Card SET holdingQuantity=1 WHERE id='finance-ui';");
+    db.exec("INSERT INTO CardValuation(id,cardId,amountMinor,currency,valuedAt,source,provenance) VALUES('known-quote','finance-ui',15000,'CNY','2026-02-01T00:00:00.000Z','个人估计','manual');");
+  });
+  const form = await openComposer(page, "交易");
+  await expect(form.locator('[name="amountUnknown"]')).toHaveCount(0);
+  await form.locator('[name="amount"]').fill("0");
+  await form.locator('[name="occurredAt"]').fill("2026-01-02");
+  // An older form or draft must not reintroduce the retired flag.
+  await form.evaluate(element => {
+    const input = document.createElement("input");
+    input.type = "hidden"; input.name = "amountUnknown"; input.value = "on";
+    element.append(input);
+  });
+  await form.getByRole("button", { name: "保存交易" }).click();
+  await expect.poll(() => fixtureDb(db => db.prepare("SELECT holdingQuantity FROM Card WHERE id='finance-ui'").get().holdingQuantity)).toBe(2);
+  expect(fixtureDb(db => db.prepare("SELECT amountMinor,amountKnown FROM CardTransaction WHERE cardId='finance-ui' AND id<>'unknown-purchase'").get())).toEqual({ amountMinor: 0, amountKnown: 1 });
+  expect(fixtureDb(db => db.prepare("SELECT amountKnown FROM CardTransaction WHERE id='unknown-purchase'").get().amountKnown)).toBe(0);
+  const record = page.locator(".financial-timeline-transaction").filter({ has: page.locator('time[datetime="2026-01-01"]') });
+  await record.getByRole("button", { name: "编辑", exact: true }).click();
+  const editor = record.locator("form.financial-form");
+  await expect(editor.locator('[name="amountUnknown"]')).toHaveCount(0);
+  await editor.locator('[name="amount"]').fill("120");
+  await editor.getByRole("button", { name: "保存修改", exact: true }).click();
+  await expect.poll(() => fixtureDb(db => db.prepare("SELECT amountKnown FROM CardTransaction WHERE id='unknown-purchase'").get().amountKnown)).toBe(1);
+  await expect(page.locator(".financial-key-metrics")).toContainText("CNY 120.00");
+  await expect(page.locator(".financial-key-metrics")).toContainText("+CNY 180.00");
+  await testInfo.attach("transaction-without-incomplete-option", { body: await page.locator("#financial-history").screenshot(), contentType: "image/png" });
+});
+
 async function saveRate(page, rate = "7") {
   await page.goto("/settings", { waitUntil: "networkidle" });
   const settings = page.locator("#financial-settings");
@@ -70,6 +125,28 @@ async function saveRate(page, rate = "7") {
   await expect(settings.getByRole("status")).toHaveText("已保存。");
   return settings;
 }
+
+test("editing a historical transaction keeps amounts omitted from the simplified form", async ({ page }) => {
+  const paymentsJson = '[{"currency":"USD","amountMinor":"10000"}]';
+  fixtureDb(db => {
+    db.prepare("INSERT INTO CardTransaction(id,cardId,kind,amountMinor,currency,quantity,occurredAt,provenance,paymentsJson) VALUES('historical-payment','finance-ui','purchase',10000,'CNY',1,'2026-01-01T00:00:00.000Z','manual',?)").run(paymentsJson);
+    db.exec("UPDATE Card SET holdingQuantity=1 WHERE id='finance-ui'");
+  });
+  await page.goto("/cards/finance-ui", { waitUntil: "networkidle" });
+  const record = page.locator(".financial-timeline-transaction").first();
+  await record.getByRole("button", { name: "编辑", exact: true }).click();
+  const editor = record.locator("form.financial-form");
+  await expect(editor.locator('[name="secondaryAmount"]')).toHaveCount(0);
+  await editor.locator('[name="currency"]').selectOption("USD");
+  await editor.getByRole("button", { name: "保存修改", exact: true }).click();
+  await expect(editor.getByRole("alert")).toContainText("不能直接更改币种");
+  await editor.locator('[name="currency"]').selectOption("CNY");
+  await editor.locator('[name="notes"]').fill("Keep historical amounts");
+  await editor.getByRole("button", { name: "保存修改", exact: true }).click();
+  await expect.poll(() => fixtureDb(db => db.prepare("SELECT notes FROM CardTransaction WHERE id='historical-payment'").get().notes)).toBe("Keep historical amounts");
+  const saved = fixtureDb(db => db.prepare("SELECT amountMinor,currency,paymentsJson FROM CardTransaction WHERE id='historical-payment'").get());
+  expect(saved).toEqual({ amountMinor: 10000, currency: "CNY", paymentsJson });
+});
 
 test("financial settings separate primary currency and support optional notes, editing and deleting rates", async ({ page }, testInfo) => {
   await page.goto("/settings");
@@ -112,14 +189,19 @@ test("financial settings separate primary currency and support optional notes, e
   expect(fixtureDb(db => db.prepare("SELECT reportingCurrency FROM FinancialSettings WHERE id='default'").get().reportingCurrency)).toBe("USD");
 });
 
-test("mixed payment and cross-currency sale share one holding and one reporting value", async ({ page }, testInfo) => {
-  let form = await openComposer(page, "交易");
-  await form.locator('[name="amount"]').fill("100");
-  await form.locator('[name="secondaryAmount"]').fill("100");
-  await form.locator('[name="quantity"]').fill("2");
-  await form.locator('[name="occurredAt"]').fill("2026-01-01");
-  await form.getByRole("button", { name: "保存交易" }).click();
-  await expect(page.locator(".financial-timeline")).toContainText("持仓 +2 张");
+test("single-currency purchases and a cross-currency sale share one reporting value", async ({ page }, testInfo) => {
+  let form;
+  for (const [index, currency] of ["CNY", "USD"].entries()) {
+    form = await openComposer(page, "交易");
+    await expect(form.locator('[name="secondaryAmount"]')).toHaveCount(0);
+    await form.locator('[name="currency"]').selectOption(currency);
+    await form.locator('[name="amount"]').fill("100");
+    await form.locator('[name="quantity"]').fill("1");
+    await form.locator('[name="occurredAt"]').fill("2026-01-01");
+    await form.getByRole("button", { name: "保存交易" }).click();
+    await expect.poll(() => fixtureDb(db => db.prepare("SELECT holdingQuantity FROM Card WHERE id='finance-ui'").get().holdingQuantity)).toBe(index + 1);
+  }
+  expect(fixtureDb(db => db.prepare("SELECT paymentsJson FROM CardTransaction WHERE cardId='finance-ui'").all().every(row => row.paymentsJson === null))).toBe(true);
   expect(fixtureDb(db => db.prepare("SELECT holdingQuantity FROM Card WHERE id='finance-ui'").get().holdingQuantity)).toBe(2);
   await expect(page.locator(".financial-overview")).not.toContainText("统一持仓");
   await expect(page.locator(".financial-overview")).not.toContainText("使用的汇率依据");

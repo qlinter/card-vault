@@ -1,4 +1,4 @@
-const entryFinanceFields = ["kind", "amount", "currency", "secondaryAmount", "amountUnknown", "quantity", "occurredAt", "source", "notes", "context", "transactionId", "vendor", "valuedAt"] as const;
+const entryFinanceFields = ["kind", "amount", "currency", "quantity", "occurredAt", "source", "notes", "context", "transactionId", "vendor", "valuedAt"] as const;
 export type EntryFinanceValues = Partial<Record<typeof entryFinanceFields[number], string>>;
 export type EntryFinanceRecord = { id: string; type: "transaction" | "expense" | "valuation"; values: EntryFinanceValues };
 export const maxEntryFinanceRecords = 50;

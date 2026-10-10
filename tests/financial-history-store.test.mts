@@ -4,7 +4,8 @@ import type { PrismaClient } from "@prisma/client";
 import {
   createCardExpense,
   createCardTransaction,
-  createCardValuation
+  createCardValuation,
+  updateCardTransaction
 } from "../lib/financial-history-store.ts";
 
 function captureClient() {
@@ -47,6 +48,7 @@ test("history store writes normalized transaction and expense facts", async () =
   assert.equal(calls[0].data.currency, "CNY");
   assert.equal(calls[0].data.source, "dealer");
   assert.equal(calls[0].data.provenance, "manual");
+  assert.equal(calls[0].data.paymentsJson, null);
   assert.equal(calls[1].data.amountMinor, BigInt(1234));
   assert.equal(calls[1].data.currency, "USD");
   assert.equal(calls[1].data.context, "grading");
@@ -75,6 +77,26 @@ test("history store rejects invalid quantity and source-free valuations", async 
   );
 });
 
+test("simplified transaction edits preserve historical additional amounts and reject a conflicting currency", async () => {
+  const paymentsJson = '[{"currency":"USD","amountMinor":"10000"}]';
+  let written: Record<string, unknown> | undefined;
+  const client = {
+    cardTransaction: {
+      findFirst: async () => ({ currency: "CNY", paymentsJson }),
+      updateMany: async ({ data }: { data: Record<string, unknown> }) => { written = data; return { count: 1 }; }
+    },
+    cardExpense: { findFirst: async () => null }
+  } as unknown as PrismaClient;
+  const input = { kind: "purchase", amount: "125", currency: "CNY", quantity: 2, occurredAt: new Date("2026-01-01T00:00:00.000Z"), notes: "updated note" };
+  await updateCardTransaction(client, "card-1", "transaction-1", input);
+  assert.equal(written?.paymentsJson, paymentsJson);
+  assert.equal(written?.amountMinor, 12500n);
+  assert.equal(written?.notes, "updated note");
+  written = undefined;
+  await assert.rejects(updateCardTransaction(client, "card-1", "transaction-1", { ...input, currency: "USD" }), /不能直接更改币种/);
+  assert.equal(written, undefined);
+});
+
 test("history store writes traceable valuations", async () => {
   const { client, calls } = captureClient();
   await createCardValuation(client, {
@@ -82,13 +104,13 @@ test("history store writes traceable valuations", async () => {
     amount: "998",
     currency: "USD",
     valuedAt: new Date("2025-02-01T00:00:00.000Z"),
-    source: "近期成交",
+    source: "卡淘",
     provenance: "manual_review",
     externalKey: "valuation-import-1"
   });
 
   assert.equal(calls[0].data.amountMinor, BigInt(99800));
-  assert.equal(calls[0].data.source, "近期成交");
+  assert.equal(calls[0].data.source, "卡淘");
   assert.equal(calls[0].data.provenance, "manual_review");
   assert.equal(calls[0].data.externalKey, "valuation-import-1");
 });

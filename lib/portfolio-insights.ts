@@ -4,6 +4,7 @@ import { minorMoneyToNumber, normalizeCurrency, selectLatestValuation } from "./
 import { roundPortfolioValue as money } from "./portfolio-number.ts";
 import type { PortfolioCardRecord, PortfolioScope, PortfolioSnapshot } from "./portfolio-analysis-types.ts";
 import { calculatePositions } from "./position-accounting.ts";
+import type { PortfolioCardFacts } from "./portfolio-analysis-statistics.ts";
 
 const DAY_MS = 86_400_000;
 
@@ -99,7 +100,8 @@ function monthCutoff(month: string, asOf: Date): Date {
 
 export function buildPortfolioFinancialHistory(
   cards: PortfolioCardRecord[],
-  asOf = new Date()
+  asOf = new Date(),
+  startMonth?: string
 ): PortfolioFinancialHistoryPoint[] {
   let earliest = Infinity;
   const includeDate = (date: Date) => {
@@ -111,9 +113,9 @@ export function buildPortfolioFinancialHistory(
     for (const row of card.expenses) includeDate(recordDate(row));
     for (const row of card.valuations) includeDate(row.valuedAt);
   }
-  if (earliest === Infinity) return [];
+  if (earliest === Infinity && !startMonth) return [];
 
-  const firstMonth = new Date(earliest).toISOString().slice(0, 7);
+  const firstMonth = startMonth ?? new Date(earliest).toISOString().slice(0, 7);
   const lastMonth = asOf.toISOString().slice(0, 7);
   const months: string[] = [];
   for (let month = firstMonth; month <= lastMonth; month = nextMonth(month)) months.push(month);
@@ -234,14 +236,14 @@ export type PortfolioSoldReview = {
   needsSaleRecord: boolean;
 };
 
-export function buildPortfolioPositionReviews(cards: PortfolioCardRecord[]): {
+export function buildPortfolioPositionReviews(cards: PortfolioCardRecord[], cardFacts?: PortfolioCardFacts): {
   highCostPositions: PortfolioCostPosition[];
   soldReviews: PortfolioSoldReview[];
 } {
   const highCostPositions: PortfolioCostPosition[] = [];
   const soldReviews: PortfolioSoldReview[] = [];
   for (const card of cards) {
-    const positions = calculatePositions(card);
+    const positions = cardFacts?.get(card)?.positions ?? calculatePositions(card);
     if (isOwnedCollectionStatus(card.collectionStatus)) {
       for (const position of positions) {
         if (!position.costComplete || position.remainingQuantity <= 0 || position.remainingCostMinor <= BigInt(0)) continue;

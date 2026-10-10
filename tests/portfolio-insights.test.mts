@@ -40,7 +40,7 @@ test("历史估值按目标日期的最新估值和当时持仓数量计算", ()
     ],
     valuations: [
       { amountMinor: 10000n, currency: "CNY", valuedAt: new Date("2026-02-01"), createdAt: new Date("2026-02-01"), source: "个人估计" },
-      { amountMinor: 15000n, currency: "CNY", valuedAt: new Date("2026-04-01"), createdAt: new Date("2026-04-01"), source: "近期成交" }
+      { amountMinor: 15000n, currency: "CNY", valuedAt: new Date("2026-04-01"), createdAt: new Date("2026-04-01"), source: "卡淘" }
     ]
   })];
 
@@ -69,8 +69,8 @@ test("30/90/180 天变化使用历史组合价值而不是估值录入金额", (
     transactions: [{ kind: "purchase", amountMinor: 10000n, currency: "CNY", quantity: 1, occurredAt: new Date("2025-12-01") }],
     valuations: [
       { amountMinor: 10000n, currency: "CNY", valuedAt: new Date("2026-01-01"), createdAt: new Date("2026-01-01"), source: "个人估计" },
-      { amountMinor: 13000n, currency: "CNY", valuedAt: new Date("2026-05-01"), createdAt: new Date("2026-05-01"), source: "近期成交" },
-      { amountMinor: 15000n, currency: "CNY", valuedAt: new Date("2026-06-20"), createdAt: new Date("2026-06-20"), source: "平台报价" }
+      { amountMinor: 13000n, currency: "CNY", valuedAt: new Date("2026-05-01"), createdAt: new Date("2026-05-01"), source: "卡淘" },
+      { amountMinor: 15000n, currency: "CNY", valuedAt: new Date("2026-06-20"), createdAt: new Date("2026-06-20"), source: "eBay" }
     ]
   })], asOf);
 
@@ -93,7 +93,7 @@ test("连续财务历史按月末重建估值、剩余成本及已实现和未�
     ],
     valuations: [
       { amountMinor: 10000n, currency: "CNY", valuedAt: new Date("2026-02-01"), createdAt: new Date("2026-02-01"), source: "个人估计" },
-      { amountMinor: 14000n, currency: "CNY", valuedAt: new Date("2026-04-01"), createdAt: new Date("2026-04-01"), source: "近期成交" }
+      { amountMinor: 14000n, currency: "CNY", valuedAt: new Date("2026-04-01"), createdAt: new Date("2026-04-01"), source: "卡淘" }
     ]
   })], new Date("2026-04-30T12:00:00.000Z"));
 
@@ -114,7 +114,7 @@ test("高成本持仓和已售复盘复用移动平均核算结果", () => {
         { kind: "sale", amountMinor: 15000n, currency: "CNY", quantity: 1, occurredAt: new Date("2026-02-01") }
       ],
       expenses: [{ context: "grading", amountMinor: 2000n, currency: "CNY", occurredAt: new Date("2026-01-10") }],
-      valuations: [{ amountMinor: 14000n, currency: "CNY", valuedAt: new Date("2026-03-01"), createdAt: new Date("2026-03-01"), source: "近期成交" }]
+      valuations: [{ amountMinor: 14000n, currency: "CNY", valuedAt: new Date("2026-03-01"), createdAt: new Date("2026-03-01"), source: "卡淘" }]
     }),
     card({
       id: "sold",

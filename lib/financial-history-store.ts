@@ -20,7 +20,6 @@ export type CreateTransactionInput = {
   amount: string | number;
   currency?: string;
   quantity?: number;
-  secondaryAmount?: string | number | null;
   amountKnown?: boolean;
   occurredAt: Date;
   source?: string | null;
@@ -60,9 +59,7 @@ export type UpdateValuationInput = Omit<CreateValuationInput, "cardId" | "proven
 
 function paymentData(input: CreateTransactionInput | UpdateTransactionInput) {
   const money = moneyValue(input);
-  const secondary = input.secondaryAmount === undefined || input.secondaryAmount === null || input.secondaryAmount === "" ? null
-    : moneyValue({ amount: input.secondaryAmount, currency: money.currency === "CNY" ? "USD" : "CNY" });
-  return { ...money, amountKnown: input.amountKnown !== false, paymentsJson: secondary ? JSON.stringify([{ currency: secondary.currency, amountMinor: String(secondary.amountMinor) }]) : null };
+  return { ...money, amountKnown: input.amountKnown !== false, paymentsJson: null };
 }
 
 export async function createCardTransaction(client: HistoryClient, input: CreateTransactionInput) {
@@ -133,6 +130,10 @@ export async function updateCardTransaction(
   if (!Number.isInteger(quantity) || quantity <= 0) {
     throw new Error("交易数量必须是正整数。");
   }
+  const existing = await client.cardTransaction.findFirst({ where: { id: recordId, cardId }, select: { currency: true, paymentsJson: true } });
+  if (!existing) throw new Error("交易记录不存在或已删除。");
+  // Keep historical payment facts when the simplified editor submits only one amount.
+  if (existing.paymentsJson && existing.paymentsJson !== "[]" && money.currency !== existing.currency) throw new Error("历史交易包含多币种金额，不能直接更改币种。");
   const linkedExpense = await client.cardExpense.findFirst({ where: { transactionId: recordId } });
   if (linkedExpense && kind !== "sale") {
     throw new Error("该出售记录已关联费用，不能改为买入。请先修改关联费用。");
@@ -142,6 +143,7 @@ export async function updateCardTransaction(
     data: {
       kind,
       ...money,
+      paymentsJson: existing.paymentsJson,
       quantity,
       occurredAt: assertHistoryDate(input.occurredAt),
       source: normalizeOptionalHistoryText(input.source),

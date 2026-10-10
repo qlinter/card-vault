@@ -42,6 +42,6 @@ Both READMEs must retain detailed notes for the latest version and concise entri
 
 ## 当前维护状态 / Current maintenance status
 
-当前源码版本为 v1.3.5；双语 README 保留从 v1.0.0 到 v1.3.4 的 29 个历史版本。今天的修改、审查与源码验收统一纳入 [v1.3.5](./release-v1.3.5.md)，旧版分发事实保留在各自发布说明；本版安装包和便携包已生成并通过本次独立验收，未沿用旧版校验结果。
+当前源码版本为 v1.3.6；双语 README 保留从 v1.0.0 到 v1.3.5 的 30 个历史版本。本轮修改、审查与发布验收统一纳入 [v1.3.6](./release-v1.3.6.md)，旧版分发事实保留在各自发布说明；本版安装包和便携包独立验证，不沿用开发版或旧版校验结果。
 
-Current source is v1.3.5. Both README histories retain 29 earlier versions, from v1.0.0 through v1.3.4. Today's changes, review and source checks are consolidated into [v1.3.5](./release-v1.3.5.md). Historical distribution facts remain in their own release notes. Installer and portable artifacts have been generated and passed independent validation for this release; previous artifact checks were not reused.
+Current source is v1.3.6. Both READMEs retain 30 earlier versions, from v1.0.0 through v1.3.5. This development, review and release acceptance are consolidated into [v1.3.6](./release-v1.3.6.md). Historical distribution facts remain in their own notes. Installer and portable artifacts are validated independently, without reusing development or older artifact checks.

@@ -81,8 +81,8 @@ function seedDatabase() {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     insertValuation.run("ui-value-1-old", "ui-card-1", 155000, "CNY", "2026-04-01T00:00:00.000Z", "个人估计", "ui-test");
-    insertValuation.run("ui-value-1", "ui-card-1", 188000, "CNY", "2026-08-20T00:00:00.000Z", "近期成交", "ui-test");
-    insertValuation.run("ui-value-2", "ui-card-2", 31500, "USD", "2026-08-18T00:00:00.000Z", "平台报价", "ui-test");
+    insertValuation.run("ui-value-1", "ui-card-1", 188000, "CNY", "2026-08-20T00:00:00.000Z", "卡淘", "ui-test");
+    insertValuation.run("ui-value-2", "ui-card-2", 31500, "USD", "2026-08-18T00:00:00.000Z", "eBay", "ui-test");
 
     db.prepare(`
       INSERT INTO ShareCollection (id, title, subtitle, slug, theme, presentationConfig, description, themeNarrative, themeHighlights)

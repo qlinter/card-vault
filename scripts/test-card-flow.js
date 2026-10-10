@@ -536,7 +536,7 @@ async function main() {
     valuationForm.append("amount", "210.50");
     valuationForm.append("currency", "CNY");
     valuationForm.append("valuedAt", "2026-08-11");
-    valuationForm.append("source", "平台报价");
+    valuationForm.append("source", "eBay");
     valuationForm.append("notes", "History action regression test.");
     const valuationResponse = await fetch(`${baseUrl}/cards/${cardId}`, { method: "POST", body: valuationForm, redirect: "manual" });
     const valuationLocation = valuationResponse.headers.get("location") || "";
@@ -546,7 +546,7 @@ async function main() {
     db = new DatabaseSync(dbPath, { readOnly: true });
     const latestValuation = db.prepare("SELECT id, amountMinor, source FROM CardValuation WHERE cardId = ? ORDER BY valuedAt DESC LIMIT 1").get(cardId);
     db.close();
-    if (latestValuation?.amountMinor !== 21050 || latestValuation?.source !== "平台报价") {
+    if (latestValuation?.amountMinor !== 21050 || latestValuation?.source !== "eBay") {
       throw new Error("Detail financial action did not persist the valuation.");
     }
 
@@ -556,7 +556,7 @@ async function main() {
     correctionForm.append("amount", "220.75");
     correctionForm.append("currency", "CNY");
     correctionForm.append("valuedAt", "2026-08-11");
-    correctionForm.append("source", "近期成交");
+    correctionForm.append("source", "卡淘");
     correctionForm.append("notes", "Corrected history action regression test.");
     const correctionResponse = await fetch(`${baseUrl}/cards/${cardId}`, { method: "POST", body: correctionForm, redirect: "manual" });
     const correctionLocation = correctionResponse.headers.get("location") || "";
@@ -566,7 +566,7 @@ async function main() {
     db = new DatabaseSync(dbPath, { readOnly: true });
     const correctedValuation = db.prepare("SELECT amountMinor, source, provenance FROM CardValuation WHERE cardId = ? ORDER BY valuedAt DESC, updatedAt DESC LIMIT 1").get(cardId);
     db.close();
-    if (correctedValuation?.amountMinor !== 22075 || correctedValuation?.source !== "近期成交" || correctedValuation?.provenance !== "manual_correction") {
+    if (correctedValuation?.amountMinor !== 22075 || correctedValuation?.source !== "卡淘" || correctedValuation?.provenance !== "manual_correction") {
       throw new Error("Valuation correction did not persist the expected values.");
     }
 
@@ -663,7 +663,7 @@ async function main() {
     filteredHistoryEditForm.append("amount", "190.25");
     filteredHistoryEditForm.append("currency", "CNY");
     filteredHistoryEditForm.append("valuedAt", "2026-08-10");
-    filteredHistoryEditForm.append("source", "近期成交");
+    filteredHistoryEditForm.append("source", "卡淘");
     filteredHistoryEditForm.append("notes", "Filtered financial history regression test.");
     const filteredHistoryEditResponse = await fetch(`${baseUrl}${filteredEditLocation}`, {
       method: "POST",
@@ -682,7 +682,7 @@ async function main() {
     db = new DatabaseSync(dbPath, { readOnly: true });
     const filteredEditedValuation = db.prepare("SELECT amountMinor, source FROM CardValuation WHERE id = ?").get(filteredValuation.id);
     db.close();
-    if (filteredEditedValuation?.amountMinor !== 19025 || filteredEditedValuation?.source !== "近期成交") {
+    if (filteredEditedValuation?.amountMinor !== 19025 || filteredEditedValuation?.source !== "卡淘") {
       throw new Error("Filtered financial history edit did not persist the expected valuation changes.");
     }
 

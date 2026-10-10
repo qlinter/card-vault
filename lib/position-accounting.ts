@@ -1,33 +1,9 @@
 import { normalizeCurrency, selectLatestValuation } from "./financial-history.ts";
-import { paymentComponents } from "./financial-reporting.ts";
+import { paymentComponents, type FinancialTransaction, type FinancialExpense, type FinancialValuation } from "./financial-reporting.ts";
 
-export type PositionTransaction = {
-  paymentsJson?: string | null;
-  amountKnown?: boolean;
-  kind: string;
-  amountMinor: bigint;
-  currency: string;
-  quantity?: number;
-  occurredAt?: Date;
-  createdAt?: Date;
-};
-
-export type PositionExpense = {
-  amountKnown?: boolean;
-  context?: string;
-  amountMinor: bigint;
-  currency: string;
-  occurredAt?: Date;
-  createdAt?: Date;
-};
-
-export type PositionValuation = {
-  available?: boolean;
-  amountMinor: bigint;
-  currency: string;
-  valuedAt: Date;
-  createdAt: Date;
-};
+export type PositionTransaction = FinancialTransaction;
+export type PositionExpense = FinancialExpense;
+export type PositionValuation = FinancialValuation & { available?: boolean };
 
 export type CurrencyPosition = {
   costComplete: boolean;

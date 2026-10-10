@@ -3,8 +3,9 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { assertArtifactSize, defaultArtifactLimits } = require("./release-bundle-hygiene");
+const { assertArtifactSize, defaultArtifactLimits, isForbiddenPackagedEntry } = require("./release-bundle-hygiene");
 const { inspectAuthenticodeSignature, verifyAuthenticodeSignature } = require("./authenticode");
+const { verifyPackagedApplication } = require("./packaged-app");
 
 const rootDir = path.resolve(__dirname, "..");
 const packageJson = require(path.join(rootDir, "package.json"));
@@ -20,25 +21,15 @@ function escapeRegExp(value) {
 }
 
 function runPowerShell(command) {
-  const result = spawnSync("powershell.exe", ["-NoProfile", "-Command", command], { windowsHide: true, encoding: "utf8" });
+  const result = spawnSync("powershell.exe", ["-NoProfile", "-Command", command], { windowsHide: true, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(result.stderr.trim() || "PowerShell artifact verification failed.");
   return result.stdout.trim();
 }
 
 function verifyUnpackedRuntime() {
-  const appRoot = path.join(unpackedDir, "resources", "app");
-  const required = [
-    path.join(unpackedDir, "Card Vault.exe"),
-    path.join(appRoot, "package.json"),
-    path.join(appRoot, ".next", "BUILD_ID"),
-    path.join(appRoot, "node_modules", ".prisma", "client", "schema.prisma"),
-    path.join(appRoot, "node_modules", "@swc", "helpers", "package.json")
-  ];
-  for (const filePath of required) assert.ok(fs.existsSync(filePath), `发布目录缺少 ${filePath}`);
-  const packagedPackage = JSON.parse(fs.readFileSync(path.join(appRoot, "package.json"), "utf8"));
-  assert.equal(packagedPackage.version, packageJson.version, "发布目录版本与 package.json 不一致");
-  verifyWindowsExecutableVersion(path.join(unpackedDir, "Card Vault.exe"), "便携主程序");
+  const executable = verifyPackagedApplication(unpackedDir, packageJson.version);
+  verifyWindowsExecutableVersion(executable, "便携主程序");
 }
 
 function verifyWindowsExecutableVersion(filePath, label) {
@@ -63,12 +54,9 @@ function verifyPortableArchive(signingMode) {
     `try {`,
     `$exe=$zip.Entries | Where-Object { ($_.FullName -replace '\\\\','/') -eq 'Card Vault.exe' } | Select-Object -First 1`,
     `$package=$zip.Entries | Where-Object { ($_.FullName -replace '\\\\','/') -eq 'resources/app/package.json' } | Select-Object -First 1`,
-    `$forbidden=$zip.Entries | Where-Object { $entryName=($_.FullName -replace '\\\\','/').ToLowerInvariant(); $entryName.StartsWith('resources/app/') -and ($entryName.EndsWith('.map') -or ($entryName.Contains('/node_modules/.prisma/client/') -and $entryName -match '\\.tmp[^/]*$')) }`,
     `$tempExe=[System.IO.Path]::Combine([System.IO.Path]::GetTempPath(),('card-vault-artifact-'+[guid]::NewGuid().ToString('N')+'.exe'))`,
     `if(-not $exe) { throw 'Portable ZIP does not contain Card Vault.exe' }`,
-    `if($zip.Entries | Where-Object { ($_.FullName -replace '\\\\','/') -match '^resources/app/prisma/([^/]+\\.db[^/]*|schema-backups/.*)$' }) { throw 'Portable ZIP contains a local database or database snapshot' }`,
     `if(-not $package) { throw 'Portable ZIP does not contain resources/app/package.json' }`,
-    `if($forbidden) { throw ('Portable ZIP contains forbidden generated files: ' + (($forbidden | Select-Object -First 8 -ExpandProperty FullName) -join ', ')) }`,
     `$reader=[System.IO.StreamReader]::new($package.Open())`,
     `try { $version=($reader.ReadToEnd() | ConvertFrom-Json).version } finally { $reader.Dispose() }`,
     `if($version -ne '${packageJson.version.replace(/'/g, "''")}') { throw "Portable ZIP version $version does not match ${packageJson.version}" }`,
@@ -82,9 +70,11 @@ function verifyPortableArchive(signingMode) {
     signingMode === "signed"
       ? `if($signature.Status -ne 'Valid' -or -not $signature.SignerCertificate -or -not $signature.TimeStamperCertificate) { throw ('Portable executable Authenticode signature is invalid: ' + $signature.Status) }`
       : `if($signature.Status -ne 'NotSigned') { throw ('Portable executable has an unexpected Authenticode status: ' + $signature.Status) }`,
+    `$zip.Entries | ForEach-Object { $_.FullName }`,
     `} finally { $zip.Dispose(); if($tempExe -and (Test-Path -LiteralPath $tempExe)) { Remove-Item -LiteralPath $tempExe -Force } }`
   ].join("; ");
-  runPowerShell(command);
+  const forbidden = runPowerShell(command).split(/\r?\n/).filter(isForbiddenPackagedEntry);
+  assert.equal(forbidden.length, 0, `Portable ZIP contains forbidden files: ${forbidden.slice(0, 8).join(", ")}`);
 }
 
 function verifyInstallerVersion() {

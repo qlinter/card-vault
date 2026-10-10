@@ -3,14 +3,16 @@ import { accountingVersion, reportingHistory, type FinancialConfig } from "./fin
 import { buildPortfolioSnapshot } from "./portfolio-analysis-snapshot.ts";
 import type { PortfolioCardRecord, PortfolioScope } from "./portfolio-analysis-types.ts";
 import { calculateCurrencyPosition } from "./position-accounting.ts";
+import { createPortfolioCardFacts } from "./portfolio-analysis-statistics.ts";
 
-export function buildReportingPortfolio(cards: PortfolioCardRecord[], scope: PortfolioScope, config: FinancialConfig, asOf = new Date()) {
+export function buildReportingPortfolio(cards: PortfolioCardRecord[], scope: PortfolioScope, config: FinancialConfig, asOf = new Date(), options: { allGroups?: boolean } = {}) {
   const projected = cards.map((card) => reportingHistory({ ...card, holdingQuantity: isOwnedCollectionStatus(card.collectionStatus) ? card.holdingQuantity : 0 }, config, asOf));
-  const positions = projected.map((card) => calculateCurrencyPosition(card, config.reportingCurrency));
+  const cardFacts = createPortfolioCardFacts(projected);
+  const positions = projected.map((card) => cardFacts.get(card)!.positions.find(position => position.currency === config.reportingCurrency) ?? calculateCurrencyPosition(card, config.reportingCurrency));
   const incomplete = projected.filter((card) => card.missing.length > 0);
   const incompleteCosts = projected.filter((card) => card.costMissing.length > 0);
   const unvalued = projected.filter((card, index) => positions[index].remainingQuantity > 0 && isOwnedCollectionStatus(card.collectionStatus) && positions[index].currentValueMinor === null);
-  const snapshot = buildPortfolioSnapshot(projected, scope, asOf);
+  const snapshot = buildPortfolioSnapshot(projected, scope, asOf, { ...options, cardFacts });
   snapshot.accounting = {
     version: accountingVersion,
     currency: config.reportingCurrency,
@@ -36,5 +38,5 @@ export function buildReportingPortfolio(cards: PortfolioCardRecord[], scope: Por
     id: card.id, playerName: card.playerName, cardTitle: card.cardTitle ?? "",
     reasons: [...new Set([...card.missing, ...(unvaluedIds.has(card.id) ? ["VALUATION"] : [])])]
   }] : []);
-  return { snapshot, cards: projected, incompleteCards };
+  return { snapshot, cards: projected, incompleteCards, cardFacts };
 }

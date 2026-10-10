@@ -4,12 +4,12 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const {
   assertArtifactSize,
-  assertPackagedTreeClean,
   defaultArtifactLimits,
   prunePrismaTempEngines
 } = require("./release-bundle-hygiene");
 const { resolveWindowsSigning } = require("./windows-signing");
 const { inspectAuthenticodeSignature, verifyAuthenticodeSignature } = require("./authenticode");
+const { verifyPackagedApplication } = require("./packaged-app");
 
 const rootDir = path.resolve(__dirname, "..");
 const packageJson = require(path.join(rootDir, "package.json"));
@@ -57,12 +57,10 @@ function removeArtifact(targetPath) {
 }
 
 function cleanDistDirectory() {
-  if (fs.existsSync(distDir)) {
-    for (const entry of fs.readdirSync(distDir)) {
-      removeArtifact(path.join(distDir, entry));
-    }
-  }
   fs.mkdirSync(distDir, { recursive: true });
+  // Replace only this release and temporary build output; preserve older releases.
+  for (const target of [setupPath, zipPath, checksumPath, unpackedDir, `${setupPath}.blockmap`,
+    ...["latest.yml", "builder-debug.yml", "builder-effective-config.yaml"].map(name => path.join(distDir, name))]) removeArtifact(target);
 }
 
 function resolveBundledNsisToolEnv() {
@@ -87,28 +85,8 @@ function resolveBundledNsisToolEnv() {
 }
 
 function verifyPackagedFiles() {
-  const appRoot = path.join(unpackedDir, "resources", "app");
-  const packagedPackagePath = path.join(appRoot, "package.json");
-  const prismaSchemaPath = path.join(appRoot, "node_modules", ".prisma", "client", "schema.prisma");
-  const swcHelpersPath = path.join(appRoot, "node_modules", "@swc", "helpers", "package.json");
-  const buildIdPath = path.join(appRoot, ".next", "BUILD_ID");
-  const executablePath = path.join(unpackedDir, "Card Vault.exe");
-  for (const requiredPath of [packagedPackagePath, prismaSchemaPath, swcHelpersPath, buildIdPath, executablePath, setupPath]) {
-    if (!fs.existsSync(requiredPath)) {
-      throw new Error(`Packaged release is missing: ${requiredPath}`);
-    }
-  }
-
-  const packagedPackage = JSON.parse(fs.readFileSync(packagedPackagePath, "utf8"));
-  const prismaSchema = fs.readFileSync(prismaSchemaPath, "utf8");
-  if (packagedPackage.version !== packageJson.version) {
-    throw new Error(`Packaged version ${packagedPackage.version} does not match ${packageJson.version}.`);
-  }
-  if (!prismaSchema.includes("model ShareSection") || !prismaSchema.includes("presentationConfig")) {
-    throw new Error("Packaged Prisma Client does not contain the current share collection schema.");
-  }
-  assertPackagedTreeClean(appRoot);
-  return executablePath;
+  if (!fs.existsSync(setupPath)) throw new Error(`Packaged release is missing: ${setupPath}`);
+  return verifyPackagedApplication(unpackedDir, packageJson.version, { buildId: fs.readFileSync(path.join(rootDir, ".next", "BUILD_ID"), "utf8") });
 }
 
 function smokeTestPackagedRuntime(executablePath) {
@@ -180,6 +158,7 @@ async function main() {
   }
   smokeTestPackagedRuntime(executablePath);
   verifyPackagedHealthEndpoint(executablePath);
+  run("node", ["scripts/test-packaged-desktop.js", executablePath], { timeout: 180000 });
   removeArtifact(path.join(unpackedDir, "resources", "app", "logs"));
   createPortableZip();
   assertArtifactSize(setupPath, defaultArtifactLimits.installer, "Windows installer");

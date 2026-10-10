@@ -21,9 +21,7 @@
   purchaseDate: string;
   initialQuantity: string;
   purchasePrice: string;
-  secondaryPurchasePrice: string;
   gradingFee: string;
-  totalCost: string;
   currentValue: string;
   purchaseSource: string;
   historyCurrency: string;
@@ -63,9 +61,7 @@ export const emptyCardFormValues: CardFormValues = {
   purchaseDate: "",
   initialQuantity: "1",
   purchasePrice: "",
-  secondaryPurchasePrice: "",
   gradingFee: "",
-  totalCost: "",
   currentValue: "",
   purchaseSource: "",
   historyCurrency: "CNY",

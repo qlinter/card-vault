@@ -13,7 +13,8 @@ import {
   expenseKindLabels,
   formatHistoryDateInput,
   formatHistoryDateLabel,
-  transactionLabels
+  transactionLabels,
+  valuationSourceLabel
 } from "@/lib/financial-history-presentation";
 
 type FinancialHistoryProps = {
@@ -75,7 +76,7 @@ function recordImpact(item: TimelineItem): string {
 function recordSource(item: TimelineItem): string | null {
   if (item.type === "transaction") return item.record.source;
   if (item.type === "expense") return item.record.vendor;
-  return item.record.source;
+  return valuationSourceLabel(item.record.source);
 }
 
 function AddRecord({ cardId, returnTo, transactions, isOpen, onClose }: { cardId: string; returnTo?: string; transactions: CardTransaction[]; isOpen: boolean; onClose: () => void }) {

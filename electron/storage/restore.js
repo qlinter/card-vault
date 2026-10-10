@@ -5,7 +5,9 @@ const { dateFolderName, uniqueBackupTarget } = require("./backup");
 const { isSubPath, pathsEqual } = require("./file-utils");
 const { inspectDataFolder } = require("./health");
 const { mapProgress, reportProgress } = require("./progress");
-const { verifyBackupManifest, databaseCounts } = require("./backup-manifest");
+const { verifyBackupManifest, writeBackupManifest, databaseCounts } = require("./backup-manifest");
+const { saveRestoreJournal, clearRestoreJournal, recoverInterruptedRestore } = require("./restore-journal");
+const { normalizeValuationSourceSchema } = require("../../scripts/valuation-source-schema");
 
 function resolveRestoreSourcePath(selectedPath) {
   if (typeof selectedPath !== "string" || selectedPath.trim() === "") return null;
@@ -22,6 +24,7 @@ function createRestoreService({ config, backupDataFolder, ensureDataLayout }) {
     const sourceDataDir = resolveRestoreSourcePath(selectedPath);
     if (!sourceDataDir) throw new Error("所选文件夹中未找到可恢复的 dev.db。请选择一键备份生成的日期文件夹或其中的 data 文件夹。");
     const targetDataDir = path.resolve(config.getDataDir());
+    recoverInterruptedRestore(targetDataDir);
     if (pathsEqual(sourceDataDir, targetDataDir) || isSubPath(targetDataDir, sourceDataDir) || isSubPath(sourceDataDir, targetDataDir)) throw new Error("恢复来源和当前数据目录不能互相包含。");
     const verification = verifyBackupManifest(sourceDataDir);
     validateDatabase(path.join(sourceDataDir, "dev.db"));
@@ -37,6 +40,7 @@ function createRestoreService({ config, backupDataFolder, ensureDataLayout }) {
     const suffix = `${Date.now()}-${process.pid}`;
     const stagingDir = path.join(parentDir, `.${baseName}-restore-staging-${suffix}`);
     const rollbackDir = path.join(parentDir, `.${baseName}-restore-rollback-${suffix}`);
+    let journal = { suffix, staging: stagingDir, rollback: rollbackDir };
     let schema = { schemaVersion: null };
     let restoredHealth = null;
     let retainedRollbackPath = null;
@@ -47,17 +51,23 @@ function createRestoreService({ config, backupDataFolder, ensureDataLayout }) {
       verifyBackupManifest(stagingDir);
       if (inspectDataFolder(stagingDir, mapProgress(onProgress, 64, 80)).integrity !== "ok") throw new Error("备份复制到临时目录后完整性检查失败。");
       reportProgress(onProgress, 81, "正在验证恢复数据的数据库结构...");
+      const sourceUpdate = normalizeValuationSourceSchema(path.join(stagingDir, "dev.db"), { backup: false });
       schema = validateDatabase(path.join(stagingDir, "dev.db"));
       if (inspectDataFolder(stagingDir, mapProgress(onProgress, 82, 86)).integrity !== "ok") throw new Error("备份数据库结构验证后的完整性检查失败。");
-      const report = { version: 1, restoredAt: new Date().toISOString(), verification, afterCounts: databaseCounts(stagingDir), schemaVersion: schema.schemaVersion, safetyBackupPath };
+      const report = { version: 1, restoredAt: new Date().toISOString(), verification, afterCounts: databaseCounts(stagingDir), schemaVersion: schema.schemaVersion, safetyBackupPath, sourceUpdate };
       fs.writeFileSync(path.join(stagingDir, "restore-report.json"), JSON.stringify(report, null, 2));
+      writeBackupManifest(stagingDir);
+      journal = saveRestoreJournal(targetDataDir, journal, "prepared");
       if (fs.existsSync(targetDataDir)) { reportProgress(onProgress, 84, "正在保留当前数据以便回滚..."); fs.renameSync(targetDataDir, rollbackDir); }
+      journal = saveRestoreJournal(targetDataDir, journal, "original-preserved");
       try {
         reportProgress(onProgress, 88, "正在切换到恢复后的数据目录...");
         fs.renameSync(stagingDir, targetDataDir);
-        ensureDataLayout(targetDataDir);
+        journal = saveRestoreJournal(targetDataDir, journal, "switched");
+        ensureDataLayout(targetDataDir, { recover: false });
         restoredHealth = inspectDataFolder(targetDataDir, mapProgress(onProgress, 92, 99));
         if (restoredHealth.integrity !== "ok") throw new Error("恢复后的数据库校验失败，正在还原原数据。");
+        saveRestoreJournal(targetDataDir, journal, "verified");
       } catch (error) {
         if (fs.existsSync(rollbackDir)) {
           if (fs.existsSync(targetDataDir)) fs.renameSync(targetDataDir, stagingDir);
@@ -69,7 +79,17 @@ function createRestoreService({ config, backupDataFolder, ensureDataLayout }) {
         try { fs.rmSync(rollbackDir, { recursive: true, force: true }); }
         catch { retainedRollbackPath = rollbackDir; }
       }
-    } catch (error) { if (fs.existsSync(stagingDir)) fs.rmSync(stagingDir, { recursive: true, force: true }); throw error; }
+      clearRestoreJournal(targetDataDir);
+    } catch (error) {
+      if (fs.existsSync(rollbackDir)) {
+        // This also covers journal writes failing immediately after preserving the original.
+        try { recoverInterruptedRestore(targetDataDir); }
+        catch { /* Keep the journal and original directory for recovery on the next start. */ }
+      }
+      if (!fs.existsSync(rollbackDir)) clearRestoreJournal(targetDataDir);
+      if (!fs.existsSync(rollbackDir) && fs.existsSync(stagingDir)) fs.rmSync(stagingDir, { recursive: true, force: true });
+      throw error;
+    }
     const result = { restoredFrom: sourceDataDir, restoredTo: targetDataDir, safetyBackupPath, retainedRollbackPath, schemaVersion: schema.schemaVersion, health: restoredHealth };
     reportProgress(onProgress, 100, "数据恢复完成。");
     return result;

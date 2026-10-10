@@ -58,3 +58,21 @@ test("restore rejects media changed during copying before switching current data
   assert.equal(fs.readFileSync(path.join(source, "marker.txt"), "utf8"), "incoming");
   assert.ok(!fs.readdirSync(root).some(name => name.includes("restore-staging")));
 });
+
+test("journal write failure after preserving the original rolls back immediately", t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "card-vault-journal-full-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const target = path.join(root, "current"), source = path.join(root, "incoming");
+  for (const folder of [target, source]) initializeDatabase(path.join(folder, "dev.db"));
+  fs.writeFileSync(path.join(target, "marker.txt"), "original");
+  require("../electron/storage/backup-manifest").writeBackupManifest(source);
+  const write = fs.writeFileSync;
+  t.mock.method(fs, "writeFileSync", (file, contents, options) => {
+    if (String(file).includes("restore-journal") && String(contents).includes('"original-preserved"')) throw Object.assign(new Error("journal disk full"), { code: "ENOSPC" });
+    return write(file, contents, options);
+  });
+  const service = createRestoreService({ config: { getDataDir: () => target, getDbPath: () => path.join(target, "dev.db"), getBackupDir: () => path.join(root, "backups") }, backupDataFolder: () => ({ backupPath: "safety" }), ensureDataLayout: () => { throw new Error("must not switch"); } });
+  assert.throws(() => service.restoreDataFolder(source), /journal disk full/);
+  assert.equal(fs.readFileSync(path.join(target, "marker.txt"), "utf8"), "original");
+  assert.ok(!fs.readdirSync(root).some(name => name.includes("restore-rollback") || name.includes("restore-journal")));
+});

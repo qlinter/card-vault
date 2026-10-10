@@ -2,7 +2,7 @@
 
 import { UiText } from "@/components/ui-text";
 import { useEffect, useRef, useState } from "react";
-import { ValuationSourceSelect } from "@/components/financial-history-selects";
+import { HistoryCurrencySelect, ValuationSourceSelect } from "@/components/financial-history-selects";
 import { useLanguage } from "./language-provider";
 import { defaultInitialQuantityForStatus } from "@/lib/card-quantity";
 
@@ -10,9 +10,7 @@ type InvestmentInputsProps = {
   initialQuantity: string;
   collectionStatus: string;
   purchasePrice: string;
-  secondaryPurchasePrice: string;
   gradingFee: string;
-  totalCost: string;
   currentValue: string;
   currency: string;
   valuationDate: string;
@@ -37,9 +35,7 @@ export function InvestmentInputs({
   initialQuantity,
   collectionStatus,
   purchasePrice,
-  secondaryPurchasePrice,
   gradingFee,
-  totalCost,
   currentValue,
   currency,
   valuationDate,
@@ -55,11 +51,7 @@ export function InvestmentInputs({
   const previousCollectionStatusRef = useRef(collectionStatus);
   const [purchasePriceValue, setPurchasePriceValue] = useState(purchasePrice);
   const [gradingFeeValue, setGradingFeeValue] = useState(gradingFee);
-  const [totalCostValue, setTotalCostValue] = useState(totalCost);
-
-  useEffect(() => {
-    setTotalCostValue(formatMoneyInput(parseMoney(purchasePriceValue) + parseMoney(gradingFeeValue)));
-  }, [purchasePriceValue, gradingFeeValue]);
+  const totalCostValue = formatMoneyInput(parseMoney(purchasePriceValue) + parseMoney(gradingFeeValue));
 
   useEffect(() => {
     const form = quantityInputRef.current?.form;
@@ -86,7 +78,7 @@ export function InvestmentInputs({
     <>
       <label className="field">
         <span><UiText text={"币种"} /></span>
-        <select name="historyCurrency" value={currencyValue} onChange={(event) => setCurrencyValue(event.target.value)}><option value="CNY">CNY</option><option value="USD">USD</option></select>
+        <HistoryCurrencySelect name="historyCurrency" value={currencyValue} onChange={(event) => setCurrencyValue(event.target.value)} compact />
       </label>
 
       <label className="field">
@@ -125,14 +117,9 @@ export function InvestmentInputs({
         />
       </label>
 
-      <label className="field" data-i18n-skip>
-        <span>{text("另一币种购买金额（可选）", "Additional purchase payment (optional)")} · {currencyValue === "CNY" ? "USD" : "CNY"}</span>
-        <input name="secondaryPurchasePrice" inputMode="decimal" defaultValue={secondaryPurchasePrice} />
-      </label>
-
       <label className="field">
-        <span data-i18n-skip>{text("主币种投入小计", "Primary currency subtotal")} · {currencyValue}</span>
-        <input name="totalCost" type="text" inputMode="decimal" value={totalCostValue} readOnly />
+        <span data-i18n-skip>{text("投入小计", "Cost subtotal")} · {currencyValue}</span>
+        <input type="text" inputMode="decimal" value={totalCostValue} readOnly />
       </label>
 
       <label className="field">

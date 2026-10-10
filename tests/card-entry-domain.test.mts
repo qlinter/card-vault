@@ -18,7 +18,8 @@ test("draft values keep only known bounded fields and stable defaults", () => {
     notes: "x".repeat(10_100),
     isRookie: true,
     visibility: "",
-    unknown: "must not persist"
+    unknown: "must not persist",
+    totalCost: "999999"
   });
 
   assert.equal(values.playerName, "Test Player");
@@ -26,6 +27,7 @@ test("draft values keep only known bounded fields and stable defaults", () => {
   assert.equal(values.isRookie, true);
   assert.equal(values.visibility, "private");
   assert.equal((values as unknown as Record<string, unknown>).unknown, undefined);
+  assert.equal("totalCost" in values, false);
   assert.deepEqual(parseCardEntryDraftValues(serializeCardEntryDraftValues(values)), values);
   assert.deepEqual(parseCardEntryDraftValues("not-json"), emptyCardFormValues);
 });

@@ -23,7 +23,7 @@ async function main() {
     const uploads = path.join(data, "uploads"); fs.mkdirSync(uploads, { recursive: true });
     const picture = await sharp(Buffer.from('<svg width="1600" height="2400"><defs><linearGradient id="g"><stop stop-color="#235275"/><stop offset="1" stop-color="#d6b376"/></linearGradient></defs><rect width="1600" height="2400" fill="url(#g)"/><circle cx="800" cy="1000" r="650" fill="#ffffff" opacity=".25"/><rect x="200" y="1900" width="1200" height="220" fill="#273744"/></svg>')).webp({ quality: 85 }).toBuffer();
     const template = path.join(root, "image.webp"); fs.writeFileSync(template, picture);
-    server = startTestServer(port, { ...env, ...sampler.env }, output);
+    server = startTestServer(port, { ...env, ...sampler.env, CARD_VAULT_PROFILE_PORTFOLIO: "1" }, output);
     await waitForServer(base, output, server, "Dense benchmark");
     const card = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,holdingQuantity) VALUES(?,'Dense benchmark',?,'Basketball',1)");
     const transaction = db.prepare("INSERT INTO CardTransaction(id,cardId,kind,amountMinor,currency,quantity,occurredAt,provenance) VALUES(?,?,?,?,'CNY',?,?,'benchmark')");
@@ -72,6 +72,7 @@ async function main() {
         const response = await fetch(base + card.imagePath, { headers: { Connection: "close" } }); assert.equal(response.status, 200); await response.arrayBuffer();
       }));
       const thumbnailsMs = Math.round(performance.now() - thumbnailStart);
+      const portfolioStart = output.length;
       const portfolio = await timed("/portfolio");
       assert.ok(!portfolio.text.includes('"digest":"'), "portfolio render must not return a streamed server error");
       db.exec("UPDATE CardValuation SET amountMinor=amountMinor+1 WHERE cardId='dense-00000'");
@@ -79,7 +80,8 @@ async function main() {
       const changed = await timed("/api/cards?sort=valueCnyDesc");
       await new Promise(resolve => setTimeout(resolve, 300));
       const memory = sampler.read();
-      const result = { cards: size, ledgerRows: size * 38, imageFiles: size * 2, coldMs: first.ms, warmMs: warm.ms, singleCardRefreshMs: changed.ms, portfolioMs: portfolio.ms, first24ThumbnailsMs: thumbnailsMs, rssMb: Math.round(memory.rss / 1048576), sampledPeakRssMb: Math.round(memory.peak / 1048576) };
+      const portfolioProfile = output.slice(portfolioStart).join("").split(/\r?\n/).filter(line => line.includes('"event":"portfolio-profile"')).map(line => JSON.parse(line)).at(-1);
+      const result = { cards: size, ledgerRows: size * 38, imageFiles: size * 2, coldMs: first.ms, warmMs: warm.ms, singleCardRefreshMs: changed.ms, portfolioMs: portfolio.ms, portfolioProfile, first24ThumbnailsMs: thumbnailsMs, rssMb: Math.round(memory.rss / 1048576), sampledPeakRssMb: Math.round(memory.peak / 1048576) };
       results.push(result);
       console.log(JSON.stringify(result));
     }

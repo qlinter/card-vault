@@ -1,7 +1,9 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { recoverInterruptedRestore } = require("./restore-journal");
 
-function ensureDataLayout(dataDir) {
+function ensureDataLayout(dataDir, options = {}) {
+  const recovery = options.recover === false ? null : recoverInterruptedRestore(dataDir);
   const uploadsDir = path.join(dataDir, "uploads");
   if (fs.existsSync(path.join(uploadsDir, "dev.db")) || fs.existsSync(path.join(uploadsDir, "uploads"))) {
     throw new Error("数据目录不是当前布局，未移动、转换或删除文件。请使用当前格式的完整数据目录。");
@@ -17,7 +19,7 @@ function ensureDataLayout(dataDir) {
   fs.mkdirSync(shareCoversDir, { recursive: true });
   fs.mkdirSync(shareBackgroundsDir, { recursive: true });
   fs.mkdirSync(entryQueueDir, { recursive: true });
-
+  return recovery;
 }
 
 module.exports = { ensureDataLayout };

@@ -6,27 +6,27 @@ Card Vault is a local-first Windows sports-card collection application built wit
 
 ## Current status
 
-Source version: `1.3.5` (2026-10-04), consolidating today's application themes, finance and edit-page cleanup, view icons, AI settings, dependency security patches and removal of obsolete compatibility code. Review, validation and distribution status are maintained in the [v1.3.5 release notes](./docs/release-v1.3.5.md).
+Source version: `1.3.6` (2026-10-10). This release includes batched Portfolio aggregation, restore protection, return to filters after editing, single-currency transactions, four valuation sources and shared financial forms and package checks. Review, acceptance and Git update notes are in the [v1.3.6 release notes](./docs/release-v1.3.6.md).
 
-The v1.3.5 Windows x64 installer, portable package and SHA-256 manifest have been generated and passed the complete release gate, packaged business flows, version, content and checksum verification. Files are `dist/card-vault-1.3.5-setup.exe`, `dist/card-vault-1.3.5-portable.zip` and `dist/SHA256SUMS.txt`. These artifacts are unsigned; Windows may display Unknown Publisher or SmartScreen prompts. See the release notes for sizes, hashes and validation scope.
+The Windows x64 installer and portable package have been generated and independently verified: `dist/card-vault-1.3.6-setup.exe`, `dist/card-vault-1.3.6-portable.zip` and `dist/SHA256SUMS.txt`. See the release notes for sizes, unsigned status, acceptance scope and checksums. Earlier release facts and files are retained.
 
-## Latest version: v1.3.5
+## Latest version: v1.3.6
 
-1. **Themes**: Classic, Minimal Gallery, Midnight Collection and Warm Archive preserve typography and remember the user's choice. Classic uses the Home background throughout. Settings show only previews, names and selection state; share themes remain independent.
-2. **Finance and editing**: rename the detail section to Finance and remove duplicate finance buttons, separation notices and the edit-page heading. Transactions, expenses and valuations remain editable directly in card details.
-3. **View controls**: use consistent icons across Home, Showcase and data export, preserving accessible names, selection state and remembered views.
-4. **AI settings**: keep Endpoint and API Key labels unchanged across services. Add Custom AI belongs to service selection; remove the parallel configuration heading, compatibility explanation and creation message.
-5. **Code cleanup**: remove retired target-card branches, old media-path conversion, old snapshot coverage fallback and duplicate CNY summaries. Unify report sorting, remove redundant wrapper modules and centralize bilingual release highlights and dates.
-6. **Reliability**: update dependency security patches and validate theme first paint, persistence, page colors and current data formats. Source, business, UI and later packaged-runtime checks are recorded separately.
+1. **Large collections**: read 250 cards per batch to reduce peak memory for dense history while preserving statistics, ordering, missing values and accounting results.
+2. **Restore protection**: persisted journals cover directory switching, recover the correct data after process interruption and retain the original storage and safety backup on failure.
+3. **Editing navigation**: Back returns to the original filters after saving or cancelling. Repeated cancellation, refresh and unavailable browser storage have regression coverage.
+4. **Finance entry**: each transaction uses one currency. Extra-currency amounts and the incomplete-amount checkbox are removed. Sources are Personal Valuation, KaTao Sale, eBay Sale and Others. Historical recent sales become KaTao; restore converts only the staging copy.
+5. **Code organization**: entry and details share financial fields and currency controls; subtotal is derived directly; positions reuse financial types; styles are split by responsibility, and release/package verification shares checks and hygiene rules.
+6. **Documentation and distribution**: synchronize both READMEs, specifications, in-app guidance and roadmaps, consolidate development records and retain historical releases. Full source, packaged business and real desktop checks are part of release generation.
 
-The schema marker, accounting and backup protocols retain their current versions. New databases omit retired notification and CNY summary fields; existing databases are not altered, upgraded or rewritten. Only complete current formats are accepted; data-directory migration and backup restore remain available. See the [backup guide](./docs/data-backup-guide.md) and [financial model](./docs/financial-history-model.md).
+Schema, accounting and backup protocols keep their current versions. All historical collections already use the complete current format. Startup and restore adjust source categories only, preserving amounts, dates and notes; historical unknown costs do not become zero. See the [backup guide](./docs/data-backup-guide.md) and [financial model](./docs/financial-history-model.md).
 
 ## Features
 
 - Themes: switch between Classic, Minimal Gallery, Midnight Collection and Warm Archive in Settings. Typography is preserved and the choice persists; share themes remain independent. See [application themes](./docs/app-themes.md).
 - Home: search, filters, global financial ordering, paginated loading and remembered Cards/List views with consistent icon controls.
 - Cards: up to five images, rotation, drafts, continuous entry, templates, duplicate hints, batch image preparation and AI candidates requiring review.
-- Finance: one physical quantity, mixed CNY/USD payments, moving-average cost, transaction/expense/valuation history, manual FX and explicit incomplete-data states.
+- Finance: one physical quantity, one currency per transaction, moving-average cost, transaction/expense/valuation history, manual FX and explicit incomplete-data states.
 - Showcase and Portfolio: collection browsing, structure and historical trends, quality queues, saved views, frozen snapshots and comparison.
 - Shares: editable galleries, themes, sections and stories, shared preview/export rendering, static packages and the existing manual Drop workflow.
 - Plans: 180-day maintenance reminders, 7/30-day digests, wishlists and separate currency budgets.
@@ -74,10 +74,11 @@ Keep a full backup before upgrades or moving computers. CSV/XLSX files omit medi
 
 ## Historical releases
 
-All 29 earlier versions are retained below, newest first. These summaries describe each release at the time; current behavior and compatibility follow the latest documentation. The original bilingual summaries were recovered from the v1.2.1 README files, with v1.3.0–v1.3.3 added from their release notes. Early standalone release notes were not found; see [historical sources and gaps](./docs/version-history-sources.md).
+All 30 earlier versions are retained below, newest first. These summaries describe each release at the time; current behavior and compatibility follow the latest documentation. The original bilingual summaries were recovered from the v1.2.1 README files, with v1.3.0–v1.3.3 added from their release notes. Early standalone release notes were not found; see [historical sources and gaps](./docs/version-history-sources.md).
 
 | Version | Main changes | Source |
 | --- | --- | --- |
+| `1.3.5` | Added four application themes, refined Finance, editing and AI settings, unified icons, updated dependencies and removed obsolete compatibility code. | [Release notes](./docs/release-v1.3.5.md) |
 | `1.3.4` | Unified collection statuses and holding coverage, added entry financial records, improved Home, wishes and navigation, and consolidated structure and checks. | [Release notes](./docs/release-v1.3.4.md) |
 | `1.3.3` | Added DeepSeek, improved financial and Portfolio layouts, and consolidated AI configuration and architecture. | [Release notes](./docs/release-v1.3.3.md) |
 | `1.3.2` | Security and startup fixes, settings/restore protection, dense Portfolio history and streamed exports, with shared ZIP and performance helpers. | [Release notes](./docs/release-v1.3.2.md) |
@@ -112,7 +113,7 @@ All 29 earlier versions are retained below, newest first. These summaries descri
 
 - [Historical sources and gaps](./docs/version-history-sources.md): recovered README history and documentation policy.
 - [Documentation index](./docs/README.md): current specifications and release history.
-- [v1.3.5 release notes](./docs/release-v1.3.5.md): themes, interface and AI settings, compatibility cleanup, source and distribution validation, checksums and Git update notes.
+- [v1.3.6 release notes](./docs/release-v1.3.6.md): scale and restore improvements, navigation and Finance, code organization, source/package validation, checksums and Git update notes.
 - [Product roadmap](./docs/product-roadmap.en.md); [中文](./docs/product-roadmap.md).
 
 Application source lives in `app`, `components`, `lib` and `electron`. `scripts` handles preparation, tests and distribution; `tests` contains regressions and visual baselines. Git ignores personal data, secrets, `node_modules`, `.next`, `logs`, `dist` and test runtime files. Both READMEs retain detailed notes for the latest version and concise entries for every earlier version. Full release notes and source provenance remain in `docs`; a new release must not remove older entries.

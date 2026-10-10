@@ -1,6 +1,7 @@
 "use client";
 
 import { UiText, UiElement } from "@/components/ui-text";
+import { valuationSourceLabel } from "@/lib/financial-history-presentation";
 import Link from "next/link";
 import { useState } from "react";
 import type {
@@ -90,7 +91,7 @@ export function PortfolioValuationSources({ snapshot }: { snapshot: PortfolioSna
     <div className={styles.sourceList}>
       {snapshot.financials.valuationSources.map((item) => {
         const share = total > 0 ? item.count / total * 100 : 0;
-        return <div key={item.name}><div><span><UiText text={item.name} /></span><strong>{item.count}<UiText text={" 张 · "} />{formatPercentage(share, { fractionDigits: 1 })}</strong></div><i><b style={{ width: `${share}%` }} /></i></div>;
+        return <div key={item.name}><div><span><UiText text={valuationSourceLabel(item.name)} /></span><strong>{item.count}<UiText text={" 张 · "} />{formatPercentage(share, { fractionDigits: 1 })}</strong></div><i><b style={{ width: `${share}%` }} /></i></div>;
       })}
       {total === 0 ? <p className={styles.emptyText}><UiText text={"暂无估值来源数据。"} /></p> : null}
     </div>

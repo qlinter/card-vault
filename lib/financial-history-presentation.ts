@@ -1,3 +1,9 @@
+import { valuationSourceLabels } from "./valuation-sources.js";
+
+export function valuationSourceLabel(source: string): string {
+  return valuationSourceLabels[source as keyof typeof valuationSourceLabels] ?? source;
+}
+
 export const transactionLabels: Record<string, string> = {
   purchase: "购入",
   sale: "售出"

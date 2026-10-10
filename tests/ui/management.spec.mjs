@@ -116,6 +116,40 @@ test("failed edit retains fields, choices and newly selected images", async ({ p
   await expect(page.locator(".note-error")).toContainText("http 或 https"); await expect(page.locator('[name="playerName"]')).toHaveValue("输入保留测试"); await expect(page.locator('[name="isRookie"]')).toBeChecked(); expect(await page.locator('[name="images"]').evaluate(input => input.files.length)).toBe(1);
   expect(fixture(db => db.prepare("SELECT playerName FROM Card WHERE id='management-ui'").get().playerName)).toBe("卡片数量");
 });
+
+for (const blockedStorage of [false, true]) {
+  test(`Back after editing returns to filtered cards, including reload and unavailable storage (${blockedStorage})`, async ({ page }) => {
+    if (blockedStorage) await page.addInitScript(() => { Storage.prototype.getItem = () => { throw new Error("storage disabled"); }; Storage.prototype.setItem = () => { throw new Error("storage disabled"); }; });
+    const query = new URLSearchParams({ q: "卡片数量", sort: "yearAsc", collectionStatus: "holding" });
+    await page.goto(`/?${query}`, { waitUntil: "networkidle" });
+    await page.getByTestId("home-card-grid").locator(".card-item a").first().click();
+    await page.locator(".title-row").getByRole("link", { name: "编辑", exact: true }).click();
+    await page.locator('[name="notes"]').fill("完成编辑后应回到筛选结果");
+    await page.getByRole("button", { name: "保存修改", exact: true }).click();
+    await expect(page).toHaveURL(/success=updated/);
+    await page.reload({ waitUntil: "networkidle" });
+    await page.getByRole("link", { name: "返回上一页", exact: true }).click();
+    await expect(page).toHaveURL(url => url.pathname === "/" && [...query].every(([key, value]) => url.searchParams.get(key) === value) && url.searchParams.size === query.size);
+    await expect(page.locator('[name="q"]')).toHaveValue("卡片数量");
+    await expect(page.getByTestId("home-card-grid").locator(".card-item")).toHaveCount(1);
+    expect(fixture(db => db.prepare("SELECT notes FROM Card WHERE id='management-ui'").get().notes)).toBe("完成编辑后应回到筛选结果");
+  });
+}
+
+for (const blockedStorage of [false, true]) test(`cancelled repeated edits are skipped while ordinary detail navigation returns one step (${blockedStorage})`, async ({ page }) => {
+  if (blockedStorage) await page.addInitScript(() => { Storage.prototype.getItem = () => { throw new Error("storage disabled"); }; Storage.prototype.setItem = () => { throw new Error("storage disabled"); }; });
+  await page.goto("/?q=卡片数量", { waitUntil: "networkidle" });
+  await page.getByTestId("home-card-grid").locator(".card-item a").first().click();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.locator(".title-row").getByRole("link", { name: "编辑", exact: true }).click();
+    await page.getByRole("link", { name: "取消", exact: true }).click();
+  }
+  await page.getByRole("link", { name: "返回上一页", exact: true }).click();
+  await expect(page).toHaveURL("http://127.0.0.1:3360/?q=卡片数量");
+  await page.getByTestId("home-card-grid").locator(".card-item a").first().click();
+  await page.getByRole("link", { name: "返回上一页", exact: true }).click();
+  await expect(page).toHaveURL("http://127.0.0.1:3360/?q=卡片数量");
+});
 test("failed financial record preserves entered values and leaves history unchanged", async ({ page }) => {
   await page.goto("/cards/management-ui", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "＋ 新增记录", exact: true }).click();

@@ -6,6 +6,7 @@ import { buildPortfolioFinancialHistory, buildPortfolioPositionReviews, buildPor
 import { buildPortfolioQualityCards } from "../lib/portfolio-quality.ts";
 import { denseHistoryCards } from "./fixtures/dense-portfolio.ts";
 import type { PortfolioCardRecord } from "../lib/portfolio-analysis-types.ts";
+import { createPortfolioBatchAccumulator as frozenAccumulator } from "./fixtures/portfolio-batch-reference.ts";
 
 const scope = { isFiltered: true, criteria: [] };
 const asOf = new Date("2026-10-10T08:00:00Z");
@@ -44,4 +45,30 @@ test("empty filtered collections retain the existing empty snapshot and no histo
   const accumulator = createPortfolioBatchAccumulator(scope, config, asOf, "2020-01");
   accumulator.add([]);
   assert.deepEqual(accumulator.finish(), expected([]));
+});
+
+test("refactored full and summary calculations preserve the frozen implementation", () => {
+  const cards = denseHistoryCards(61, 84).map((card, index) => ({
+    ...card,
+    transactions: card.transactions.map(row => ({ ...row, amountKnown: index % 9 !== 0 })),
+    valuations: index % 7 ? card.valuations : []
+  }));
+  for (const currency of ["CNY", "USD"]) {
+    for (const size of [1, 13, 250]) {
+      const settings = { ...config, reportingCurrency: currency };
+      const frozen = frozenAccumulator(scope, settings, asOf, "2022-12");
+      const full = createPortfolioBatchAccumulator(scope, settings, asOf, "2022-12");
+      const summary = createPortfolioBatchAccumulator(scope, settings, asOf, undefined, { includeDetails: false });
+      for (let i = 0; i < cards.length; i += size) {
+        const batch = cards.slice(i, i + size);
+        frozen.add(batch); full.add(batch); summary.add(batch);
+      }
+      const reference = frozen.finish();
+      assert.deepEqual(full.finish(), reference);
+      const result = summary.finish();
+      assert.deepEqual(result.snapshot, reference.snapshot);
+      assert.deepEqual(result.financialHistory, []);
+      assert.deepEqual(result.qualityCards, []);
+    }
+  }
 });

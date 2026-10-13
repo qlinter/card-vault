@@ -9,6 +9,8 @@ import { selectLatestValuation } from "../lib/financial-history.ts";
 import { cardCollectionStatuses, collectionStatusText, normalizeCardCollectionStatus } from "../lib/card-domain.ts";
 import { resolvePositionCollectionStatus } from "../lib/position-accounting.ts";
 import { deriveCollectionTasks } from "../lib/collection-tasks.ts";
+import { reportingHistory as frozenReportingHistory } from "./fixtures/financial-reporting-reference.ts";
+import { denseHistoryCards } from "./fixtures/dense-portfolio.ts";
 
 const at = (day: string) => new Date(day + "T00:00:00Z");
 const config: FinancialConfig = { reportingCurrency: "CNY", rates: [
@@ -30,6 +32,22 @@ const history = () => ({
   ], holdingQuantity: 1
 });
 const card = () => ({ ...history(), id: "card", playerName: "A", cardTitle: "B", sport: "Basketball", collectionStatus: "holding", gradingCompany: null, grade: null, isRookie: false, isAutograph: false, isPatch: false });
+
+test("currency and valuation extraction preserves frozen projections at historical cutoffs", () => {
+  const sources = [card(), ...denseHistoryCards(24, 72)];
+  for (const reportingCurrency of ["CNY", "USD"]) {
+    for (const rates of [[], config.rates, [...config.rates, { ...config.rates[0], id: "revision", revision: 2, rateMicros: 7012345n }]]) {
+      for (const cutoff of ["2023-01-01", "2026-02-01", "2026-10-12"]) {
+        for (const source of sources) {
+          const before = structuredClone(source);
+          const settings = { reportingCurrency, rates };
+          assert.deepEqual(reportingHistory(source, settings, at(cutoff)), frozenReportingHistory(source, settings, at(cutoff)));
+          assert.deepEqual(source, before, "source financial facts must remain unchanged");
+        }
+      }
+    }
+  }
+});
 
 test("组合各维度共用最新持仓事实，下一次计算不会复用旧数量或报价", () => {
   const source = card();

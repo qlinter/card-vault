@@ -78,6 +78,9 @@ async function main() {
       const rejected = await fetch(base + '/api/data-center?export=csv');
       assert.equal(rejected.status, 400);
       assert.match((await rejected.json()).error, /两个导出/);
+      const scoutRejected = await fetch(base + '/api/scout/export?kind=keywords');
+      assert.equal(scoutRejected.status, 400);
+      assert.match((await scoutRejected.json()).error, /两个导出/);
     } finally {
       controllers.forEach(controller => controller.abort());
       await Promise.allSettled(requests);
@@ -93,7 +96,9 @@ async function main() {
     const publicResponse=await fetch(`${base}/api/data-center?export=xlsx&publicOnly=true&q=Card%200`);
     assert.equal(publicResponse.status,200);
     const publicBook=new ExcelJS.Workbook();await publicBook.xlsx.load(Buffer.from(await publicResponse.arrayBuffer()));
-    assert.equal(publicBook.worksheets.length,1);assert.equal(publicBook.worksheets[0].rowCount,2);
+    assert.equal(publicBook.worksheets.length,1);
+    const expectedPublic = db.prepare("SELECT COUNT(*) n FROM Card WHERE visibility='public' AND cardTitle LIKE '%0%'").get().n;
+    assert.equal(publicBook.worksheets[0].rowCount,expectedPublic + 1);
     assert.ok(!publicBook.worksheets[0].getRow(1).values.includes("notes"));await cleaned();
     console.log('Streaming export HTTP passed: complete rows, file sizes, cancellation and temporary cleanup.');
     fs.mkdirSync('logs',{recursive:true});fs.writeFileSync(process.argv.includes('--benchmark') ? 'logs/v132-streaming-export-benchmark.json' : 'logs/v132-streaming-export-test.json',JSON.stringify({node:process.version,samplingMs:100,results},null,2));

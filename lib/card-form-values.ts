@@ -1,4 +1,5 @@
 ﻿export type CardFormValues = {
+  wishId: string;
   playerName: string;
   cardTitle: string;
   sport: string;
@@ -39,6 +40,7 @@
 };
 
 export const emptyCardFormValues: CardFormValues = {
+  wishId: "",
   playerName: "",
   cardTitle: "",
   sport: "",

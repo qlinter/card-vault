@@ -66,6 +66,7 @@ export function FilterBar({
 
   return (
     <form className="panel" method="get">
+      {query.wish ? <input type="hidden" name="wish" value={query.wish} /> : null}
       <div className="filters">
         <UiElement as="input" uiAttributes={["placeholder", "aria-label"]}
           aria-label="搜索收藏"

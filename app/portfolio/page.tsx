@@ -1,3 +1,6 @@
+import { Suspense } from "react";
+import { ComparisonLoading } from "@/components/page-loading";
+import { RefreshPageButton } from "@/components/page-recovery";
 import { UiText } from "@/components/ui-text";
 import { PortfolioAnalysisButton } from "@/components/portfolio-analysis";
 import { PortfolioCenter } from "@/components/portfolio-center";
@@ -7,7 +10,7 @@ import { DisclosureIcon } from "@/components/disclosure-icon";
 import { errorMessage } from "@/lib/feedback-messages";
 import { normalizePortfolioFilterInput } from "@/lib/portfolio-analysis";
 import { listSavedPortfolioViews, listStoredPortfolioSnapshots } from "@/lib/portfolio-persistence";
-import { loadPortfolioComparison, loadPortfolioSnapshot } from "@/lib/portfolio-snapshot-service";
+import { loadPortfolioComparison, loadPortfolioSnapshot, type PortfolioSnapshotResult } from "@/lib/portfolio-snapshot-service";
 import { buildQueryHref, toScalar } from "@/lib/query-params";
 import styles from "@/components/portfolio-center.module.css";
 
@@ -16,6 +19,27 @@ export const dynamic = "force-dynamic";
 type PortfolioPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+async function ComparisonResult({ left, right, current }: {
+  left?: string;
+  right?: string;
+  current: PortfolioSnapshotResult;
+}) {
+  let comparison;
+  let comparisonError = "";
+  try {
+    comparison = await loadPortfolioComparison(left, right, current);
+  } catch (error) {
+    comparisonError = errorMessage(error, "组合比较失败。");
+  }
+  if (comparisonError) {
+    return <div className="page-recovery-actions">
+      <p role="alert" className="note-error"><UiText text={comparisonError} /></p>
+      <RefreshPageButton />
+    </div>;
+  }
+  return comparison ? <PortfolioComparisonPanel comparison={comparison} /> : null;
+}
 
 export default async function PortfolioPage({ searchParams }: PortfolioPageProps) {
   const params = await searchParams;
@@ -30,17 +54,6 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
   ));
   const query = activeView?.query ?? requestedQuery;
   const result = await loadPortfolioSnapshot(query, { allowEmpty: true });
-  let comparison = null;
-  let comparisonError: string | null = null;
-  try {
-    comparison = await loadPortfolioComparison(
-      toScalar(params.compareLeft),
-      toScalar(params.compareRight),
-      result
-    );
-  } catch (error) {
-    comparisonError = errorMessage(error, "组合比较失败。");
-  }
   const success = toScalar(params.success);
   const error = toScalar(params.error) ?? (activeViewId && !activeView ? "收藏视图不存在或已删除。" : null);
   const returnTo = buildQueryHref("/portfolio", {
@@ -58,7 +71,6 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
       <h1 className="sr-only"><UiText text="组合" /></h1>
       {success ? <p className="note-ok"><UiText text={success} /></p> : null}
       {error ? <p className="note-error"><UiText text={error} /></p> : null}
-      {comparisonError ? <p className="note-error">{comparisonError}</p> : null}
       <details className={`${styles.portfolioZone} ${styles.comparisonWorkspace}`}>
         <summary className={`${styles.zoneHeader} ${styles.zoneSummary}`}>
           <div><h2><UiText text={"视图与比较"} /></h2></div>
@@ -75,7 +87,9 @@ export default async function PortfolioPage({ searchParams }: PortfolioPageProps
             compareLeft={toScalar(params.compareLeft)}
             compareRight={toScalar(params.compareRight)}
           />
-          {comparison ? <PortfolioComparisonPanel comparison={comparison} /> : null}
+          <Suspense key={`${toScalar(params.compareLeft)}:${toScalar(params.compareRight)}`} fallback={<ComparisonLoading />}>
+            <ComparisonResult left={toScalar(params.compareLeft)} right={toScalar(params.compareRight)} current={result} />
+          </Suspense>
         </div>
       </details>
 

@@ -11,7 +11,7 @@ import {
   deleteStoredPortfolioSnapshot,
   getSavedPortfolioView
 } from "@/lib/portfolio-persistence";
-import { loadPortfolioSnapshot } from "@/lib/portfolio-snapshot-service";
+import { loadPortfolioSummary } from "@/lib/portfolio-snapshot-service";
 import { buildQueryHref } from "@/lib/query-params";
 
 function textValue(value: FormDataEntryValue | null): string {
@@ -65,7 +65,7 @@ export async function createPortfolioSnapshotAction(formData: FormData): Promise
     const savedView = savedViewId ? await getSavedPortfolioView(savedViewId) : null;
     if (savedViewId && !savedView) throw new Error("当前收藏视图不存在或已删除。");
     query = savedView?.query ?? queryFromJson(formData.get("queryJson"));
-    const result = await loadPortfolioSnapshot(query, { allowEmpty: true });
+    const result = await loadPortfolioSummary(query, { allowEmpty: true });
     await createStoredPortfolioSnapshot({
       name: formData.get("name"),
       query,

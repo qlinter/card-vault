@@ -57,7 +57,9 @@ function mapSavedView(view: PortfolioSavedView): SavedPortfolioView {
   };
 }
 
-function mapSnapshot(record: PortfolioSnapshotRecord): StoredPortfolioSnapshot {
+type SnapshotMetadata = Pick<PortfolioSnapshotRecord, "id" | "savedViewId" | "name" | "queryJson" | "capturedAt">;
+
+function mapSnapshot(record: SnapshotMetadata): StoredPortfolioSnapshot {
   return {
     id: record.id,
     savedViewId: record.savedViewId,
@@ -103,6 +105,8 @@ export async function deleteSavedPortfolioView(id: string): Promise<void> {
 
 export async function listStoredPortfolioSnapshots(): Promise<StoredPortfolioSnapshot[]> {
   const records = await prisma.portfolioSnapshotRecord.findMany({
+    // The picker needs metadata only; frozen financial payloads may be large.
+    select: { id: true, savedViewId: true, name: true, queryJson: true, capturedAt: true },
     orderBy: { capturedAt: "desc" },
     take: maximumStoredSnapshots
   });

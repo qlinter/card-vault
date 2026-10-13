@@ -16,6 +16,7 @@ import {
 } from "@/lib/card-entry-drafts";
 import { emptyCardFormValues } from "@/lib/card-form-values";
 import { toScalar } from "@/lib/query-params";
+import { prisma } from "@/lib/prisma";
 
 type NewCardPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -28,6 +29,8 @@ export default async function NewCardPage({ searchParams }: NewCardPageProps) {
   const draftId = normalizeCardEntryId(requestedDraftId);
   const queueId = normalizeCardEntryId(requestedQueueId);
   const success = toScalar(query.success);
+  const wishId = normalizeCardEntryId(toScalar(query.wish));
+  const wish = wishId ? await prisma.collectionPlan.findUnique({ where: { id: wishId } }) : null;
 
   const [recentDrafts, draft, queueItems, requestedQueueItem, queueNavigation] = await Promise.all([
     listRecentCardEntryDrafts(),
@@ -44,7 +47,8 @@ export default async function NewCardPage({ searchParams }: NewCardPageProps) {
     ? draft.values
     : queueItem?.recognition?.status === "review"
       ? normalizeCardFormValues(queueItem.recognition.suggestion)
-      : normalizeCardFormValues(emptyCardFormValues);
+      : normalizeCardFormValues(wish?.status === "planned" ? { ...emptyCardFormValues, wishId: wish.id, playerName: wish.playerName ?? "", cardTitle: wish.title } : emptyCardFormValues);
+  if (!draft && queueItem && wish?.status === "planned") initialValues.wishId = wish.id;
   const initialMessage = success === "created"
     ? "上一张卡片已保存，可以继续录入。"
     : requestedDraftId && !draft

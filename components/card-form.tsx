@@ -103,6 +103,7 @@ export function CardForm({
       {error ? <p className="note-error"><UiText text={error} /></p> : null}
       {mode === "edit" && returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       {mode === "create" && draftId ? <input type="hidden" name="draftId" value={draftId} /> : null}
+      {mode === "create" && values?.wishId ? <div className="note-ok"><UiText text="成功入藏后将更新关联心愿的收集进度。" /><a href={"/collection?tab=wishlist&wish=" + encodeURIComponent(values.wishId)}><UiText text="返回寻卡" /></a><input type="hidden" name="wishId" value={values.wishId} /></div> : null}
       {mode === "create" && queueItemId ? <input type="hidden" name="queueItemId" value={queueItemId} /> : null}
 
       {mode === "create" ? <CardEntryTemplatePanel /> : null}

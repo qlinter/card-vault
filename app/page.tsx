@@ -3,6 +3,8 @@ import { UiText } from "@/components/ui-text";
 import { FilterBar } from "@/components/filter-bar";
 import { HomeCardGrid } from "@/components/home-card-grid";
 import { HomeValuation } from "@/components/home-valuation";
+import { HomeOverview } from "@/components/home-overview";
+import { HomeStatusCounts } from "@/components/home-status-counts";
 import { PortfolioAnalysisButton } from "@/components/portfolio-analysis";
 import { formatMinorMoneyGrouped } from "@/lib/financial-history";
 import { buildPortfolioScope } from "@/lib/portfolio-analysis";
@@ -41,6 +43,7 @@ export default async function Home({ searchParams }: HomeProps) {
     certNumber: toScalar(params.certNumber),
     visibility: toScalar(params.visibility),
     collectionStatus: toScalar(params.collectionStatus),
+    wish: toScalar(params.wish),
     sort: toScalar(params.sort)
   };
 
@@ -51,19 +54,13 @@ export default async function Home({ searchParams }: HomeProps) {
   const valuationCurrencies = Object.keys(valuationTotals.totals);
   const successMessage = resolveSuccessMessage(toScalar(params.success), commonSuccessMessages, { passthroughUnknown: true });
   const errorMessage = toScalar(params.error);
-  const portfolioScope = buildPortfolioScope(query);
+  const portfolioScope = buildPortfolioScope(query, { wish: home.wish?.title ?? "已删除的心愿" });
   const cardListReturnHref = buildQueryHref("/", query);
 
 
   return (
     <CollectionViewProvider scope="home"><div className="page home-page">
-      <div className="summary-grid">
-        <div className="panel">
-          <strong>{<UiText text={"卡片"} />}</strong>
-          <p className="h1" style={{ marginTop: "0.35rem" }}>
-            {totalCount}
-          </p>
-        </div>
+      <HomeOverview scope={cardListReturnHref.slice(1)}>
         <div className="panel valuation-summary-card">
           <HomeValuation amounts={valuationCurrencies.map(currency => formatMinorMoneyGrouped(valuationTotals.totals[currency], currency))}>
             <PortfolioAnalysisButton cardCount={totalCount} query={query} scope={portfolioScope} />
@@ -72,10 +69,19 @@ export default async function Home({ searchParams }: HomeProps) {
             {" · "}{config.reportingCurrency}
           </small>
         </div>
-      </div>
+        <div className="panel home-card-summary">
+          <div className="home-summary-head"><strong><UiText text="卡片" /></strong></div>
+          <p className="h1">
+            {totalCount}
+          </p>
+          <HomeStatusCounts counts={home.statusCounts} scope={cardListReturnHref.slice(1)} activeStatus={query.collectionStatus} />
+        </div>
+      </HomeOverview>
 
       {successMessage ? <p className="note-ok"><UiText text={successMessage} /></p> : null}
       {errorMessage ? <p className="note-error">{<UiText text={"操作失败："} />}<UiText text={errorMessage} /></p> : null}
+
+      {query.wish ? <div className="panel home-wish-scope"><span><UiText text="关联心愿" />{": "}{home.wish?.title ?? <UiText text="心愿不存在或已删除。" />}</span><div>{home.wish ? <a href={"/collection?tab=wishlist&wish=" + encodeURIComponent(query.wish)} className="scope-navigation-link"><UiText text="返回心愿单" /></a> : null}<a href={buildQueryHref("/", { ...query, wish: undefined })} className="scope-navigation-link"><UiText text="取消心愿筛选" /></a></div></div> : null}
 
       <FilterBar
         query={query}

@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { searchTerms } from "./search-terms.ts";
 
 type CardFilterInput = {
   q?: string;
@@ -23,6 +24,7 @@ type CardFilterInput = {
   certNumber?: string;
   visibility?: string;
   collectionStatus?: string;
+  wish?: string;
   sort?: string;
 };
 
@@ -57,30 +59,30 @@ export function buildCardFilters(input: CardFilterInput): Prisma.CardWhereInput 
   const where: Prisma.CardWhereInput = {};
   const andParts: Prisma.CardWhereInput[] = [];
 
-  if (input.q) {
+  for (const term of searchTerms(input.q)) {
     andParts.push({
       OR: [
-        { playerName: { contains: input.q } },
-        { cardTitle: { contains: input.q } },
-        { sport: { contains: input.q } },
-        { team: { contains: input.q } },
-        { year: { contains: input.q } },
-        { brand: { contains: input.q } },
-        { productLine: { contains: input.q } },
-        { subsetName: { contains: input.q } },
-        { parallel: { contains: input.q } },
-        { cardNumber: { contains: input.q } },
-        { serialNumber: { contains: input.q } },
-        { serialRange: { contains: input.q } },
-        { gradingCompany: { contains: input.q } },
-        { grade: { contains: input.q } },
-        { certNumber: { contains: input.q } },
-        { autoType: { contains: input.q } },
-        { patchType: { contains: input.q } },
-        { transactions: { some: { kind: "purchase", source: { contains: input.q } } } },
-        { tags: { contains: input.q } },
-        { publicDescription: { contains: input.q } },
-        { notes: { contains: input.q } }
+        { playerName: { contains: term } },
+        { cardTitle: { contains: term } },
+        { sport: { contains: term } },
+        { team: { contains: term } },
+        { year: { contains: term } },
+        { brand: { contains: term } },
+        { productLine: { contains: term } },
+        { subsetName: { contains: term } },
+        { parallel: { contains: term } },
+        { cardNumber: { contains: term } },
+        { serialNumber: { contains: term } },
+        { serialRange: { contains: term } },
+        { gradingCompany: { contains: term } },
+        { grade: { contains: term } },
+        { certNumber: { contains: term } },
+        { autoType: { contains: term } },
+        { patchType: { contains: term } },
+        { transactions: { some: { kind: "purchase", source: { contains: term } } } },
+        { tags: { contains: term } },
+        { publicDescription: { contains: term } },
+        { notes: { contains: term } }
       ]
     });
   }
@@ -129,6 +131,9 @@ export function buildCardFilters(input: CardFilterInput): Prisma.CardWhereInput 
   }
   if (input.collectionStatus) {
     andParts.push({ collectionStatus: input.collectionStatus });
+  }
+  if (input.wish) {
+    andParts.push({ acquiredWishes: { some: { planId: input.wish } } });
   }
 
   addBooleanFilter(andParts, input.isRookie, "isRookie");

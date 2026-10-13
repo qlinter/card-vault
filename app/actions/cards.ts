@@ -60,6 +60,7 @@ export async function createCardFormAction(
     revalidatePath("/");
     revalidatePath("/showcase");
     revalidatePath("/cards/new");
+    revalidatePath("/collection");
     if (saveIntent === "view") {
       redirectPath = `/cards/${card.id}?success=created`;
     } else {

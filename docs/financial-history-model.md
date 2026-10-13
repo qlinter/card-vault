@@ -1,6 +1,6 @@
 # 财务与持仓模型
 
-产品版本：`1.3.6`；数据库结构标记：`1.3.0`；核算版本：`physical-position-v2`。数据、核算、设置、录入和展示作为一个统一批次实施。
+产品版本：`1.4.0`；数据库结构标记：`1.3.0`；核算版本：`physical-position-v2`。数据、核算、设置、录入和展示作为一个统一批次实施。
 
 卡片详情页原“财务历史”区域现统一命名为“财务”，直接在该区域新增或编辑财务记录。详情页与卡片编辑页顶部不再提供重复的“财务”按钮；编辑卡片资料的表单不展示财务分离提示。
 
@@ -81,7 +81,7 @@
 
 组合服务每批读取 250 张卡片，完成核算后释放该批原始流水，仅保留汇总、月度序列及排行候选。同一次计算复用卡片财务事实。可通过 `CARD_VAULT_PROFILE_PORTFOLIO=1` 记录查询、计算和汇总耗时；基准脚本 `scripts/benchmark-portfolio-batches.mts` 交错执行原聚合方式与分批方式，并核对完整结果一致性。
 
-财务投影与索引优化见 [v1.3.2 发布说明](./release-v1.3.2.md)；详情页财务表单统一通过 `saveFinancialRecordFormAction` 新增或修正，删除仍走独立入口。录入与导入的初始记录统一通过 `card-entry-finance-service` 写入，录入与详情字段复用 `FinancialRecordFields`，表单解析复用 `financial-history-input`，核算和数据格式保持不变。当前源码回归验收见 [v1.3.6 发布说明](./release-v1.3.6.md)。
+财务投影与索引优化见 [v1.3.2 发布说明](./release-v1.3.2.md)；详情页财务表单统一通过 `saveFinancialRecordFormAction` 新增或修正，删除仍走独立入口。录入与导入的初始记录统一通过 `card-entry-finance-service` 写入，录入与详情字段复用 `FinancialRecordFields`，表单解析复用 `financial-history-input`，核算和数据格式保持不变。当前源码回归验收见 [v1.4.0 发布说明](./release-v1.4.0.md)。
 
 ## 验算案例
 

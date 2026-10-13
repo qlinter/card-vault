@@ -42,6 +42,6 @@ Both READMEs must retain detailed notes for the latest version and concise entri
 
 ## 当前维护状态 / Current maintenance status
 
-当前源码版本为 v1.3.6；双语 README 保留从 v1.0.0 到 v1.3.5 的 30 个历史版本。本轮修改、审查与发布验收统一纳入 [v1.3.6](./release-v1.3.6.md)，旧版分发事实保留在各自发布说明；本版安装包和便携包独立验证，不沿用开发版或旧版校验结果。
+当前源码版本为 v1.4.0；双语 README 保留从 v1.0.0 到 v1.3.6 的 31 个历史版本。本轮开发、结构整理和分发验收见 [v1.4.0](./release-v1.4.0.md)，Git 更新内容见[更新说明](./git-update-v1.4.0.md)。部分历史发布文件在另一台电脑生成；Git 同步源码不代表同步发布文件或个人收藏，文件来源差异不作为代码异常。
 
-Current source is v1.3.6. Both READMEs retain 30 earlier versions, from v1.0.0 through v1.3.5. This development, review and release acceptance are consolidated into [v1.3.6](./release-v1.3.6.md). Historical distribution facts remain in their own notes. Installer and portable artifacts are validated independently, without reusing development or older artifact checks.
+Current source is v1.4.0. Both READMEs retain 31 earlier versions, from v1.0.0 through v1.3.6. Development, code organization and artifact acceptance are documented in [v1.4.0](./release-v1.4.0.md). Some historical artifacts were generated on another computer. Git source synchronization does not synchronize release artifacts or personal collections; differences in their origins are not treated as source defects.

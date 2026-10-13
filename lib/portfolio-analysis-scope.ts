@@ -23,7 +23,8 @@ export const portfolioFilterDefinitions = {
   grade: "评级",
   certNumber: "证书号",
   visibility: "公开状态",
-  collectionStatus: "收藏状态"
+  collectionStatus: "收藏状态",
+  wish: "关联心愿"
 } as const;
 
 export type PortfolioFilterInput = Record<string, string | undefined>;
@@ -69,12 +70,12 @@ function displayFilterValue(field: PortfolioFilterField, value: string): string 
   return value;
 }
 
-export function buildPortfolioScope(input: PortfolioFilterInput): PortfolioScope {
+export function buildPortfolioScope(input: PortfolioFilterInput, titles: Partial<Record<PortfolioFilterField, string>> = {}): PortfolioScope {
   const criteria: PortfolioFilterCriterion[] = [];
   for (const field of Object.keys(portfolioFilterDefinitions) as PortfolioFilterField[]) {
     const value = input[field]?.trim();
     if (value && booleanFilterFields.has(field) && !isBooleanFilterValue(value)) continue;
-    if (value) criteria.push({ field, label: portfolioFilterDefinitions[field], value: displayFilterValue(field, value) });
+    if (value) criteria.push({ field, label: portfolioFilterDefinitions[field], value: titles[field] ?? displayFilterValue(field, value) });
   }
   return { isFiltered: criteria.length > 0, criteria };
 }

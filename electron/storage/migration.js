@@ -15,7 +15,7 @@ function createMigrationService({ config, inspectDataFolder, ensureDataLayout })
     if (pathsEqual(sourceDataDir, targetDir)) { reportProgress(onProgress, 100, "所选路径与当前存储路径相同。"); return { changed: false, currentPath: sourceDataDir }; }
     if (isSubPath(sourceDataDir, targetDir) || isSubPath(targetDir, sourceDataDir)) throw new Error("新路径和当前存储路径不能互相包含，请选择其他文件夹。");
     if (hasExistingStorageData(targetDir)) {
-      validateDatabase(path.join(targetDir, "dev.db"));
+      validateDatabase(path.join(targetDir, "dev.db"), { allowPreScout: true });
       const health = inspectDataFolder(targetDir, mapProgress(onProgress, 15, 85));
       if (health.integrity !== "ok") throw new Error("所选路径中的数据库未通过完整性检查，未切换存储路径。");
       config.saveStorageConfig(targetDir); reportProgress(onProgress, 100, "已切换到现有 Card Vault 数据目录。");
@@ -31,7 +31,7 @@ function createMigrationService({ config, inspectDataFolder, ensureDataLayout })
       copyDataFilesForBackup(sourceDataDir, stagingDir, sourceDbPath, mapProgress(onProgress, 14, 52));
       const stagedDbPath = path.join(stagingDir, "dev.db");
       if (fs.existsSync(sourceDbPath)) createDatabaseSnapshot(sourceDbPath, stagedDbPath, mapProgress(onProgress, 55, 78));
-      if (fs.existsSync(stagedDbPath)) validateDatabase(stagedDbPath);
+      if (fs.existsSync(stagedDbPath)) validateDatabase(stagedDbPath, { allowPreScout: true });
       const health = fs.existsSync(stagedDbPath) ? inspectDataFolder(stagingDir, mapProgress(onProgress, 80, 92)) : null;
       if (health && health.integrity !== "ok") throw new Error("迁移暂存数据库未通过完整性检查，未切换存储路径。");
       if (targetExisted) fs.rmdirSync(targetDir);

@@ -79,7 +79,7 @@ test("midnight keeps editing, finance, charts and share designs readable and ind
     ["finance", "/cards/ui-card-1", "#financial-history"],
     ["entry", "/cards/new", ".entry-workbench-layout"],
     ["share-editor", "/shares/ui-share-1/edit", ".shares-page"],
-    ["plans", "/collection", ".plans-page"],
+    ["scout", "/collection", ".scout-page"],
     ["data", "/settings/data", ".management-card-list"]
   ]) {
     await page.goto(path, { waitUntil: "networkidle" });

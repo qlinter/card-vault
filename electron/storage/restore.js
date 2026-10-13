@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { validateDatabase } = require("../../scripts/database-schema");
+const { validateDatabase, upgradeScoutSchema } = require("../../scripts/database-schema");
 const { dateFolderName, uniqueBackupTarget } = require("./backup");
 const { isSubPath, pathsEqual } = require("./file-utils");
 const { inspectDataFolder } = require("./health");
@@ -27,7 +27,7 @@ function createRestoreService({ config, backupDataFolder, ensureDataLayout }) {
     recoverInterruptedRestore(targetDataDir);
     if (pathsEqual(sourceDataDir, targetDataDir) || isSubPath(targetDataDir, sourceDataDir) || isSubPath(sourceDataDir, targetDataDir)) throw new Error("恢复来源和当前数据目录不能互相包含。");
     const verification = verifyBackupManifest(sourceDataDir);
-    validateDatabase(path.join(sourceDataDir, "dev.db"));
+    validateDatabase(path.join(sourceDataDir, "dev.db"), { allowPreScout: true });
     const sourceHealth = inspectDataFolder(sourceDataDir, mapProgress(onProgress, 4, 18));
     if (sourceHealth.integrity !== "ok") throw new Error("所选备份的 SQLite 数据库完整性检查未通过，已取消恢复。");
     let safetyBackupPath = null;
@@ -52,9 +52,10 @@ function createRestoreService({ config, backupDataFolder, ensureDataLayout }) {
       if (inspectDataFolder(stagingDir, mapProgress(onProgress, 64, 80)).integrity !== "ok") throw new Error("备份复制到临时目录后完整性检查失败。");
       reportProgress(onProgress, 81, "正在验证恢复数据的数据库结构...");
       const sourceUpdate = normalizeValuationSourceSchema(path.join(stagingDir, "dev.db"), { backup: false });
+      const scoutUpdate = upgradeScoutSchema(path.join(stagingDir, "dev.db"), { backup: false });
       schema = validateDatabase(path.join(stagingDir, "dev.db"));
       if (inspectDataFolder(stagingDir, mapProgress(onProgress, 82, 86)).integrity !== "ok") throw new Error("备份数据库结构验证后的完整性检查失败。");
-      const report = { version: 1, restoredAt: new Date().toISOString(), verification, afterCounts: databaseCounts(stagingDir), schemaVersion: schema.schemaVersion, safetyBackupPath, sourceUpdate };
+      const report = { version: 1, restoredAt: new Date().toISOString(), verification, afterCounts: databaseCounts(stagingDir), schemaVersion: schema.schemaVersion, safetyBackupPath, sourceUpdate, scoutUpdate };
       fs.writeFileSync(path.join(stagingDir, "restore-report.json"), JSON.stringify(report, null, 2));
       writeBackupManifest(stagingDir);
       journal = saveRestoreJournal(targetDataDir, journal, "prepared");

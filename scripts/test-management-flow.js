@@ -64,38 +64,38 @@ async function main() {
     db.exec("DELETE FROM Card WHERE id='export-other'");
     assert.equal(exported.getWorksheet("Financial history").getRow(1).getCell(15).text, "transactionId");
     assert.equal(exported.getWorksheet("Financial history").getRow(2).getCell(14).text, "12025");
-    const management = await get("/api/collection-management"); const reminder = management.tasks.find(task => task.kind === "images"); assert.ok(reminder);
+    const management = await get("/api/home-overview?tasks=1&handled=1"); const reminder = management.tasks.find(task => task.kind === "images"); assert.ok(reminder);
     for (const invalid of [{ id: reminder.id, fingerprint: "stale" }, { id: "deleted-card:images", fingerprint: reminder.fingerprint }, { id: "invalid", fingerprint: reminder.fingerprint }, { id: `${cardId}:invalid`, fingerprint: reminder.fingerprint }]) {
       const response = await fetch(base + "/api/collection-management", { method: "POST", headers: { "Content-Type": "application/json", Origin: base }, body: JSON.stringify({ action: "task", status: "done", ...invalid }) });
       assert.equal(response.status, 400);
     }
-    await post({ action: "task", id: reminder.id, fingerprint: reminder.fingerprint, status: "snoozed" }, "/api/collection-management"); assert.equal((await get("/api/collection-management")).tasks.find(task => task.id === reminder.id).state, "snoozed");
-    await post({ action: "plan", title: "愿望清单", budget: "123.45", currency: "CNY" }, "/api/collection-management"); assert.equal((await get("/api/collection-management")).budgets.CNY, "12345");
-    const wishId = (await get("/api/collection-management")).plans.find(plan => plan.title === "愿望清单").id;
-    await post({ action: "plan", title: "保留心愿", budget: "10.00", currency: "CNY" }, "/api/collection-management");
+    await post({ action: "task", id: reminder.id, fingerprint: reminder.fingerprint, status: "snoozed" }, "/api/collection-management"); assert.equal((await get("/api/home-overview?tasks=1&handled=1")).tasks.find(task => task.id === reminder.id).state, "snoozed");
+    const wishId = (await post({ action: "wish", title: "愿望清单", budget: "123.45", currency: "CNY", watchIds: [] }, "/api/scout")).id;
+    assert.equal((await get("/api/scout")).budgets.CNY, "12345");
+    await post({ action: "wish", title: "保留心愿", budget: "10.00", currency: "CNY", watchIds: [] }, "/api/scout");
     for (const id of ["", "missing-wish"]) {
-      const response = await fetch(base + "/api/collection-management", { method: "POST", headers: { "Content-Type": "application/json", Origin: base }, body: JSON.stringify({ action: "plan-delete", id }) });
+      const response = await fetch(base + "/api/scout", { method: "POST", headers: { "Content-Type": "application/json", Origin: base }, body: JSON.stringify({ action: "wish-delete", id }) });
       assert.equal(response.status, 400);
     }
-    await post({ action: "plan-delete", id: wishId }, "/api/collection-management");
-    const afterWishDelete = await get("/api/collection-management");
+    await post({ action: "wish-delete", id: wishId }, "/api/scout");
+    const afterWishDelete = await get("/api/scout");
     assert.equal(afterWishDelete.plans.some(plan => plan.id === wishId), false);
     assert.equal(afterWishDelete.plans.some(plan => plan.title === "保留心愿"), true);
     assert.equal(afterWishDelete.budgets.CNY, "1000");
     await post({ action: "task", id: reminder.id, fingerprint: reminder.fingerprint, status: "open" }, "/api/collection-management");
     await post({ action: "task", id: reminder.id, fingerprint: reminder.fingerprint, status: "done" }, "/api/collection-management");
     db.prepare("INSERT INTO CardImage(id,cardId,path) VALUES('recurring-image',?,'/media/example.webp')").run(cardId);
-    assert.ok(!(await get("/api/collection-management")).tasks.some(task => task.id === reminder.id));
+    assert.ok(!(await get("/api/home-overview?tasks=1&handled=1")).tasks.some(task => task.id === reminder.id));
     db.exec("DELETE FROM CardImage WHERE id='recurring-image'");
-    assert.equal((await get("/api/collection-management")).tasks.find(task => task.id === reminder.id).state, "open");
+    assert.equal((await get("/api/home-overview?tasks=1&handled=1")).tasks.find(task => task.id === reminder.id).state, "open");
     await post({ action: "settings", digestCadence: "monthly" }, "/api/collection-management");
-    const monthly = await get("/api/collection-management");
+    const monthly = await get("/api/home-overview?tasks=1&handled=1");
     assert.equal(monthly.digest.days, 30);
     assert.equal("notificationDue" in monthly, false);
-    assert.equal("notifications" in monthly.settings, false);
+    assert.equal(monthly.cadence, "monthly");
 
     // Dense history and mixed SQLite date encodings must preserve digest semantics.
-    const baseline = await get("/api/collection-management");
+    const baseline = await get("/api/home-overview?tasks=1&handled=1");
     const clock = Date.now(), recent = clock - 2 * 86400000, future = clock + 2 * 86400000;
     db.exec("PRAGMA foreign_keys=ON");
     const fixtureCard = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,createdAt) VALUES(?, 'History fixture', 'Boundary', 'Basketball', ?)");
@@ -108,7 +108,7 @@ async function main() {
       fixtureBuy.run(id, id, date); fixtureValue.run(id, id, date);
     }
     for (let n = 0; n < 300; n++) fixtureValue.run("old-" + n, "digest-future", new Date(clock - (200 + n) * 86400000).toISOString());
-    const dense = await get("/api/collection-management");
+    const dense = await get("/api/home-overview?tasks=1&handled=1");
     assert.equal(dense.digest.newCards, baseline.digest.newCards + 2);
     assert.equal(dense.digest.purchases, baseline.digest.purchases + 2);
     assert.equal(dense.digest.valuations, baseline.digest.valuations + 2);

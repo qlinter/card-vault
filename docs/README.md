@@ -1,18 +1,21 @@
 # Card Vault 文档
 
-当前源码版本为 v1.3.6（2026-10-10），统一收录规模优化、恢复加固、编辑返回、单币种财务与来源调整，以及全项目结构整理。源码审查、专项证据、分发验收、文件大小、SHA-256 和 Git 更新介绍统一记录在 [v1.3.6 发布说明](./release-v1.3.6.md)。历史发布事实保留在各版说明。
+当前源码版本为 v1.4.0（2026-10-13）。首页收藏概览、跨站查询、关键词管理与心愿入藏及验证范围见 [v1.4.0 发布说明](./release-v1.4.0.md)。安装包、便携包及校验值统一在本版说明中记录，历史发布事实保留。
 
 ## 入口与规划
 
 - [应用主题与扩展方式](./app-themes.md)：四种主题风格、持久化与颜色适配。
 - [中文 README](../README.md) / [English README](../README.en.md)：功能、启动、最新版本详细更新和全部历史版本摘要。
-- [v1.3.6 发布说明](./release-v1.3.6.md)：本轮更新、结构审查、源码与包内验收、分发校验值和 Git 更新介绍。
+- [v1.4.0 发布说明](./release-v1.4.0.md)：功能、数据扩展、隔离验收与版本边界。
+- [v1.4.0 Git 更新说明](./git-update-v1.4.0.md)：提交内容、结构整理、验证及版本交付。
+- [寻卡使用与数据规则](./scout-guide.md)：跨站查询、关键词管理、目标进度、草稿恢复与心愿入藏。
+- [v1.3.6 发布说明](./release-v1.3.6.md)：上一版更新、结构审查、源码与包内验收、分发校验值和 Git 更新介绍。
 - [版本历史资料说明](./version-history-sources.md)：Git 来源及早期独立文档缺失范围。
 - [产品路线图](./product-roadmap.md) / [Product Roadmap](./product-roadmap.en.md)：能力状态与后续优先级。
 
 ## 现行规范
 
-- [数据与计划](./data-center-guide.md)：导入预演、撤销、导出、提醒、心愿单与规模基准。
+- [数据管理](./data-center-guide.md)：导入预演、撤销、导出、提醒、心愿单与规模基准。
 - [分享展馆](./share-gallery.md)：制作、展示协议、预览及导出。
 - [财务与持仓模型](./financial-history-model.md)：实物数量、付款、费用、估值、人工汇率及收益。
 - [数据备份](./data-backup-guide.md)：当前格式、存储、清单校验、恢复、换机及数据健康。
@@ -37,6 +40,8 @@
 - v1.0.0–v1.0.13：独立发布说明未找到，Git 恢复简史保留在两份 README 中，见[资料出处](./version-history-sources.md)。
 
 ## 维护规则
+
+组合聚合由 `lib/portfolio-batch.ts` 编排，分组、财务汇总和月度历史分别放在 `portfolio-batch-groups.ts`、`portfolio-batch-financials.ts` 和 `portfolio-batch-history.ts`。`financial-reporting.ts` 保留统一入口，币种换算与历史估值投影分别由 `financial-currency.ts` 和 `financial-valuation-projection.ts` 处理。仅汇总调用使用 `loadPortfolioSummary`；明细页面使用 `loadPortfolioSnapshot`。比较计算仅在单次请求内复用，不跨请求缓存。冻结对照实现位于 `tests/fixtures/*-reference.ts`，只供测试与基准使用，不作为运行时代码依赖。
 
 项目按职责维护：`app` 负责路由及操作入口，`components` 负责界面，`lib` 负责领域规则和服务，`electron` 负责桌面、存储与 IPC，`scripts` 负责初始化、验收和发布，`tests` 保留回归用例及视觉基线。录入与详情的交易、费用和估值共用 `FinancialRecordFields`；录入与导入的初始财务写入统一由 `lib/card-entry-finance-service.ts` 编排，卡片图片处理保留在卡片录入服务；表单解析与财务核算各自共享，不复制整套页面流程。组合统计在一次计算内复用数量、最新报价和金额，覆盖分母使用统一规则。
 

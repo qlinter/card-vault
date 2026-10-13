@@ -1,0 +1,211 @@
+const assert = require("node:assert/strict"), fs = require("node:fs"), os = require("node:os"), path = require("node:path");
+const { DatabaseSync } = require("node:sqlite");
+const sharp = require("sharp");
+const { fetchTestServer: fetch, fetchPage, decodeHtmlAttribute, fileDatabaseUrl, findAvailablePort, initializeTestDatabase, removeTempRoot, startTestServer, stopServer, waitForServer } = require("./test-http-flow-utils");
+async function main() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "vault-scout-http-")), dataDir = path.join(root, "data"), dbPath = path.join(dataDir, "dev.db");
+  const port = await findAvailablePort(3380), base = `http://127.0.0.1:${port}`, output = [];
+  const env = { ...process.env, CARD_VAULT_DATA_DIR: dataDir, DATABASE_URL: fileDatabaseUrl(dbPath), NODE_ENV: "production" };
+  let server, db;
+  async function post(body, status = 200) { const response = await fetch(base + "/api/scout", { method: "POST", headers: { "Content-Type": "application/json", Origin: base }, body: JSON.stringify(body) }); const result = await response.json(); assert.equal(response.status, status, JSON.stringify(result)); return result; }
+  async function get(route = "/api/scout") { const response = await fetch(base + route); const result = await response.json(); assert.equal(response.status, 200, JSON.stringify(result)); return result; }
+  const boundIds = wishId => db.prepare("SELECT cardId FROM ScoutWishCard WHERE planId=? ORDER BY cardId").all(wishId).map(row => row.cardId);
+  try {
+    initializeTestDatabase(env); server = startTestServer(port, env, output); await waitForServer(base, output, server, "Scout"); db = new DatabaseSync(dbPath); db.exec("PRAGMA foreign_keys=ON");
+    db.exec("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES('held','Jordan','Gold','Basketball'); INSERT INTO Card(id,playerName,cardTitle,sport) VALUES('other','Other','Silver','Football')");
+    const watchId = (await post({ action: "keyword-save", keyword: "Jordan 1996 Topps Gold" })).id;
+    assert.equal((await post({ action: "keyword-save", keyword: "  Jordan   1996 Topps Gold " })).id, watchId);
+    await post({ action: "keyword-save", keyword: "" }, 400);
+    await post({ action: "keyword-save", keyword: "a".repeat(501) }, 400);
+    for (const action of ["watch","watch-state","opened","item","observation","item-state","observation-delete","keyword-edit"]) await post({ action, id: watchId, keyword: "Replacement" }, 400);
+    const saved = (await get()).watches[0];
+    assert.deepEqual(Object.keys(saved).sort(), ["createdAt","id","queryJson","title","updatedAt"]);
+    assert.deepEqual(JSON.parse(saved.queryJson), { keyword: "Jordan 1996 Topps Gold" });
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM sqlite_master WHERE type='table' AND name IN ('ScoutItem','ScoutObservation')").get().n, 0);
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM CardValuation").get().n, 0);
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM CardTransaction").get().n, 0);
+    const wish = { action: "wish", title: "Gold wish", playerName: "Jordan", budget: "88.25", currency: "USD", priority: 1, watchIds: [watchId] };
+    const wishId = (await post(wish)).id;
+    await post({ action: "keyword-edit", id: watchId, keyword: "Replacement" }, 400);
+    assert.equal(db.prepare("SELECT title FROM ScoutWatch WHERE id=?").get(watchId).title, "Jordan 1996 Topps Gold");
+    assert.equal(db.prepare("SELECT watchId FROM ScoutWishWatch WHERE planId=?").get(wishId).watchId, watchId);
+    const plan = (await get()).plans[0]; assert.equal(plan.budgetMinor, "8825"); assert.equal(plan.scoutDetails.priority, 1); assert.equal(plan.scoutWatches[0].watchId, watchId);
+    await post({ action: "wish-state", id: wishId, status: "acquired" }, 400);
+    const legacyStatus = await fetch(base + "/api/collection-management", { method: "POST", headers: { "Content-Type": "application/json", Origin: base }, body: JSON.stringify({ action: "plan-status", id: wishId, status: "acquired" }) });
+    assert.equal(legacyStatus.status, 400);
+    assert.equal((await fetch(base + "/api/collection-management")).status, 405);
+    await post({ action: "wish-state", id: wishId, status: "acquired", cardIds: ["missing"] }, 400);
+    assert.equal(db.prepare("SELECT status FROM CollectionPlan WHERE id=?").get(wishId).status, "planned");
+    await post({ action: "wish-state", id: wishId, status: "acquired", cardIds: ["held"] }); assert.deepEqual((await get()).plans[0].acquiredCardIds, ["held"]);
+    const acquiredBefore = db.prepare("SELECT * FROM CollectionPlan WHERE id=?").get(wishId);
+    const cardsBefore = db.prepare("SELECT * FROM Card ORDER BY id").all();
+    for (const body of [
+      { previousCardIds: ["held"], cardIds: ["missing"] }, { previousCardIds: ["other"], cardIds: ["other"] },
+      { previousCardIds: [], cardIds: ["other"] }, { cardIds: ["other"] }, { previousCardIds: ["held"], cardIds: [] },
+      { previousCardIds: ["held"], cardIds: ["held", "held"] }, { previousCardIds: ["held"], cardIds: ["held", "missing"] }
+    ]) await post({ action: "wish-bind", id: wishId, ...body }, 400);
+    assert.deepEqual(boundIds(wishId), ["held"]);
+    await post({ action: "wish-bind", id: wishId, previousCardIds: ["held"], cardIds: ["other", "held"] });
+    const rebound = db.prepare("SELECT * FROM CollectionPlan WHERE id=?").get(wishId);
+    assert.equal(rebound.status, "acquired"); assert.deepEqual(boundIds(wishId), ["held", "other"]);
+    assert.deepEqual((await get()).plans[0].acquiredCardIds, ["held", "other"]);
+    for (const key of ["title", "playerName", "budgetMinor", "currency", "targetDate", "notes", "createdAt"]) assert.equal(rebound[key], acquiredBefore[key]);
+    assert.deepEqual(db.prepare("SELECT * FROM Card ORDER BY id").all(), cardsBefore);
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM CardTransaction").get().n, 0);
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM CardValuation").get().n, 0);
+    assert.equal((await get()).plans[0].scoutWatches[0].watchId, watchId);
+    await post({ action: "wish-bind", id: wishId, previousCardIds: ["held"], cardIds: ["held"] }, 400);
+    const linkedHome = await get("/api/cards?wish=" + wishId);
+    assert.equal(linkedHome.totalCount, 2); assert.deepEqual(linkedHome.cards.map(card => card.id).sort(), ["held", "other"]); assert.deepEqual(linkedHome.statusCounts, { holding: 2 });
+    assert.equal((await get("/api/cards?wish=" + wishId + "&sport=Football")).totalCount, 1);
+    assert.equal((await get("/api/cards?wish=missing")).totalCount, 0);
+    const linkedOverview = await get("/api/home-overview?wish=" + wishId); assert.equal(linkedOverview.digest.newCards, 2);
+    await post({ action: "wish-bind", id: wishId, previousCardIds: ["other", "held"], cardIds: ["other"] }); assert.deepEqual(boundIds(wishId), ["other"]);
+    await post({ action: "wish-state", id: wishId, status: "planned" });
+    assert.deepEqual(boundIds(wishId), []);
+    await post({ action: "wish-bind", id: wishId, previousCardIds: [], cardIds: ["held"] }, 400);
+    await post({ action: "wish-state", id: wishId, status: "cancelled" });
+    await post({ action: "wish-bind", id: wishId, previousCardIds: [], cardIds: ["held"] }, 400);
+    await post({ action: "wish-state", id: wishId, status: "planned" });
+    const html = await fetchPage(base, `/cards/new?wish=${wishId}`);
+    assert.ok(html.includes("/collection?tab=wishlist&amp;wish=" + wishId));
+    assert.ok(html.includes(`name="wishId" value="${wishId}"`)); assert.ok(html.includes('name="purchasePrice"')); assert.ok(!html.includes('name="purchasePrice" value="42.50"'));
+    const image = await sharp({ create: { width: 8, height: 8, channels: 3, background: "white" } }).webp().toBuffer();
+    async function createCard(wishId, withImage, records = []) {
+      const form = new FormData(); const section = html.slice(html.lastIndexOf("<form", html.indexOf('name="playerName"')), html.indexOf("</form>", html.indexOf('name="playerName"')));
+      for (const match of section.matchAll(/<input type="hidden" name="(\$ACTION_[^"]+)"(?: value="([^"]*)")?\/>/g)) form.append(match[1], decodeHtmlAttribute(match[2]));
+      for (const [key, value] of Object.entries({ wishId, playerName: "Jordan", cardTitle: "Acquired gold", sport: "Basketball", collectionStatus: "holding", initialQuantity: "1", purchaseDate: "2026-10-09", visibility: "private" })) form.append(key, value);
+      for (const record of records) {
+        form.append('financialRecordId', record.id); form.append(`finance.${record.id}.type`, record.type);
+        for (const [key, value] of Object.entries(record.values)) form.append(`finance.${record.id}.${key}`, value);
+      }
+      if (withImage) form.append("images", new Blob([image], { type: "image/webp" }), "card.webp");
+      return fetch(base + "/cards/new", { method: "POST", body: form, redirect: "manual" });
+    }
+    await createCard(wishId, false); assert.equal(db.prepare("SELECT status FROM CollectionPlan WHERE id=?").get(wishId).status, "planned");
+    const soldOut = await createCard(wishId, true, [{ id: 'sale-0', type: 'transaction', values: { kind: 'sale', quantity: '1', amount: '90', currency: 'CNY', occurredAt: '2026-10-10' } }]);
+    assert.equal(soldOut.status, 200);
+    assert.ok((await soldOut.text()).includes('完成心愿需要录入实际持有的卡片。'));
+    assert.equal(db.prepare("SELECT status FROM CollectionPlan WHERE id=?").get(wishId).status, "planned");
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM Card WHERE cardTitle='Acquired gold'").get().n, 0);
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM CardTransaction").get().n, 0);
+    const created = await createCard(wishId, true); assert.equal(created.status, 303, await created.text());
+    const acquiredId = boundIds(wishId)[0]; assert.equal(db.prepare("SELECT status FROM CollectionPlan WHERE id=?").get(wishId).status, "acquired"); assert.equal(db.prepare("SELECT cardTitle FROM Card WHERE id=?").get(acquiredId).cardTitle, "Acquired gold");
+    await createCard(wishId, true); assert.equal(db.prepare("SELECT COUNT(*) n FROM Card WHERE cardTitle='Acquired gold'").get().n, 1);
+    const summary = await get("/api/home-overview?sport=Basketball"); assert.equal(summary.digest.newCards, 2); assert.deepEqual(summary.tasks, []); assert.ok(summary.openCount > 0);
+    const overview = await get("/api/home-overview?sport=Basketball&tasks=1"); assert.equal(overview.digest.newCards, 2); assert.ok(overview.tasks.length > 0); assert.ok(overview.tasks.every(task => task.cardId !== "other"));
+    const home = await get("/api/cards?sport=Basketball"); assert.equal(home.totalCount, 2); assert.deepEqual(home.statusCounts, { holding: 2 });
+    db.exec("INSERT INTO Card(id,playerName,cardTitle,sport,collectionStatus,holdingQuantity) VALUES('sold','Jordan','Sold','Basketball','sold',0); INSERT INTO Card(id,playerName,cardTitle,sport,holdingQuantity) VALUES('empty','Jordan','No stock','Basketball',0)");
+    for (const cardId of ["sold", "empty"]) await post({ action: "wish-bind", id: wishId, previousCardIds: [acquiredId], cardIds: [acquiredId, cardId] }, 400);
+    assert.deepEqual(boundIds(wishId), [acquiredId]);
+    db.exec("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES('repair-card','Repair','Deleted acquired card','Basketball')");
+    const repairWish = (await post({ ...wish, title: "Repair wish" })).id;
+    await post({ action: "wish-state", id: repairWish, status: "acquired", cardIds: ["repair-card"] });
+    db.exec("DELETE FROM Card WHERE id='repair-card'");
+    assert.deepEqual(boundIds(repairWish), []);
+    await post({ action: "wish-bind", id: repairWish, previousCardIds: [], cardIds: ["held"] });
+    assert.equal(db.prepare("SELECT status FROM CollectionPlan WHERE id=?").get(repairWish).status, "acquired"); assert.deepEqual(boundIds(repairWish), ["held"]);
+    await post({ action: "wish-delete", id: repairWish });
+    const owned = await get("/api/scout?cards=Jordan"); assert.ok(owned.cards.length >= 2); assert.ok(owned.cards.every(card => !['sold','empty'].includes(card.id)));
+    assert.equal(owned.totalCount, owned.cards.length);
+    const insertOwned = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES(?,'Page fixture','Held card','Basketball')");
+    for (let index = 0; index < 25; index++) insertOwned.run("paged-" + index);
+    const firstPage = await get("/api/scout?cards=Page%20fixture&page=1"), lastPage = await get("/api/scout?cards=Page%20fixture&page=3");
+    assert.equal(firstPage.totalCount, 25); assert.equal(firstPage.cards.length, 12); assert.equal(lastPage.cards.length, 1);
+    assert.ok(lastPage.cards.every(card => firstPage.cards.every(first => first.id !== card.id)));
+    assert.equal((await get("/api/scout?cards=Page%20fixture&page=9999999")).page, 3);
+    db.exec("UPDATE Card SET parallel='Search-only variant',certNumber='SEARCH-CERT-0' WHERE id='paged-0'");
+    for (const search of ["Search-only variant", "SEARCH-CERT-0"]) assert.deepEqual((await get("/api/scout?cards=" + encodeURIComponent(search))).cards.map(card => card.id), ["paged-0"]);
+    const multiWish = (await post({ ...wish, title: "Multiple acquired cards", budget: "0" })).id;
+    const multipleIds = [acquiredId, ...Array.from({ length: 25 }, (_, i) => "paged-" + i)].sort();
+    await post({ action: "wish-state", id: multiWish, status: "acquired", cardIds: [...multipleIds, "missing"] }, 400);
+    assert.deepEqual(boundIds(multiWish), []); assert.equal(db.prepare("SELECT status FROM CollectionPlan WHERE id=?").get(multiWish).status, "planned");
+    await post({ action: "wish-state", id: multiWish, status: "acquired", cardIds: multipleIds });
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM ScoutWishCard WHERE cardId=?").get(acquiredId).n, 2);
+    const linkedFirst = await get("/api/cards?wish=" + multiWish), linkedLast = await get("/api/cards?wish=" + multiWish + "&page=1");
+    assert.equal(linkedFirst.totalCount, 26); assert.equal(linkedFirst.cards.length, 24); assert.equal(linkedLast.cards.length, 2);
+    assert.deepEqual([...linkedFirst.cards, ...linkedLast.cards].map(card => card.id).sort(), multipleIds);
+    assert.ok(linkedLast.cards.every(card => new URL(card.href, base).searchParams.get("returnTo") === "/?wish=" + multiWish));
+    db.exec("UPDATE Card SET collectionStatus='sold',holdingQuantity=0 WHERE id='paged-0'");
+    await post({ action: "wish-bind", id: multiWish, previousCardIds: multipleIds, cardIds: [...multipleIds, "held"] });
+    assert.ok(boundIds(multiWish).includes("paged-0")); assert.equal((await get("/api/cards?wish=" + multiWish)).statusCounts.sold, 1);
+    await post({ action: "wish-delete", id: multiWish }); assert.deepEqual(boundIds(multiWish), []);
+    assert.equal((await get("/api/cards?wish=" + multiWish)).totalCount, 0);
+    db.exec("UPDATE Card SET collectionStatus='holding',holdingQuantity=1 WHERE id='paged-0'");
+    await post({ action: 'wish-state', id: wishId, status: 'planned' });
+    await post({ action: 'wish-state', id: wishId, status: 'acquired', cardIds: ['sold'] }, 400);
+    await post({ action: 'wish-state', id: wishId, status: 'acquired', cardIds: ['empty'] }, 400);
+    const deletedWatch = (await post({ action: "keyword-save", keyword: "Delete fixture" })).id;
+    await post({ ...wish, id: wishId, watchIds: [watchId, deletedWatch] });
+    const cardCount = db.prepare("SELECT COUNT(*) n FROM Card").get().n;
+    await post({ action: "keyword-delete", id: deletedWatch });
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM ScoutWatch WHERE id=?").get(deletedWatch).n, 0);
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM ScoutWishWatch WHERE watchId=?").get(deletedWatch).n, 0);
+    assert.equal(db.prepare("SELECT status FROM CollectionPlan WHERE id=?").get(wishId).status, "planned");
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM Card").get().n, cardCount);
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM ScoutWatch WHERE id=?").get(watchId).n, 1);
+    await post({ action: "keyword-delete", id: deletedWatch }, 400);
+    const batchFirst = (await post({ action: "keyword-save", keyword: "Batch first" })).id, batchSecond = (await post({ action: "keyword-save", keyword: "Batch second" })).id;
+    await post({ ...wish, id: wishId, watchIds: [watchId, batchFirst, batchSecond] });
+    for (const ids of [[], [batchFirst, ""], [batchFirst, 1], [batchFirst, null], Array(1001).fill(batchFirst), [batchFirst, "missing"]]) await post({ action: "keywords-delete", ids }, 400);
+    await post({ action: "keywords-delete", ids: batchFirst }, 400);
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM ScoutWatch WHERE id IN (?,?)").get(batchFirst, batchSecond).n, 2);
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM ScoutWishWatch WHERE planId=?").get(wishId).n, 3);
+    await post({ action: "keywords-delete", ids: [batchFirst, batchSecond, batchFirst] });
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM ScoutWatch WHERE id IN (?,?)").get(batchFirst, batchSecond).n, 0);
+    assert.deepEqual(db.prepare("SELECT watchId FROM ScoutWishWatch WHERE planId=?").all(wishId).map(row => row.watchId), [watchId]);
+    assert.equal(db.prepare("SELECT status FROM CollectionPlan WHERE id=?").get(wishId).status, "planned");
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM Card").get().n, cardCount);
+    await post({ action: "wish-delete", id: wishId });
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM ScoutWishWatch").get().n, 0);
+    const windowWatch = db.prepare("INSERT INTO ScoutWatch(id,title,queryJson) VALUES(?,?,?)"), windowWish = db.prepare("INSERT INTO CollectionPlan(id,title,budgetMinor) VALUES(?,?,100)"), windowCard = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES(?,'Window fixture','Window card','Window')");
+    for (let index = 0; index < 105; index++) { const id = `window-${String(index).padStart(3,'0')}`, keyword = `Window fixture ${index}`; windowWatch.run(id, keyword, JSON.stringify({ keyword })); windowWish.run(id, keyword); windowCard.run(id); }
+    const windowFirst = await get("/api/scout?window=1&q=Window%20fixture"), windowLast = await get("/api/scout?window=1&q=Window%20fixture&watchPage=3&wishPage=6");
+    assert.equal(windowFirst.watches.length, 50); assert.equal(windowLast.watches.length, 5); assert.equal(windowFirst.watchCount, 105);
+    assert.equal(windowFirst.plans.length, 20); assert.equal(windowLast.plans.length, 5); assert.equal(windowLast.wishCount, 105);
+    assert.equal(windowLast.budgets.CNY, "10500"); assert.ok(windowFirst.keywordOptions.length >= 105);
+    assert.ok(windowLast.watches.every(row => windowFirst.watches.every(first => first.id !== row.id)));
+    const compact = await get("/api/home-overview?sport=Window"), queue1 = await get("/api/home-overview?sport=Window&tasks=1"), queue2 = await get("/api/home-overview?sport=Window&tasks=1&page=2");
+    assert.deepEqual(compact.tasks, []); assert.equal(compact.openCount, 315);
+    assert.equal(queue1.tasks.length, 50); assert.equal(queue2.tasks.length, 50); assert.equal(queue1.taskCount, 315);
+    assert.ok(queue2.tasks.every(row => queue1.tasks.every(first => first.id !== row.id)));
+    const { deriveCollectionTasks } = require("../lib/collection-tasks.ts");
+    const sqlDate = value => new Date(typeof value === "number" ? value : String(value).replace(" ", "T") + "Z");
+    const referenceCards = db.prepare("SELECT id,playerName,cardTitle,collectionStatus,createdAt,updatedAt FROM Card WHERE sport='Window'").all().map(card => ({
+      ...card, createdAt: sqlDate(card.createdAt), updatedAt: sqlDate(card.updatedAt), _count: { images: 0, transactions: 0 }, valuations: []
+    }));
+    const referenceQueue = deriveCollectionTasks(referenceCards).map(task => ({ ...task, state: "open" }));
+    assert.deepEqual(queue1.tasks, referenceQueue.slice(0, 50)); assert.deepEqual(queue2.tasks, referenceQueue.slice(50, 100));
+    db.exec("DELETE FROM CollectionPlan WHERE id LIKE 'window-%'; DELETE FROM ScoutWatch WHERE id LIKE 'window-%'; DELETE FROM Card WHERE id LIKE 'window-%'");
+    const goal = (await post({ ...wish, title: "Set progress fixture", targetCount: "3", targetDate: "2026-12-01" })).id;
+    for (const targetCount of [0, 501, 1.5, "invalid"]) await post({ ...wish, targetCount }, 400);
+    const progress = (cardIds, previousCardIds, expectedStatus = "planned") => post({ action: "wish-bind", id: goal, cardIds, previousCardIds, expectedStatus });
+    await progress(["held"], []);
+    assert.equal(db.prepare("SELECT status FROM CollectionPlan WHERE id=?").get(goal).status, "planned");
+    const compactGoal = (await get("/api/scout?window=1&wishQ=Set%20Jordan&wishSort=target")).plans[0];
+    assert.equal(compactGoal.id, goal); assert.deepEqual(compactGoal.acquiredCardIds, ["held"]); assert.equal(compactGoal.acquiredCards, undefined);
+    assert.deepEqual((await get("/api/scout?wishCards=" + goal)).cards.map(card => card.id), ["held"]);
+    await post({ action: "wish-bind", id: goal, cardIds: ["held", "other"], previousCardIds: [] , expectedStatus: "planned" }, 400);
+    await progress(["held", "other"], ["held"]);
+    const fromEntry = await createCard(goal, true); assert.equal(fromEntry.status, 303, await fromEntry.text());
+    assert.equal(boundIds(goal).length, 3); assert.equal(db.prepare("SELECT status FROM CollectionPlan WHERE id=?").get(goal).status, "acquired");
+    const beforeReplan = boundIds(goal), undone = (await post({ action: "wish-state", id: goal, status: "planned" })).undo;
+    assert.deepEqual(boundIds(goal), []); await post({ action: "wish-undo", ...undone }); assert.deepEqual(boundIds(goal), beforeReplan);
+    await post({ action: "wish-undo", ...undone }, 400);
+    const staleUndo = (await post({ action: "wish-state", id: goal, status: "planned" })).undo;
+    await post({ ...wish, id: goal, title: "Edited set progress", targetCount: 3 }); await post({ action: "wish-undo", ...staleUndo }, 400);
+    await progress(["held", "other"], []);
+    assert.equal((await get("/api/scout?cards=Jordan%20Gold")).cards.some(card => card.id === "held"), true);
+    assert.equal((await get("/api/cards?q=Jordan%20Gold")).cards.some(card => card.id === "held"), true);
+    const csv = require("../lib/tabular-data");
+    for (const kind of ["keywords", "wishes"]) {
+      const exported = await fetch(base + "/api/scout/export?kind=" + kind); assert.equal(exported.status, 200); assert.match(exported.headers.get("Content-Disposition"), /attachment/);
+      const table = csv.parseCsv(await exported.text()); assert.ok(table.rows.length);
+      if (kind === "wishes") { const row = table.rows.find(row => row[0] === goal); assert.equal(row[8], "3"); assert.equal(row[9], "2"); assert.deepEqual(JSON.parse(row[10]), ["held", "other"]); }
+    }
+    assert.ok((await fetchPage(base, "/cards/held")).includes("/collection?tab=wishlist&amp;wish=" + goal));
+    await post({ action: "wish-delete", id: goal });
+    console.log("Scout HTTP flow passed: keywords, atomic bindings and entry rollback, partial targets, multi-word search, lazy card reads, guarded undo, scoped navigation and CSV exports.");
+  } finally { db?.close(); stopServer(server); await removeTempRoot(root); }
+}
+main().catch(error => { console.error(error); process.exitCode = 1; });

@@ -18,7 +18,7 @@ const pages = [
   { name: "settings", path: "/settings", ready: ".settings-page" },
   { name: "settings-data", path: "/settings#data-settings", ready: ".management-card-list" },
   { name: "data-center", path: "/settings/data", ready: ".management-card-list" },
-  { name: "collection", path: "/collection", ready: ".management-page .summary-grid" },
+  { name: "collection", path: "/collection", ready: ".scout-query" },
   { name: "user-guide", path: "/settings/guide", ready: ".user-guide-index" },
   { name: "finance-rules", path: "/settings/finance-rules", ready: ".finance-rules-page" }
 ];

@@ -47,6 +47,7 @@ model Card {
   report            CardReport?
   reportDirty       CardReportDirty?
   tracking          CardTracking?
+  acquiredWishes    ScoutWishCard[]
 
   @@index([playerName])
   @@index([cardTitle])
@@ -397,10 +398,45 @@ model CollectionPlan {
   targetDate DateTime?
   notes String?
   status String @default("planned")
-  cardId String?
+  // Legacy single binding is migrated to ScoutWishCard and is no longer used by the app.
+  cardId String? @ignore
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  scoutDetails ScoutWishDetails?
+  scoutWatches ScoutWishWatch[]
+  acquiredCards ScoutWishCard[]
   @@index([status, targetDate])
+}
+
+model ScoutWatch {
+  id String @id @default(cuid())
+  title String
+  queryJson String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  wishes ScoutWishWatch[]
+}
+model ScoutWishDetails {
+  planId String @id
+  priority Int @default(2)
+  targetCount Int?
+  plan CollectionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+}
+model ScoutWishWatch {
+  planId String
+  watchId String
+  plan CollectionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  watch ScoutWatch @relation(fields: [watchId], references: [id], onDelete: Cascade)
+  @@id([planId, watchId])
+}
+
+model ScoutWishCard {
+  planId String
+  cardId String
+  plan CollectionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  @@id([planId, cardId])
+  @@index([cardId])
 }
 
 model ManagementSettings {

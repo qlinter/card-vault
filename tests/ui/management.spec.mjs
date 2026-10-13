@@ -23,8 +23,8 @@ for (const locale of ["zh", "en"]) {
     await page.goto("/?sort=yearAsc", { waitUntil: "networkidle" });
     await expect(page.getByRole("link", { name: labels.all, exact: true })).toHaveAttribute("href", "/portfolio?sort=yearAsc");
     await expect(page.locator(".nav-links a")).toHaveText(locale === "en"
-      ? ["Home", "Portfolio", "Showcase", "Sharing", "Plans", "Settings"]
-      : ["首页", "组合", "展示", "分享", "计划", "设置"]);
+      ? ["Home", "Portfolio", "Showcase", "Sharing", "Scout", "Settings"]
+      : ["首页", "组合", "展示", "分享", "寻卡", "设置"]);
     const query = new URLSearchParams({ q: "Import UI", team: "A&B / 队", isAutograph: "false", sort: "yearAsc" });
     await page.goto(`/?${query}`, { waitUntil: "networkidle" });
     await expect(page.getByTestId("home-card-grid").locator(".card-item")).toHaveCount(24);
@@ -183,11 +183,15 @@ test("import preview applies a card and a confirmed undo removes it", async ({ p
 });
 test("wishlist budget persists and reminders can be snoozed", async ({ page }, testInfo) => {
   await page.goto("/collection", { waitUntil: "networkidle" });
-  await page.locator(".wish-disclosure > summary").first().click();
+  await page.getByRole("tab", { name: "心愿单", exact: true }).click();
+  await page.locator(".wish-header-actions").getByRole("button", { name: "新增", exact: true }).click();
   await page.getByLabel("心愿名称", { exact: true }).fill("UI wishlist"); await page.getByLabel("预算", { exact: true }).fill("88.25"); await page.getByRole("button", { name: "添加心愿" }).click(); await expect(page.getByText("UI wishlist", { exact: true })).toBeVisible();
-  await expect(page.locator(".wish-meta .record-status")).toHaveText("待实现");
+  await expect(page.locator(".scout-wish .record-status")).toHaveCount(0);
+  await page.goto("/?q=卡片数量", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "查看全部", exact: true }).click();
   const task = page.locator(".management-task").filter({ hasText: "卡片数量" }).first(); await task.getByRole("button", { name: "延后 7 天" }).click();
-  await page.reload({ waitUntil: "networkidle" }); await expect(page.getByText("UI wishlist", { exact: true })).toBeVisible();
+  await page.reload({ waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "查看全部", exact: true }).click();
   expect(fixture(db => db.prepare("SELECT budgetMinor FROM CollectionPlan WHERE title='UI wishlist'").get().budgetMinor)).toBe(8825);
   expect(fixture(db => db.prepare("SELECT status FROM CollectionTaskState WHERE id LIKE 'management-ui:%'").get().status)).toBe("snoozed");
   await page.getByLabel("显示已处理").check();
@@ -195,7 +199,12 @@ test("wishlist budget persists and reminders can be snoozed", async ({ page }, t
   await page.screenshot({ path: testInfo.outputPath("plans-with-data.png"), fullPage: true });
   await page.getByRole("button", { name: "选择语言" }).click();
   await page.getByRole("menuitemradio", { name: "English" }).click();
-  await expect(page.locator(".wish-meta .record-status")).toHaveText("Planned");
+  await page.goto("/collection", { waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "Wishlist", exact: true }).click();
+  await expect(page.locator(".scout-wish .record-status")).toHaveCount(0);
+  await page.goto("/?q=卡片数量", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "View all", exact: true }).click();
+  await page.getByLabel("Show handled reminders").check();
   await expect(page.locator(".management-task small").filter({ hasText: "Snoozed" })).toBeVisible();
 });
 
@@ -208,13 +217,14 @@ test("management titles follow the locale and Settings owns the shared user guid
   await page.getByRole("menuitemradio", { name: "English" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Data");
   await page.goto("/collection", { waitUntil: "networkidle" });
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Plans");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(0);
+  await expect(page.getByRole("tab")).toHaveText(["Cross-site search", "Wishlist"]);
   await expect(page.getByLabel("Enable local digest notifications")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Help", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Choose language" }).click();
   await page.getByRole("menuitemradio", { name: "简体中文" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("计划");
-  await expect(page.locator(".management-page .summary-grid > .panel > span")).toHaveText(["新增", "购买", "出售", "估值"]);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(0);
+  await expect(page.getByRole("tab")).toHaveText(["跨站查询", "心愿单"]);
   await expect(page.getByText("当前没有待整理项目。", { exact: true })).toHaveCount(0);
   await page.goto("/settings", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "展开使用说明", exact: true }).click();
@@ -336,51 +346,52 @@ for (const mode of ["list", "table"]) {
   });
 }
 
-test("wishlist input and display fold independently and editing opens the form", async ({ page }) => {
+test("wishlist list opens its editor on demand and retains drafts and failed deletions", async ({ page }) => {
   await page.goto("/collection", { waitUntil: "networkidle" });
-  await expect(page.getByRole("heading", { name: "心愿单", exact: true })).toBeVisible();
-  const inputSection = page.locator(".wish-disclosure").first();
+  await page.getByRole("tab", { name: "心愿单", exact: true }).click();
+  const editor = page.locator(".wish-editor");
   const displaySection = page.locator(".wish-list");
-  await expect(inputSection).not.toHaveAttribute("open", "");
-  await expect(displaySection).toHaveAttribute("open", "");
-  await inputSection.locator("summary").click();
+  const newButton = page.locator(".wish-header-actions").getByRole("button", { name: "新增", exact: true });
+  await expect(editor).toHaveCount(0);
+  await expect(page.locator(".wish-list-toggle")).toHaveCount(0);
+  const header = page.locator(".wish-header");
+  expect((await newButton.boundingBox()).y).toBeLessThan((await displaySection.boundingBox()).y);
+  await expect(header.getByRole("heading")).toHaveText("心愿单");
+  await newButton.click();
   await page.getByLabel("心愿名称", { exact: true }).fill("UI wishlist");
-  await displaySection.locator("summary").click();
-  await expect(page.getByLabel("心愿名称", { exact: true })).toBeVisible();
-  await inputSection.locator("summary").click();
-  await inputSection.locator("summary").click();
+  await page.getByRole("button", { name: "关闭录入", exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await newButton.click();
   await expect(page.getByLabel("心愿名称", { exact: true })).toHaveValue("UI wishlist");
   await page.getByRole("button", { name: "添加心愿", exact: true }).click();
-  await expect(inputSection).not.toHaveAttribute("open", "");
-  await expect(displaySection).not.toHaveAttribute("open", "");
-  await displaySection.locator("summary").click();
+  await expect(editor).toHaveCount(0);
   await expect(displaySection.getByText("UI wishlist", { exact: true })).toBeVisible();
   await displaySection.getByRole("button", { name: "编辑", exact: true }).click();
-  await expect(page.getByLabel("心愿名称", { exact: true })).toBeVisible();
   await expect(page.getByLabel("心愿名称", { exact: true })).toHaveValue("UI wishlist");
-  await expect(inputSection.locator("summary")).toHaveText("编辑");
-  await expect(page.getByRole("button", { name: "取消心愿", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "取消编辑", exact: true })).toHaveCount(0);
+  await expect(editor.getByRole("heading")).toHaveText("编辑心愿");
   const deleteWish = page.getByRole("button", { name: "删除心愿", exact: true });
   page.once("dialog", dialog => dialog.dismiss());
   await deleteWish.click();
   await expect(displaySection.getByText("UI wishlist", { exact: true })).toBeVisible();
-  await page.route("**/api/collection-management", async route => {
-    if (route.request().method() === "POST" && route.request().postDataJSON().action === "plan-delete") {
+  await page.route("**/api/scout", async route => {
+    if (route.request().method() === "POST" && route.request().postDataJSON().action === "wish-delete") {
       await route.fulfill({ status: 400, json: { error: "删除失败，请重试。" } });
     } else await route.continue();
   });
   page.once("dialog", dialog => dialog.accept());
   await deleteWish.click();
-  await expect(page.locator(".plans-page").getByRole("alert")).toHaveText("删除失败，请重试。");
+  await expect(page.locator(".scout-page").getByRole("alert")).toContainText("删除失败，请重试。");
   await expect(page.getByLabel("心愿名称", { exact: true })).toHaveValue("UI wishlist");
   await expect(displaySection.getByText("UI wishlist", { exact: true })).toBeVisible();
-  await page.unroute("**/api/collection-management");
+  await page.unroute("**/api/scout");
   page.once("dialog", dialog => dialog.accept());
   await deleteWish.click();
   await expect(displaySection.getByText("UI wishlist", { exact: true })).toHaveCount(0);
-  await expect(inputSection.locator("summary")).toHaveText("新增");
+  await expect(editor).toHaveCount(0);
   expect(fixture(db => db.prepare("SELECT COUNT(*) n FROM CollectionPlan WHERE title='UI wishlist'").get().n)).toBe(0);
+  await newButton.click();
+  await expect(page.getByLabel("心愿名称", { exact: true })).toHaveValue("");
+  await page.getByRole("button", { name: "关闭录入", exact: true }).click();
   await page.reload({ waitUntil: "networkidle" });
   await expect(displaySection.getByText("UI wishlist", { exact: true })).toHaveCount(0);
 });

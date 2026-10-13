@@ -1,6 +1,6 @@
 # Card Vault Product Roadmap
 
-Updated 2026-10-10. Current version is v1.3.6, with batched Portfolio aggregation, restore journals, split styles, editing-aware Back, single-currency transactions and valuation sources; see [release and acceptance](./release-v1.3.6.md). All historical collections already use the current format, which future data follows.
+Updated 2026-10-13. Current source is v1.4.0; Home overview and Scout are implemented. Installer and portable artifacts use the unified release acceptance process. See [release notes](./release-v1.4.0.md).
 
 ## Completed capabilities
 
@@ -25,7 +25,11 @@ Feature details, source checks and packaged-runtime results for v1.3.1–v1.3.4 
 
 ## Completed this release
 
-v1.3.6 consolidates this development and code organization in the [release notes](./release-v1.3.6.md). See [application themes](./app-themes.md) for extension rules. Earlier theme, interface and AI settings release facts remain in [v1.3.5](./release-v1.3.5.md); the roadmap records capability status and future priorities.
+v1.3.6 consolidates the earlier development and code organization in the [release notes](./release-v1.3.6.md). See [application themes](./app-themes.md) for extension rules. Earlier theme, interface and AI settings release facts remain in [v1.3.5](./release-v1.3.5.md); the roadmap records capability status and future priorities.
+
+## v1.4.0 implemented
+
+Three compact, equal Home panels follow filters; Collection overview combines digests and reminders. Scout contains cross-site search with saved keyword management, wishlist and acquisition. Keywords support search, saving, reuse, deletion and linked wishes only; item, price and research models and APIs have been removed. Wish targets, multiple bindings, search/sort, local draft recovery, reverse links and CSV lists are complete. Navigation, recovery, aggregation refactoring and shared export cleanup are included. Automatic Cardhobby updates and price alerts remain future work.
 
 ## Next priorities
 

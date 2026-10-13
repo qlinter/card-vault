@@ -54,6 +54,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
     where: { id },
     include: {
       images: { orderBy: { createdAt: "asc" } },
+      acquiredWishes: { select: { plan: { select: { id: true, title: true } } }, orderBy: { planId: "asc" } },
       transactions: { orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }] },
       expenses: { orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }] },
       valuations: { orderBy: [{ valuedAt: "desc" }, { createdAt: "desc" }] }
@@ -76,6 +77,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
         </div>
         <div className="card-detail-actions">
           <BackButton href={returnHref} />
+          <a href={`/collection?cardId=${encodeURIComponent(card.id)}`} className="btn btn-secondary"><UiText text="查找" /></a>
           <a href={`/cards/${card.id}/edit${encodeReturnTo(returnTo)}`} className="btn btn-secondary"><UiText text={"编辑"} /></a>
           <a href={`/cards/${card.id}/delete`} className="btn btn-danger"><UiText text={"删除"} /></a>
         </div>
@@ -83,6 +85,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
 
       {success ? <p className="note-ok"><UiText text={success} /></p> : null}
       {error ? <p className="note-error"><UiText text={error} /></p> : null}
+      {card.acquiredWishes.length ? <nav className="card-linked-wishes" aria-label="关联心愿"><span className="muted"><UiText text="关联心愿" /></span>{card.acquiredWishes.map(({ plan }) => <a key={plan.id} href={"/collection?tab=wishlist&wish=" + encodeURIComponent(plan.id)}>{plan.title}</a>)}</nav> : null}
 
       <div className="details">
         <section className="panel">

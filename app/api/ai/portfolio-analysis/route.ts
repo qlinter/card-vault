@@ -3,7 +3,7 @@ import { ensureAiSettings } from "@/lib/ai-settings";
 import { AiUpstreamError, aiProviderName, requestAiChatTextResult } from "@/lib/ai-chat-client";
 import { extractJsonRecord } from "@/lib/ai-response-parsing";
 import { errorMessage } from "@/lib/feedback-messages";
-import { loadPortfolioSnapshot } from "@/lib/portfolio-snapshot-service";
+import { loadPortfolioSummary } from "@/lib/portfolio-snapshot-service";
 import {
   buildFallbackPortfolioAnalysis,
   buildPortfolioClientSnapshot,
@@ -19,7 +19,7 @@ export const runtime = "nodejs";
 type AiSettings = ReturnType<typeof ensureAiSettings>;
 
 async function requestedSnapshot(value: unknown): Promise<PortfolioSnapshot> {
-  return (await loadPortfolioSnapshot(value)).snapshot;
+  return (await loadPortfolioSummary(value)).snapshot;
 }
 
 function parseAnalysis(rawText: string, snapshot: PortfolioSnapshot): PortfolioAnalysis {

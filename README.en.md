@@ -6,20 +6,20 @@ Card Vault is a local-first Windows sports-card collection application built wit
 
 ## Current status
 
-Source version: `1.3.6` (2026-10-10). This release includes batched Portfolio aggregation, restore protection, return to filters after editing, single-currency transactions, four valuation sources and shared financial forms and package checks. Review, acceptance and Git update notes are in the [v1.3.6 release notes](./docs/release-v1.3.6.md).
+Source version: `1.4.0` (2026-10-13). This version implements the collection overview and Scout workflow. See [v1.4.0 release notes](./docs/release-v1.4.0.md).
 
-The Windows x64 installer and portable package have been generated and independently verified: `dist/card-vault-1.3.6-setup.exe`, `dist/card-vault-1.3.6-portable.zip` and `dist/SHA256SUMS.txt`. See the release notes for sizes, unsigned status, acceptance scope and checksums. Earlier release facts and files are retained.
+Distribution files are `dist/card-vault-1.4.0-setup.exe` and `dist/card-vault-1.4.0-portable.zip`. See the release notes for acceptance and checksums, and the [v1.4.0 Git update notes](./docs/git-update-v1.4.0.md) for source changes. Historical release facts are retained.
 
-## Latest version: v1.3.6
+## Latest version: v1.4.0
 
-1. **Large collections**: read 250 cards per batch to reduce peak memory for dense history while preserving statistics, ordering, missing values and accounting results.
-2. **Restore protection**: persisted journals cover directory switching, recover the correct data after process interruption and retain the original storage and safety backup on failure.
-3. **Editing navigation**: Back returns to the original filters after saving or cancelling. Repeated cancellation, refresh and unavailable browser storage have regression coverage.
-4. **Finance entry**: each transaction uses one currency. Extra-currency amounts and the incomplete-amount checkbox are removed. Sources are Personal Valuation, KaTao Sale, eBay Sale and Others. Historical recent sales become KaTao; restore converts only the staging copy.
-5. **Code organization**: entry and details share financial fields and currency controls; subtotal is derived directly; positions reuse financial types; styles are split by responsibility, and release/package verification shares checks and hygiene rules.
-6. **Documentation and distribution**: synchronize both READMEs, specifications, in-app guidance and roadmaps, consolidate development records and retain historical releases. Full source, packaged business and real desktop checks are part of release generation.
+1. **Home overview**: Valuation, Cards and Collection overview sit side by side. Overview combines the digest and review total, follows applied filters, and supports retry and expandable details.
+2. **Scout**: Cross-site search and Wishlist; manage saved keywords, copy them with a shared button, and open Cardhobby, eBay or 130 Point.
+3. **Saved keywords**: save, filter, reuse, bulk-delete or export keywords with linked wishes. Different keywords create a new entry; matching keywords reuse the existing entry.
+4. **Wish acquisition**: search, sorting, priorities, optional targets and linked keywords, with budgets totaled by currency. Create a new card or bind multiple existing cards to update progress, with rebinding, reverse links and undo.
+5. **Data protection**: add Scout tables only to complete current v1.3 databases with a prior snapshot. Full backups include Scout records; restoring an earlier format extends only the staging copy.
+6. **Experience and structure**: navigation retains the current page until the destination is ready; pages support retry. Wish drafts recover locally per collection. Export and review reads are shared, obsolete planning endpoints and styles are removed, and portfolio/finance retain independent frozen reference tests.
 
-Schema, accounting and backup protocols keep their current versions. All historical collections already use the complete current format. Startup and restore adjust source categories only, preserving amounts, dates and notes; historical unknown costs do not become zero. See the [backup guide](./docs/data-backup-guide.md) and [financial model](./docs/financial-history-model.md).
+The database format marker is independent of the product version. Keywords support searches and wish links only, with no item, price or research records. Automatic refresh, background collection and target-price alerts are reserved for later releases. Existing financial rules remain in place. See the [backup guide](./docs/data-backup-guide.md) and [financial model](./docs/financial-history-model.md).
 
 ## Features
 
@@ -29,7 +29,7 @@ Schema, accounting and backup protocols keep their current versions. All histori
 - Finance: one physical quantity, one currency per transaction, moving-average cost, transaction/expense/valuation history, manual FX and explicit incomplete-data states.
 - Showcase and Portfolio: collection browsing, structure and historical trends, quality queues, saved views, frozen snapshots and comparison.
 - Shares: editable galleries, themes, sections and stories, shared preview/export rendering, static packages and the existing manual Drop workflow.
-- Plans: 180-day maintenance reminders, 7/30-day digests, wishlists and separate currency budgets.
+- Scout: cross-site searches, saved keywords, linked wishes, wishlist and acquisition. Digests and reminders are on Home.
 - Settings: Theme, Data, AI, Finance, User guide and About. Expand Data to manage Storage, Backup & restore, Import and Export.
 - Data: CSV/XLSX mapping and preview, archive updates, per-row retries and conflict-safe undo. Full backups include the database, media and management state.
 
@@ -57,11 +57,12 @@ API keys reside in the local user configuration and are encrypted with Windows s
 | `npm run check:release` | Encoding, docs, metadata, architecture, lint, types, coverage, production build, desktop startup and all HTTP/UI checks; does not package. |
 | `npm run check:architecture` | Check source cycles and client imports of Node.js/database modules. |
 | `npm test` | Unit and module tests. |
-| `npm run test:card` / `test:share` / `test:security` / `test:management` / `test:export` | Business and security HTTP flows using isolated data. |
+| `npm run test:card` / `test:share` / `test:security` / `test:management` / `test:scout` / `test:export` | Business and security HTTP flows using isolated data. |
 | `npm run test:ui` | Desktop UI, minimum-window checks, narrow share previews and strict screenshot comparisons. |
 | `npm run test:desktop` | Real-server startup with port contention, session checks and service restart. |
 | `npm run benchmark` | Isolated 1k/5k/10k synthetic collection benchmarks. |
 | `npm run benchmark:portfolio-history` | Compare complete monthly output and timings with the frozen former implementation. |
+| `npm run benchmark:portfolio-workload` | Compare frozen, full and summary aggregation for equivalent output and in-memory timings, excluding database reads and rendering. |
 | `npm run benchmark:export` | Validate streamed exports for 1k/10k cards, including duration and server memory. |
 | `npm run benchmark:dense` | Dense financial history and synthetic-image benchmarks at 1k/5k/10k cards. |
 | `npm run audit:all` / `audit:prod` | Online audit of all dependencies or production dependencies only; CI audits all dependencies, including packaging tools. |
@@ -70,14 +71,15 @@ API keys reside in the local user configuration and are encrypted with Windows s
 
 The installer provides a directory-selection wizard. Extract the entire portable ZIP before running `Card Vault.exe`; the executable depends on its adjacent runtime files. End users do not need Node.js. See [Windows signing](./docs/windows-code-signing.md) for release configuration.
 
-Keep a full backup before upgrades or moving computers. CSV/XLSX files omit media and application state and cannot replace backups. Only the complete current database format is supported. Restore requires a valid backup manifest and does not upgrade older data; see the [backup guide](./docs/data-backup-guide.md).
+Keep a full backup before upgrades or moving computers. CSV/XLSX files omit media and application state and cannot replace backups. Only complete supported database formats with a valid manifest are accepted. Complete v1.3 base databases receive Scout tables in the staging copy; arbitrary earlier formats are not converted. See the [backup guide](./docs/data-backup-guide.md).
 
 ## Historical releases
 
-All 30 earlier versions are retained below, newest first. These summaries describe each release at the time; current behavior and compatibility follow the latest documentation. The original bilingual summaries were recovered from the v1.2.1 README files, with v1.3.0–v1.3.3 added from their release notes. Early standalone release notes were not found; see [historical sources and gaps](./docs/version-history-sources.md).
+All 31 earlier versions are retained below, newest first. These summaries describe each release at the time; current behavior and compatibility follow the latest documentation. The original bilingual summaries were recovered from the v1.2.1 README files, with v1.3.0–v1.3.3 added from their release notes. Early standalone release notes were not found; see [historical sources and gaps](./docs/version-history-sources.md).
 
 | Version | Main changes | Source |
 | --- | --- | --- |
+| `1.3.6` | Batched Portfolio, restore protection, editing navigation, single-currency transactions and code organization. | [Release notes](./docs/release-v1.3.6.md) |
 | `1.3.5` | Added four application themes, refined Finance, editing and AI settings, unified icons, updated dependencies and removed obsolete compatibility code. | [Release notes](./docs/release-v1.3.5.md) |
 | `1.3.4` | Unified collection statuses and holding coverage, added entry financial records, improved Home, wishes and navigation, and consolidated structure and checks. | [Release notes](./docs/release-v1.3.4.md) |
 | `1.3.3` | Added DeepSeek, improved financial and Portfolio layouts, and consolidated AI configuration and architecture. | [Release notes](./docs/release-v1.3.3.md) |

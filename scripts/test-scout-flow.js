@@ -165,6 +165,25 @@ async function main() {
     assert.equal(windowFirst.plans.length, 20); assert.equal(windowLast.plans.length, 5); assert.equal(windowLast.wishCount, 105);
     assert.equal(windowLast.budgets.CNY, "10500"); assert.ok(windowFirst.keywordOptions.length >= 105);
     assert.ok(windowLast.watches.every(row => windowFirst.watches.every(first => first.id !== row.id)));
+    const compactOnly = await get("/api/scout?compact=1");
+    assert.ok(compactOnly.watches.length <= 50 && compactOnly.plans.length <= 40);
+    db.exec("UPDATE CollectionPlan SET targetDate=1767225600000,createdAt=1767225600000 WHERE id='window-000'; UPDATE CollectionPlan SET targetDate='2026-01-02T00:00:00.000Z' WHERE id='window-001'; INSERT INTO ScoutWishDetails(planId,priority) VALUES('window-000',1),('window-001',3); INSERT INTO ScoutWatch(id,title,queryJson) VALUES('window-unicode','Élite 金签 100%_foo İstanbul K','{\"keyword\":\"Élite 金签 100%_foo İstanbul K\"}'); INSERT INTO ScoutWishWatch VALUES('window-000','window-unicode')");
+    for (const sort of ["priority", "recent", "target"]) {
+      for (const q of ["", "Window 10", "ÉLITE", "金签", "%_", "i", "k", "missing"]) {
+        const params = new URLSearchParams({ window: "1", q, wishQ: q, wishSort: sort, watchPage: "2", wishPage: "2", cancelledPage: "2", acquired: "1" });
+        const full = await get("/api/scout?" + params), paged = await get("/api/scout?" + params + "&compact=1");
+        assert.deepEqual(paged.keywordOptions, []); assert.deepEqual(paged.wishOptions, []);
+        assert.deepEqual({ ...paged, keywordOptions: full.keywordOptions, wishOptions: full.wishOptions }, full, `compact results must match reference filtering and sorting: ${sort}/${q}`);
+      }
+    }
+    const references = await get("/api/scout?references=1");
+    assert.ok(references.keywordOptions.some(row => row.id === "window-unicode"));
+    assert.equal(references.wishOptions.find(row => row.id === "window-000").priority, 1);
+    db.prepare("UPDATE CollectionPlan SET createdAt=? WHERE id='window-000'").run(Date.UTC(2027, 0, 1));
+    for (const compact of ["0", "1"]) {
+      const recent = await get("/api/scout?window=1&wishQ=Window&wishSort=recent&compact=" + compact);
+      assert.equal(recent.plans[0].id, "window-000", "numeric and text creation dates must sort chronologically");
+    }
     const compact = await get("/api/home-overview?sport=Window"), queue1 = await get("/api/home-overview?sport=Window&tasks=1"), queue2 = await get("/api/home-overview?sport=Window&tasks=1&page=2");
     assert.deepEqual(compact.tasks, []); assert.equal(compact.openCount, 315);
     assert.equal(queue1.tasks.length, 50); assert.equal(queue2.tasks.length, 50); assert.equal(queue1.taskCount, 315);

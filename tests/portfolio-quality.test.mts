@@ -36,7 +36,7 @@ test("组合质量清单汇总缺少估值、交易和图片的问题", () => {
   assert.deepEqual(result[0].issues, ["缺少估值", "缺少交易记录", "缺少图片"]);
 });
 
-test("组合质量清单识别超过 360 天的估值并按优先级排序", () => {
+test("组合质量清单识别超过 180 天的估值并按优先级排序", () => {
   const result = buildPortfolioQualityCards([
     record({
       id: "stale",
@@ -54,7 +54,7 @@ test("组合质量清单识别超过 360 天的估值并按优先级排序", () 
 
   assert.equal(result[0].id, "missing");
   assert.equal(result[1].id, "stale");
-  assert.deepEqual(result[1].issues, ["估值超过 360 天"]);
+  assert.deepEqual(result[1].issues, ["估值超过 180 天"]);
 });
 
 test("组合质量清单处理所有传入的收藏卡片", () => {
@@ -67,7 +67,7 @@ test("组合质量清单处理所有传入的收藏卡片", () => {
   assert.deepEqual(result.map((card) => card.id).sort(), ["holding", "sold", "target"]);
 });
 
-test("组合质量清单以 360 天为估值过期边界", () => {
+test("组合质量清单以 180 天为估值过期边界", () => {
   const asOf = new Date("2026-08-25T00:00:00.000Z");
   const valuation = (daysAgo: number) => [{
     amountMinor: BigInt(10000),
@@ -77,9 +77,9 @@ test("组合质量清单以 360 天为估值过期边界", () => {
     source: "manual"
   }];
 
-  assert.deepEqual(buildPortfolioQualityCards([record({ valuations: valuation(360) })], asOf), []);
+  assert.deepEqual(buildPortfolioQualityCards([record({ valuations: valuation(180) })], asOf), []);
   assert.deepEqual(
-    buildPortfolioQualityCards([record({ valuations: valuation(361) })], asOf)[0].issues,
-    ["估值超过 360 天"]
+    buildPortfolioQualityCards([record({ valuations: valuation(181) })], asOf)[0].issues,
+    ["估值超过 180 天"]
   );
 });

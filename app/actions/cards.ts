@@ -59,6 +59,7 @@ export async function createCardFormAction(
 
     revalidatePath("/");
     revalidatePath("/showcase");
+    revalidatePath("/portfolio");
     revalidatePath("/cards/new");
     revalidatePath("/collection");
     if (saveIntent === "view") {
@@ -155,6 +156,7 @@ export async function updateCardFormAction(cardId: string, _previousState: Creat
     revalidatePath(`/cards/${cardId}`);
     revalidatePath("/showcase");
     revalidatePath(`/showcase/cards/${cardId}`);
+    revalidatePath("/portfolio");
     redirectPath = `/cards/${cardId}?success=updated${returnQuery}`;
   } catch (error) {
     const message = errorMessage(error, "更新失败，请稍后重试。");
@@ -182,6 +184,7 @@ export async function deleteCardAction(cardId: string): Promise<void> {
 
     revalidatePath("/");
     revalidatePath("/showcase");
+    revalidatePath("/portfolio");
     redirectPath = "/?success=deleted";
   } catch (error) {
     const message = errorMessage(error, "删除失败，请稍后重试。");

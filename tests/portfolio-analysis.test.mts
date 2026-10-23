@@ -1,4 +1,4 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildPortfolioScope,
@@ -150,7 +150,7 @@ test("portfolio snapshot uses financial history and keeps currencies separate", 
   assert.equal(snapshot.quality.patchCount, 1);
   assert.deepEqual(snapshot.scope, { isFiltered: false, criteria: [] });
   assert.equal(snapshot.attentionItems.find((item) => item.type === "missing_transaction")?.count, 1);
-  assert.equal(snapshot.attentionItems.find((item) => item.type === "stale_valuation")?.count, 1);
+  assert.equal(snapshot.attentionItems.find((item) => item.type === "stale_valuation")?.count, 2);
 });
 test("portfolio snapshot exposes multidimensional allocation, concentration, coverage, trends, and attention items", () => {
   const asOf = new Date("2026-08-12T00:00:00.000Z");

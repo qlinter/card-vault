@@ -2,18 +2,28 @@ import "server-only";
 import { prisma } from "./prisma";
 import { matchesSearch } from "./search-terms";
 import { scoutIdentity } from "./scout-identity";
+import { serializeScoutData as serialize } from "./scout-serialization";
+import { loadScoutPage, type ScoutPageOptions } from "./scout-queries";
+export { loadScoutReferences, type ScoutReferences } from "./scout-queries";
 
-const serialize = <T>(value: T) => JSON.parse(JSON.stringify(value, (_, entry) => typeof entry === "bigint" ? entry.toString() : entry)) as Serialized<T>;
-type Serialized<T> = T extends bigint ? string : T extends Date ? string : T extends Array<infer U> ? Serialized<U>[] : T extends object ? { [K in keyof T]: Serialized<T[K]> } : T;
-export async function loadScout(options: { window?: boolean; search?: string; wishSearch?: string; wishSort?: string; watchPage?: number; wishPage?: number; cancelledPage?: number; showAcquired?: boolean } = {}) {
+export async function loadScout(options: ScoutPageOptions & { window?: boolean; compact?: boolean } = {}) {
+  // SQLite lower() folds ASCII only. Retain Unicode case-folding for cased non-ASCII searches.
+  const unicodeCase = [...(options.search ?? ""), ...(options.wishSearch ?? "")].some(char => char.codePointAt(0)! > 127 && char.toUpperCase() !== char.toLowerCase());
+  if (options.compact && !unicodeCase) return loadScoutPage(options);
+  const result = await loadFullScout(options.compact ? { ...options, window: true } : options);
+  return options.compact ? { ...result, keywordOptions: [], wishOptions: [] } : result;
+}
+async function loadFullScout(options: ScoutPageOptions & { window?: boolean }) {
   const watchPageSize = 50, wishPageSize = 20;
   const [keywords, wishes, budgetRows] = await Promise.all([
     prisma.scoutWatch.findMany({ orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { id: true, title: true } }),
-    prisma.collectionPlan.findMany({ orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { id: true, title: true, playerName: true, status: true, targetDate: true, scoutDetails: { select: { priority: true } }, scoutWatches: { select: { watchId: true } } } }),
+    prisma.collectionPlan.findMany({ orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { id: true, title: true, playerName: true, status: true, createdAt: true, targetDate: true, scoutDetails: { select: { priority: true } }, scoutWatches: { select: { watchId: true } } } }),
     prisma.collectionPlan.findMany({ where: { status: "planned", budgetMinor: { not: null } }, select: { currency: true, budgetMinor: true } })
   ]);
   const keywordOptions = keywords.map(row => ({ id: row.id, keyword: row.title }));
   const keywordMap = new Map(keywordOptions.map(row => [row.id, row.keyword]));
+  // Compare dates after decoding both SQLite text and Prisma millisecond storage.
+  wishes.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
   const sorted = options.wishSort === "recent" ? wishes : wishes.sort((a, b) => options.wishSort === "target" ? (a.targetDate?.getTime() ?? Infinity) - (b.targetDate?.getTime() ?? Infinity) || 0 : (a.scoutDetails?.priority ?? 2) - (b.scoutDetails?.priority ?? 2));
   const wishOptions = sorted.map(row => ({ id: row.id, title: row.title, status: row.status, watchIds: row.scoutWatches.map(link => link.watchId) }));
   const matchingIds = new Set(sorted.filter(row => matchesSearch([row.title, row.playerName, ...row.scoutWatches.map(link => keywordMap.get(link.watchId))].filter(Boolean).join(" "), options.wishSearch ?? "")).map(row => row.id));

@@ -7,14 +7,17 @@ import type { PortfolioFinancialHistoryPoint } from "@/lib/portfolio-insights";
 import { formatPortfolioMoney as money } from "@/lib/portfolio-presentation";
 import { portfolioTrendChartWidth, portfolioTrendLabelIndexes, portfolioTrendMonths, type PortfolioTrendRange } from "@/lib/portfolio-trend";
 import { useLanguage } from "./language-provider";
+import { useSearchParams } from "next/navigation";
 import styles from "./portfolio-center.module.css";
+import dataStyles from "./portfolio-data.module.css";
 
-type TrendKind = "purchases" | "sales";
+type TrendKind = "purchases" | "sales" | "expenses";
 type ChartSeries = { key: string; label: string; color: string; values: Array<number | null>; counts?: number[]; countUnit?: "cards" | "records" };
 
 const trendMeta: Record<TrendKind, { label: string; color: string }> = {
   purchases: { label: "买入", color: "var(--theme-link, #277f7f)" },
-  sales: { label: "出售", color: "var(--theme-orange, #d9531e)" }
+  sales: { label: "出售", color: "var(--theme-orange, #d9531e)" },
+  expenses: { label: "费用", color: "var(--theme-warning, #c2872d)" }
 };
 
 const financialTrendMeta = {
@@ -29,11 +32,11 @@ function trendValues(points: PortfolioTimeSeriesPoint[], months: string[], curre
   return months.map(month => byMonth.has(month) ? byMonth.get(month)! : 0);
 }
 
-function compactAmount(value: number): string {
-  return new Intl.NumberFormat("zh-CN", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+function compactAmount(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale === "en" ? "en-US" : "zh-CN", { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
-function LineChart({ months, series, currency, ariaLabel, emptyLabel, coverage }: {
+function LineChart({ months, series: allSeries, currency, ariaLabel, emptyLabel, coverage }: {
   months: string[];
   series: ChartSeries[];
   currency: string;
@@ -42,6 +45,9 @@ function LineChart({ months, series, currency, ariaLabel, emptyLabel, coverage }
   coverage?: Array<{ active: number; valued: number; costKnown: number } | undefined>;
 }) {
   const { locale, t } = useLanguage();
+  const formatValue = (value: number | null) => currency ? money(value, currency) : value === null ? "—" : value.toLocaleString(locale === "en" ? "en-US" : "zh-CN");
+  const [hidden, setHidden] = useState<string[]>([]);
+  const series = allSeries.filter(item => !hidden.includes(item.key));
   const container = useRef<HTMLDivElement>(null);
   const [availableWidth, setAvailableWidth] = useState(720);
   useEffect(() => {
@@ -76,12 +82,12 @@ function LineChart({ months, series, currency, ariaLabel, emptyLabel, coverage }
   return (
     <div className={styles.chartWrap} ref={container}>
       <div className={styles.legend}>
-        {series.map((item) => <span key={item.key}><i style={{ background: item.color }} /><UiText text={item.label} /></span>)}
+        {allSeries.map(item => <button type="button" key={item.key} aria-pressed={!hidden.includes(item.key)} onClick={() => setHidden(current => current.includes(item.key) ? current.filter(key => key !== item.key) : series.length > 1 ? [...current, item.key] : current)}><i style={{ background: item.color }} /><UiText text={item.label} /></button>)}
       </div>
       <div className={`${styles.chartTooltip}${hoveredIndex < 0 ? ` ${styles.chartTooltipIdle}` : ""}`} role="status">
         {hoveredIndex >= 0 ? <>
           <strong>{months[hoveredIndex]}</strong>
-          {series.map((item) => <span key={item.key}><i style={{ background: item.color }} /><UiText text={item.label} /> {money(item.values[hoveredIndex], currency)}{item.counts ? <span data-i18n-skip>{` · ${item.counts[hoveredIndex]} ${locale === "en" ? item.countUnit : item.countUnit === "cards" ? "张" : "笔"}`}</span> : null}</span>)}
+          {series.map((item) => <span key={item.key}><i style={{ background: item.color }} /><UiText text={item.label} /> {formatValue(item.values[hoveredIndex])}{item.counts ? <span data-i18n-skip>{` · ${item.counts[hoveredIndex]} ${locale === "en" ? item.countUnit : item.countUnit === "cards" ? "张" : "笔"}`}</span> : null}</span>)}
           {counts ? <span data-i18n-skip>{locale === "en" ? `Valuation coverage ${counts.valued}/${counts.active} · Complete costs ${counts.costKnown}/${counts.active}` : `估值覆盖 ${counts.valued}/${counts.active} · 成本完整 ${counts.costKnown}/${counts.active}`}</span> : null}
         </> : null}
       </div>
@@ -90,7 +96,7 @@ function LineChart({ months, series, currency, ariaLabel, emptyLabel, coverage }
           {[0, 1, 2, 3, 4].map((line) => {
             const value = maximum - valueRange * line / 4;
             const y = 11 + line * ((plotHeight - 22) / 4);
-            return <g key={line}><line x1={left} x2={chartWidth - right} y1={y} y2={y} /><text x={left - 10} y={y + 4} textAnchor="end">{compactAmount(value)}</text></g>;
+            return <g key={line}><line x1={left} x2={chartWidth - right} y1={y} y2={y} /><text x={left - 10} y={y + 4} textAnchor="end">{compactAmount(value, locale)}</text></g>;
           })}
           {series.map((item) => <path key={item.key} d={item.values.map((value, index) => value === null ? "" : `${index === 0 || item.values[index - 1] === null ? "M" : "L"}${xAt(index)},${yAt(value)}`).join(" ")} fill="none" strokeWidth="2" stroke={item.color} />)}
           {hoveredIndex >= 0 ? <line className={styles.hoverLine} x1={xAt(hoveredIndex)} x2={xAt(hoveredIndex)} y1="11" y2={plotHeight - 11} /> : null}
@@ -105,21 +111,23 @@ function LineChart({ months, series, currency, ariaLabel, emptyLabel, coverage }
           ))}
         </svg>
       </div>
+      <details className={styles.chartData}><summary><UiText text="查看数据表" /></summary><table><thead><tr><th><UiText text="月份" /></th>{series.map(item => <th key={item.key}><UiText text={item.label} /></th>)}</tr></thead><tbody>{months.map((month, index) => <tr key={month}><td>{month}</td>{series.map(item => <td key={item.key}>{formatValue(item.values[index])}{item.counts ? ` · ${item.counts[index]}` : ""}</td>)}</tr>)}</tbody></table></details>
     </div>
   );
 }
 
-function TrendChart({ snapshot, currency, range, asOfMonth }: { snapshot: PortfolioSnapshot; currency: string; range: PortfolioTrendRange; asOfMonth: string }) {
-  const months = useMemo(() => portfolioTrendMonths({ purchases: snapshot.activitySeries.purchases, sales: snapshot.activitySeries.sales }, range, asOfMonth), [asOfMonth, range, snapshot.activitySeries]);
-  const series = (Object.keys(trendMeta) as TrendKind[]).map((kind) => ({
+function TrendChart({ snapshot, currency, range, asOfMonth, units }: { snapshot: PortfolioSnapshot; currency: string; range: PortfolioTrendRange; asOfMonth: string; units: boolean }) {
+  const months = useMemo(() => portfolioTrendMonths({ purchases: snapshot.timeSeries.purchases, sales: snapshot.timeSeries.sales, ...(!units ? { expenses: snapshot.timeSeries.expenses } : {}) }, range, asOfMonth), [asOfMonth, range, snapshot.timeSeries, units]);
+  const kinds: TrendKind[] = units ? ["purchases", "sales"] : ["purchases", "sales", "expenses"];
+  const series = kinds.map((kind) => ({
     key: kind,
     label: trendMeta[kind].label,
     color: trendMeta[kind].color,
-    counts: months.map((month) => snapshot.activitySeries[kind].find((point) => point.month === month)?.count ?? 0),
-    countUnit: "cards" as const,
-    values: trendValues(snapshot.activitySeries[kind], months, currency)
+    counts: units ? undefined : months.map((month) => kind === "expenses" ? snapshot.timeSeries.expenses.find(point => point.month === month)?.count || 0 : snapshot.activitySeries[kind].find((point) => point.month === month)?.count || 0),
+    countUnit: kind === "expenses" ? "records" as const : "cards" as const,
+    values: units ? months.map(month => kind === "expenses" ? snapshot.timeSeries.expenses.find(point => point.month === month)?.count || 0 : snapshot.activitySeries[kind].find(point => point.month === month)?.count || 0) : trendValues(snapshot.timeSeries[kind], months, currency)
   }));
-  return <LineChart months={months} series={series} currency={currency} ariaLabel={`${currency} 月度活动趋势`} emptyLabel={`暂无 ${currency} 月度财务记录。`} />;
+  return <LineChart key={units ? "quantity" : "amount"} months={months} series={series} currency={units ? "" : currency} ariaLabel={`${currency} 月度活动趋势`} emptyLabel={`暂无 ${currency} 月度财务记录。`} />;
 }
 
 function FinancialHistoryChart({ points, currency, range }: { points: PortfolioFinancialHistoryPoint[]; currency: string; range: PortfolioTrendRange }) {
@@ -137,13 +145,20 @@ function FinancialHistoryChart({ points, currency, range }: { points: PortfolioF
   return <LineChart months={months} series={series} currency={currency} coverage={visiblePoints.map((point) => point.coverage?.find((item) => item.currency === currency))} ariaLabel={`${currency} 组合财务趋势`} emptyLabel={`暂无 ${currency} 可重建的财务历史。`} />;
 }
 
-export function PortfolioFinancialHistorySection({ points, currencies }: { points: PortfolioFinancialHistoryPoint[]; currencies: string[] }) {
-  const [range, setRange] = useState<PortfolioTrendRange>(12);
+function useTrendRange(key: "financialRange" | "activityRange", fallback?: string) {
+  const search = useSearchParams();
+  const value = search.get(key) || fallback || search.get("range");
+  const range: PortfolioTrendRange = value === "all" ? "all" : [6, 12, 24].includes(Number(value)) ? Number(value) as 6 | 12 | 24 : 12;
+  function setRange(value: string) { const url = new URL(window.location.href); url.searchParams.set(key, value); window.history.replaceState(null, "", url); }
+  return { range, setRange };
+}
+export function PortfolioFinancialHistorySection({ points, currencies, rangeValue }: { points: PortfolioFinancialHistoryPoint[]; currencies: string[]; rangeValue?: string }) {
+  const { range, setRange } = useTrendRange("financialRange", rangeValue);
   return <section className={styles.section}>
     <header className={styles.sectionHeader}>
       <div><h2><UiText text={"财务趋势"} /></h2></div>
-      <UiElement as="select" uiAttributes={["aria-label"]} className={styles.rangeSelect} aria-label="财务趋势时间范围" value={range} onChange={(event) => setRange(event.target.value === "all" ? "all" : Number(event.target.value) as 12 | 24)}>
-        <option value={12}><UiText text={"近12个月"} /></option><option value={24}><UiText text={"近24个月"} /></option><option value="all"><UiText text={"所有"} /></option>
+      <UiElement as="select" uiAttributes={["aria-label"]} className={styles.rangeSelect} aria-label="财务趋势时间范围" value={range} onChange={(event) => setRange(event.target.value)}>
+        <option value={6}><UiText text="近6个月" /></option><option value={12}><UiText text={"近12个月"} /></option><option value={24}><UiText text={"近24个月"} /></option><option value="all"><UiText text={"所有"} /></option>
       </UiElement>
     </header>
     <div className={styles.trendGrid}>
@@ -152,17 +167,24 @@ export function PortfolioFinancialHistorySection({ points, currencies }: { point
   </section>;
 }
 
-export function PortfolioActivityTrendSection({ snapshot, currencies, asOfMonth }: { snapshot: PortfolioSnapshot; currencies: string[]; asOfMonth: string }) {
-  const [range, setRange] = useState<PortfolioTrendRange>(12);
+export function PortfolioActivityTrendSection({ snapshot, currencies, asOfMonth, rangeValue }: { snapshot: PortfolioSnapshot; currencies: string[]; asOfMonth: string; rangeValue?: string }) {
+  const { range, setRange } = useTrendRange("activityRange", rangeValue);
+  const [units, setUnits] = useState(false);
   return <section className={styles.section}>
     <header className={styles.sectionHeader}>
       <div><h2><UiText text={"活动趋势"} /></h2></div>
-      <UiElement as="select" uiAttributes={["aria-label"]} className={styles.rangeSelect} aria-label="活动趋势时间范围" value={range} onChange={(event) => setRange(event.target.value === "all" ? "all" : Number(event.target.value) as 12 | 24)}>
-        <option value={12}><UiText text={"近12个月"} /></option><option value={24}><UiText text={"近24个月"} /></option><option value="all"><UiText text={"所有"} /></option>
+      <div className={styles.trendControls}>
+      <UiElement as="div" uiAttributes={["aria-label"]} className={dataStyles.modeSwitch} role="group" aria-label="活动趋势显示方式">
+        <button type="button" aria-pressed={!units} onClick={() => setUnits(false)}><UiText text="金额" /></button>
+        <button type="button" aria-pressed={units} onClick={() => setUnits(true)}><UiText text="数量" /></button>
       </UiElement>
+      <UiElement as="select" uiAttributes={["aria-label"]} className={styles.rangeSelect} aria-label="活动趋势时间范围" value={range} onChange={(event) => setRange(event.target.value)}>
+        <option value={6}><UiText text="近6个月" /></option><option value={12}><UiText text={"近12个月"} /></option><option value={24}><UiText text={"近24个月"} /></option><option value="all"><UiText text={"所有"} /></option>
+      </UiElement>
+      </div>
     </header>
     <div className={styles.trendGrid}>
-      {(currencies.length ? currencies : ["CNY"]).map((currency) => <article key={currency} className={styles.chartCard}><h3>{currency}</h3><TrendChart snapshot={snapshot} currency={currency} range={range} asOfMonth={asOfMonth} /></article>)}
+      {(currencies.length ? currencies : ["CNY"]).map((currency) => <article key={currency} className={styles.chartCard}><h3>{units ? <UiText text="数量（张）" /> : currency}</h3><TrendChart snapshot={snapshot} currency={currency} range={range} asOfMonth={asOfMonth} units={units} /></article>)}
     </div>
   </section>;
 }

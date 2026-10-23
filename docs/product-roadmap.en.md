@@ -1,6 +1,6 @@
 # Card Vault Product Roadmap
 
-Updated 2026-10-13. Current source is v1.4.0; Home overview and Scout are implemented. Installer and portable artifacts use the unified release acceptance process. See [release notes](./release-v1.4.0.md).
+Updated 2026-10-23. The current source version is v1.4.1. Features and closeout validation are in the [release notes](./release-v1.4.1.md), with phased work in the [development record](./development-v1.4.1.md). Historical distribution facts remain in their respective release notes.
 
 ## Completed capabilities
 
@@ -21,15 +21,19 @@ The current implementation retains independent styles and themes, sections, card
 
 ## Historical distribution status
 
-Feature details, source checks and packaged-runtime results for v1.3.1–v1.3.4 are maintained in their release notes: [v1.3.1](./release-v1.3.1.md), [v1.3.2](./release-v1.3.2.md), [v1.3.3](./release-v1.3.3.md), [v1.3.4](./release-v1.3.4.md). Current real Windows and external AI checks are recorded separately in the [release acceptance](./release-v1.3.6.md).
+Feature details, source checks and packaged-runtime results for v1.3.1–v1.3.4 are maintained in their release notes: [v1.3.1](./release-v1.3.1.md), [v1.3.2](./release-v1.3.2.md), [v1.3.3](./release-v1.3.3.md), [v1.3.4](./release-v1.3.4.md). Real Windows and external AI checks for v1.3.6 are recorded separately in its [release acceptance](./release-v1.3.6.md).
 
-## Completed this release
+## v1.3.6 historical consolidation
 
 v1.3.6 consolidates the earlier development and code organization in the [release notes](./release-v1.3.6.md). See [application themes](./app-themes.md) for extension rules. Earlier theme, interface and AI settings release facts remain in [v1.3.5](./release-v1.3.5.md); the roadmap records capability status and future priorities.
 
 ## v1.4.0 implemented
 
 Three compact, equal Home panels follow filters; Collection overview combines digests and reminders. Scout contains cross-site search with saved keyword management, wishlist and acquisition. Keywords support search, saving, reuse, deletion and linked wishes only; item, price and research models and APIs have been removed. Wish targets, multiple bindings, search/sort, local draft recovery, reverse links and CSV lists are complete. Navigation, recovery, aggregation refactoring and shared export cleanup are included. Automatic Cardhobby updates and price alerts remain future work.
+
+## v1.4.1 completed
+
+v1.4.1 implements patched Next.js / Electron dependencies, Scout scroll recovery, debounced search, database pagination and workspace-local reference reuse. Data uses Overview, Trends, Structure and Details tabs with physical quantities, scoped drill-through, complete issue lists, interactive trends and fixed snapshots and historical comparison; see the [data analysis rules](./data-analysis-guide.md). Regression retains independent financial references and the existing data structure; the source version, specifications and release notes are synchronized; distribution files are generated separately.
 
 ## Next priorities
 

@@ -239,9 +239,13 @@ test("single-currency purchases and a cross-currency sale share one reporting va
   await expect(page.locator(".valuation-total-list")).toContainText("CNY 500.00");
   await page.goto("/portfolio?q=Finance%20Player");
   await expect(page.locator(".portfolio-page")).toContainText("CNY +390.00");
-  const financial = page.getByRole("heading", { name: "持仓", exact: true }).locator("xpath=ancestor::section[1]");
+  await expect(page.locator('[aria-label="financial summary"] article strong')).toHaveText(["CNY 500.00", "CNY 400.00", "CNY +100.00", "CNY +290.00"]);
+  const financial = page.getByText("财务明细与核算依据", { exact: true }).locator("..");
+  await financial.locator("summary").first().click();
   await expect(financial).not.toContainText("本次使用的汇率");
-  await expect(financial.locator("dt")).toHaveText(["累计买入金额", "累计费用", "净现金投入", "累计出售金额", "剩余成本", "已实现盈亏", "总盈亏", "未实现盈亏", "未实现回报率"]);
+  await expect(financial.locator("dt")).toHaveText(["总盈亏", "累计买入金额", "累计出售金额", "累计费用", "净现金投入", "未实现回报率"]);
+  await page.getByRole("link", { name: "趋势", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "财务趋势", exact: true })).toBeVisible();
   for (const heading of ["财务趋势", "活动趋势"]) {
     const section = page.getByRole("heading", { name: heading, exact: true }).locator("xpath=ancestor::section[1]");
     for (const range of ["12", "24", "all"]) {

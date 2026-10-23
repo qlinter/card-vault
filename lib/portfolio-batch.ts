@@ -12,6 +12,7 @@ import { roundPortfolioValue as money } from "./portfolio-number.ts";
 /** Only aggregate results survive each batch; transaction and valuation arrays are released. */
 export function createPortfolioBatchAccumulator(scope: PortfolioScope, config: FinancialConfig, asOf: Date, startMonth?: string, options: {
   includeDetails?: boolean;
+  onReportingBatch?: (reporting: ReturnType<typeof buildReportingPortfolio>, cards: PortfolioCardRecord[]) => void;
 } = {}) {
   const empty = buildReportingPortfolio([], scope, config, asOf);
   const snapshot = empty.snapshot;
@@ -27,6 +28,7 @@ export function createPortfolioBatchAccumulator(scope: PortfolioScope, config: F
   let incompleteCosts = false;
   function add(cards: PortfolioCardRecord[]) {
     const reporting = buildReportingPortfolio(cards, scope, config, asOf, { allGroups: true });
+    options.onReportingBatch?.(reporting, cards);
     incompleteCosts ||= reporting.cards.some(card => card.costMissing.length > 0);
     const part = reporting.snapshot;
     for (const card of cards) {

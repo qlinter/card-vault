@@ -97,7 +97,7 @@ export function HomeCardGrid({ cards, historyKey, totalCount }: HomeCardGridProp
       <section className={`cards-grid${view === "list" ? " is-list" : ""}`} data-testid="home-card-grid">
         {visibleCards.map((card, index) => (
           <article key={card.id} className="card-item">
-            <a href={card.href}>
+            <a className="card-link" href={card.href}>
               {card.imagePath ? (
                 <img
                   className="card-thumb"
@@ -111,21 +111,21 @@ export function HomeCardGrid({ cards, historyKey, totalCount }: HomeCardGridProp
               ) : (
                 <div className="card-thumb" />
               )}
+              <div className="card-body">
+                <h2 className="card-title">{card.playerName}</h2>
+                <p className="card-sub">{card.cardTitle}</p>
+                <p className="card-sub">{card.details || t("未补充更多信息")}</p>
+                {card.tags.length > 0 ? (
+                  <div className="tags">
+                    {card.tags.map((tag) => (
+                      <span className="tag" key={tag}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </a>
-            <div className="card-body">
-              <h2 className="card-title">{card.playerName}</h2>
-              <p className="card-sub">{card.cardTitle}</p>
-              <p className="card-sub">{card.details || t("未补充更多信息")}</p>
-              {card.tags.length > 0 ? (
-                <div className="tags">
-                  {card.tags.map((tag) => (
-                    <span className="tag" key={tag}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
           </article>
         ))}
       </section>

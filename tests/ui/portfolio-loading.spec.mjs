@@ -44,9 +44,9 @@ for (const locale of ["zh", "en"]) {
   test(`portfolio failure can be retried without losing filters (${locale})`, async ({ page, context }, testInfo) => {
     if (locale === "en") await context.addCookies([{ name: "card_vault_ui_locale", value: "en", url: "http://127.0.0.1:3360" }]);
     const db = database();
-    const restore = () => db.prepare("DELETE FROM PortfolioSavedView WHERE id='page-recovery-fixture'").run();
+    const restore = () => db.prepare("DELETE FROM PortfolioSnapshotRecord WHERE id='page-recovery-fixture'").run();
     try {
-      db.prepare("INSERT INTO PortfolioSavedView(id,name,queryJson,updatedAt) VALUES('page-recovery-fixture','Recovery fixture','invalid',?)").run(Date.now());
+      db.prepare("INSERT INTO PortfolioSnapshotRecord(id,name,queryJson,snapshotJson) VALUES('page-recovery-fixture','Recovery fixture','invalid','{}')").run();
       await page.goto("/portfolio?sport=Basketball&sort=yearAsc");
       await expect(page.getByRole("heading", { name: locale === "en" ? "This page could not be loaded" : "暂时无法加载此页面" })).toBeVisible();
       await page.screenshot({ path: testInfo.outputPath(`recovery-${locale}.png`) });
@@ -67,20 +67,27 @@ for (const locale of ["zh", "en"]) test(`a failed comparison leaves the current 
   if (locale === "en") await context.addCookies([{ name: "card_vault_ui_locale", value: "en", url: "http://127.0.0.1:3360" }]);
   const db = database();
   try {
-    await page.goto("/portfolio?sport=Basketball&compareLeft=current&compareRight=view%3Arecovered-comparison");
+    await page.goto("/portfolio?sport=Basketball&workspace=1", { waitUntil: "networkidle" });
+    await page.getByLabel(locale === "en" ? "Snapshot Name" : "时间点快照名称", { exact: true }).fill("Recovery comparison");
+    await page.getByRole("button", { name: locale === "en" ? "Save Current Snapshot" : "保存当前快照", exact: true }).click();
+    await expect(page.locator(".note-ok")).toBeVisible();
+    const record = db.prepare("SELECT * FROM PortfolioSnapshotRecord WHERE name='Recovery comparison'").get();
+    db.prepare("DELETE FROM PortfolioSnapshotRecord WHERE id=?").run(record.id);
+    await page.goto(`/portfolio?sport=Basketball&compareLeft=snapshot%3A${record.id}&compareRight=current`);
     await expect(page.locator(".portfolio-page")).toBeVisible();
-    await page.locator('details').filter({ has: page.locator('select[name="compareRight"]') }).locator('summary').click();
-    await expect(page.locator('.portfolio-page').getByRole("alert")).toContainText(locale === "en" ? "missing or has been deleted" : "视图不存在");
+    await expect(page.locator('details').filter({ has: page.locator('select[name="compareRight"]') })).toHaveAttribute("open", "");
+    await expect(page.locator('.portfolio-page').getByRole("alert")).toContainText(locale === "en" ? "missing or has been deleted" : "快照不存在");
     await expect(page.getByRole("button", { name: locale === "en" ? "Try again" : "重试", exact: true })).toBeVisible();
     await expect(page.locator("#portfolio-current-title")).toBeVisible();
     // Restore the missing source, then retry without changing the comparison query.
-    db.prepare("INSERT INTO PortfolioSavedView(id,name,queryJson,updatedAt) VALUES('recovered-comparison','Recovered','{\"sport\":\"Basketball\"}',?)").run(Date.now());
+    db.prepare("INSERT INTO PortfolioSnapshotRecord(id,name,queryJson,snapshotJson,capturedAt) VALUES(?,?,?,?,?)").run(record.id, record.name, record.queryJson, record.snapshotJson, record.capturedAt);
     await page.getByRole("button", { name: locale === "en" ? "Try again" : "重试", exact: true }).click();
     await expect(page.locator('.portfolio-page').getByRole("alert")).toHaveCount(0);
     await expect(page.locator(".portfolio-page")).toBeVisible();
-    expect(new URL(page.url()).searchParams.get("compareRight")).toBe("view:recovered-comparison");
+    expect(new URL(page.url()).searchParams.get("compareLeft")).toBe(`snapshot:${record.id}`);
+    expect(new URL(page.url()).searchParams.get("compareRight")).toBe("current");
   } finally {
-    db.prepare("DELETE FROM PortfolioSavedView WHERE id='recovered-comparison'").run();
+    db.prepare("DELETE FROM PortfolioSnapshotRecord WHERE name='Recovery comparison'").run();
     db.close();
   }
 });

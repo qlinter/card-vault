@@ -755,16 +755,13 @@ async function main() {
     const portfolioPage = await fetchPage(baseUrl, "/portfolio");
     for (const marker of [
       "portfolio-page",
-      "持仓",
-      "财务趋势",
+      "持仓估值",
       "估值来源",
-      "活动趋势",
-      "收藏结构",
-      "扩展维度",
-      "卡片属性",
+      "总览",
+      "趋势",
+      "结构",
+      "明细",
       "高价值持仓",
-      "高成本持仓",
-      "售出复盘",
       "待完善数据",
       "E2E Filtered Player"
     ]) {
@@ -775,11 +772,20 @@ async function main() {
     if (!portfolioPage.includes('href="/portfolio"') || !portfolioPage.includes("CNY")) {
       throw new Error("Portfolio center navigation or currency-separated summary is missing.");
     }
-    for (const marker of ['aria-label="财务趋势时间范围"', 'aria-label="活动趋势时间范围"', 'aria-label="收藏结构维度"', "近12个月", "近24个月", "所有", '/?q=E2E%20Filtered%20Player']) {
-      if (!portfolioPage.includes(marker)) {
+    const trendPage = await fetchPage(baseUrl, "/portfolio?tab=trends");
+    const structurePage = await fetchPage(baseUrl, "/portfolio?tab=structure");
+    const salesPage = await fetchPage(baseUrl, "/portfolio?tab=details&kind=sold");
+    const qualityPage = await fetchPage(baseUrl, "/portfolio?tab=details&kind=quality");
+    for (const marker of ['aria-label="财务趋势时间范围"', 'aria-label="活动趋势时间范围"', "近6个月", "近12个月", "近24个月", "所有", "持仓估值变化", "查看数据表"]) {
+      if (!trendPage.includes(marker)) {
         throw new Error(`Portfolio center interactive controls or filter links are missing: ${marker}`);
       }
     }
+    for (const marker of ['aria-label="收藏结构维度"', 'aria-label="收藏结构显示方式"', "档案数量", "实物数量", "估值占比", "卡片属性"]) if (!structurePage.includes(marker)) throw new Error(`Structure measurement is missing: ${marker}`);
+    if (structurePage.includes('aria-label="结构统计口径"')) throw new Error("Structure still exposes the retired measurement selector.");
+    for (const marker of ["出售", "已实现盈亏", "净出售金额", "结转成本"]) if (!salesPage.includes(marker)) throw new Error(`Sales details are missing: ${marker}`);
+    for (const marker of ["影响核算", "档案整理", "估值待更新", "data-details"]) if (!qualityPage.includes(marker)) throw new Error(`Quality navigation is missing: ${marker}`);
+    if (!portfolioPage.includes('href="/cards/') || !portfolioPage.includes("returnTo=")) throw new Error("Data rankings must link to exact archives with return context.");
     for (const removedCopy of [
       "CNY 与 USD 分开核算，不进行自动汇率换算。",
       "展示最近 12 个有记录月份的买入、出售、费用与估值录入金额。",
@@ -793,18 +799,17 @@ async function main() {
         throw new Error(`Portfolio center still contains removed helper copy: ${removedCopy}`);
       }
     }
-    if (portfolioPage.includes("rotate(-38")) {
+    if (trendPage.includes("rotate(-38")) {
       throw new Error("Portfolio activity month labels are still rendered diagonally.");
     }
-    if (!portfolioPage.includes('data-horizontal-scroll="disabled"')) {
+    if (!trendPage.includes('data-horizontal-scroll="disabled"')) {
       throw new Error("The default 12-month activity chart still requires horizontal scrolling.");
     }
-    const comparisonDetailsTag = portfolioPage.match(/<details[^>]*comparisonWorkspace[^>]*>/)?.[0];
+    const workspaceAt = portfolioPage.indexOf("快照与比较");
+    const workspaceStart = portfolioPage.lastIndexOf("<details", workspaceAt);
+    const comparisonDetailsTag = workspaceStart < 0 ? "" : portfolioPage.slice(workspaceStart, portfolioPage.indexOf(">", workspaceStart) + 1);
     if (!comparisonDetailsTag || /\sopen(?:\s|=|>)/.test(comparisonDetailsTag)) {
       throw new Error("The view and comparison workspace is missing or not collapsed by default.");
-    }
-    if (!portfolioPage.includes("disclosure-button") || !portfolioPage.includes('aria-label="拖拽调整栏目顺序"')) {
-      throw new Error("Portfolio disclosure or sortable-section controls are missing.");
     }
     const portfolioDetailPage = await fetchPage(baseUrl, `/cards/${cardId}?returnTo=${encodeURIComponent("/portfolio")}`);
     if (!portfolioDetailPage.includes('href="/portfolio"')) {

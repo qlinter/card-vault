@@ -65,7 +65,7 @@ export function FilterBar({
   });
 
   return (
-    <form className="panel" method="get">
+    <form className="panel home-filter-form" method="get">
       {query.wish ? <input type="hidden" name="wish" value={query.wish} /> : null}
       <div className="filters">
         <UiElement as="input" uiAttributes={["placeholder", "aria-label"]}
@@ -124,7 +124,7 @@ export function FilterBar({
       </div>
 
       <details className="filter-details" open={advancedOpen}>
-        <summary><span><UiText text="更多筛选" /></span><DisclosureIcon expanded={false} /></summary>
+        <UiElement as="summary" uiAttributes={["aria-label", "title"]} aria-label="更多筛选" title="更多筛选"><DisclosureIcon expanded={false} /></UiElement>
         <div className="filters filter-details-grid">
           <select name="brand" defaultValue={query.brand ?? ""}>
             <option value="">{<UiText text={"品牌"} />}</option>
@@ -211,7 +211,7 @@ export function FilterBar({
             {<UiText text={"清空条件"} />}
           </a>
           <a href={portfolioHref} className="scope-navigation-link filter-portfolio-link">
-            <UiText text={portfolioScope.isFiltered ? "查看筛选组合" : "查看组合"} />
+            <UiText text={portfolioScope.isFiltered ? "查看筛选组合数据" : "查看组合数据"} />
           </a>
         </div>
         <div className="filter-display-actions"><a href="/cards/new" className="btn btn-primary filter-add-card">

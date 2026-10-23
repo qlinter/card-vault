@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { portfolioTrendChartWidth, portfolioTrendLabelIndexes, portfolioTrendMonths } from "../lib/portfolio-trend.ts";
+import { portfolioTrendChartWidth, portfolioTrendLabelIndexes, portfolioTrendMonths, portfolioTrendState } from "../lib/portfolio-trend.ts";
 import type { PortfolioSnapshot } from "../lib/portfolio-analysis-types.ts";
 
 function timeSeries(): PortfolioSnapshot["timeSeries"] {
@@ -51,6 +51,17 @@ test("所有范围不会在实际最早数据之前添加月份", () => {
   for (const range of [12, 24, "all"] as const) {
     assert.deepEqual(portfolioTrendMonths({ purchases: [{ month: "2026-01", count: 1, values: { CNY: 100 } }] }, range, "2026-03"), ["2026-01", "2026-02", "2026-03"]);
   }
+});
+
+test("所有从首笔记录所在月份开始，不补齐到年初或固定年份", () => {
+  const months = portfolioTrendMonths({ purchases: [{ month: "2019-09", count: 1, values: { CNY: 100 } }] }, "all", "2020-02");
+  assert.deepEqual(months, ["2019-09", "2019-10", "2019-11", "2019-12", "2020-01", "2020-02"]);
+});
+
+test("两张趋势图的独立期限跨页保留，旧的公共期限仍可读取", () => {
+  const state = portfolioTrendState(new URLSearchParams("financialRange=6&activityRange=all"), { range: "24", activityRange: "12" });
+  assert.deepEqual(state, { range: "24", financialRange: "6", activityRange: "all" });
+  assert.deepEqual(portfolioTrendState(new URLSearchParams("range=6")), { range: "6", financialRange: undefined, activityRange: undefined });
 });
 test("图表先利用可用宽度，只有数据点过密时才滚动", () => {
   assert.equal(portfolioTrendChartWidth(24, 1100), 1100);

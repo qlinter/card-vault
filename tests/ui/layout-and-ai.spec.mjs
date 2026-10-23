@@ -31,27 +31,16 @@ test("portfolio metrics, concentration and long product lines stay inside their 
   const longProduct = "Championship International Limited Edition Autographed Memorabilia Collection 2026";
   fixture(db => db.prepare("INSERT INTO Card(id, playerName, cardTitle, sport, productLine) VALUES('layout-long-product','Layout Fixture','Long product line','Basketball',?)").run(longProduct));
   await page.goto("/portfolio", { waitUntil: "networkidle" });
-  const holdings = page.locator("section").filter({ has: page.getByRole("heading", { name: "持仓", exact: true }) }).last();
-  const metrics = await holdings.locator("dl > div").evaluateAll(elements => elements.map(element => {
-    const label = element.querySelector("dt").getBoundingClientRect();
-    const amount = element.querySelector("dd").getBoundingClientRect();
-    return { labelBottom: label.bottom, amountBottom: amount.bottom, gap: amount.left - label.right };
-  }));
-  expect(metrics).toHaveLength(9);
-  for (const metric of metrics) expect(metric.gap).toBeGreaterThan(0);
-  await page.getByLabel("收藏结构维度").selectOption("extended");
-  const product = page.locator("article").filter({ has: page.getByRole("heading", { name: "产品线", exact: true }) });
-  await expect(product).toBeVisible();
-  await expect(product.getByRole("link", { name: longProduct, exact: true })).toBeVisible();
-  const footer = await product.locator("footer > div").evaluateAll(elements => elements.map(element => ({
-    label: element.querySelector("span").getBoundingClientRect().top,
-    value: element.querySelector("strong").getBoundingClientRect().top
-  })));
-  expect(new Set(footer.map(item => item.label)).size).toBe(1);
-  expect(new Set(footer.map(item => item.value)).size).toBe(1);
-  const widths = await product.locator("a").evaluateAll(elements => elements.map(element => ({ client: element.clientWidth, scroll: element.scrollWidth })));
-  for (const width of widths) expect(width.scroll).toBeLessThanOrEqual(width.client + 1);
-  await expect(product).not.toContainText("结构分布");
+  const metrics = page.locator('[aria-label="financial summary"] article strong');
+  await expect(metrics).toHaveCount(4);
+  const tops = await metrics.evaluateAll(elements => elements.map(element => element.getBoundingClientRect().top));
+  expect(Math.max(...tops) - Math.min(...tops)).toBeLessThan(1);
+  await page.getByRole("link", { name: "结构", exact: true }).click();
+  await page.getByLabel("收藏结构维度").selectOption("productLine");
+  await page.getByRole("button", { name: "应用", exact: true }).click();
+  await expect(page.getByRole("link", { name: longProduct, exact: true })).toBeVisible();
+  const bounds = await page.evaluate(() => ({ width: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
+  expect(bounds.scroll).toBeLessThanOrEqual(bounds.width + 1);
 });
 
 test("DeepSeek settings select, test and save the official defaults without clearing other providers", async ({ page }) => {

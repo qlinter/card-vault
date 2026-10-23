@@ -9,7 +9,7 @@ test("home load-more label is fully localized with its dynamic count", () => {
 });
 
 test("expanded settings and portfolio status text have complete English translations", () => {
-  assert.equal(translateUiText("视图与比较"), "Views & comparison");
+  assert.equal(translateUiText("快照与比较"), "Snapshots & comparison");
   const samples = [
     "估值超过 360 天",
     "当前不是桌面端环境，界面内保存不可用；开发态可通过 .env.local 配置 AI 服务商。",

@@ -6,19 +6,22 @@ import type { ScoutData } from "@/lib/scout-service";
 import { ScoutQueryPanel } from "./scout-query-panel";
 import { ScoutWishlist } from "./scout-wishlist";
 import { DisclosureIcon } from "./disclosure-icon";
-import { useWorkspaceData } from "./use-workspace-data";
+import { useScoutData } from "./use-scout-data";
+import { useDebouncedValue } from "./use-debounced-value";
 import { WorkspaceFeedback } from "./workspace-feedback";
 import { WorkspacePagination } from "./workspace-pagination";
 import { useScoutState } from "./use-scout-state";
-import { defaultWishView, wishViewForTarget } from "@/lib/scout-view";
+import { defaultWishView, wishViewForTarget, scoutScrollPositions } from "@/lib/scout-view";
 
 export function ScoutWorkspace({ identity, initialQuery = emptyScoutQuery, initialTab = "query", initialWatchId = "", initialWishId = "" }: { identity: string; initialTab?: string; initialWatchId?: string; initialWishId?: string; initialQuery?: ScoutQuery }) {
   const { locale } = useLanguage(), l = (zh: string, en: string) => locale === "en" ? en : zh;
   const context = useScoutState(identity, "workspace", { tab: initialTab === "wishlist" ? "wishlist" : "query", watchId: initialWatchId, search: "", watchPage: 1, wishView: defaultWishView, queryDrafts: {} as Record<string, string>, savedOpen: true }, true);
   const { tab, watchId, search, watchPage, wishView, queryDrafts, savedOpen } = context.value;
   const setTab = context.field("tab"), setWatchId = context.field("watchId"), setSearch = context.field("search"), setWatchPage = context.field("watchPage"), setWishView = context.field("wishView"), setQueryDrafts = context.field("queryDrafts"), setSavedOpen = context.field("savedOpen");
-  const source = "/api/scout?" + new URLSearchParams({ window: "1", q: search, watchPage: String(watchPage), wishPage: String(wishView.page), cancelledPage: String(wishView.cancelledPage), acquired: wishView.acquired ? "1" : "0", wishQ: wishView.search, wishSort: wishView.sort });
-  const { data, dataSource, issue, busy, submitting, notice, mutate, refresh, setIssue } = useWorkspaceData<ScoutData>(source, "/api/scout");
+  const keywordSearch = useDebouncedValue(search), wishSearch = useDebouncedValue(wishView.search);
+  const pendingSearch = keywordSearch !== search || wishSearch !== wishView.search;
+  const source = "/api/scout?" + new URLSearchParams({ window: "1", compact: "1", q: keywordSearch, watchPage: String(watchPage), wishPage: String(wishView.page), cancelledPage: String(wishView.cancelledPage), acquired: wishView.acquired ? "1" : "0", wishQ: wishSearch, wishSort: wishView.sort });
+  const { data, dataSource, issue, busy, submitting, notice, mutate, refresh, setIssue } = useScoutData(source, identity, pendingSearch);
   const [wishFocus, setWishFocus] = useState<{ id: string; revision: number } | null>(null);
   const positions = useRef<Record<string, number>>({ query: 0, wishlist: 0 });
   const focusRevision = useRef(0);
@@ -36,7 +39,7 @@ export function ScoutWorkspace({ identity, initialQuery = emptyScoutQuery, initi
   useEffect(() => {
     if (!context.ready || !data || busy || scrollRestored.current) return;
     scrollRestored.current = true;
-    try { positions.current = JSON.parse(window.sessionStorage.getItem("card-vault:scout-scroll:" + identity) ?? "{}"); } catch { positions.current = {}; }
+    try { positions.current = scoutScrollPositions(window.sessionStorage.getItem("card-vault:scout-scroll:" + identity)); } catch { positions.current = { query: 0, wishlist: 0 }; }
     const frame = requestAnimationFrame(() => { if (!initialWishId) window.scrollTo({ top: positions.current[tab] ?? 0 }); });
     return () => cancelAnimationFrame(frame);
   }, [context.ready, data, busy, identity, tab, initialWishId]);

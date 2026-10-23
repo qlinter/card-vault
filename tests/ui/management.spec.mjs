@@ -18,15 +18,26 @@ for (const locale of ["zh", "en"]) {
       for (let i = 0; i < 25; i++) insert.run(`portfolio-scope-${i}`, `Scoped ${i}`);
     });
     const labels = locale === "en"
-      ? { all: "View portfolio", filtered: "View filtered portfolio", badge: "Filtered", back: "Back to results", count: "All Cards" }
-      : { all: "查看组合", filtered: "查看筛选组合", badge: "已筛选", back: "返回筛选结果", count: "全部卡片" };
+      ? { all: "View portfolio data", filtered: "View filtered portfolio data", badge: "Filtered", back: "Back to results", count: "All Cards" }
+      : { all: "查看组合数据", filtered: "查看筛选组合数据", badge: "已筛选", back: "返回筛选结果", count: "全部卡片" };
     await page.goto("/?sort=yearAsc", { waitUntil: "networkidle" });
+    const advanced = page.locator(".filter-details");
+    const disclosure = advanced.locator("summary");
+    await expect(disclosure).toHaveAccessibleName(locale === "en" ? "More Filters" : "更多筛选");
+    await expect(disclosure).toHaveText("");
+    await expect(advanced).not.toHaveAttribute("open", "");
     await expect(page.getByRole("link", { name: labels.all, exact: true })).toHaveAttribute("href", "/portfolio?sort=yearAsc");
     await expect(page.locator(".nav-links a")).toHaveText(locale === "en"
-      ? ["Home", "Portfolio", "Showcase", "Sharing", "Scout", "Settings"]
-      : ["首页", "组合", "展示", "分享", "寻卡", "设置"]);
+      ? ["Home", "Data", "Showcase", "Sharing", "Scout", "Settings"]
+      : ["首页", "数据", "展示", "分享", "寻卡", "设置"]);
     const query = new URLSearchParams({ q: "Import UI", team: "A&B / 队", isAutograph: "false", sort: "yearAsc" });
     await page.goto(`/?${query}`, { waitUntil: "networkidle" });
+    await expect(advanced).toHaveAttribute("open", "");
+    await disclosure.click();
+    await expect(advanced.locator('[name="isAutograph"]')).toBeHidden();
+    await expect(advanced.locator('[name="isAutograph"]')).toHaveValue("false");
+    await disclosure.press("Enter");
+    await expect(advanced.locator('[name="isAutograph"]')).toBeVisible();
     await expect(page.getByTestId("home-card-grid").locator(".card-item")).toHaveCount(24);
     const link = page.getByRole("link", { name: labels.filtered, exact: true });
     // Unsaved form changes must not silently alter the scope of the displayed results.
@@ -34,6 +45,25 @@ for (const locale of ["zh", "en"]) {
     await expect(link).toHaveAttribute("href", `/portfolio?${query}`);
     for (const width of [1440, 1024]) {
       await page.setViewportSize({ width, height: 1000 });
+      const filterGeometry = await page.locator(".home-filter-form").evaluate(form => {
+        const base = form.querySelector(":scope > .filters").getBoundingClientRect();
+        const arrow = form.querySelector("summary").getBoundingClientRect();
+        const extra = form.querySelector(".filter-details-grid").getBoundingClientRect();
+        const actions = form.querySelector(".filter-actions").getBoundingClientRect();
+        const tops = [...form.querySelectorAll(":scope > .filters > *")].map(item => item.getBoundingClientRect().top);
+        return { gap: arrow.top - base.bottom, width: arrow.width, height: arrow.height, extraGap: extra.top - arrow.bottom, actionsGap: actions.top - extra.bottom, rowSpread: Math.max(...tops) - Math.min(...tops) };
+      });
+      expect(filterGeometry.gap).toBeGreaterThanOrEqual(-1);
+      expect(filterGeometry.gap).toBeLessThanOrEqual(1);
+      expect(filterGeometry.width).toBe(24);
+      expect(filterGeometry.height).toBe(24);
+      expect(filterGeometry.extraGap).toBeLessThanOrEqual(5);
+      expect(filterGeometry.actionsGap).toBeLessThanOrEqual(9);
+      expect(filterGeometry.rowSpread).toBeLessThan(2);
+      const panels = await page.locator(".home-summary-grid > .panel").evaluateAll(items => items.map(item => ({ top: item.getBoundingClientRect().top, height: item.getBoundingClientRect().height })));
+      expect(panels).toHaveLength(3);
+      expect(Math.max(...panels.map(item => item.top)) - Math.min(...panels.map(item => item.top))).toBeLessThan(2);
+      expect(Math.max(...panels.map(item => item.height)) - Math.min(...panels.map(item => item.height))).toBeLessThan(2);
       const actions = page.getByTestId("home-filter-actions");
       const rectangles = await actions.locator(".filter-main-actions > *, .filter-display-actions > *").evaluateAll(elements => elements.map(element => {
         const rect = element.getBoundingClientRect();
@@ -45,16 +75,17 @@ for (const locale of ["zh", "en"]) {
     await page.screenshot({ path: testInfo.outputPath(`filtered-home-${locale}.png`), animations: "disabled" });
     await link.click();
     await expect(page.getByText(labels.badge, { exact: true })).toBeVisible();
-    await expect(page.locator("article").filter({ has: page.getByText(labels.count, { exact: true }) }).locator("strong")).toHaveText("25");
+    await expect(page.getByTestId("data-counts")).toContainText(locale === "en" ? /All Cards\s*25/ : /全部卡片\s*25/);
     if (locale === "en") {
       await expect(page.getByText("No financial records.", { exact: true })).toBeVisible();
-      await expect(page.locator("article").filter({ has: page.getByText("Latest Valuation", { exact: true }) }).locator("strong")).toHaveText("None");
+      await expect(page.getByRole("link", { name: "View reasons", exact: true })).toHaveCount(4);
     }
     await page.screenshot({ path: testInfo.outputPath(`filtered-portfolio-${locale}.png`), animations: "disabled" });
     await page.getByRole("link", { name: labels.back, exact: true }).click();
     expect(new URL(page.url()).searchParams.toString()).toBe(query.toString());
-    await expect(page.locator('input[name="q"]')).toHaveValue("Import UI");
-    await expect(page.locator('select[name="sort"]')).toHaveValue("yearAsc");
+    await expect(page.locator(".home-page")).toBeVisible();
+    await expect(page.locator('.home-page input[name="q"]')).toHaveValue("Import UI");
+    await expect(page.locator('.home-page select[name="sort"]')).toHaveValue("yearAsc");
     await page.goto("/?q=no-matching-scope", { waitUntil: "networkidle" });
     await page.getByRole("link", { name: labels.filtered, exact: true }).click();
     await expect(page.getByText(labels.badge, { exact: true })).toBeVisible();
@@ -242,23 +273,26 @@ test("management titles follow the locale and Settings owns the shared user guid
 
 test("incomplete portfolio data links to the affected card and preserves the filter", async ({ page }) => {
   await page.goto("/portfolio?q=卡片数量", { waitUntil: "networkidle" });
-  const note = page.locator(".financial-incomplete");
-  await expect(note.locator("summary")).toHaveText("财务待完善 · 1 张");
-  await note.locator("summary").click();
-  const link = note.getByRole("link", { name: "卡片数量 · 备注", exact: true });
+  await page.getByRole("link", { name: "查看与处理", exact: false }).click();
+  const note = page.getByTestId("data-details");
+  const link = note.locator('a[href^="/cards/management-ui?"]');
   await expect(link).toBeVisible();
   await expect(note).toContainText("缺成本记录");
-  await expect(note).toContainText("缺估值");
+  await expect(note).toContainText("缺少估值");
   await link.click();
+  await page.waitForURL(/\/cards\/management-ui\?/);
   const url = new URL(page.url());
   expect(url.pathname).toBe("/cards/management-ui");
-  expect(url.searchParams.get("returnTo")).toBe("/portfolio?q=%E5%8D%A1%E7%89%87%E6%95%B0%E9%87%8F");
+  const back = new URL(url.searchParams.get("returnTo"), "http://localhost");
+  expect(back.searchParams.get("q")).toBe("卡片数量");
+  expect(back.searchParams.get("tab")).toBe("details");
+  expect(back.searchParams.get("kind")).toBe("quality");
 });
 
 test("Settings groups data management and fits the minimum Windows window", async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 760 });
   await page.goto("/settings", { waitUntil: "networkidle" });
-  await expect(page.locator(".nav-links").getByRole("link", { name: "数据", exact: true })).toHaveCount(0);
+  await expect(page.locator(".nav-links").getByRole("link", { name: "数据", exact: true })).toHaveAttribute("href", "/portfolio");
   await expect(page.locator(".settings-page > .settings-section")).toHaveText(["主题", "数据", "AI", "财务", "使用说明", `关于v${productVersion}`]);
   await page.getByRole("button", { name: "展开数据", exact: true }).click();
   await expect(page).toHaveURL(/settings$/);
@@ -289,6 +323,13 @@ test("home and showcase view choices preserve cards, filters and page reloads", 
     await page.reload({ waitUntil: "networkidle" });
     await expect(cards).toHaveClass(/is-list/);
     expect(new URL(page.url()).searchParams.get("q")).toBeTruthy();
+    if (url.startsWith("/?")) {
+      const href = await cards.locator(".card-link").first().getAttribute("href");
+      await cards.locator(".card-body").first().click();
+      await expect(page).toHaveURL(new URL(href, page.url()).href);
+      await page.getByRole("link", { name: "返回上一页", exact: true }).click();
+      await expect(page.locator(container)).toHaveClass(/is-list/);
+    }
     await page.getByRole("button", { name: "卡片视图", exact: true }).click();
     await expect(cards).not.toHaveClass(/is-list/);
   }

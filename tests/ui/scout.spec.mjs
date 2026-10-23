@@ -131,7 +131,7 @@ test("completed wishes can change acquired cards, retain failed choices and repa
     db.exec("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES('scout-ui-rebind-old','Scout UI original acquired','Gold original','Basketball'),('scout-ui-rebind-new','Scout UI replacement acquired','Silver replacement','Basketball'); INSERT INTO CollectionPlan(id,title,playerName,status,budgetMinor,notes) VALUES('scout-ui-rebind','Scout UI completed binding','Jordan','acquired',25000,'Keep this note'); INSERT INTO ScoutWishCard VALUES('scout-ui-rebind','scout-ui-rebind-old')");
   });
   await page.goto("/cards/scout-ui-rebind-old", { waitUntil: "networkidle" });
-  await expect(page.getByRole("link", { name: "查找", exact: true })).toHaveAttribute("href", "/collection?cardId=scout-ui-rebind-old");
+  await expect(page.getByRole("link", { name: "查找", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "查找同款 / 加入关注", exact: true })).toHaveCount(0);
   await page.goto("/collection?tab=wishlist", { waitUntil: "networkidle" });
   const wish = page.locator('[data-wish-id="scout-ui-rebind"]');

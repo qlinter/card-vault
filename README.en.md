@@ -6,20 +6,21 @@ Card Vault is a local-first Windows sports-card collection application built wit
 
 ## Current status
 
-Source version: `1.4.0` (2026-10-13). This version implements the collection overview and Scout workflow. See [v1.4.0 release notes](./docs/release-v1.4.0.md).
+Source version: `1.4.1` (2026-10-23). This version delivers the four-tab Data workspace, compact Home layouts, Scout query improvements and desktop startup fixes. See the [v1.4.1 release notes](./docs/release-v1.4.1.md) and [Git update notes](./docs/git-update-v1.4.1.md).
 
-Distribution files are `dist/card-vault-1.4.0-setup.exe` and `dist/card-vault-1.4.0-portable.zip`. See the release notes for acceptance and checksums, and the [v1.4.0 Git update notes](./docs/git-update-v1.4.0.md) for source changes. Historical release facts are retained.
+This release publishes source and a version tag. No v1.4.1 installer or portable archive has been generated; future artifacts will be named `dist/card-vault-1.4.1-setup.exe` and `dist/card-vault-1.4.1-portable.zip`. Existing v1.4.0 files and checksums remain in the [historical release notes](./docs/release-v1.4.0.md) and are not v1.4.1 artifacts.
 
-## Latest version: v1.4.0
+## Latest version: v1.4.1
 
-1. **Home overview**: Valuation, Cards and Collection overview sit side by side. Overview combines the digest and review total, follows applied filters, and supports retry and expandable details.
-2. **Scout**: Cross-site search and Wishlist; manage saved keywords, copy them with a shared button, and open Cardhobby, eBay or 130 Point.
-3. **Saved keywords**: save, filter, reuse, bulk-delete or export keywords with linked wishes. Different keywords create a new entry; matching keywords reuse the existing entry.
-4. **Wish acquisition**: search, sorting, priorities, optional targets and linked keywords, with budgets totaled by currency. Create a new card or bind multiple existing cards to update progress, with rebinding, reverse links and undo.
-5. **Data protection**: add Scout tables only to complete current v1.3 databases with a prior snapshot. Full backups include Scout records; restoring an earlier format extends only the staging copy.
-6. **Experience and structure**: navigation retains the current page until the destination is ready; pages support retry. Wish drafts recover locally per collection. Export and review reads are shared, obsolete planning endpoints and styles are removed, and portfolio/finance retain independent frozen reference tests.
+1. **Data workspace**: Overview, Trends, Structure and Details share the applied collection scope. Keyword searches, filter removal, exact archive drill-through and edit-return links preserve context.
+2. **Overview and details**: valuation, cost and profit take priority, with expandable accounting evidence. Holdings, Sale, Needs attention and All support search, sorting and complete pagination.
+3. **Trends and structure**: charts have independent ranges. Amount/quantity controls sit together; quantities exclude expenses. Structure counts all archives, uses quoted holdings for value shares, marks sold archives and shows Top 1/3/5 with collapse controls at the end.
+4. **Fixed snapshots**: save frozen snapshots, view, rename, delete and compare historical points. Differences are target minus baseline; different accounting versions or currencies cannot be compared directly.
+5. **Home and navigation**: three aligned summary panels, matching valuation/count typography and whole-row list links. View controls and the filter arrow are compact while all conditions remain available. Slow navigation retains existing content with a delayed progress hint.
+6. **Scout and startup**: debounced searches, database pagination, shared relationship indexes and safe recovery from damaged scroll caches. The launcher prepares Electron separately and supports retry. Dependencies use Next.js 16.4.1 and Electron 42.11.9.
+7. **Code structure**: shared presentation state; summary pages retain aggregates and five positions rather than complete detail lists. Obsolete drag layouts, live-view actions, stale styles and a duplicate release entry are removed. Independent financial reference tests, business-date FX rules and the existing data format remain.
 
-The database format marker is independent of the product version. Keywords support searches and wish links only, with no item, price or research records. Automatic refresh, background collection and target-price alerts are reserved for later releases. Existing financial rules remain in place. See the [backup guide](./docs/data-backup-guide.md) and [financial model](./docs/financial-history-model.md).
+Rules are maintained in the [Data analysis guide](./docs/data-analysis-guide.md), [financial model](./docs/financial-history-model.md) and [backup guide](./docs/data-backup-guide.md). Earlier validation is recorded in the [development log](./docs/development-v1.4.1.md).
 
 ## Features
 
@@ -27,7 +28,7 @@ The database format marker is independent of the product version. Keywords suppo
 - Home: search, filters, global financial ordering, paginated loading and remembered Cards/List views with consistent icon controls.
 - Cards: up to five images, rotation, drafts, continuous entry, templates, duplicate hints, batch image preparation and AI candidates requiring review.
 - Finance: one physical quantity, one currency per transaction, moving-average cost, transaction/expense/valuation history, manual FX and explicit incomplete-data states.
-- Showcase and Portfolio: collection browsing, structure and historical trends, quality queues, saved views, frozen snapshots and comparison.
+- Showcase and Data: collection browsing; analysis uses Overview, Trends, Structure and Details with shared scope, physical quantities, complete issue lists, fixed snapshots and historical comparison. See the [data analysis guide](./docs/data-analysis-guide.md).
 - Shares: editable galleries, themes, sections and stories, shared preview/export rendering, static packages and the existing manual Drop workflow.
 - Scout: cross-site searches, saved keywords, linked wishes, wishlist and acquisition. Digests and reminders are on Home.
 - Settings: Theme, Data, AI, Finance, User guide and About. Expand Data to manage Storage, Backup & restore, Import and Export.
@@ -46,7 +47,9 @@ npm run build
 npm run electron
 ```
 
-Alternatively, start the desktop development app with `start-desktop.bat`. The launcher prefers ports 3000–3019 and falls back to an OS-assigned loopback port when that range is occupied or reserved by Windows; system port exclusions need no changes. Development configuration uses `%APPDATA%\Card Vault Development`. The actual collection directory is shown under Settings → Data → Storage. Use the application migration controls to change it.
+Alternatively, start the desktop development app with `start-desktop.bat`. It checks project dependencies, prepares the Electron runtime separately, and automatically builds the application when the build is missing or outdated. The first runtime download needs a network connection. An npmmirror npm registry selects the corresponding Electron mirror; `ELECTRON_MIRROR` can override it. Rerun the launcher after a failed download to retry without removing all dependencies.
+
+The local service prefers ports 3000–3019 and falls back to an OS-assigned loopback port when that range is occupied or reserved by Windows; system port exclusions need no changes. Development configuration uses `%APPDATA%\Card Vault Development`. The actual collection directory is shown under Settings → Data → Storage. Use the application migration controls to change it.
 
 API keys reside in the local user configuration and are encrypted with Windows safeStorage, not stored in the collection database. Optional AI supports Azure OpenAI, MiniMax, DeepSeek and OpenAI Chat Completions-compatible services. Relevant images or content are sent to the selected provider only when a feature is called. Manual entry does not require AI.
 
@@ -60,6 +63,8 @@ API keys reside in the local user configuration and are encrypted with Windows s
 | `npm run test:card` / `test:share` / `test:security` / `test:management` / `test:scout` / `test:export` | Business and security HTTP flows using isolated data. |
 | `npm run test:ui` | Desktop UI, minimum-window checks, narrow share previews and strict screenshot comparisons. |
 | `npm run test:desktop` | Real-server startup with port contention, session checks and service restart. |
+| `npm run test:desktop:launcher` | Run the actual Windows launcher with an isolated profile, checking automatic build and build reuse; rebuilds local `.next`. |
+| `npm run test:desktop:runtime` | Launch the current Electron with an isolated collection to check sandboxing, preload and edit-return navigation. |
 | `npm run benchmark` | Isolated 1k/5k/10k synthetic collection benchmarks. |
 | `npm run benchmark:portfolio-history` | Compare complete monthly output and timings with the frozen former implementation. |
 | `npm run benchmark:portfolio-workload` | Compare frozen, full and summary aggregation for equivalent output and in-memory timings, excluding database reads and rendering. |
@@ -75,10 +80,11 @@ Keep a full backup before upgrades or moving computers. CSV/XLSX files omit medi
 
 ## Historical releases
 
-All 31 earlier versions are retained below, newest first. These summaries describe each release at the time; current behavior and compatibility follow the latest documentation. The original bilingual summaries were recovered from the v1.2.1 README files, with v1.3.0–v1.3.3 added from their release notes. Early standalone release notes were not found; see [historical sources and gaps](./docs/version-history-sources.md).
+All 32 earlier versions are retained below, newest first. These summaries describe each release at the time; current behavior and compatibility follow the latest documentation. The original bilingual summaries were recovered from the v1.2.1 README files, with v1.3.0–v1.3.3 added from their release notes. Early standalone release notes were not found; see [historical sources and gaps](./docs/version-history-sources.md).
 
 | Version | Main changes | Source |
 | --- | --- | --- |
+| `1.4.0` | Scout searches, saved keywords, multi-card wish acquisition and compact collection overview. | [Release notes](./docs/release-v1.4.0.md) |
 | `1.3.6` | Batched Portfolio, restore protection, editing navigation, single-currency transactions and code organization. | [Release notes](./docs/release-v1.3.6.md) |
 | `1.3.5` | Added four application themes, refined Finance, editing and AI settings, unified icons, updated dependencies and removed obsolete compatibility code. | [Release notes](./docs/release-v1.3.5.md) |
 | `1.3.4` | Unified collection statuses and holding coverage, added entry financial records, improved Home, wishes and navigation, and consolidated structure and checks. | [Release notes](./docs/release-v1.3.4.md) |

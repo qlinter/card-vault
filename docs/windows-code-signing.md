@@ -6,9 +6,11 @@ Card Vault 的 Windows 代码签名是可选增强。`npm run release:win` 在�
 
 ## 执行前提
 
-当前源码版本为 v1.4.0（2026-10-13）。用户已授权生成安装包和便携包；`npm run release:win` 执行完整源码门槛、包内业务（含寻卡）、实际桌面启动、安全设置及产物校验。分发状态、签名模式与验收范围以 [v1.4.0 发布说明](./release-v1.4.0.md)为准；`npm run check:release` 本身不生成安装文件。
+v1.4.1使用 Electron 42，`package:win` 会先调用 Electron 官方安装器准备并校验二进制，再执行打包，适用于全新检出后延迟下载的依赖。基础修复及验收记录见[开发记录](./development-v1.4.1.md)。
 
-本版源码、分发验收与校验值统一记录在 [v1.4.0 发布说明](./release-v1.4.0.md)，历史分发事实保留在对应版本说明。分发过滤排除 `scripts/benchmark-*`、`scripts/check-*`、UI 测试启动器和固定测试时钟，以及付费 AI、真实照片、实机安装和 Playwright 桌面专项脚本；包内保留数据库初始化、存储校验及业务验收脚本，文件卫生检查拒绝开发文件进入分发包。
+当前源码版本为 v1.4.1（2026-10-23），本轮只同步源码与版本标签，尚未生成本版安装包或便携包。后续运行 `npm run release:win` 会执行完整源码门槛、包内业务、实际桌面启动及产物校验；`npm run check:release` 本身不生成安装文件。源码范围与验收见 [v1.4.1 发布说明](./release-v1.4.1.md)，已有分发文件及校验值保留在 [v1.4.0 发布说明](./release-v1.4.0.md)。
+
+分发过滤排除 `scripts/benchmark-*`、`scripts/check-*`、UI 测试启动器和固定测试时钟，以及付费 AI、真实照片、实机安装和 Playwright 桌面专项脚本；包内保留数据库初始化、存储校验及业务验收脚本，文件卫生检查拒绝开发文件进入分发包。
 
 ## 无证书发布
 
@@ -81,7 +83,7 @@ npm.cmd run release:win
 - PFX：`WINDOWS_CERTIFICATE_BASE64`、`WINDOWS_CERTIFICATE_PASSWORD`
 - Microsoft Artifact Signing：`CARD_VAULT_AZURE_SIGN_ENDPOINT`、`CARD_VAULT_AZURE_SIGN_ACCOUNT`、`CARD_VAULT_AZURE_SIGN_PROFILE`、`CARD_VAULT_AZURE_SIGN_PUBLISHER`、`AZURE_TENANT_ID`、`AZURE_CLIENT_ID`、`AZURE_CLIENT_SECRET`
 
-候选入口 `.github/workflows/windows-release.yml` 仅复用同一发布流程，避免维护第二套发布实现。质量工作流只执行检查，不打包。
+仅保留 `.github/workflows/release-windows.yml` 作为手动及复用发布入口，移除重复的候选工作流；质量工作流只执行检查，不打包。
 
 工作流只上传通过完整发布检查的安装包、便携包和 SHA-256 清单；配置签名时额外要求 Authenticode 与时间戳复核通过。
 

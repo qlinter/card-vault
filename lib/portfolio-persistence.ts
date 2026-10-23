@@ -1,11 +1,10 @@
 import "server-only";
 
-import { Prisma, type PortfolioSavedView, type PortfolioSnapshotRecord } from "@prisma/client";
+import type { PortfolioSnapshotRecord } from "@prisma/client";
 import { normalizeStoredPortfolioSnapshot, type PortfolioFilterInput, type PortfolioSnapshot } from "./portfolio-analysis.ts";
 import { normalizePortfolioFilterInput } from "./portfolio-analysis-scope.ts";
 import { prisma } from "./prisma";
 
-const maximumSavedViews = 50;
 const maximumStoredSnapshots = 200;
 
 function requiredName(value: unknown, label: string, maximumLength: number): string {
@@ -19,7 +18,7 @@ function parseQueryJson(value: string): PortfolioFilterInput {
   try {
     return normalizePortfolioFilterInput(JSON.parse(value));
   } catch {
-    throw new Error("收藏视图筛选条件已损坏。");
+    throw new Error("快照筛选条件已损坏。");
   }
 }
 
@@ -31,82 +30,34 @@ function parseSnapshotJson(value: string): PortfolioSnapshot {
   }
 }
 
-export type SavedPortfolioView = {
-  id: string;
-  name: string;
-  query: PortfolioFilterInput;
-  createdAt: string;
-  updatedAt: string;
-};
-
 export type StoredPortfolioSnapshot = {
   id: string;
-  savedViewId: string | null;
   name: string;
   query: PortfolioFilterInput;
   capturedAt: string;
 };
 
-function mapSavedView(view: PortfolioSavedView): SavedPortfolioView {
-  return {
-    id: view.id,
-    name: view.name,
-    query: parseQueryJson(view.queryJson),
-    createdAt: view.createdAt.toISOString(),
-    updatedAt: view.updatedAt.toISOString()
-  };
-}
-
-type SnapshotMetadata = Pick<PortfolioSnapshotRecord, "id" | "savedViewId" | "name" | "queryJson" | "capturedAt">;
+type SnapshotMetadata = Pick<PortfolioSnapshotRecord, "id" | "name" | "queryJson" | "capturedAt">;
 
 function mapSnapshot(record: SnapshotMetadata): StoredPortfolioSnapshot {
   return {
     id: record.id,
-    savedViewId: record.savedViewId,
     name: record.name,
     query: parseQueryJson(record.queryJson),
     capturedAt: record.capturedAt.toISOString()
   };
 }
 
-export async function listSavedPortfolioViews(): Promise<SavedPortfolioView[]> {
-  const views = await prisma.portfolioSavedView.findMany({ orderBy: [{ updatedAt: "desc" }, { name: "asc" }] });
-  return views.map(mapSavedView);
-}
-
-export async function getSavedPortfolioView(id: string): Promise<SavedPortfolioView | null> {
-  if (!id || id.length > 100) return null;
-  const view = await prisma.portfolioSavedView.findUnique({ where: { id } });
-  return view ? mapSavedView(view) : null;
-}
-
-export async function createSavedPortfolioView(nameValue: unknown, queryValue: unknown): Promise<SavedPortfolioView> {
-  const name = requiredName(nameValue, "视图名称", 60);
-  const query = normalizePortfolioFilterInput(queryValue);
-  if (await prisma.portfolioSavedView.count() >= maximumSavedViews) {
-    throw new Error(`收藏视图最多保存 ${maximumSavedViews} 个，请先删除不再使用的视图。`);
-  }
-  try {
-    return mapSavedView(await prisma.portfolioSavedView.create({
-      data: { name, queryJson: JSON.stringify(query) }
-    }));
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      throw new Error("已经存在同名收藏视图。");
-    }
-    throw error;
-  }
-}
-
-export async function deleteSavedPortfolioView(id: string): Promise<void> {
-  const result = await prisma.portfolioSavedView.deleteMany({ where: { id } });
-  if (result.count === 0) throw new Error("收藏视图不存在或已删除。");
+export async function renameStoredPortfolioSnapshot(id: string, value: unknown): Promise<void> {
+  const name = requiredName(value, "快照名称", 80);
+  const result = await prisma.portfolioSnapshotRecord.updateMany({ where: { id }, data: { name } });
+  if (!result.count) throw new Error("时间点快照不存在或已删除。");
 }
 
 export async function listStoredPortfolioSnapshots(): Promise<StoredPortfolioSnapshot[]> {
   const records = await prisma.portfolioSnapshotRecord.findMany({
     // The picker needs metadata only; frozen financial payloads may be large.
-    select: { id: true, savedViewId: true, name: true, queryJson: true, capturedAt: true },
+    select: { id: true, name: true, queryJson: true, capturedAt: true },
     orderBy: { capturedAt: "desc" },
     take: maximumStoredSnapshots
   });
@@ -126,7 +77,6 @@ export async function createStoredPortfolioSnapshot(input: {
   name?: unknown;
   query: unknown;
   snapshot: PortfolioSnapshot;
-  savedViewId?: string | null;
 }): Promise<StoredPortfolioSnapshot> {
   const snapshot = normalizeStoredPortfolioSnapshot(input.snapshot);
   if (await prisma.portfolioSnapshotRecord.count() >= maximumStoredSnapshots) {
@@ -138,14 +88,8 @@ export async function createStoredPortfolioSnapshot(input: {
   const name = input.name === undefined || input.name === null || input.name === ""
     ? defaultName
     : requiredName(input.name, "快照名称", 80);
-  const savedView = input.savedViewId ? await getSavedPortfolioView(input.savedViewId) : null;
-  if (input.savedViewId && !savedView) throw new Error("关联的收藏视图不存在或已删除。");
-  if (savedView && JSON.stringify(savedView.query) !== JSON.stringify(query)) {
-    throw new Error("当前筛选范围与关联收藏视图不一致，请重新打开该视图后保存快照。");
-  }
   return mapSnapshot(await prisma.portfolioSnapshotRecord.create({
     data: {
-      savedViewId: savedView?.id ?? null,
       name,
       queryJson: JSON.stringify(query),
       snapshotJson: JSON.stringify(snapshot),

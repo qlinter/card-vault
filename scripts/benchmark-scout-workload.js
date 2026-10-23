@@ -49,7 +49,7 @@ async function main() {
         for (let offset = 0; offset < count; offset++) cardLink.run(wishId, `bench-${String((wishIndex + offset) % size).padStart(6, "0")}`);
       }
       db.exec("COMMIT");
-      console.log(JSON.stringify({ size, bindings: db.prepare('SELECT COUNT(*) n FROM ScoutWishCard').get().n, overview: await measure("/api/home-overview"), queue: await measure("/api/home-overview?tasks=1"), scout: await measure("/api/scout"), pagedScout: await measure("/api/scout?window=1"), largestBinding: await measure("/api/scout?wishCards=bench-000000") }));
+      console.log(JSON.stringify({ size, bindings: db.prepare('SELECT COUNT(*) n FROM ScoutWishCard').get().n, overview: await measure("/api/home-overview"), queue: await measure("/api/home-overview?tasks=1"), scout: await measure("/api/scout"), pagedScout: await measure("/api/scout?window=1"), compactScout: await measure("/api/scout?window=1&compact=1"), references: await measure("/api/scout?references=1"), largestBinding: await measure("/api/scout?wishCards=bench-000000") }));
     }
   } finally { db?.close(); stopServer(server); await removeTempRoot(root); }
 }

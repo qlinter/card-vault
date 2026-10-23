@@ -7,10 +7,11 @@ const { checkPackagedDesktop } = require("./test-packaged-desktop-utils");
 
 async function main() {
   const root = path.resolve(__dirname, "..");
-  const executable = path.resolve(process.argv[2] || path.join(root, "dist", "win-unpacked", "Card Vault.exe"));
+  const development = process.argv.includes("--development");
+  const executable = development ? require("electron") : path.resolve(process.argv[2] || path.join(root, "dist", "win-unpacked", "Card Vault.exe"));
   assert.ok(fs.existsSync(executable), "Packaged executable is missing.");
-  const logDir = path.join(root, "logs", `v${require("../package.json").version}-review`);
-  const userData = path.join(logDir, "packaged-desktop-profile");
+  const logDir = path.join(root, "logs", development ? "development-runtime-review" : `v${require("../package.json").version}-review`);
+  const userData = path.join(logDir, development ? "development-desktop-profile" : "packaged-desktop-profile");
   const dataDir = path.join(userData, "data");
   const dbPath = path.join(dataDir, "dev.db");
   initializeDatabase(dbPath);
@@ -29,10 +30,10 @@ async function main() {
   } finally { db.close(); }
   const env = { ...process.env, CARD_VAULT_USER_DATA_DIR: userData, CARD_VAULT_ACCEPTANCE_MODE: "1" };
   delete env.ELECTRON_RUN_AS_NODE;
-  const version = require(path.join(path.dirname(executable), "resources", "app", "package.json")).version;
-  await checkPackagedDesktop(executable, version, { env, userData, playerName: "Native Fixture", query: "Native" });
-  const result = { testedAt: new Date().toISOString(), version, executable, checks: ["packaged-desktop-startup", "sandbox-and-preload", "saved-edit-back-to-filter", "repeated-cancel-back-to-filter"], ok: true };
-  fs.writeFileSync(path.join(logDir, "packaged-desktop.json"), JSON.stringify(result, null, 2));
+  const version = require(development ? path.join(root, "package.json") : path.join(path.dirname(executable), "resources", "app", "package.json")).version;
+  const electronVersion = await checkPackagedDesktop(executable, version, { env, userData, playerName: "Native Fixture", query: "Native", args: development ? [root] : [], dataWorkspace: development, electronVersion: development ? require("electron/package.json").version : undefined });
+  const result = { testedAt: new Date().toISOString(), version, electronVersion, executable, mode: development ? "development" : "packaged", checks: ["desktop-startup", "sandbox-and-preload", "saved-edit-back-to-filter", "repeated-cancel-back-to-filter", ...(development ? ["data-workspace-tabs"] : [])], ok: true };
+  fs.writeFileSync(path.join(logDir, development ? "development-desktop.json" : "packaged-desktop.json"), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

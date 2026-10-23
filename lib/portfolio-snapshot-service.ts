@@ -7,7 +7,7 @@ import { buildPortfolioScope, normalizePortfolioFilterInput, type PortfolioSnaps
 import { prisma } from "./prisma";
 import type { PortfolioQualityCard } from "./portfolio-quality";
 import { buildPortfolioComparisonPoint, type PortfolioComparison, type PortfolioComparisonPoint, type PortfolioCostPosition, type PortfolioFinancialHistoryPoint, type PortfolioSoldReview, type PortfolioValuationChange } from "./portfolio-insights";
-import { getSavedPortfolioView, getStoredPortfolioSnapshot } from "./portfolio-persistence";
+import { getStoredPortfolioSnapshot } from "./portfolio-persistence";
 import type { PortfolioFilterInput } from "./portfolio-analysis";
 import { loadFinancialSettings } from "./financial-settings";
 import { createPortfolioBatchAccumulator } from "./portfolio-batch";
@@ -25,6 +25,7 @@ export type PortfolioSnapshotResult = {
 type LoadPortfolioSnapshotOptions = {
   allowEmpty?: boolean;
   includeDetails?: boolean;
+  onReportingBatch?: NonNullable<Parameters<typeof createPortfolioBatchAccumulator>[4]>["onReportingBatch"];
 };
 export async function loadPortfolioSnapshot(value: unknown, options: LoadPortfolioSnapshotOptions = {}): Promise<PortfolioSnapshotResult> {
   const query = normalizePortfolioFilterInput(value);
@@ -76,16 +77,9 @@ export async function loadPortfolioSummary(value: unknown, options: {
   const { snapshot, query } = await loadPortfolioSnapshot(value, { ...options, includeDetails: false });
   return { snapshot, query };
 }
-async function loadComparisonPoint(token: string, current: PortfolioSnapshotResult, loadSummary: (key: string) => Promise<PortfolioSnapshot>): Promise<PortfolioComparisonPoint> {
+async function loadComparisonPoint(token: string, current: PortfolioSnapshotResult): Promise<PortfolioComparisonPoint> {
   if (token === "current") {
-    return buildPortfolioComparisonPoint(current.snapshot, "当前范围");
-  }
-  if (token.startsWith("view:")) {
-    const view = await getSavedPortfolioView(token.slice(5));
-    if (!view)
-      throw new Error("用于比较的收藏视图不存在或已删除。");
-    const snapshot = await loadSummary(JSON.stringify(normalizePortfolioFilterInput(view.query)));
-    return buildPortfolioComparisonPoint(snapshot, `视图：${view.name}`);
+    return buildPortfolioComparisonPoint(current.snapshot, "当前数据（实时）");
   }
   if (token.startsWith("snapshot:")) {
     const stored = await getStoredPortfolioSnapshot(token.slice(9));
@@ -101,11 +95,8 @@ async function loadComparisonPoint(token: string, current: PortfolioSnapshotResu
 export async function loadPortfolioComparison(leftToken: string | undefined, rightToken: string | undefined, current: PortfolioSnapshotResult): Promise<PortfolioComparison | null> {
   if (!leftToken || !rightToken)
     return null;
-  const currentKey = JSON.stringify(normalizePortfolioFilterInput(current.query));
-  const loadSummary = createPortfolioLoadScope(async (key) => key === currentKey
-    ? current.snapshot
-    : (await loadPortfolioSummary(JSON.parse(key), { allowEmpty: true })).snapshot);
-  const loadPoint = createPortfolioLoadScope(token => loadComparisonPoint(token, current, loadSummary));
+  if (!leftToken.startsWith("snapshot:")) throw new Error("比较基准请选择已保存快照。");
+  const loadPoint = createPortfolioLoadScope(token => loadComparisonPoint(token, current));
   const [left, right] = await Promise.all([
     loadPoint(leftToken),
     loadPoint(rightToken)

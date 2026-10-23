@@ -1,6 +1,11 @@
 import type { PortfolioTimeSeriesPoint } from "./portfolio-analysis-types.ts";
 
-export type PortfolioTrendRange = 12 | 24 | "all";
+export type PortfolioTrendRange = 6 | 12 | 24 | "all";
+export const portfolioTrendRangeKeys = ["range", "financialRange", "activityRange"] as const;
+
+export function portfolioTrendState(search: Pick<URLSearchParams, "get">, fallback: Record<string, string | undefined> = {}): Record<string, string | undefined> {
+  return Object.fromEntries(portfolioTrendRangeKeys.map(key => [key, search.get(key) || fallback[key]]));
+}
 
 function monthOffset(month: string, offset: number): string {
   const [year, monthNumber] = month.split("-").map(Number);

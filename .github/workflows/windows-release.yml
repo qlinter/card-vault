@@ -1,9 +1,0 @@
-name: Windows release candidate
-on:
-  workflow_dispatch:
-permissions:
-  contents: read
-jobs:
-  package:
-    uses: ./.github/workflows/release-windows.yml
-    secrets: inherit

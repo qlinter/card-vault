@@ -12,9 +12,11 @@ async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
   if (!response.ok) throw new Error(result.error || "读取失败。");
   return result as T;
 }
+export const readWorkspaceJson = <T,>(source: string, signal?: AbortSignal): Promise<T> => readJson<T>(source, { signal });
+export type WorkspaceReader<T> = (source: string, signal?: AbortSignal, committed?: boolean) => Promise<T>;
 
 /** Keep a committed write distinct from a failed read, so retry never repeats a write. */
-export function useWorkspaceData<T>(source: string, mutationPath: string) {
+export function useWorkspaceData<T>(source: string, mutationPath: string, reader: WorkspaceReader<T> = readWorkspaceJson) {
   const [data, setData] = useState<T | null>(null);
   const [dataSource, setDataSource] = useState("");
   const [issue, setIssue] = useState<WorkspaceIssue | null>(null);
@@ -33,7 +35,7 @@ export function useWorkspaceData<T>(source: string, mutationPath: string) {
     setLoading(true);
     try {
       const requestedSource = currentSource.current;
-      const result = await readJson<T>(requestedSource, { signal });
+      const result = await reader(requestedSource, signal, committed);
       if (!mounted.current || signal?.aborted || request !== generation.current) return false;
       setData(result);
       setDataSource(requestedSource);
@@ -48,7 +50,7 @@ export function useWorkspaceData<T>(source: string, mutationPath: string) {
     } finally {
       if (mounted.current && request === generation.current) setLoading(false);
     }
-  }, []);
+  }, [reader]);
 
   useEffect(() => {
     mounted.current = true;

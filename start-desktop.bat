@@ -7,6 +7,7 @@ title Card Vault Desktop
 rem Keep npm cache and logs inside the project so dependency recovery does not
 rem depend on the current Windows user's cache permissions.
 set "npm_config_cache=%CD%\.npm-cache"
+if not defined electron_config_cache set "electron_config_cache=%npm_config_cache%\electron"
 
 where node >nul 2>nul
 if errorlevel 1 (
@@ -29,7 +30,6 @@ if not defined ELECTRON_MIRROR call :configure_electron_mirror
 echo Checking project dependencies...
 if not exist "node_modules" goto install_dependencies
 if not exist "node_modules\.package-lock.json" goto install_dependencies
-if not exist "node_modules\electron\dist\electron.exe" goto install_dependencies
 
 call npm.cmd ls --depth=0 >nul 2>nul
 if errorlevel 1 goto install_dependencies
@@ -63,8 +63,20 @@ if errorlevel 1 (
 )
 
 :dependencies_ready
+rem Electron 42 downloads its runtime on demand, rather than during npm ci.
+rem Repair a missing runtime without reinstalling otherwise valid packages.
+echo Checking Electron runtime...
+node node_modules\electron\install.js
+if errorlevel 1 (
+  echo.
+  echo Electron runtime download failed. Check the network or ELECTRON_MIRROR and try again.
+  echo Installed project dependencies have been kept; the next launch will retry this step.
+  pause
+  exit /b 1
+)
+
 if not exist "node_modules\electron\dist\electron.exe" (
-  echo Electron is still unavailable after the dependency check.
+  echo Electron runtime preparation did not produce electron.exe.
   pause
   exit /b 1
 )

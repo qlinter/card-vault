@@ -25,6 +25,10 @@ const pages = [
 
 const englishAuditPages = [
   ...pages,
+  { name: "data-trends", path: "/portfolio?tab=trends", ready: '[data-testid="data-trends"]' },
+  { name: "data-structure", path: "/portfolio?tab=structure", ready: '[data-testid="data-structure"]' },
+  { name: "data-details", path: "/portfolio?tab=details", ready: '[data-testid="data-details"]' },
+  { name: "data-quality", path: "/portfolio?tab=details&kind=quality", ready: '[data-testid="data-details"]' },
 
   { name: "showcase-card", path: "/showcase/cards/ui-card-1", ready: ".showcase-detail" },
   { name: "card-details", path: "/cards/ui-card-1", ready: ".details" },

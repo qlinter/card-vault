@@ -4,6 +4,55 @@ import fs from "node:fs/promises";
 import path from "node:path";
 function fixture(action) { const db = new DatabaseSync(path.resolve("tests/.ui-test-runtime/data/dev.db")); try { db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000"); return action(db); } finally { db.close(); } }
 const ids = id => fixture(db => db.prepare("SELECT cardId FROM ScoutWishCard WHERE planId=? ORDER BY cardId").all(id).map(row => row.cardId));
+
+test("scroll recovery survives valid JSON with invalid shapes and denied session reads", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await page.goto("/collection", { waitUntil: "networkidle" });
+  const { identity } = await (await page.request.get("/api/scout?references=1")).json();
+  for (const raw of ["null", "[]", "42", '{"query":-1,"wishlist":"200"}', "{"]) {
+    await page.evaluate(({ identity, raw }) => sessionStorage.setItem("card-vault:scout-scroll:" + identity, raw), { identity, raw });
+    await page.reload({ waitUntil: "networkidle" });
+    await page.getByRole("tab", { name: "心愿单" }).click();
+    await expect(page.getByRole("button", { name: "新增", exact: true })).toBeVisible();
+    await page.getByRole("tab", { name: "跨站查询" }).click();
+    await page.evaluate(() => window.dispatchEvent(new Event("scroll")));
+  }
+  await page.addInitScript(() => {
+    const read = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key) { if (key.startsWith("card-vault:scout-scroll:")) throw new Error("Storage denied"); return read.call(this, key); };
+  });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.getByRole("tab", { name: "心愿单" }).click();
+  await expect(page.getByRole("button", { name: "新增", exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("typing coalesces page requests and reuses references until a successful write", async ({ page }) => {
+  fixture(db => {
+    const insert = db.prepare("INSERT INTO ScoutWatch(id,title,queryJson) VALUES(?,?,?)");
+    insert.run("scout-extra-debounce", "Scout extra query Gold", JSON.stringify({ keyword: "Scout extra query Gold" }));
+    insert.run("scout-extra-debounce-other", "Scout extra other Silver", JSON.stringify({ keyword: "Scout extra other Silver" }));
+  });
+  await page.goto("/collection", { waitUntil: "networkidle" });
+  let pages = 0, references = 0;
+  page.on("request", request => {
+    if (request.method() !== "GET" || !request.url().includes("/api/scout?")) return;
+    const params = new URL(request.url()).searchParams;
+    if (params.get("references") === "1") references++;
+    if (params.get("compact") === "1") pages++;
+  });
+  await page.getByLabel("筛选关键词", { exact: true }).pressSequentially("Scout extra query Gold", { delay: 15 });
+  await expect(page.locator(".scout-watch-select")).toHaveText(["Scout extra query Gold"]);
+  expect(pages).toBe(1); expect(references).toBe(0);
+  await page.getByLabel("关键词", { exact: true }).fill("Scout extra saved Gold");
+  await page.getByRole("button", { name: "保存关键词", exact: true }).click();
+  await expect(page.getByRole("button", { name: "保存关键词", exact: true })).toBeEnabled();
+  expect(references).toBe(1);
+  await page.getByLabel("筛选关键词", { exact: true }).fill("Scout extra saved Gold");
+  await expect(page.locator(".scout-watch-select")).toHaveText(["Scout extra saved Gold"]);
+  expect(references).toBe(1);
+});
 test("corrupt workspace storage falls back safely and unavailable draft storage is explained", async ({ page }) => {
   await page.goto("/collection", { waitUntil: "networkidle" });
   const { identity } = await (await page.request.get("/api/scout")).json();
@@ -16,7 +65,7 @@ test("corrupt workspace storage falls back safely and unavailable draft storage 
   await page.getByLabel("心愿名称", { exact: true }).fill("Scout extra unavailable");
   await expect(page.locator(".wish-draft-status")).toContainText("本机草稿保存不可用");
 });
-test.afterEach(() => fixture(db => db.exec("DELETE FROM CollectionPlan WHERE id LIKE 'scout-extra-%' OR title LIKE 'Scout extra%'; DELETE FROM ScoutWatch WHERE id LIKE 'scout-extra-%'; DELETE FROM Card WHERE id LIKE 'scout-extra-%'")));
+test.afterEach(() => fixture(db => db.exec("DELETE FROM CollectionPlan WHERE id LIKE 'scout-extra-%' OR title LIKE 'Scout extra%'; DELETE FROM ScoutWatch WHERE id LIKE 'scout-extra-%' OR title LIKE 'Scout extra%'; DELETE FROM Card WHERE id LIKE 'scout-extra-%'")));
 
 test("wish drafts and search workspace recover after navigation and refresh", async ({ page }) => {
   await page.goto("/collection?tab=wishlist", { waitUntil: "networkidle" });

@@ -33,9 +33,9 @@ test("status filters and editors share the owned order and preserve quantity and
     expect(fixture(db => db.prepare("SELECT quantity, valueMinor FROM CardReport WHERE cardId='ui-card-1'").get())).toEqual({ quantity: 2, valueMinor: 376000 });
   }
   await page.goto("/portfolio", { waitUntil: "networkidle" });
-  const overview = page.locator('[aria-label="组合概览"]');
-  await expect(overview.locator("article").nth(2)).toContainText("50%");
-  await expect(overview.locator("article").nth(2)).toContainText("1/2");
+  const overview = page.getByTestId("data-counts");
+  await expect(overview).toContainText("50%");
+  await expect(overview).toContainText("1/2");
   await page.goto("/portfolio?collectionStatus=pending_grading", { waitUntil: "networkidle" });
   await expect(page.locator("body")).not.toContainText("目标卡");
   await page.goto("/cards/ui-card-1/edit", { waitUntil: "networkidle" });

@@ -77,7 +77,6 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
         </div>
         <div className="card-detail-actions">
           <BackButton href={returnHref} />
-          <a href={`/collection?cardId=${encodeURIComponent(card.id)}`} className="btn btn-secondary"><UiText text="查找" /></a>
           <a href={`/cards/${card.id}/edit${encodeReturnTo(returnTo)}`} className="btn btn-secondary"><UiText text={"编辑"} /></a>
           <a href={`/cards/${card.id}/delete`} className="btn btn-danger"><UiText text={"删除"} /></a>
         </div>

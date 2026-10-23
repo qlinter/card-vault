@@ -225,6 +225,9 @@ test("dual payments count physical quantity once; cross-currency sale allocates 
 });
 
 test("rates are date-effective, revisioned and use integer rounding in both directions", () => {
+  const crossYearRates = [{ ...config.rates[0], id: "dec", effectiveDate: "2025-12-30" }, config.rates[0]];
+  assert.equal(rateForDate(crossYearRates, at("2025-12-31"))?.id, "dec");
+  assert.equal(rateForDate(crossYearRates, at("2026-01-01"))?.id, "jan");
   assert.equal(parseFxRate("7.123456"), 7123456n);
   for (const invalid of ["0", "-1", "NaN", "Infinity", "7.1234567", "1e2"]) assert.throws(() => parseFxRate(invalid));
   assert.equal(rateForDate(config.rates, at("2025-12-31")), null);

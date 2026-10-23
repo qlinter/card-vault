@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { loadScout, mutateScout } from "@/lib/scout-service";
+import { loadScout, loadScoutReferences, mutateScout } from "@/lib/scout-service";
 import { prisma } from "@/lib/prisma";
 import { scoutCardData, scoutCardSelect } from "@/lib/scout-card-data";
 import { buildCardFilters } from "@/lib/card-helpers";
 export async function GET(request: NextRequest) {
   try {
+    if (request.nextUrl.searchParams.get("references") === "1") return NextResponse.json(await loadScoutReferences());
     if (request.nextUrl.searchParams.has("wishCards")) {
       const plan = await prisma.collectionPlan.findUnique({ where: { id: request.nextUrl.searchParams.get("wishCards")! }, include: { scoutDetails: true, acquiredCards: { orderBy: { cardId: "asc" }, select: { card: { select: scoutCardSelect } } } } });
       if (!plan) return NextResponse.json({ error: "心愿不存在。" }, { status: 404 });
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ cards, totalCount, page, pageSize });
     }
     const params = request.nextUrl.searchParams;
-    return NextResponse.json(await loadScout({ window: params.get("window") === "1", search: params.get("q")?.slice(0, 500), wishSearch: params.get("wishQ")?.slice(0, 500), wishSort: params.get("wishSort") ?? "priority", watchPage: Number(params.get("watchPage")), wishPage: Number(params.get("wishPage")), cancelledPage: Number(params.get("cancelledPage")), showAcquired: params.get("acquired") === "1" }));
+    return NextResponse.json(await loadScout({ window: params.get("window") === "1", compact: params.get("compact") === "1", search: params.get("q")?.slice(0, 500), wishSearch: params.get("wishQ")?.slice(0, 500), wishSort: params.get("wishSort") ?? "priority", watchPage: Number(params.get("watchPage")), wishPage: Number(params.get("wishPage")), cancelledPage: Number(params.get("cancelledPage")), showAcquired: params.get("acquired") === "1" }));
   } catch { return NextResponse.json({ error: "寻卡数据加载失败，请重试。" }, { status: 500 }); }
 }
 export async function POST(request: NextRequest) {

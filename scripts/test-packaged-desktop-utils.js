@@ -3,12 +3,14 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { _electron: electron } = require("@playwright/test");
 
-async function checkPackagedDesktop(executable, version, { env, userData, playerName, query }) {
+async function checkPackagedDesktop(executable, version, { env, userData, playerName, query, args = [], electronVersion, dataWorkspace = false }) {
   const logPath = path.join(userData, "logs", "desktop.log");
   const offset = fs.existsSync(logPath) ? fs.readFileSync(logPath, "utf8").length : 0;
-  const desktop = await electron.launch({ executablePath: executable, env, timeout: 60000 });
+  const desktop = await electron.launch({ executablePath: executable, args, env, timeout: 60000 });
   try {
     assert.equal(await desktop.evaluate(({ app }) => app.getVersion()), version);
+    const runtimeVersion = await desktop.evaluate(() => process.versions.electron);
+    if (electronVersion) assert.equal(runtimeVersion, electronVersion, "Unexpected Electron runtime version.");
     // firstWindow can arrive before the main-process loadURL promise completes.
     // Navigating at that point aborts startup rather than exercising normal use.
     const deadline = Date.now() + 60000;
@@ -41,6 +43,15 @@ async function checkPackagedDesktop(executable, version, { env, userData, player
     }
     await window.getByRole("link", { name: "返回上一页", exact: true }).click();
     await window.waitForURL(isFiltered);
+    if (dataWorkspace) {
+      await window.locator('.nav-links a[href="/portfolio"]').click();
+      await window.getByTestId("data-counts").waitFor();
+      for (const [label, testId] of [["趋势", "data-trends"], ["结构", "data-structure"], ["明细", "data-details"], ["总览", "data-counts"]]) {
+        await window.getByRole("link", { name: label, exact: true }).click();
+        await window.getByTestId(testId).waitFor();
+      }
+    }
+    return runtimeVersion;
   } finally { await desktop.close(); }
 }
 

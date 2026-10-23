@@ -1,7 +1,7 @@
 import { selectLatestValuation } from "./financial-history.ts";
 import type { PortfolioAttentionItem, PortfolioValuationRecord } from "./portfolio-analysis-types.ts";
 
-export const stalePortfolioValuationDays = 360;
+export const stalePortfolioValuationDays = 180;
 
 export const portfolioQualityMetrics = [
   { type: "missing_valuation", label: "未估值", issue: "缺少估值", definition: "卡片没有任何估值记录。", priority: "high" },

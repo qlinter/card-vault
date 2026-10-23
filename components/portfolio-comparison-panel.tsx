@@ -11,6 +11,12 @@ import {
 } from "@/lib/portfolio-presentation";
 import styles from "./portfolio-center.module.css";
 import { FinancialReportNote } from "./financial-report-note";
+import { profitTone } from "@/lib/portfolio-workspace";
+import { PortfolioCriterion } from "./portfolio-criterion";
+
+function PointLabel({ label }: { label: string }) {
+  return label.startsWith("快照：") ? <><UiText text="快照" /> · {label.slice(3)}</> : <UiText text={label} />;
+}
 
 export function PortfolioComparisonPanel({ comparison }: { comparison: PortfolioComparison }) {
   const currencies = [...new Set([
@@ -52,13 +58,14 @@ export function PortfolioComparisonPanel({ comparison }: { comparison: Portfolio
         <div><h2><UiText text={"组合比较"} /></h2></div>
       </header>
       <div className={styles.comparisonSources}>
-        <div><span><UiText text={"基准"} /></span><strong>{comparison.left.label}</strong><small>{compactDateTime(comparison.left.capturedAt)}</small></div>
-        <div><span><UiText text={"对象"} /></span><strong>{comparison.right.label}</strong><small>{compactDateTime(comparison.right.capturedAt)}</small></div>
+        <div><span><UiText text={"基准"} /></span><strong><PointLabel label={comparison.left.label} /></strong><small>{compactDateTime(comparison.left.capturedAt)}</small><small>{comparison.left.scope.criteria.map(item => <span key={item.field}><PortfolioCriterion item={item} /> · </span>)}</small></div>
+        <div><span><UiText text={"对象"} /></span><strong><PointLabel label={comparison.right.label} /></strong><small>{compactDateTime(comparison.right.capturedAt)}</small><small>{comparison.right.scope.criteria.map(item => <span key={item.field}><PortfolioCriterion item={item} /> · </span>)}</small></div>
       </div>
+      <p className="muted"><UiText text="包含冻结快照的时间点比较；请核对两侧收藏范围。" /></p>
       <div className={styles.comparisonCounts}>
         {countRows.map(([label, left, right]) => <div key={label}><span><UiText text={label} /></span><strong>{left} → {right}</strong><small>{right - left >= 0 ? "+" : ""}{right - left}</small></div>)}
       </div>
-      <details><summary><UiText text={"核算依据"} /></summary>{[comparison.left, comparison.right].map((point, index) => <div key={index}><strong>{point.label}</strong><FinancialReportNote accounting={point.accounting} /></div>)}</details>
+      <details><summary><UiText text={"核算依据"} /></summary>{[comparison.left, comparison.right].map((point, index) => <div key={index}><strong><PointLabel label={point.label} /></strong><FinancialReportNote accounting={point.accounting} /></div>)}</details>
       <div className={styles.comparisonCurrencyGrid}>
         {currencies.map((currency) => {
           const left = comparison.left.currencies.find((item) => item.currency === currency);
@@ -71,7 +78,7 @@ export function PortfolioComparisonPanel({ comparison }: { comparison: Portfolio
           ] as const;
           return <article key={currency}><h3>{currency}</h3>{rows.map(([label, leftValue, rightValue]) => {
             const difference = rightValue === null || leftValue === null ? null : rightValue - leftValue;
-            return <div key={label}><span><UiText text={label} /></span><strong>{money(leftValue, currency)} → {money(rightValue, currency)}</strong><small className={(difference ?? 0) >= 0 ? styles.positive : styles.negative}>{signedMoney(difference, currency)}</small></div>;
+            return <div key={label}><span><UiText text={label} /></span><strong>{money(leftValue, currency)} → {money(rightValue, currency)}</strong><small className={styles[profitTone(difference)]}>{signedMoney(difference, currency)}</small></div>;
           })}</article>;
         })}
       </div>
@@ -91,7 +98,7 @@ export function PortfolioComparisonPanel({ comparison }: { comparison: Portfolio
               return <div key={row.name}>
                 <span>{row.name}</span>
                 <strong>{formatPercentage(hasValue ? row.leftValue : row.leftCount, { fractionDigits: 1 })} → {formatPercentage(hasValue ? row.rightValue : row.rightCount, { fractionDigits: 1 })}</strong>
-                <small className={change >= 0 ? styles.positive : styles.negative}>{formatPercentage(change, { fractionDigits: 1, signed: true })}</small>
+                <small className={styles[profitTone(change)]}><UiText text="{0} 个百分点" values={[`${change > 0 ? "+" : ""}${change.toFixed(1)}`]} /></small>
               </div>;
             })}
           </article>)}

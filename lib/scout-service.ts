@@ -7,7 +7,7 @@ import { normalizeCurrency } from "./financial-history";
 
 const text = (value: unknown, name: string, max = 500) => optionalCardText(String(value ?? ""), name, max);
 const id = (value: unknown) => requiredCardText(typeof value === "string" ? value : "", "ID");
-export { loadScout, type ScoutData } from "./scout-read";
+export { loadScout, loadScoutReferences, type ScoutData, type ScoutReferences } from "./scout-read";
 
 export async function mutateScout(body: Record<string, unknown>) {
   if (body.action === "keyword-save") {

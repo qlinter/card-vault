@@ -10,6 +10,9 @@ import { createInitialFinancialHistory } from "./card-entry-finance-service";
 import { parseInitialCardQuantity } from "./card-quantity";
 import { optionalCardDate } from "./card-domain";
 import { moneyValue } from "./financial-history";
+import { cardMatchesImport, importMatch, importMatchKey } from "./import-matching";
+import { loadImportMatchIds } from "./import-preview-matches";
+import { OperationError, operationMessages } from "./operation-errors";
 
 const evidenceInclude = { transactions: { orderBy: { id: "asc" } }, expenses: { orderBy: { id: "asc" } }, valuations: { orderBy: { id: "asc" } }, images: { orderBy: { id: "asc" } }, shareItems: { orderBy: { id: "asc" } } } as const;
 const json = (value: unknown) => JSON.stringify(value, (_key, item) => typeof item === "bigint" ? item.toString() : item);
@@ -104,10 +107,21 @@ async function createPreview(inputs: Input[], options: Options, newBatch = "") {
   const token = fingerprint({ version: 1, inputs, options, newBatch });
   const existing = await prisma.bulkJob.findUnique({ where: { token } });
   if (existing) return getJob(existing.id);
-  for (const input of inputs) {
-    try {
+  for (let offset = 0; offset < inputs.length; offset += 100) {
+    const batch = inputs.slice(offset, offset + 100);
+    const descriptors = batch.map(input => options.policy === "separate" && !input.values.id ? null : importMatch(input.values));
+    const matches = await loadImportMatchIds(descriptors.flatMap(match => match ? [match] : []));
+    const ids = [...new Set([...matches.values()].filter(found => found.length === 1).flat())];
+    const cards = ids.length ? await prisma.card.findMany({ where: { id: { in: ids } }, include: evidenceInclude }) : [];
+    const byId = new Map(cards.map(card => [card.id, card]));
+    for (const [index, input] of batch.entries()) try {
       for (const [field, value] of Object.entries(input.values)) if (["isRookie", "isPatch", "isAutograph", "isSerialNumbered"].includes(field) && typeof value !== "boolean") throw new Error("布尔字段只接受 true / false、1 / 0、是 / 否。");
-      const card = await findMatch(prisma, input.values);
+      const descriptor = descriptors[index];
+      const found = descriptor ? matches.get(importMatchKey(descriptor)) || [] : [];
+      if (found.length > 1) throw new OperationError("conflict", operationMessages.ambiguousImport);
+      if (descriptor?.kind === "id" && !found.length) throw new OperationError("not_found", operationMessages.missingImportCard);
+      const card = found.length ? byId.get(found[0]) : undefined;
+      if (found.length && (!card || !cardMatchesImport(card, descriptor!))) throw new OperationError("data_changed", operationMessages.importChanged);
       if (card && !(options.policy === "separate" && !input.values.id)) {
         input.existingId = card.id; input.expected = fingerprint(card);
         if (options.policy === "update") {
@@ -120,10 +134,13 @@ async function createPreview(inputs: Input[], options: Options, newBatch = "") {
   const job = await prisma.bulkJob.create({ data: { token, kind: options.kind, optionsJson: json(options), rows: { create: inputs.map((input, index) => ({ rowNumber: index + 2, inputJson: json(input), status: input.validationError ? "failed" : "pending", error: input.validationError ?? null, cardId: input.existingId })) } } });
   return getJob(job.id);
 }
-export async function getJob(id: string) {
-  const job = await prisma.bulkJob.findUniqueOrThrow({ where: { id }, include: { rows: { orderBy: { rowNumber: "asc" } } } });
+export async function getJob(id: string, after = 0) {
+  const job = await prisma.bulkJob.findUniqueOrThrow({ where: { id }, include: { rows: { where: { rowNumber: { gt: after } }, orderBy: { rowNumber: "asc" }, take: 101 } } });
   assertImportJob(job);
-  return { id: job.id, kind: job.kind, status: job.status, createdAt: job.createdAt.toISOString(), rows: job.rows.map(row => ({ id: row.id, rowNumber: row.rowNumber, status: row.status, error: row.error, cardId: row.cardId, values: (JSON.parse(row.inputJson) as Input).values })) };
+  const groups = await prisma.bulkJobRow.groupBy({ by: ["status"], where: { jobId: id }, _count: true });
+  const counts = Object.fromEntries(groups.map(row => [row.status, row._count]));
+  const rows = job.rows.slice(0, 100);
+  return { id: job.id, kind: job.kind, status: job.status, createdAt: job.createdAt.toISOString(), counts, total: groups.reduce((sum, row) => sum + row._count, 0), nextRow: job.rows.length > 100 ? rows.at(-1)!.rowNumber : null, rows: rows.map(row => ({ id: row.id, rowNumber: row.rowNumber, status: row.status, error: row.error, cardId: row.cardId, values: (JSON.parse(row.inputJson) as Input).values })) };
 }
 
 // Each row is a transaction. Replaying a request never repeats a committed row.
@@ -183,6 +200,7 @@ export async function applyJob(id: string, undo = false, cursor?: number) {
   const has = (status: string) => counts.some(row => row.status === status);
   const status = undo ? has("undo-failed") ? "undo-partial" : has("applied") ? "undo-running" : "undone" : has("pending") ? "running" : has("failed") ? "partial" : "complete";
   await prisma.bulkJob.update({ where: { id }, data: { status } });
-  return { ...await getJob(id), nextCursor: candidates.length === 50 ? candidates.at(-1)!.rowNumber : null };
+  const rows = await prisma.bulkJobRow.findMany({ where: { jobId: id, id: { in: candidates.map(row => row.id) } }, orderBy: { rowNumber: "asc" }, select: { id: true, rowNumber: true, status: true, error: true, cardId: true } });
+  return { id, kind: job.kind, status, counts: Object.fromEntries(counts.map(row => [row.status, row._count])), total: counts.reduce((sum, row) => sum + row._count, 0), delta: true as const, rows, nextCursor: candidates.length === 50 ? candidates.at(-1)!.rowNumber : null };
 }
 

@@ -15,6 +15,29 @@ const settings: ActiveAiSettings = {
   deployment: "test-model"
 };
 
+test("user cancellation aborts the upstream request without retrying", async t => {
+  const controller = new AbortController();
+  const original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  let calls = 0;
+  globalThis.fetch = async (_input, init) => {
+    calls++;
+    return new Promise((_resolve, reject) => {
+      init!.signal!.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+      controller.abort();
+    });
+  };
+  await assert.rejects(() => requestAiChatText(settings, { messages: [], maxTokens: 8, operation: "test", signal: controller.signal }), { name: "AbortError" });
+  assert.equal(calls, 1);
+});
+
+test("an already cancelled request never contacts the upstream", async t => {
+  const original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  globalThis.fetch = async () => { throw new Error("should not fetch"); };
+  await assert.rejects(() => requestAiChatText(settings, { messages: [], maxTokens: 8, operation: "test", signal: AbortSignal.abort() }), { name: "AbortError" });
+});
+
 test("DeepSeek vision uses the official model, Bearer auth and non-thinking JSON output", async (t) => {
   const deepseek: ActiveAiSettings = {
     provider: "deepseek", endpoint: "https://api.deepseek.com/chat/completions",

@@ -2,7 +2,7 @@ import { createPortfolioHistoryCursor } from "./portfolio-history-cursor.ts";
 import { isOwnedCollectionStatus } from "./card-stats.ts";
 import { minorMoneyToNumber, normalizeCurrency, selectLatestValuation } from "./financial-history.ts";
 import { roundPortfolioValue as money } from "./portfolio-number.ts";
-import type { PortfolioCardRecord, PortfolioScope, PortfolioSnapshot } from "./portfolio-analysis-types.ts";
+import type { PortfolioCardRecord } from "./portfolio-analysis-types.ts";
 import { calculatePositions } from "./position-accounting.ts";
 import type { PortfolioCardFacts } from "./portfolio-analysis-statistics.ts";
 
@@ -322,96 +322,5 @@ export function buildPortfolioPositionReviews(cards: PortfolioCardRecord[], card
   return {
     highCostPositions: groupedHighCost,
     soldReviews: groupedSoldReviews
-  };
-}
-
-export type PortfolioComparisonPoint = {
-  accounting?: PortfolioSnapshot["accounting"];
-  label: string;
-  capturedAt: string;
-  scope: PortfolioScope;
-  cardCount: number;
-  activeCount: number;
-  soldCount: number;
-  pendingGradingCount: number;
-  playerCount: number;
-  currencies: Array<{
-    currency: string;
-    latestValue: number;
-    activeCostBasis: number | null;
-    realizedProfit: number | null;
-    totalProfit: number | null;
-  }>;
-  structures: Array<{
-    key: string;
-    label: string;
-    items: Array<{
-      name: string;
-      countShare: number;
-      valueShare: Record<string, number>;
-    }>;
-  }>;
-};
-
-export type PortfolioComparison = {
-  left: PortfolioComparisonPoint;
-  right: PortfolioComparisonPoint;
-};
-
-export function buildPortfolioComparisonPoint(
-  snapshot: PortfolioSnapshot,
-  label: string,
-  capturedAt = new Date()
-): PortfolioComparisonPoint {
-  const cardTypeItems = [
-    ["新秀卡", snapshot.quality.rookieCount],
-    ["签名卡", snapshot.quality.autographCount],
-    ["Patch", snapshot.quality.patchCount],
-    ["限量卡", snapshot.quality.serialNumberedCount]
-  ].map(([name, rawCount]) => ({
-    name: String(name),
-    countShare: snapshot.activeCount > 0 ? money(Number(rawCount) / snapshot.activeCount * 100) : 0,
-    valueShare: {}
-  }));
-  const structureDefinitions: Array<[
-    string,
-    string,
-    Array<{ name: string; countShare: number; valueShare: Record<string, number> }>
-  ]> = [
-    ["player", "卡片主体", snapshot.allocation.byPlayer],
-    ["sport", "运动", snapshot.allocation.bySport],
-    ["brand", "品牌", snapshot.allocation.byBrand],
-    ["team", "Team", snapshot.allocation.byTeam],
-    ["year", "年份", snapshot.allocation.byYear],
-    ["productLine", "产品线", snapshot.allocation.byProductLine],
-    ["gradingCompany", "评级机构", snapshot.allocation.byGradingCompany],
-    ["cardType", "卡片属性", cardTypeItems]
-  ];
-  return {
-    accounting: snapshot.accounting,
-    label,
-    capturedAt: capturedAt.toISOString(),
-    scope: snapshot.scope,
-    cardCount: snapshot.cardCount,
-    activeCount: snapshot.activeCount,
-    soldCount: snapshot.soldCount,
-    pendingGradingCount: snapshot.pendingGradingCount,
-    playerCount: snapshot.playerCount,
-    currencies: snapshot.financials.currencies.map((summary) => ({
-      currency: summary.currency,
-      latestValue: summary.latestValue,
-      activeCostBasis: summary.activeCostBasis,
-      realizedProfit: summary.realizedProfit,
-      totalProfit: summary.totalProfit
-    })),
-    structures: structureDefinitions.map(([key, structureLabel, items]) => ({
-      key,
-      label: structureLabel,
-      items: items.slice(0, 20).map((item) => ({
-        name: item.name,
-        countShare: item.countShare,
-        valueShare: item.valueShare
-      }))
-    }))
   };
 }

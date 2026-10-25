@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
+const { packagedScripts } = require("../scripts/release-runtime-files");
 const {
   assertArtifactSize,
   assertPackagedTreeClean,
@@ -10,16 +11,30 @@ const {
   prunePrismaTempEngines
 } = require("../scripts/release-bundle-hygiene");
 
+test("runtime script allowlist includes every local script dependency", () => {
+  const allowed = new Set(packagedScripts);
+  for (const file of allowed) {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'scripts', file), 'utf8');
+    for (const match of source.matchAll(/require\(["'](\.\/[^"']+)["']\)/g)) {
+      const dependency = path.normalize(match[1]) + (path.extname(match[1]) ? '' : '.js');
+      assert.ok(allowed.has(dependency), `${file} requires unpackaged runtime script ${dependency}`);
+    }
+  }
+});
+
 test("release bundle rejects Prisma temporary engines and source maps", () => {
   assert.equal(isForbiddenPackagedEntry("resources/app/node_modules/.prisma/client/query_engine.dll.node.tmp123"), true);
   assert.equal(isForbiddenPackagedEntry("resources/app/node_modules/next/runtime.js.map"), true);
   assert.equal(isForbiddenPackagedEntry("resources/app/node_modules/.prisma/client/query_engine.dll.node"), false);
   assert.equal(isForbiddenPackagedEntry("LICENSES.chromium.html"), false);
-  for (const name of ["benchmark-dense-history.js", "benchmark-portfolio-history.mts", "check-docs.js", "start-ui-test-server.js", "ui-test-clock.js", "test-live-ai.js", "test-storage-photos.js", "test-windows-installation.js", "test-packaged-desktop.js", "test-packaged-desktop-utils.js"]) {
+  for (const name of ["benchmark-dense-history.js", "benchmark-portfolio-history.mts", "check-docs.js", "start-ui-test-server.js", "ui-test-clock.js", "test-live-ai.js", "test-storage-photos.js", "test-windows-installation.js", "test-improvements.js", "test-showcase-flow.js", "test-packaged-desktop.js", "test-packaged-desktop-utils.js"]) {
     assert.equal(isForbiddenPackagedEntry("resources/app/scripts/" + name), true);
   }
-  for (const name of ["init-db.js", "database-schema.js", "test-card-flow.js", "test-memory-sampler.js"]) {
+  for (const name of ["init-db.js", "database-schema.js", "reset-history.js", "reset-scout-history.js", "reset-portfolio-history.js"]) {
     assert.equal(isForbiddenPackagedEntry("resources/app/scripts/" + name), false);
+  }
+  for (const name of ["test-card-flow.js", "test-memory-sampler.js", "release-win.js", "release-runtime-files.js"]) {
+    assert.equal(isForbiddenPackagedEntry("resources/app/scripts/" + name), true);
   }
 });
 

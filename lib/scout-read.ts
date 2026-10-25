@@ -1,50 +1,32 @@
 import "server-only";
+import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
-import { matchesSearch } from "./search-terms";
+import { matchesSearch, searchTerms } from "./search-terms";
 import { scoutIdentity } from "./scout-identity";
-import { serializeScoutData as serialize } from "./scout-serialization";
-import { loadScoutPage, type ScoutPageOptions } from "./scout-queries";
-export { loadScoutReferences, type ScoutReferences } from "./scout-queries";
+import { serializeScoutData } from "./scout-serialization";
+import { ensureScoutReady } from "./scout-ready";
 
-export async function loadScout(options: ScoutPageOptions & { window?: boolean; compact?: boolean } = {}) {
-  // SQLite lower() folds ASCII only. Retain Unicode case-folding for cased non-ASCII searches.
-  const unicodeCase = [...(options.search ?? ""), ...(options.wishSearch ?? "")].some(char => char.codePointAt(0)! > 127 && char.toUpperCase() !== char.toLowerCase());
-  if (options.compact && !unicodeCase) return loadScoutPage(options);
-  const result = await loadFullScout(options.compact ? { ...options, window: true } : options);
-  return options.compact ? { ...result, keywordOptions: [], wishOptions: [] } : result;
-}
-async function loadFullScout(options: ScoutPageOptions & { window?: boolean }) {
-  const watchPageSize = 50, wishPageSize = 20;
-  const [keywords, wishes, budgetRows] = await Promise.all([
-    prisma.scoutWatch.findMany({ orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { id: true, title: true } }),
-    prisma.collectionPlan.findMany({ orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { id: true, title: true, playerName: true, status: true, createdAt: true, targetDate: true, scoutDetails: { select: { priority: true } }, scoutWatches: { select: { watchId: true } } } }),
-    prisma.collectionPlan.findMany({ where: { status: "planned", budgetMinor: { not: null } }, select: { currency: true, budgetMinor: true } })
-  ]);
-  const keywordOptions = keywords.map(row => ({ id: row.id, keyword: row.title }));
-  const keywordMap = new Map(keywordOptions.map(row => [row.id, row.keyword]));
-  // Compare dates after decoding both SQLite text and Prisma millisecond storage.
-  wishes.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
-  const sorted = options.wishSort === "recent" ? wishes : wishes.sort((a, b) => options.wishSort === "target" ? (a.targetDate?.getTime() ?? Infinity) - (b.targetDate?.getTime() ?? Infinity) || 0 : (a.scoutDetails?.priority ?? 2) - (b.scoutDetails?.priority ?? 2));
-  const wishOptions = sorted.map(row => ({ id: row.id, title: row.title, status: row.status, watchIds: row.scoutWatches.map(link => link.watchId) }));
-  const matchingIds = new Set(sorted.filter(row => matchesSearch([row.title, row.playerName, ...row.scoutWatches.map(link => keywordMap.get(link.watchId))].filter(Boolean).join(" "), options.wishSearch ?? "")).map(row => row.id));
-  const filtered = keywordOptions.filter(row => row.keyword.toLowerCase().includes((options.search ?? "").trim().toLowerCase()));
-  const visible = wishOptions.filter(row => matchingIds.has(row.id) && (row.status === "planned" || (options.showAcquired && row.status === "acquired")));
-  const cancelled = wishOptions.filter(row => matchingIds.has(row.id) && row.status === "cancelled");
-  const page = (requested: number | undefined, total: number, size: number) => Math.min(Math.max(1, Math.floor(requested || 1)), Math.max(1, Math.ceil(total / size)));
-  const watchPage = page(options.watchPage, filtered.length, watchPageSize), wishPage = page(options.wishPage, visible.length, wishPageSize), cancelledPage = page(options.cancelledPage, cancelled.length, wishPageSize);
-  const windowIds = (rows: Array<{ id: string }>, page: number, size: number) => rows.slice((page - 1) * size, page * size).map(row => row.id);
-  const watchIds = options.window ? windowIds(filtered, watchPage, watchPageSize) : keywordOptions.map(row => row.id);
-  const wishIds = options.window ? [...windowIds(visible, wishPage, wishPageSize), ...windowIds(cancelled, cancelledPage, wishPageSize)] : wishOptions.map(row => row.id);
-  const [watchRows, planRows] = await Promise.all([
-    prisma.scoutWatch.findMany({ where: { id: { in: watchIds } } }),
-    prisma.collectionPlan.findMany({ where: { id: { in: wishIds } }, include: { scoutDetails: true, scoutWatches: true, acquiredCards: { orderBy: { cardId: "asc" }, select: { cardId: true } } } })
-  ]);
-  const watchMap = new Map(watchRows.map(row => [row.id, row]));
-  const planMap = new Map(planRows.map(({ acquiredCards, ...row }) => [row.id, { ...row, acquiredCardIds: acquiredCards.map(link => link.cardId) }]));
-  const budgets: Record<string, string> = {};
-  for (const row of budgetRows) budgets[row.currency] = (BigInt(budgets[row.currency] ?? "0") + row.budgetMinor!).toString();
-  return serialize({ identity: scoutIdentity(), watches: watchIds.map(id => watchMap.get(id)!), plans: wishIds.map(id => planMap.get(id)!), keywordOptions, wishOptions,
-    budgets,
-    watchPage, watchPageSize, watchCount: filtered.length, wishPage, wishPageSize, wishCount: visible.length, cancelledPage, cancelledCount: cancelled.length });
+const pageSize = 20;
+const fold = (column: Prisma.Sql) => Prisma.sql`replace(replace(lower(${column}),'K','k'),'İ','i'||char(775))`;
+export async function loadScout(options: { search?: string; page?: number } = {}) {
+  ensureScoutReady();
+  const search = options.search ?? "";
+  const casedUnicode = [...search].some(char => char.codePointAt(0)! > 127 && char.toUpperCase() !== char.toLowerCase());
+  return prisma.$transaction(async tx => {
+    const matching = casedUnicode ? (await tx.collectionPlan.findMany({ select: { id: true, title: true, playerName: true, notes: true } }))
+      .filter(row => matchesSearch([row.title, row.playerName, row.notes].filter(Boolean).join(" "), search)).map(row => row.id) : null;
+    const terms = searchTerms(search);
+    const filter = matching ? (matching.length ? Prisma.sql`p.id IN (${Prisma.join(matching)})` : Prisma.sql`0=1`) : terms.length ? Prisma.join(terms.map(term => Prisma.sql`(instr(${fold(Prisma.sql`p.title`)},${term})>0 OR instr(${fold(Prisma.sql`coalesce(p.playerName,'')`)},${term})>0 OR instr(${fold(Prisma.sql`coalesce(p.notes,'')`)},${term})>0)`), " AND ") : Prisma.sql`1=1`;
+    const [result] = await tx.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`SELECT count(*) count FROM CollectionPlan p WHERE ${filter}`);
+    const count = Number(result.count);
+    const page = Math.min(Math.max(1, Math.floor(options.page || 1)), Math.max(1, Math.ceil(count / pageSize)));
+    const ids = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT p.id FROM CollectionPlan p WHERE ${filter} ORDER BY CASE WHEN typeof(p.createdAt)='integer' THEN p.createdAt ELSE CAST(strftime('%s',p.createdAt) AS INTEGER)*1000 END DESC,p.id DESC LIMIT ${pageSize} OFFSET ${(page-1)*pageSize}`);
+    const rows = await tx.collectionPlan.findMany({
+      where: { id: { in: ids.map(row => row.id) } },
+      select: { id: true, title: true, playerName: true, budgetMinor: true, currency: true, notes: true, createdAt: true, updatedAt: true }
+    });
+    const index = new Map(rows.map(row => [row.id, row]));
+    return serializeScoutData({ identity: scoutIdentity(), plans: ids.map(row => index.get(row.id)!), page, pageSize, count });
+  });
 }
 export type ScoutData = Awaited<ReturnType<typeof loadScout>>;

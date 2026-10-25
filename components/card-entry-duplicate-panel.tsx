@@ -65,7 +65,7 @@ export function CardEntryDuplicatePanel() {
   }, []);
 
   return (
-    <div ref={panelRef}>
+    <div ref={panelRef} className="entry-duplicate-slot">
       {candidates.length > 0 ? (
         <UiElement as="section" uiAttributes={["aria-label"]} className="entry-duplicate-panel" aria-label="疑似重复卡">
           <strong><UiText text={"发现疑似重复卡"} /></strong>

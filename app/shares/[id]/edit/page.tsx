@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { toScalar } from "@/lib/query-params";
 import { resolveSuccessMessage, shareEditSuccessMessages } from "@/lib/feedback-messages";
+import { shareCardCatalogSelect } from "@/lib/share-card-catalog";
 
 type EditSharePageProps = {
   params: Promise<{ id: string }>;
@@ -20,13 +21,13 @@ export default async function EditSharePage({ params, searchParams }: EditShareP
       include: {
         sections: { orderBy: { sortOrder: "asc" } },
         items: {
-          include: { card: { include: { images: { take: 1, orderBy: { createdAt: "asc" } } } } },
+          include: { card: { select: shareCardCatalogSelect } },
           orderBy: { sortOrder: "asc" }
         }
       }
     }),
     prisma.card.findMany({
-      include: { images: { take: 1, orderBy: { createdAt: "asc" } } },
+      select: shareCardCatalogSelect,
       orderBy: [{ playerName: "asc" }, { createdAt: "desc" }]
     })
   ]);

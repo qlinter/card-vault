@@ -15,7 +15,6 @@ import { readEntryFinance } from "./card-entry-finance.ts";
 export const cardEntryDraftSchemaVersion = 1;
 
 const cardFormStringFields = [
-  "wishId",
   "playerName",
   "cardTitle",
   "sport",

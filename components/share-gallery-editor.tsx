@@ -1,6 +1,7 @@
 "use client";
 
 import { UiText, UiElement } from "@/components/ui-text";
+import { useState } from "react";
 import { ShareGalleryCardsPanel } from "@/components/share-gallery-cards-panel";
 import { ShareGalleryContentPanel } from "@/components/share-gallery-content-panel";
 import type { ShareGalleryEditorProps } from "@/components/share-gallery-editor-types";
@@ -51,6 +52,7 @@ export function ShareGalleryEditor({
   onMoveCard,
   onReorderCard
 }: ShareGalleryEditorProps) {
+  const [customizing, setCustomizing] = useState(false);
   const {
     activePanel,
     setActivePanel,
@@ -72,24 +74,20 @@ export function ShareGalleryEditor({
 
   return (
     <div className={styles.editor}>
-      <header className="panel share-editor-v2-header">
-        <div>
-          <h2><UiText text={"分享展馆编辑工作台"} /></h2>
-        </div>
+      <header className="share-editor-v2-header">
+        <h2 className="sr-only"><UiText text="分享设置" /></h2>
         <UiElement as="div" uiAttributes={["aria-label"]} className="share-editor-v2-summary" aria-label="当前展馆摘要">
           <span><small><UiText text={"样式"} /></small><strong><UiText text={activeStyle?.label ?? activeLayout?.label ?? presentation.layout} /></strong></span>
           <span><small><UiText text={"主题"} /></small><strong><UiText text={activeTheme?.label ?? theme} /></strong></span>
-          <span><small><UiText text={"章节"} /></small><strong>{sections.length}</strong></span>
-          <span><small><UiText text={"卡片"} /></small><strong>{cards.length}</strong></span>
-          <span><small><UiText text={"重点卡"} /></small><strong>{presentation.featuredCardIds.length}</strong></span>
         </UiElement>
         <UiElement as="div" uiAttributes={["aria-label"]} className="share-editor-history" aria-label="编辑历史">
           <button type="button" className="btn btn-secondary" onClick={onUndo} disabled={!canUndo}><UiText text={"撤销"} /></button>
           <button type="button" className="btn btn-secondary" onClick={onRedo} disabled={!canRedo}><UiText text={"重做"} /></button>
-          <small className="muted"><UiText text={draftStatus} /></small>
+          {draftStatus && draftStatus !== "草稿已自动保存到本机" ? <small className="muted"><UiText text={draftStatus} /></small> : null}
         </UiElement>
       </header>
 
+      <details className="share-custom-tools" onToggle={event => setCustomizing(event.currentTarget.open)}><summary><UiText text="自定义设计" /></summary>
       <UiElement as="nav" uiAttributes={["aria-label"]} className="share-editor-v2-tabs" aria-label="展馆编辑分区">
         {editorPanels.map((panel) => (
           <button
@@ -103,6 +101,7 @@ export function ShareGalleryEditor({
           </button>
         ))}
       </UiElement>
+      </details>
 
       <input type="hidden" name="themeNarrative" value={values.themeNarrative} />
       <input type="hidden" name="themeHighlights" value={values.themeHighlights} />
@@ -110,10 +109,10 @@ export function ShareGalleryEditor({
 
       <div className="share-design-workspace">
         <div className="share-design-controls">
-          <div hidden={activePanel !== "content"}>
+          <div hidden={customizing && activePanel !== "content"}>
             <ShareGalleryContentPanel values={values} onThemeFieldChange={onThemeFieldChange} />
           </div>
-          <div hidden={activePanel !== "visual"}>
+          <div hidden={customizing && activePanel !== "visual"}>
             <ShareGalleryVisualPanel
               theme={theme}
               presentation={presentation}
@@ -133,7 +132,7 @@ export function ShareGalleryEditor({
               previewFile={previewFile}
             />
           </div>
-          <div hidden={activePanel !== "sections"}>
+          <div hidden={!customizing || activePanel !== "sections"}>
             <ShareGallerySectionsPanel
               sections={sections}
               cards={cards}
@@ -145,7 +144,7 @@ export function ShareGalleryEditor({
               onAssignSectionCard={onAssignSectionCard}
             />
           </div>
-          <div hidden={activePanel !== "cards"}>
+          <div hidden={!customizing || activePanel !== "cards"}>
             <ShareGalleryCardsPanel
               cards={cards}
               drafts={drafts}

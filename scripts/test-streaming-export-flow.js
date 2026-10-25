@@ -79,8 +79,7 @@ async function main() {
       assert.equal(rejected.status, 400);
       assert.match((await rejected.json()).error, /两个导出/);
       const scoutRejected = await fetch(base + '/api/scout/export?kind=keywords');
-      assert.equal(scoutRejected.status, 400);
-      assert.match((await scoutRejected.json()).error, /两个导出/);
+      assert.equal(scoutRejected.status, 404, 'Retired keyword export must remain unavailable.');
     } finally {
       controllers.forEach(controller => controller.abort());
       await Promise.allSettled(requests);

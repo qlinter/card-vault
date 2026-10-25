@@ -1,4 +1,5 @@
 const fs = require("node:fs");
+const { readDraftImages } = require("../../lib/card-entry-draft-images");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 const { directoryFiles } = require("./file-utils");
@@ -76,6 +77,15 @@ function inspectDataFolder(dataDir, onProgress) {
           if (source) {
             referenced.queueSources.add(source.toLowerCase());
             if (!fs.existsSync(path.join(resolvedDataDir, "entry-queue", source))) missingFiles.push({ type: "queueSource", path: path.join("entry-queue", source) });
+          }
+        }
+      }
+      if (tableExists(db, "CardEntryDraft")) {
+        for (const draft of db.prepare("SELECT valuesJson FROM CardEntryDraft WHERE status='draft'").all()) {
+          for (const image of readDraftImages(draft.valuesJson)) {
+            const fileName = publicFileName(image.path, "/media/");
+            referenced.uploads.add(fileName.toLowerCase());
+            if (!fs.existsSync(path.join(resolvedDataDir, "uploads", fileName))) missingFiles.push({ type: "draftImage", path: image.path });
           }
         }
       }

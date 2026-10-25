@@ -1,16 +1,11 @@
+import { withUiDatabase as fixture } from './database-fixture.mjs';
 import { expect, test } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
-import path from "node:path";
-
-function fixture(action) {
-  const db = new DatabaseSync(path.resolve("tests/.ui-test-runtime/data/dev.db"));
-  try { db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000"); action(db); } finally { db.close(); }
-}
 
 test.afterEach(() => fixture(db => db.exec("DELETE FROM Card WHERE id='layout-long-product';")));
 
 test("financial history keeps amounts and edit actions aligned when an editor opens", async ({ page }) => {
   await page.goto("/cards/ui-card-1", { waitUntil: "networkidle" });
+  await page.locator('.financial-history-details > summary').click();
   const rows = page.locator(".financial-timeline-item");
   await expect(rows).toHaveCount(4);
   const amounts = await rows.locator(".financial-record-amount").evaluateAll(elements => elements.map(element => element.getBoundingClientRect().right));
@@ -65,6 +60,8 @@ test("DeepSeek settings select, test and save the official defaults without clea
   await page.goto("/settings", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "展开 AI" }).click();
   await page.getByRole("combobox", { name: "当前服务", exact: true }).selectOption("deepseek");
+  await expect(page.getByLabel("Endpoint", { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '新增自定义 AI', exact: true })).toBeVisible();
   await expect(page.getByLabel("Endpoint", { exact: true })).toHaveValue("https://api.deepseek.com/chat/completions");
   await expect(page.getByLabel("Model", { exact: true })).toHaveValue("deepseek-flash");
   await page.getByLabel("API Key", { exact: true }).fill("mock-key");

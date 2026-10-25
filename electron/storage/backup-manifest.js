@@ -16,8 +16,8 @@ function databaseCounts(root) {
   try { return Object.fromEntries(db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all().map(({ name }) => [name, Number(db.prepare(`SELECT COUNT(*) AS n FROM "${name.replaceAll('"', '""')}"`).get().n)])); }
   finally { db.close(); }
 }
-function writeBackupManifest(root) {
-  const manifest = { version: 1, appVersion: require("../../package.json").version, createdAt: new Date().toISOString(), counts: databaseCounts(root), files: backupFiles(root).map(name => ({ name, bytes: fs.statSync(path.join(root, name)).size, sha256: sha256File(path.join(root, name)) })) };
+function writeBackupManifest(root, metadata = {}) {
+  const manifest = { ...metadata, version: 1, appVersion: require("../../package.json").version, createdAt: new Date().toISOString(), counts: databaseCounts(root), files: backupFiles(root).map(name => ({ name, bytes: fs.statSync(path.join(root, name)).size, sha256: sha256File(path.join(root, name)) })) };
   fs.writeFileSync(path.join(root, manifestName), JSON.stringify(manifest, null, 2));
   return manifest;
 }

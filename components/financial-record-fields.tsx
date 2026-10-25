@@ -7,15 +7,16 @@ import { expenseContextDescriptions, expenseContextInputLabels } from "@/lib/fin
 import type { EntryFinanceRecord, EntryFinanceValues } from "@/lib/card-entry-finance";
 
 type FinancialSaleOption = { id: string; label: ReactNode };
-export function FinancialRecordFields({ type, values, prefix, sales, showExpenseHelp = false }: {
+export function FinancialRecordFields({ type, values, prefix, sales, showExpenseHelp = false, transactionKind }: {
   type: EntryFinanceRecord["type"]; values: EntryFinanceValues; prefix: string; sales: FinancialSaleOption[];
   showExpenseHelp?: boolean;
+  transactionKind?: "purchase" | "sale";
 }) {
   const [context, setContext] = useState(values.context || "grading");
   const name = (field: string) => prefix + field;
   const field = (key: keyof EntryFinanceValues, label: string, inputType = "text", required = false) => <label className="field"><span><UiText text={label} /></span><input name={name(key)} type={inputType} inputMode={key === "amount" ? "decimal" : undefined} min={inputType === "number" ? 1 : undefined} step={inputType === "number" ? 1 : undefined} defaultValue={values[key] ?? (key === "quantity" ? "1" : "")} required={required} /></label>;
   return <>
-    {type === "transaction" ? <label className="field"><span><UiText text="类型" /></span><select name={name("kind")} defaultValue={values.kind || "purchase"}><option value="purchase"><UiText text="购入" /></option><option value="sale"><UiText text="售出" /></option></select></label> : null}
+    {type === "transaction" ? transactionKind ? <input type="hidden" name={name("kind")} value={transactionKind} /> : <label className="field"><span><UiText text="类型" /></span><select name={name("kind")} defaultValue={values.kind || "purchase"}><option value="purchase"><UiText text="购入" /></option><option value="sale"><UiText text="售出" /></option></select></label> : null}
     {type === "expense" ? <>
       <label className="field full"><span><UiText text="费用归属" /></span><select name={name("context")} value={context} onChange={event => setContext(event.target.value)}>{Object.entries(expenseContextInputLabels).map(([value, label]) => <option key={value} value={value}><UiText text={label} /></option>)}</select>{showExpenseHelp ? <small className="field-help"><UiText text={expenseContextDescriptions[context]} /></small> : null}</label>
       <label className="field"><span><UiText text="费用类型" /></span><ExpenseKindSelect name={name("kind")} defaultValue={values.kind || "grading"} /></label>

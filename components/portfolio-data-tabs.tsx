@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { UiText } from "./ui-text";
 import { NavigationStatus } from "./navigation-status";
-import { dataHref, dataTab } from "@/lib/portfolio-workspace";
+import { dataHref, dataTab } from "@/lib/portfolio-navigation";
 import type { PortfolioFilterInput } from "@/lib/portfolio-analysis-scope";
 import styles from "./portfolio-data.module.css";
 import { portfolioTrendState } from "@/lib/portfolio-trend";

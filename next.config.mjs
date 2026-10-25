@@ -1,9 +1,12 @@
+import imageLimits from "./lib/card-image-limits.js";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
+    proxyClientMaxBodySize: imageLimits.maxCardImageRequestBytes,
     cpus: 1,
     serverActions: {
-      bodySizeLimit: "20mb"
+      bodySizeLimit: imageLimits.maxCardImageRequestBytes
     },
     webpackBuildWorker: false,
     workerThreads: false

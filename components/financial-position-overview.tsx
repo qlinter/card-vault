@@ -212,7 +212,7 @@ function PositionPanel({ position, series }: { position: CurrencyPosition; serie
         </details>
       </div>
 
-      <div className="financial-charts-grid">
+      {series.length ? <details className="financial-chart-details"><summary><UiText text="财务图表" /></summary><div className="financial-charts-grid">
         <section className="financial-chart-card trend-chart-card">
           <div className="financial-chart-heading"><h3><UiText text={"持仓成本与估值变化"} /></h3><span>{series.length}<UiText text={" 个事件"} /></span></div>
           <PositionTrendChart series={series} currency={currency} />
@@ -221,7 +221,7 @@ function PositionPanel({ position, series }: { position: CurrencyPosition; serie
           <CostComposition position={position} />
           <ProfitBars position={position} />
         </div>
-      </div>
+      </div></details> : null}
     </div>
   );
 }
@@ -236,7 +236,7 @@ export function FinancialPositionOverview(props: PositionOverviewProps) {
   return (
     <div className="financial-overview">
       <section data-i18n-skip>
-        {!activePosition || report.costMissing.length > 0 ? <p>{text("持仓估值", "Holding value")}: {activePosition?.currentValueMinor != null ? formatMinorMoney(activePosition.currentValueMinor, props.config.reportingCurrency) : "—"}</p> : null}
+        {!activePosition || report.costMissing.length > 0 ? <p>{text("持仓估值", "Holding value")}: {activePosition?.currentValueMinor != null ? formatMinorMoney(activePosition.currentValueMinor, props.config.reportingCurrency) : "–"}</p> : null}
       </section>
       {activePosition && report.costMissing.length === 0 ? <PositionPanel position={activePosition} series={series} /> : null}
     </div>

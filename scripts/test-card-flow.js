@@ -117,7 +117,7 @@ async function main() {
     await waitForServer(baseUrl, output, serverProcess, "Card flow");
 
     const newPage = await fetchPage(baseUrl, "/cards/new");
-    for (const marker of ["录入工作台", "批量录入", "导入并预处理", "保存并查看", "保存并继续", "录入草稿", "模板"]) {
+    for (const marker of ["新增卡片", "批量录入", "导入并预处理", "保存并查看", "保存并继续", "录入工具", "模板"]) {
       if (!newPage.includes(marker)) {
         throw new Error(`Entry workbench is missing the expected marker: ${marker}`);
       }
@@ -319,6 +319,19 @@ async function main() {
     if (!draftResponse.ok || !draftPayload.id) {
       throw new Error(`Draft create returned HTTP ${draftResponse.status}: ${JSON.stringify(draftPayload)}`);
     }
+    const imageDraft = new FormData();
+    imageDraft.set("id", draftPayload.id);
+    imageDraft.set("values", JSON.stringify({ playerName: "E2E Draft Player", cardTitle: "E2E Draft Card", sport: "Basketball", isRookie: true }));
+    imageDraft.set("imageRotations", "[90]");
+    imageDraft.append("images", new Blob([png], { type: "image/png" }), "draft-card.png");
+    const imageDraftResponse = await fetch(`${baseUrl}/api/card-entry/drafts`, { method: "POST", body: imageDraft });
+    if (!imageDraftResponse.ok) throw new Error(`Draft image save failed: ${await imageDraftResponse.text()}`);
+    db = new DatabaseSync(dbPath, { readOnly: true });
+    const storedDraftImages = JSON.parse(db.prepare("SELECT valuesJson FROM CardEntryDraft WHERE id=?").get(draftPayload.id).valuesJson).draftImages;
+    if (storedDraftImages.length !== 1 || storedDraftImages[0].rotation !== 90 || !fs.existsSync(path.join(dataDir, "uploads", path.basename(storedDraftImages[0].path)))) throw new Error("Draft image was not persisted with rotation.");
+    const textDraftResponse = await fetch(`${baseUrl}/api/card-entry/drafts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: draftPayload.id, values: { playerName: "E2E Draft Player", cardTitle: "E2E Draft Card", sport: "Basketball", isRookie: true } }) });
+    if (!textDraftResponse.ok || JSON.parse(db.prepare("SELECT valuesJson FROM CardEntryDraft WHERE id=?").get(draftPayload.id).valuesJson).draftImages[0].path !== storedDraftImages[0].path) throw new Error("Saving draft text lost its image.");
+    db.close();
     const draftPage = await fetchPage(baseUrl, `/cards/new?draft=${encodeURIComponent(draftPayload.id)}&queue=${encodeURIComponent(readyQueueItem.id)}`);
     if (
       !draftPage.includes('value="E2E Draft Player"') ||
@@ -383,6 +396,7 @@ async function main() {
     if (completedDraftCount !== 0) {
       throw new Error("Card create did not atomically remove the completed entry draft.");
     }
+    if (fs.existsSync(path.join(dataDir, "uploads", path.basename(storedDraftImages[0].path)))) throw new Error("Completed draft left its temporary image behind.");
     if (completedQueueCount !== 0) {
       throw new Error("Card create did not atomically consume the completed queue item.");
     }
@@ -398,9 +412,9 @@ async function main() {
       !thumbnailHomePage.includes('data-testid="home-filter-actions"') ||
       !thumbnailHomePage.includes('href="/cards/new"') ||
       !thumbnailHomePage.includes("filter-add-card") ||
-      !thumbnailHomePage.includes("组合分析") || thumbnailHomePage.includes('data-testid="home-portfolio-link"')
+      thumbnailHomePage.includes("组合分析") || thumbnailHomePage.includes('data-testid="home-portfolio-link"')
     ) {
-      throw new Error("Home page did not keep create-card and analysis actions, or retained the removed portfolio link.");
+      throw new Error("Home page must retain card creation and move AI analysis into Data.");
     }
     const thumbnailPath = thumbnailHomePage.match(/\/thumbnails\/[^"']+\.home\.webp/)?.[0];
     if (!thumbnailPath || thumbnailHomePage.includes('src="/media/')) {
@@ -502,7 +516,7 @@ async function main() {
       detailPage.includes("Authentic"),
       detailPage.includes("返回上一页"),
       detailPage.includes("<h2>财务</h2>"),
-      detailPage.includes("新增记录"),
+      detailPage.includes("新增财务记录"),
       detailPage.includes("持仓成本与估值变化"),
       detailPage.includes("累计成本构成"),
       detailPage.includes("费用归属"),
@@ -587,7 +601,7 @@ async function main() {
     }
     const showcaseDetailPage = await fetchPage(baseUrl, `/showcase/cards/${cardId}?group=E2E%20Updated%20Player&q=Updated`);
     if (
-      !showcaseDetailPage.includes("返回上一页") ||
+      !showcaseDetailPage.includes("返回展墙") ||
       !showcaseDetailPage.includes("E2E Updated Card") ||
       !showcaseDetailPage.includes('aria-label="旋转当前图片"') ||
       !showcaseDetailPage.includes('href="/showcase?group=E2E+Updated+Player&amp;q=Updated"')
@@ -616,7 +630,7 @@ async function main() {
       !filteredHomePage.includes(filteredCardHref) ||
       !filteredHomeText.includes("CNY 360.00") ||
       !filteredHomeText.includes("估值覆盖 1/1") ||
-      !filteredHomePage.includes("组合分析")
+      filteredHomePage.includes("组合分析")
     ) {
       throw new Error(`Filtered home page mismatch: link=${filteredHomePage.includes(filteredCardHref)}, amount=${filteredHomeText.includes("CNY 360.00")}, coverage=${filteredHomeText.includes("估值覆盖 1/1")}\n${filteredHomeText.match(/估值.{0,180}/)?.[0] || "no valuation text"}`);
     }
@@ -784,7 +798,7 @@ async function main() {
     for (const marker of ['aria-label="收藏结构维度"', 'aria-label="收藏结构显示方式"', "档案数量", "实物数量", "估值占比", "卡片属性"]) if (!structurePage.includes(marker)) throw new Error(`Structure measurement is missing: ${marker}`);
     if (structurePage.includes('aria-label="结构统计口径"')) throw new Error("Structure still exposes the retired measurement selector.");
     for (const marker of ["出售", "已实现盈亏", "净出售金额", "结转成本"]) if (!salesPage.includes(marker)) throw new Error(`Sales details are missing: ${marker}`);
-    for (const marker of ["影响核算", "档案整理", "估值待更新", "data-details"]) if (!qualityPage.includes(marker)) throw new Error(`Quality navigation is missing: ${marker}`);
+    for (const marker of ["列表", "整理", "待完善数据", "data-details", "collection-follow-up"]) if (!qualityPage.includes(marker)) throw new Error(`Quality navigation is missing: ${marker}`);
     if (!portfolioPage.includes('href="/cards/') || !portfolioPage.includes("returnTo=")) throw new Error("Data rankings must link to exact archives with return context.");
     for (const removedCopy of [
       "CNY 与 USD 分开核算，不进行自动汇率换算。",
@@ -805,12 +819,7 @@ async function main() {
     if (!trendPage.includes('data-horizontal-scroll="disabled"')) {
       throw new Error("The default 12-month activity chart still requires horizontal scrolling.");
     }
-    const workspaceAt = portfolioPage.indexOf("快照与比较");
-    const workspaceStart = portfolioPage.lastIndexOf("<details", workspaceAt);
-    const comparisonDetailsTag = workspaceStart < 0 ? "" : portfolioPage.slice(workspaceStart, portfolioPage.indexOf(">", workspaceStart) + 1);
-    if (!comparisonDetailsTag || /\sopen(?:\s|=|>)/.test(comparisonDetailsTag)) {
-      throw new Error("The view and comparison workspace is missing or not collapsed by default.");
-    }
+    for (const marker of ["调整范围", "快照与比较", "保存当前快照", "比较对象", "比较基准"]) if (portfolioPage.includes(marker)) throw new Error(`Retired data control is still present: ${marker}`);
     const portfolioDetailPage = await fetchPage(baseUrl, `/cards/${cardId}?returnTo=${encodeURIComponent("/portfolio")}`);
     if (!portfolioDetailPage.includes('href="/portfolio"')) {
       throw new Error("Card detail opened from the portfolio center does not return to the portfolio center.");

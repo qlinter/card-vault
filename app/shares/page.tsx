@@ -4,6 +4,7 @@ import { deleteShareCollectionAction } from "@/app/actions/shares";
 import { prisma } from "@/lib/prisma";
 import { toScalar } from "@/lib/query-params";
 import { resolveSuccessMessage, shareListSuccessMessages } from "@/lib/feedback-messages";
+import { ShareSaveConfirmation } from "@/components/share-save-confirmation";
 
 type SharesPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -20,6 +21,7 @@ export default async function SharesPage({ searchParams }: SharesPageProps) {
 
   return (
     <div className="page shares-page">
+      {success && toScalar(params.savedDraft) && toScalar(params.submission) ? <ShareSaveConfirmation draftId={toScalar(params.savedDraft)!} token={toScalar(params.submission)!} /> : null}
       <h1 className="sr-only"><UiText text="分享" /></h1>
       <div className="share-list-toolbar">
         <Link className="btn btn-primary" href="/shares/new"><UiText text={"新建分享集"} /></Link>

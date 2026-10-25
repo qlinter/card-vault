@@ -1,13 +1,11 @@
 import "server-only";
 import { setImmediate as yieldToRequests } from "node:timers/promises";
-import { createPortfolioLoadScope } from "./portfolio-load-scope";
 import { buildCardFilters } from "./card-helpers";
 import { portfolioAnalysisCardSelect } from "./card-query-shapes";
 import { buildPortfolioScope, normalizePortfolioFilterInput, type PortfolioSnapshot } from "./portfolio-analysis";
 import { prisma } from "./prisma";
 import type { PortfolioQualityCard } from "./portfolio-quality";
-import { buildPortfolioComparisonPoint, type PortfolioComparison, type PortfolioComparisonPoint, type PortfolioCostPosition, type PortfolioFinancialHistoryPoint, type PortfolioSoldReview, type PortfolioValuationChange } from "./portfolio-insights";
-import { getStoredPortfolioSnapshot } from "./portfolio-persistence";
+import { type PortfolioCostPosition, type PortfolioFinancialHistoryPoint, type PortfolioSoldReview, type PortfolioValuationChange } from "./portfolio-insights";
 import type { PortfolioFilterInput } from "./portfolio-analysis";
 import { loadFinancialSettings } from "./financial-settings";
 import { createPortfolioBatchAccumulator } from "./portfolio-batch";
@@ -23,6 +21,7 @@ export type PortfolioSnapshotResult = {
   soldReviews: PortfolioSoldReview[];
 };
 type LoadPortfolioSnapshotOptions = {
+  asOf?: Date;
   allowEmpty?: boolean;
   includeDetails?: boolean;
   onReportingBatch?: NonNullable<Parameters<typeof createPortfolioBatchAccumulator>[4]>["onReportingBatch"];
@@ -31,10 +30,9 @@ export async function loadPortfolioSnapshot(value: unknown, options: LoadPortfol
   const query = normalizePortfolioFilterInput(value);
   const where = buildCardFilters(query);
   const startedAt = performance.now();
-  const asOf = new Date();
-  const [cardCount, config, wish, dates] = await Promise.all([
+  const asOf = options.asOf ?? new Date();
+  const [cardCount, config, dates] = await Promise.all([
     prisma.card.count({ where }), loadFinancialSettings(),
-    query.wish ? prisma.collectionPlan.findUnique({ where: { id: query.wish }, select: { title: true } }) : null,
     options.includeDetails === false ? [] : prisma.$queryRaw<Array<{
       earliest: number | null;
     }>> `SELECT MIN(at) earliest FROM (
@@ -47,7 +45,7 @@ export async function loadPortfolioSnapshot(value: unknown, options: LoadPortfol
     throw new Error("当前筛选范围内没有可分析的卡片。");
   }
   const earliest = dates[0]?.earliest;
-  const accumulator = createPortfolioBatchAccumulator(buildPortfolioScope(query, { wish: wish?.title ?? "已删除的心愿" }), config, asOf, earliest === null || earliest === undefined ? undefined : new Date(Number(earliest)).toISOString().slice(0, 7), options);
+  const accumulator = createPortfolioBatchAccumulator(buildPortfolioScope(query), config, asOf, earliest === null || earliest === undefined ? undefined : new Date(Number(earliest)).toISOString().slice(0, 7), options);
   let queryMs = performance.now() - startedAt, computeMs = 0, cursor: string | undefined;
   let batches = 0, maxBatchRecords = 0;
   for (;;) {
@@ -76,30 +74,4 @@ export async function loadPortfolioSummary(value: unknown, options: {
 } = {}) {
   const { snapshot, query } = await loadPortfolioSnapshot(value, { ...options, includeDetails: false });
   return { snapshot, query };
-}
-async function loadComparisonPoint(token: string, current: PortfolioSnapshotResult): Promise<PortfolioComparisonPoint> {
-  if (token === "current") {
-    return buildPortfolioComparisonPoint(current.snapshot, "当前数据（实时）");
-  }
-  if (token.startsWith("snapshot:")) {
-    const stored = await getStoredPortfolioSnapshot(token.slice(9));
-    if (!stored)
-      throw new Error("用于比较的时间点快照不存在或已删除。");
-    if (!stored.snapshot.accounting || stored.snapshot.accounting.version !== current.snapshot.accounting?.version || stored.snapshot.accounting.currency !== current.snapshot.accounting?.currency) {
-      throw new Error("快照的核算版本或报表币种不同，不能直接比较。请使用相同口径重新保存快照。");
-    }
-    return buildPortfolioComparisonPoint(stored.snapshot, `快照：${stored.record.name}`, new Date(stored.record.capturedAt));
-  }
-  throw new Error("组合比较来源无效。");
-}
-export async function loadPortfolioComparison(leftToken: string | undefined, rightToken: string | undefined, current: PortfolioSnapshotResult): Promise<PortfolioComparison | null> {
-  if (!leftToken || !rightToken)
-    return null;
-  if (!leftToken.startsWith("snapshot:")) throw new Error("比较基准请选择已保存快照。");
-  const loadPoint = createPortfolioLoadScope(token => loadComparisonPoint(token, current));
-  const [left, right] = await Promise.all([
-    loadPoint(leftToken),
-    loadPoint(rightToken)
-  ]);
-  return { left, right };
 }

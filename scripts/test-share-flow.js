@@ -210,7 +210,7 @@ async function main() {
     const newSharePage = await fetchPage(baseUrl, "/shares/new");
     assertIncludes(newSharePage, "新建分享集", "新建分享集页面");
     assertIncludes(newSharePage, "选择球星卡", "分享向导第一步");
-    assertIncludes(newSharePage, "内容修改", "分享向导内容修改步骤");
+    assertIncludes(newSharePage, "预览并保存", "分享向导预览保存步骤");
     for (const removedCopy of [
       "先挑选本次分享要展示的卡片。",
       "基于已选卡片生成中文展馆标题、封面介绍、收藏叙事和分组说明。",
@@ -229,7 +229,7 @@ async function main() {
     assertIncludes(newSharePage, "F1 维修区", "F1 主题选项");
     assertIncludes(newSharePage, "蓝黑军团-1", "Team 主题选项");
     assertIncludes(newSharePage, "蓝黑军团-2", "Team 主题选项");
-    assertIncludes(newSharePage, "分享展馆编辑工作台", "编辑器 2.0 工作台");
+    assertIncludes(newSharePage, "分享设置", "分享设置与自定义编辑入口");
     assertIncludes(newSharePage, "基础内容", "编辑器 2.0 内容分区");
     assertIncludes(newSharePage, "视觉设计", "编辑器 2.0 视觉分区");
     assertIncludes(newSharePage, "桌面", "编辑器 2.0 桌面预览");

@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { parseShareEditorDraft, shareEditorDraftVersion, snapshotsEqual, type ShareEditorDraft, type ShareEditorSnapshot } from "@/lib/share-editor-state";
 import type { SharePickerCard } from "@/components/share-card-picker";
+import { shareDraftStorageKey } from "@/lib/share-draft-storage";
 
 function readLocalDraft(key: string): { available: boolean; value: string | null } {
   try {
@@ -29,11 +30,12 @@ function removeLocalDraft(key: string): boolean {
 }
 
 export function useShareDraftPersistence({ draftId, cards, error, initialSnapshot, currentSnapshot, applySnapshot, resetHistory }: { draftId: string; cards: SharePickerCard[]; error?: string; initialSnapshot: ShareEditorSnapshot; currentSnapshot: ShareEditorSnapshot; applySnapshot: (snapshot: ShareEditorSnapshot) => void; resetHistory: (snapshot: ShareEditorSnapshot) => void }) {
-  const draftStorageKey = `card-vault:share-editor:${shareEditorDraftVersion}:${draftId}`;
+  const draftStorageKey = shareDraftStorageKey(draftId);
   const submittedStorageKey = `${draftStorageKey}:submitted`;
   const [recoverableDraft, setRecoverableDraft] = useState<ShareEditorDraft | null>(null);
   const [draftPersistenceEnabled, setDraftPersistenceEnabled] = useState(false);
   const [draftStatus, setDraftStatus] = useState("正在检查本机草稿...");
+  const submittedSnapshot = useRef<ShareEditorSnapshot | null>(null);
 
   useEffect(() => {
     const submittedRecord = readLocalDraft(submittedStorageKey);
@@ -42,12 +44,9 @@ export function useShareDraftPersistence({ draftId, cards, error, initialSnapsho
       setDraftStatus("本机草稿不可用；修改仍可保存到分享集");
       return;
     }
-    const wasSubmitted = submittedRecord.value === "true";
-    if (wasSubmitted && !error) {
-      removeLocalDraft(draftStorageKey); removeLocalDraft(submittedStorageKey);
-      setDraftPersistenceEnabled(true); setDraftStatus("本机草稿已启用"); return;
-    }
-    if (wasSubmitted) removeLocalDraft(submittedStorageKey);
+    // A submitted request can fail or be interrupted. Only the success page
+    // acknowledges it; legacy submission markers must never discard a draft.
+    if (submittedRecord.value === "true") removeLocalDraft(submittedStorageKey);
     const storedRecord = readLocalDraft(draftStorageKey);
     if (!storedRecord.available) {
       setDraftPersistenceEnabled(false);
@@ -66,6 +65,7 @@ export function useShareDraftPersistence({ draftId, cards, error, initialSnapsho
   useEffect(() => {
     if (!draftPersistenceEnabled || recoverableDraft) return;
     const timeout = window.setTimeout(() => {
+      if (submittedSnapshot.current === currentSnapshot) return;
       const saved = writeLocalDraft(draftStorageKey, JSON.stringify({ version: shareEditorDraftVersion, savedAt: new Date().toISOString(), snapshot: currentSnapshot } satisfies ShareEditorDraft));
       setDraftStatus(saved ? "草稿已自动保存到本机" : "无法将草稿自动保存到本机");
       if (!saved) setDraftPersistenceEnabled(false);
@@ -85,6 +85,13 @@ export function useShareDraftPersistence({ draftId, cards, error, initialSnapsho
     setDraftStatus(removed ? "已放弃旧草稿；新的修改会自动保存" : "本机草稿不可用；修改仍可保存到分享集");
   }
 
-  function markSubmitted() { writeLocalDraft(submittedStorageKey, "true"); }
+  function markSubmitted() {
+    submittedSnapshot.current = currentSnapshot;
+    const token = crypto.randomUUID();
+    const draft = JSON.stringify({ version: shareEditorDraftVersion, savedAt: new Date().toISOString(), snapshot: currentSnapshot } satisfies ShareEditorDraft);
+    writeLocalDraft(draftStorageKey, draft);
+    writeLocalDraft(submittedStorageKey, JSON.stringify({ token, draft }));
+    return token;
+  }
   return { recoverableDraft, draftStatus, restoreDraft, discardDraft, markSubmitted };
 }

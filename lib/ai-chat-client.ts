@@ -7,6 +7,7 @@ import {
 } from "./ai-settings.ts";
 import { responseFinishReason, responseToText, safeText } from "./ai-response-parsing.ts";
 import { errorMessage } from "./feedback-messages.ts";
+import { setTimeout as delay } from "node:timers/promises";
 
 export type AiChatMessage = {
   role: "system" | "user" | "assistant";
@@ -19,6 +20,7 @@ export type AiChatRequest = {
   temperature?: number;
   operation: string;
   timeoutMs?: number;
+  signal?: AbortSignal;
   responseFormat?: "json_object";
 };
 
@@ -66,8 +68,8 @@ function retryDelay(response: Response | null, retryIndex: number): number {
   return retryIndex === 0 ? 200 : 700;
 }
 
-function wait(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+async function wait(milliseconds: number, signal: AbortSignal): Promise<void> {
+  await delay(milliseconds, undefined, { signal });
 }
 
 export async function requestAiChat(settings: ActiveAiSettings, request: AiChatRequest): Promise<unknown> {
@@ -75,6 +77,7 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
   const headers = getChatCompletionsHeaders(settings);
   const model = getChatCompletionsModel(settings);
   const controller = new AbortController();
+  const signal = request.signal ? AbortSignal.any([controller.signal, request.signal]) : controller.signal;
   const timeout = setTimeout(() => controller.abort(), request.timeoutMs ?? 60000);
 
   const requestInit = (
@@ -84,7 +87,7 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
   ) => ({
     method: "POST",
     headers,
-    signal: controller.signal,
+    signal,
     body: JSON.stringify({
       ...(model ? { model } : {}),
       messages: request.messages,
@@ -96,6 +99,7 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
   });
 
   try {
+    signal.throwIfAborted();
     let tokenField: "max_completion_tokens" | "max_tokens" = settings.provider === "deepseek" ? "max_tokens" : "max_completion_tokens";
     let includeTemperature = request.temperature !== undefined && !isAzureReasoningDeployment(settings);
     let includeResponseFormat = request.responseFormat !== undefined;
@@ -125,14 +129,14 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
           continue;
         }
         if (transientStatuses.has(response.status) && transientRetryCount < 2) {
-          await wait(retryDelay(response, transientRetryCount));
+          await wait(retryDelay(response, transientRetryCount), signal);
           transientRetryCount += 1;
           continue;
         }
         break;
       } catch (error) {
-        if (controller.signal.aborted || transientRetryCount >= 2) throw error;
-        await wait(retryDelay(null, transientRetryCount));
+        if (signal.aborted || transientRetryCount >= 2) throw error;
+        await wait(retryDelay(null, transientRetryCount), signal);
         transientRetryCount += 1;
       }
     }
@@ -145,6 +149,7 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
 
     return await response.json();
   } catch (error) {
+    if (request.signal?.aborted) throw new DOMException("已取消 AI 请求。", "AbortError");
     if (error instanceof AiUpstreamError) {
       throw error;
     }

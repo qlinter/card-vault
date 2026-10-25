@@ -4,8 +4,10 @@ import { cardCollectionStatuses, collectionStatusText } from "@/lib/card-domain"
 import { UiText, UiElement } from "@/components/ui-text";
 import { buildPortfolioScope } from "@/lib/portfolio-analysis-scope";
 import { buildQueryHref } from "@/lib/query-params";
+import { PortfolioCriterion } from "./portfolio-criterion";
 type FilterBarProps = {
   query: Record<string, string | undefined>;
+  exportMode?: boolean;
   sports: string[];
   teams: string[];
   years: string[];
@@ -20,9 +22,9 @@ type FilterBarProps = {
 };
 
 const advancedFilterFields = [
-  "brand", "subsetName", "parallel", "cardNumber", "isSerialNumbered", "isOneOfOne", "isRookie",
+  "sport", "team", "year", "productLine", "brand", "subsetName", "parallel", "cardNumber", "isSerialNumbered", "isOneOfOne", "isRookie",
   "isAutograph", "autoType", "isPatch", "patchType", "isGraded", "gradingCompany",
-  "grade", "certNumber", "visibility", "collectionStatus"
+  "grade", "certNumber", "visibility"
 ] as const;
 
 function hasValue(value: string | undefined): boolean {
@@ -45,6 +47,7 @@ function BooleanFilter({ name, label, value }: { name: string; label: string; va
 
 export function FilterBar({
   query,
+  exportMode = false,
   sports,
   teams,
   years,
@@ -66,7 +69,7 @@ export function FilterBar({
 
   return (
     <form className="panel home-filter-form" method="get">
-      {query.wish ? <input type="hidden" name="wish" value={query.wish} /> : null}
+      {exportMode ? <input type="hidden" name="export" value="1" /> : null}
       <div className="filters">
         <UiElement as="input" uiAttributes={["placeholder", "aria-label"]}
           aria-label="搜索收藏"
@@ -75,6 +78,26 @@ export function FilterBar({
           defaultValue={query.q ?? ""}
         />
 
+          <select name="collectionStatus" defaultValue={query.collectionStatus ?? ""}>
+            <option value="">{<UiText text={"收藏状态"} />}</option>
+            {cardCollectionStatuses.map(status => <option key={status} value={status}><UiText text={collectionStatusText(status)} /></option>)}
+          </select>
+
+        <UiElement as="select" uiAttributes={["aria-label"]} aria-label="排序" name="sort" defaultValue={query.sort || ""}>
+          <option value="" disabled hidden><UiText text={"排序"} /></option>
+          <option value="newest">{<UiText text={"最新录入"} />}</option>
+          <option value="yearAsc">{<UiText text={"年份升序"} />}</option>
+          <option value="yearDesc">{<UiText text={"年份降序"} />}</option>
+          <option value="costCnyAsc">{<UiText text={"成本升序"} />}</option>
+          <option value="costCnyDesc">{<UiText text={"成本降序"} />}</option>
+          <option value="valueCnyAsc">{<UiText text={"估值升序"} />}</option>
+          <option value="valueCnyDesc">{<UiText text={"估值降序"} />}</option>
+        </UiElement>
+      </div>
+
+      <details className="filter-details" open={advancedOpen}>
+        <UiElement as="summary" uiAttributes={["aria-label", "title"]} aria-label="更多筛选" title="更多筛选"><UiText text="更多筛选" /><DisclosureIcon expanded={false} /></UiElement>
+        <div className="filters filter-details-grid">
         <select name="sport" defaultValue={query.sport ?? ""}>
           <option value="">{<UiText text={"运动类型"} />}</option>
           {sports.map((sport) => (
@@ -111,21 +134,7 @@ export function FilterBar({
           ))}
         </select>
 
-        <UiElement as="select" uiAttributes={["aria-label"]} aria-label="排序" name="sort" defaultValue={query.sort || ""}>
-          <option value="" disabled hidden><UiText text={"排序"} /></option>
-          <option value="newest">{<UiText text={"最新录入"} />}</option>
-          <option value="yearAsc">{<UiText text={"年份升序"} />}</option>
-          <option value="yearDesc">{<UiText text={"年份降序"} />}</option>
-          <option value="costCnyAsc">{<UiText text={"成本升序"} />}</option>
-          <option value="costCnyDesc">{<UiText text={"成本降序"} />}</option>
-          <option value="valueCnyAsc">{<UiText text={"估值升序"} />}</option>
-          <option value="valueCnyDesc">{<UiText text={"估值降序"} />}</option>
-        </UiElement>
-      </div>
 
-      <details className="filter-details" open={advancedOpen}>
-        <UiElement as="summary" uiAttributes={["aria-label", "title"]} aria-label="更多筛选" title="更多筛选"><DisclosureIcon expanded={false} /></UiElement>
-        <div className="filters filter-details-grid">
           <select name="brand" defaultValue={query.brand ?? ""}>
             <option value="">{<UiText text={"品牌"} />}</option>
             {brands.map((brand) => (
@@ -195,26 +204,25 @@ export function FilterBar({
             <option value="linkOnly">{<UiText text={"仅链接可见"} />}</option>
           </select>
 
-          <select name="collectionStatus" defaultValue={query.collectionStatus ?? ""}>
-            <option value="">{<UiText text={"收藏状态"} />}</option>
-            {cardCollectionStatuses.map(status => <option key={status} value={status}><UiText text={collectionStatusText(status)} /></option>)}
-          </select>
+
         </div>
       </details>
+
+      {portfolioScope.criteria.length ? <div className="collection-filter-chips">{portfolioScope.criteria.map(item => <a key={item.field} href={buildQueryHref("/", { ...query, [item.field]: undefined, export: exportMode ? "1" : undefined })}><PortfolioCriterion item={item} /> ×</a>)}</div> : null}
 
       <div className="filter-actions" data-testid="home-filter-actions">
         <div className="filter-main-actions">
           <button type="submit" className="btn btn-secondary">
             {<UiText text={"搜索 / 筛选"} />}
           </button>
-          <a href="/" className="btn btn-secondary">
+          <a href={exportMode ? "/?export=1" : "/"} className="btn btn-secondary">
             {<UiText text={"清空条件"} />}
           </a>
           <a href={portfolioHref} className="scope-navigation-link filter-portfolio-link">
             <UiText text={portfolioScope.isFiltered ? "查看筛选组合数据" : "查看组合数据"} />
           </a>
         </div>
-        <div className="filter-display-actions"><a href="/cards/new" className="btn btn-primary filter-add-card">
+        <div className="filter-display-actions">{!exportMode ? <a className="scope-navigation-link" href={buildQueryHref("/", { ...query, export: "1" })}><UiText text="导出" /></a> : null}<a href="/cards/new" className="btn btn-primary filter-add-card">
           {<UiText text={"新增卡片"} />}
         </a><CollectionViewToggle /></div>
       </div>

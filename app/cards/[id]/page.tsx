@@ -16,18 +16,6 @@ type DetailProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-function valueOrDash(value: string | number | null | undefined): string {
-  if (value === null || value === undefined || value === "") {
-    return "-";
-  }
-
-  return String(value);
-}
-
-function yesNo(value: boolean): string {
-  return value ? "是" : "否";
-}
-
 function visibilityText(value: string): string {
   switch (value) {
     case "public":
@@ -54,7 +42,6 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
     where: { id },
     include: {
       images: { orderBy: { createdAt: "asc" } },
-      acquiredWishes: { select: { plan: { select: { id: true, title: true } } }, orderBy: { planId: "asc" } },
       transactions: { orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }] },
       expenses: { orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }] },
       valuations: { orderBy: [{ valuedAt: "desc" }, { createdAt: "desc" }] }
@@ -67,9 +54,17 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
 
   const tags = splitTagString(card.tags);
   const gradingLink = normalizeHttpUrl(card.gradingLink);
+  const facts = [
+    ["运动类型", card.sport], ["Team", card.team], ["年份", card.year],
+    ["品牌", card.brand], ["产品线", card.productLine], ["子系列", card.subsetName],
+    ["平行版本", card.parallel], ["卡号", card.cardNumber], ["编号", card.serialNumber], ["编号范围", card.serialRange],
+    ["评级机构", card.gradingCompany], ["评级", card.grade], ["证书号", card.certNumber],
+    ["签字类型", card.autoType], ["Patch 类型", card.patchType]
+  ].filter(([, value]) => Boolean(value?.trim()));
+  const attributes = [["Rookie", card.isRookie], ["签名卡", card.isAutograph], ["Patch/Jersey", card.isPatch]] as const;
 
   return (
-    <div className="page">
+    <div className="page card-detail-page">
       <div className="title-row">
         <div>
           <h1 className="h1">{card.playerName}</h1>
@@ -84,11 +79,11 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
 
       {success ? <p className="note-ok"><UiText text={success} /></p> : null}
       {error ? <p className="note-error"><UiText text={error} /></p> : null}
-      {card.acquiredWishes.length ? <nav className="card-linked-wishes" aria-label="关联心愿"><span className="muted"><UiText text="关联心愿" /></span>{card.acquiredWishes.map(({ plan }) => <a key={plan.id} href={"/collection?tab=wishlist&wish=" + encodeURIComponent(plan.id)}>{plan.title}</a>)}</nav> : null}
 
       <div className="details">
         <section className="panel">
           <h2><UiText text={"图片展示"} /></h2>
+          {!card.images.length ? <p className="muted"><UiText text="暂无图片" /></p> : null}
           <div className="gallery">
             {card.images.map((image) => (
               <img key={image.id} src={image.path} alt={card.cardTitle} style={cardImageRotationStyle(image.rotation)} />
@@ -99,114 +94,16 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
         <section className="panel">
           <h2><UiText text={"卡片信息"} /></h2>
           <div className="info-grid">
-            <div className="info-item">
-              <strong><UiText text={"卡片主体"} /></strong>
-              <span>{valueOrDash(card.playerName)}</span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"运动类型"} /></strong>
-              <span>{valueOrDash(card.sport)}</span>
-            </div>
-            <div className="info-item">
-              <strong>Team</strong>
-              <span>{valueOrDash(card.team)}</span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"年份"} /></strong>
-              <span>{valueOrDash(card.year)}</span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"品牌"} /></strong>
-              <span>{valueOrDash(card.brand)}</span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"产品线"} /></strong>
-              <span>{valueOrDash(card.productLine)}</span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"子系列"} /></strong>
-              <span>{valueOrDash(card.subsetName)}</span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"平行版本"} /></strong>
-              <span>{valueOrDash(card.parallel)}</span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"卡号"} /></strong>
-              <span>{valueOrDash(card.cardNumber)}</span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"编号"} /></strong>
-              <span>{valueOrDash(card.serialNumber)}</span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"编号范围"} /></strong>
-              <span>{valueOrDash(card.serialRange)}</span>
-            </div>
-            <div className="info-item">
-              <strong>Rookie</strong>
-              <span><UiText text={yesNo(card.isRookie)} /></span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"签名卡"} /></strong>
-              <span><UiText text={yesNo(card.isAutograph)} /></span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"签字类型"} /></strong>
-              <span>{valueOrDash(card.autoType)}</span>
-            </div>
-            <div className="info-item">
-              <strong>Patch/Jersey</strong>
-              <span><UiText text={yesNo(card.isPatch)} /></span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"Patch 类型"} /></strong>
-              <span>{valueOrDash(card.patchType)}</span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"评级机构"} /></strong>
-              <span>{valueOrDash(card.gradingCompany)}</span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"评级"} /></strong>
-              <span>{valueOrDash(card.grade)}</span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"证书号"} /></strong>
-              <span>{valueOrDash(card.certNumber)}</span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"评级链接"} /></strong>
-              <span>
-                {gradingLink ? (
-                  <a href={gradingLink} target="_blank" rel="noreferrer"><UiText text={"查看评级页面"} /></a>
-                ) : (
-                  "-"
-                )}
-              </span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"公开状态"} /></strong>
-              <span><UiText text={visibilityText(card.visibility)} /></span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"收藏状态"} /></strong>
-              <span><UiText text={collectionStatusText(card.collectionStatus)} /></span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"持有数量"} /></strong>
-              <span>{card.holdingQuantity}</span>
-            </div>
-            <div className="info-item">
-              <strong><UiText text={"标签"} /></strong>
-              <span>{tags.length > 0 ? tags.join(", ") : "-"}</span>
-            </div>
+            <div className="info-item"><strong><UiText text="收藏状态" /></strong><span><UiText text={collectionStatusText(card.collectionStatus)} /></span></div>
+            <div className="info-item"><strong><UiText text="持有数量" /></strong><span>{card.holdingQuantity}</span></div>
+            {facts.map(([label, value]) => <div className="info-item" key={label}><strong><UiText text={label!} /></strong><span>{value}</span></div>)}
+            {gradingLink ? <div className="info-item"><strong><UiText text="评级链接" /></strong><a href={gradingLink} target="_blank" rel="noreferrer"><UiText text="查看评级页面" /></a></div> : null}
+            {tags.length ? <div className="info-item"><strong><UiText text="标签" /></strong><span>{tags.join(", ")}</span></div> : null}
           </div>
-
-          <div style={{ marginTop: "0.8rem" }}>
-            <strong><UiText text={"备注"} /></strong>
-            <p>{card.notes || "-"}</p>
-          </div>
+          {attributes.some(([, enabled]) => enabled) ? <div className="tags card-detail-attributes">{attributes.filter(([, enabled]) => enabled).map(([label]) => <span className="tag" key={label}><UiText text={label} /></span>)}</div> : null}
+          {card.publicDescription ? <div className="card-detail-note"><strong><UiText text="展示描述" /></strong><p>{card.publicDescription}</p></div> : null}
+          {card.notes ? <div className="card-detail-note"><strong><UiText text="备注" /></strong><p>{card.notes}</p></div> : null}
+          <details className="card-detail-visibility"><summary><UiText text="公开状态" /></summary><p><UiText text={visibilityText(card.visibility)} /></p></details>
         </section>
       </div>
 

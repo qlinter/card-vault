@@ -1,7 +1,7 @@
 import { portfolioTrendRangeKeys } from "./portfolio-trend.ts";
 
 const workspaceStateKeys = [
-  "tab", "kind", "issue", "search", "order", "page", "dimension", "item", "structure", "closed",
+  "tab", "kind", "detailStatus", "issue", "search", "order", "page", "dimension", "item", "structure", "closed",
   ...portfolioTrendRangeKeys, "sort"
 ] as const;
 

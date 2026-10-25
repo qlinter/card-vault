@@ -14,7 +14,7 @@ function createStorageManager({ appDataRoot, projectRoot }) {
   const config = createStorageConfig({ appDataRoot, projectRoot });
   const ensureDataLayout = config.ensureDataLayout;
   const inspect = (dataDir = config.getDataDir(), onProgress) => inspectDataFolder(dataDir, onProgress);
-  const { chooseBackupDir, backupDataFolder } = createBackupService({ config, ensureDataLayout });
+  const { chooseBackupDir, backupDataFolder, getBackupSettings } = createBackupService({ config, ensureDataLayout });
   const { migrateTo } = createMigrationService({ config, inspectDataFolder: inspect, ensureDataLayout });
   const { restoreDataFolder } = createRestoreService({ config, backupDataFolder, ensureDataLayout });
 
@@ -35,7 +35,7 @@ function createStorageManager({ appDataRoot, projectRoot }) {
     resolveOrphanFilePath: (orphanFile, onProgress) => resolveCurrentOrphanFilePath(config.getDataDir(), orphanFile, onProgress),
     cleanOrphanFiles: (onProgress) => cleanOrphanFiles(config.getDataDir(), onProgress),
     restoreDataFolder,
-    getBackupSettings: () => ({ path: config.getBackupDir() }),
+    getBackupSettings,
     migrateTo
   };
 }

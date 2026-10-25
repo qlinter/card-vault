@@ -83,6 +83,7 @@ export function ShareGalleryVisualPanel({
             ))}
           </select>
         </label>
+        <details className="full share-visual-details"><summary><UiText text="微调视觉参数" /></summary><div className="form-grid">
         <div className="field full share-visual-controls">
           <span><UiText text={"背景与文字面板"} /></span>
           <label>
@@ -144,6 +145,8 @@ export function ShareGalleryVisualPanel({
             </UiElement>
           </label>
         </div>
+        </div></details>
+        <details className="full share-visual-details"><summary><UiText text="自定义背景与封面" /></summary><div className="form-grid">
         <div className="field full">
           <label htmlFor="share-background-image"><UiText text={"分享集背景图"} /></label>
           <div className="share-background-upload">
@@ -194,6 +197,7 @@ export function ShareGalleryVisualPanel({
             ) : null}
           </div>
         </div>
+        </div></details>
       </div>
     </section>
   );

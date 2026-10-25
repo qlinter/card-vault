@@ -15,7 +15,7 @@ function dispatchControlChange(element: TextFormControl | HTMLInputElement, incl
 }
 
 export function closestCardForm(element: HTMLElement | null): HTMLFormElement | null {
-  return element?.closest("form") ?? null;
+  return element?.closest("form") ?? element?.closest("[data-card-entry-workspace]")?.querySelector<HTMLFormElement>('form[data-card-entry-form="true"]') ?? null;
 }
 
 export function setCardFormText(

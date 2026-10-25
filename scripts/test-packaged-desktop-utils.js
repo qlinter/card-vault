@@ -26,6 +26,11 @@ async function checkPackagedDesktop(executable, version, { env, userData, player
     await window.getByText(playerName, { exact: true }).first().waitFor({ timeout: 60000 });
     assert.equal(await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()), false);
     const preferences = await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences());
+    if (dataWorkspace) {
+      const settings = await window.evaluate(() => window.cardVaultDesktop.getBackupSettings());
+      assert.equal(settings.automatic, undefined, "Automatic backup options must not be exposed.");
+      assert.equal(await window.evaluate(() => typeof window.cardVaultDesktop.saveAutomaticBackupSettings), "undefined");
+    }
     assert.equal(preferences.sandbox, true); assert.equal(preferences.nodeIntegration, false);
     const origin = new URL(window.url()).origin;
     await window.goto(`${origin}/?q=${encodeURIComponent(query)}&sort=yearAsc`, { waitUntil: "networkidle" });

@@ -1,12 +1,5 @@
+import { withUiDatabase as fixtureDb } from './database-fixture.mjs';
 import { expect, test } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
-import path from "node:path";
-
-// This database belongs exclusively to start-ui-test-server.js.
-function fixtureDb(action) {
-  const db = new DatabaseSync(path.resolve("tests/.ui-test-runtime/data/dev.db"));
-  try { db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000"); return action(db); } finally { db.close(); }
-}
 
 test.beforeEach(() => fixtureDb((db) => {
   db.exec("DELETE FROM ExchangeRate; DELETE FROM FinancialSettings;");
@@ -17,10 +10,16 @@ test.afterEach(() => fixtureDb((db) => {
   db.exec("DELETE FROM ExchangeRate; DELETE FROM FinancialSettings;");
 }));
 
+async function revealHistory(page) {
+  const history = page.locator(".financial-history-details");
+  await expect(history).toBeVisible();
+  if (await history.getAttribute("open") === null) await history.locator(":scope > summary").click();
+}
+
 async function openComposer(page, type, navigate = true) {
   if (navigate) await page.goto("/cards/finance-ui", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "＋ 新增记录", exact: true }).click();
-  await page.getByRole("tab", { name: type, exact: true }).click();
+  await page.getByRole('button', { name: '新增财务记录', exact: true }).click();
+  await page.getByRole('combobox', { name: '录入类型', exact: true }).selectOption(({ "交易": "purchase", "售出": "sale", "费用": "expense", "估值": "valuation" })[type]);
   return page.locator("#financial-add-record form:visible");
 }
 
@@ -36,14 +35,15 @@ test("valuation sources use four equal options with clear labels in both languag
     await form.getByRole("button", { name: "保存估值" }).click();
     await expect.poll(() => fixtureDb(db => db.prepare("SELECT COUNT(*) n FROM CardValuation WHERE cardId='finance-ui' AND source=?").get(source).n)).toBe(1);
     const saved = page.locator(".financial-timeline-valuation").first();
-    await saved.getByRole("button", { name: "编辑", exact: true }).click();
+    await revealHistory(page);
+  await saved.getByRole("button", { name: "编辑", exact: true }).click();
     await expect(saved.locator(".financial-record-context")).toContainText(["个人估值", "卡淘成交", "eBay成交", "Others"][index]);
   }
   expect(fixtureDb(db => db.prepare("SELECT source FROM CardValuation WHERE cardId='finance-ui' ORDER BY valuedAt").all().map(row => row.source))).toEqual(["个人估计", "卡淘", "eBay", "Others"]);
   await page.getByRole("button", { name: "选择语言" }).click();
   await page.getByRole("menuitemradio", { name: "English" }).click();
-  await page.getByRole("button", { name: "+ Add Record", exact: true }).click();
-  await page.getByRole("tab", { name: "Valuation", exact: true }).click();
+  await page.getByRole('button', { name: 'Add Financial Record', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Record type', exact: true }).selectOption('valuation');
   await expect(page.locator('#financial-add-record form:visible [name="source"] > option')).toHaveText(["Personal Valuation", "KaTao Sale", "eBay Sale", "Others"]);
 });
 
@@ -64,7 +64,8 @@ for (const locale of ["zh", "en"]) {
     const cancel = page.getByRole("link", { name: locale === "en" ? "Cancel" : "取消", exact: true });
     await expect(cancel).toHaveAttribute("href", detailHref);
     await cancel.click();
-    await page.locator(".financial-history-actions").getByRole("button").click();
+    await page.locator(".financial-history-actions").getByRole("button", { name: locale === "en" ? "Add Financial Record" : "新增财务记录", exact: true }).click();
+    await page.getByRole('combobox', { name: locale === 'en' ? 'Record type' : '录入类型', exact: true }).selectOption('purchase');
     await expect(page.locator("#financial-add-record")).toBeVisible();
   });
 }
@@ -103,6 +104,7 @@ test("transaction amounts are complete without a checkbox and historical unknown
   expect(fixtureDb(db => db.prepare("SELECT amountMinor,amountKnown FROM CardTransaction WHERE cardId='finance-ui' AND id<>'unknown-purchase'").get())).toEqual({ amountMinor: 0, amountKnown: 1 });
   expect(fixtureDb(db => db.prepare("SELECT amountKnown FROM CardTransaction WHERE id='unknown-purchase'").get().amountKnown)).toBe(0);
   const record = page.locator(".financial-timeline-transaction").filter({ has: page.locator('time[datetime="2026-01-01"]') });
+  await revealHistory(page);
   await record.getByRole("button", { name: "编辑", exact: true }).click();
   const editor = record.locator("form.financial-form");
   await expect(editor.locator('[name="amountUnknown"]')).toHaveCount(0);
@@ -134,6 +136,7 @@ test("editing a historical transaction keeps amounts omitted from the simplified
   });
   await page.goto("/cards/finance-ui", { waitUntil: "networkidle" });
   const record = page.locator(".financial-timeline-transaction").first();
+  await revealHistory(page);
   await record.getByRole("button", { name: "编辑", exact: true }).click();
   const editor = record.locator("form.financial-form");
   await expect(editor.locator('[name="secondaryAmount"]')).toHaveCount(0);
@@ -207,8 +210,7 @@ test("single-currency purchases and a cross-currency sale share one reporting va
   await expect(page.locator(".financial-overview")).not.toContainText("使用的汇率依据");
   await saveRate(page);
 
-  form = await openComposer(page, "交易");
-  await form.locator('[name="kind"]').selectOption("sale");
+  form = await openComposer(page, "售出");
   await form.locator('[name="currency"]').selectOption("USD");
   await form.locator('[name="amount"]').fill("100");
   await form.locator('[name="quantity"]').fill("1");

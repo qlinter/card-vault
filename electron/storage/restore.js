@@ -8,6 +8,7 @@ const { mapProgress, reportProgress } = require("./progress");
 const { verifyBackupManifest, writeBackupManifest, databaseCounts } = require("./backup-manifest");
 const { saveRestoreJournal, clearRestoreJournal, recoverInterruptedRestore } = require("./restore-journal");
 const { normalizeValuationSourceSchema } = require("../../scripts/valuation-source-schema");
+const { directoryBytes, ensureFreeSpace } = require("./free-space");
 
 function resolveRestoreSourcePath(selectedPath) {
   if (typeof selectedPath !== "string" || selectedPath.trim() === "") return null;
@@ -33,7 +34,7 @@ function createRestoreService({ config, backupDataFolder, ensureDataLayout }) {
     let safetyBackupPath = null;
     if (fs.existsSync(config.getDbPath())) {
       try { safetyBackupPath = backupDataFolder(mapProgress(onProgress, 20, 48)).backupPath; }
-      catch { const dateDir = path.join(config.getBackupDir(), dateFolderName()); fs.mkdirSync(dateDir, { recursive: true }); safetyBackupPath = uniqueBackupTarget(dateDir); fs.cpSync(targetDataDir, safetyBackupPath, { recursive: true }); reportProgress(onProgress, 48, "当前数据原始副本已保留。"); }
+      catch { ensureFreeSpace(config.getBackupDir(), directoryBytes(targetDataDir)); const dateDir = path.join(config.getBackupDir(), dateFolderName()); fs.mkdirSync(dateDir, { recursive: true }); safetyBackupPath = uniqueBackupTarget(dateDir); fs.cpSync(targetDataDir, safetyBackupPath, { recursive: true }); reportProgress(onProgress, 48, "当前数据原始副本已保留。"); }
     }
     const parentDir = path.dirname(targetDataDir);
     const baseName = path.basename(targetDataDir);
@@ -46,6 +47,7 @@ function createRestoreService({ config, backupDataFolder, ensureDataLayout }) {
     let retainedRollbackPath = null;
     if (pathsEqual(targetDataDir, path.parse(targetDataDir).root)) throw new Error("不能将文件系统根目录作为恢复目标。");
     fs.mkdirSync(parentDir, { recursive: true });
+    ensureFreeSpace(parentDir, directoryBytes(sourceDataDir));
     try {
       fs.cpSync(sourceDataDir, stagingDir, { recursive: true });
       verifyBackupManifest(stagingDir);

@@ -4,8 +4,8 @@ import path from "node:path";
 import { prepareImageUpload } from "@/lib/image-upload";
 import { removeHomeThumbnail } from "@/lib/card-thumbnail-core.js";
 import { getThumbnailsDir, getUploadsDir } from "@/lib/storage-paths";
+export { maxImagesPerCard } from "./card-image-limits.js";
 
-export const maxImagesPerCard = 5;
 const uploadDir = getUploadsDir();
 const thumbnailsDir = getThumbnailsDir();
 
@@ -17,14 +17,14 @@ export function readCardImageFiles(formData: FormData): File[] {
   return formData.getAll("images").filter((entry): entry is File => entry instanceof File && entry.size > 0);
 }
 
-export async function saveCardUploads(files: File[]): Promise<string[]> {
-  const preparedFiles = await Promise.all(files.map((file) => prepareImageUpload(file, "卡片图片")));
+export async function saveCardUploads(files: File[], prefix = ""): Promise<string[]> {
   await mkdir(uploadDir, { recursive: true });
   const imagePaths: string[] = [];
 
   try {
-    for (const prepared of preparedFiles) {
-      const fileName = `${Date.now()}-${randomUUID()}.${prepared.extension}`;
+    for (const file of files) {
+      const prepared = await prepareImageUpload(file, "卡片图片");
+      const fileName = `${prefix}${Date.now()}-${randomUUID()}.${prepared.extension}`;
       const imagePath = toImagePublicPath(fileName);
       const fullPath = path.join(uploadDir, fileName);
       await writeFile(fullPath, prepared.buffer);

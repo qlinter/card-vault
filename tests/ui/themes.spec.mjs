@@ -26,9 +26,9 @@ for (const [id, name] of themes) {
     expect(stored.expires).toBeGreaterThan(Date.now() / 1000 + 300 * 86400);
     expect(await page.locator("body").evaluate(element => getComputedStyle(element).fontFamily)).toBe(fontBefore);
     await expect(page).toHaveScreenshot(`theme-${id}-settings.png`, { fullPage: true });
-    await page.getByRole("link", { name: "首页", exact: true }).click();
+    await page.getByRole("link", { name: "收藏", exact: true }).click();
     await expect(page).toHaveURL("/");
-    await expect(page.locator(".home-page .summary-grid")).toBeVisible();
+    await expect(page.locator(".home-page .collection-summary")).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("data-app-theme", id);
     await page.reload({ waitUntil: "networkidle" });
     await expect(page).toHaveScreenshot(`theme-${id}-home.png`, { fullPage: true });
@@ -80,25 +80,27 @@ test("midnight keeps editing, finance, charts and share designs readable and ind
     ["entry", "/cards/new", ".entry-workbench-layout"],
     ["share-editor", "/shares/ui-share-1/edit", ".shares-page"],
     ["scout", "/collection", ".scout-page"],
-    ["data", "/settings/data", ".management-card-list"]
+    ["data", "/settings/data", ".backup-settings"]
   ]) {
     await page.goto(path, { waitUntil: "networkidle" });
     await expect(page.locator(ready)).toBeVisible();
     if (name === "share-editor") {
       await expect(page.locator(".share-wizard-step").nth(1)).toHaveCSS("background-color", "rgb(29, 48, 66)");
-      await page.getByRole("button", { name: /内容修改/ }).click();
+      await page.getByRole("button", { name: /预览并保存/ }).click();
+      await page.locator(".share-custom-tools > summary").click();
       await page.getByRole("button", { name: /视觉设计/ }).click();
       await expect(page.locator(".share-design-workspace")).toBeVisible();
     }
     if (name === "finance") {
-      await page.getByRole("button", { name: "＋ 新增记录", exact: true }).click();
+      await page.getByRole('button', { name: '新增财务记录', exact: true }).click();
+      await page.getByRole('combobox', { name: '录入类型', exact: true }).selectOption('purchase');
       await expect(page.locator("#financial-add-record")).toBeVisible();
-      await expect(page.getByRole("tab", { name: "交易", exact: true })).toHaveCSS("color", "rgb(21, 32, 44)");
+      await expect(page.locator("#financial-add-record form:visible [name=kind]")).toHaveValue("purchase");
     }
     await expect(page.locator("body")).toHaveCSS("color", "rgb(237, 241, 245)");
     const control = page.locator('input:not([type=checkbox]):not([type=radio]):not([type=hidden]), textarea').filter({ visible: true }).first();
     if (await control.count()) {
-      await expect(control).toHaveCSS("background-color", /^rgba?\(21, 35, 50(?:, 0\.\d+)?\)$/);
+      await expect(control).toHaveCSS("background-color", name === "showcase" ? "rgba(0, 0, 0, 0)" : /^rgba?\(21, 35, 50(?:, 0\.\d+)?\)$/);
       await expect(control).toHaveCSS("color", "rgb(237, 241, 245)");
     }
     await testInfo.attach(`midnight-${name}`, { body: await page.screenshot({ fullPage: true, animations: "disabled" }), contentType: "image/png" });

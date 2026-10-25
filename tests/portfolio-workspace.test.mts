@@ -1,11 +1,62 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createDataCollector, selectDataRows, dataHref, dataGroupCount, profitTone, valuationChangeAvailable } from "../lib/portfolio-workspace.ts";
+import { createDataCollector } from "../lib/portfolio-workspace.ts";
+import { selectDataRows } from "../lib/portfolio-data-rows.ts";
+import { dataHref, dataGroupCount, profitTone, valuationChangeAvailable, attributeDrillQuery } from "../lib/portfolio-navigation.ts";
+import { cardAttributeFields } from "../lib/portfolio-workspace-types.ts";
 import { createPortfolioBatchAccumulator } from "../lib/portfolio-batch.ts";
 import type { PortfolioCardRecord } from "../lib/portfolio-analysis-types.ts";
 import { normalizePortfolioWorkspaceState } from "../lib/portfolio-workspace-state.ts";
+import { createDataRowSelector } from "../lib/portfolio-data-rows.ts";
 
 const asOf = new Date("2026-10-23T00:00:00Z");
+test("a reusable detail selector preserves complete pagination and search/sort independence", () => {
+  const all = Array.from({ length: 63 }, (_, index) => ({ ...card(`index-${index}`), playerName: index % 2 ? "A" : "B" }));
+  const collector = createDataCollector(asOf);
+  const accumulator = createPortfolioBatchAccumulator({ isFiltered: false, criteria: [] }, { reportingCurrency: "CNY", rates: [] }, asOf, undefined, { includeDetails: false, onReportingBatch: collector.add });
+  accumulator.add(all); accumulator.finish();
+  const rows = collector.finishAll().rows, select = createDataRowSelector(rows);
+  for (const params of [{ kind: "all", page: "1" }, { kind: "all", page: "4" }, { search: "A", order: "nameAsc", page: "2" }, { order: "costDesc", page: "999" }]) assert.deepEqual(select(params), selectDataRows(rows, params));
+});
+test("attribute drill-down never replaces a conflicting inherited filter", () => {
+  for (const field of cardAttributeFields) {
+    assert.equal(attributeDrillQuery({ sport: "Basketball", [field]: "false" }, field), null);
+    assert.deepEqual(attributeDrillQuery({ sport: "Basketball", [field]: "true" }, field), { sport: "Basketball", [field]: "true" });
+    assert.deepEqual(attributeDrillQuery({ wish: "scope" }, field), { wish: "scope", [field]: "true" });
+  }
+});
+
+test("one detail list filters holdings, partial sales and archive statuses without changing row values", () => {
+  const held = card("unified-held");
+  const partial = { ...card("unified-partial"), holdingQuantity: 1 };
+  partial.transactions.push({ kind: "sale", quantity: 1, amountMinor: 7500n, currency: "CNY", occurredAt: asOf });
+  const sold = { ...card("unified-sold"), collectionStatus: "sold", holdingQuantity: 0 };
+  sold.transactions.push({ kind: "sale", quantity: 2, amountMinor: 15000n, currency: "CNY", occurredAt: asOf });
+  const listed = { ...card("unified-listed"), collectionStatus: "listed" };
+  const rows = collect([held, partial, sold, listed]).rows;
+  const select = createDataRowSelector(rows);
+  const ids = (params: Record<string, string>) => new Set(select(params).rows.map(row => row.id));
+  assert.equal(select({}).total, 4);
+  assert.equal(select({ kind: "holdings" }).total, 3);
+  assert.deepEqual(ids({ kind: "all", detailStatus: "holdings" }), new Set([held.id, partial.id, listed.id]));
+  assert.deepEqual(ids({ kind: "all", detailStatus: "sales" }), new Set([partial.id, sold.id]));
+  assert.deepEqual(ids({ kind: "all", detailStatus: "listed" }), new Set([listed.id]));
+  assert.deepEqual(ids({ kind: "all", detailStatus: "sold" }), new Set([sold.id]));
+  assert.deepEqual(ids({ kind: "sold" }), new Set([partial.id, sold.id]));
+  assert.deepEqual(select({ detailStatus: "sales" }).rows.find(row => row.id === partial.id), rows.find(row => row.id === partial.id));
+});
+
+test("Review lists every issue in the inherited scope and ignores retired list controls", () => {
+  const row = collect([card("review-base")]).rows[0];
+  const rows = Array.from({ length: 53 }, (_, index) => ({ ...row, id: `review-${index}`, issues: [{ key: "missing_image", label: "无图片", financial: false }] }));
+  const select = createDataRowSelector([...rows, row]);
+  const result = select({ kind: "quality", search: "no match", issue: "missing_cost", detailStatus: "sold", dimension: "team", item: "not this team", closed: "1", page: "999" });
+  assert.equal(result.total, 53);
+  assert.equal(result.rows.length, 53);
+  assert.equal(result.page, 1); assert.equal(result.pages, 1);
+  assert.equal(result.rows.some(item => item.id === "review-base"), false);
+  assert.deepEqual(select({ kind: "quality" }), result);
+});
 function card(id: string, quantity = 2): PortfolioCardRecord {
   return { id, playerName: "Same subject", cardTitle: "Same title", sport: "Basketball", team: "A&B / 队", collectionStatus: "holding", holdingQuantity: quantity, gradingCompany: null, grade: null, isRookie: false, isAutograph: false, isPatch: false, imageCount: 1,
     transactions: [{ kind: "purchase", quantity, amountMinor: 10000n, currency: "CNY", occurredAt: new Date("2026-01-01") }], expenses: [], valuations: [{ amountMinor: 8000n, currency: "CNY", valuedAt: new Date("2026-10-01"), createdAt: new Date("2026-10-01"), source: "个人估值" }] };

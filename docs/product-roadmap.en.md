@@ -1,6 +1,6 @@
 # Card Vault Product Roadmap
 
-Updated 2026-10-23. The current source version is v1.4.1. Features and closeout validation are in the [release notes](./release-v1.4.1.md), with phased work in the [development record](./development-v1.4.1.md). Historical distribution facts remain in their respective release notes.
+Updated 2026-10-25. Current source version: v1.5.0. See the [release notes](./release-v1.5.0.md) and [development record](./development-v1.5.0.md).
 
 ## Completed capabilities
 
@@ -35,6 +35,10 @@ Three compact, equal Home panels follow filters; Collection overview combines di
 
 v1.4.1 implements patched Next.js / Electron dependencies, Scout scroll recovery, debounced search, database pagination and workspace-local reference reuse. Data uses Overview, Trends, Structure and Details tabs with physical quantities, scoped drill-through, complete issue lists, interactive trends and fixed snapshots and historical comparison; see the [data analysis rules](./data-analysis-guide.md). Regression retains independent financial references and the existing data structure; the source version, specifications and release notes are synchronized; distribution files are generated separately.
 
+## v1.4.2
+
+Showcase uses complete card images, compact lists, captions and large-image viewing. Earlier entry, import, Data reuse, backup and reliability work following the assessment belongs to this version. See the [development record](./development-v1.4.2.md) for status and validation. No distribution packages are generated; financial edit auditing and accidental-operation recovery are excluded.
+
 ## Next priorities
 
 | Priority | Direction | Conditions and acceptance |
@@ -49,3 +53,9 @@ The removed standalone bulk-edit controls, recent-batch list, system digest noti
 ## Continuing standards
 
 Financial work reuses the [unified accounting model](./financial-history-model.md); missing values never become zero. Database/media changes require snapshots, rollback or conflict protection. Preserve user content, form input, filters and navigation context. Tests use isolated data; coverage measures only modules actually loaded. Select future release numbers during scope and release closeout, and maintain both roadmap languages together.
+
+## v1.5.0 staged simplification
+
+Stage 1 implements compact Home, focused entry, concise card details and two-step sharing. AI portfolio analysis remains. Stage 2 implements consolidated navigation, unified review and exports that reuse Collection filters and selection. Stage 3A implements independent search and simple wish entry, removing saved keywords, acquisition and card binding. The newly authorized one-time reset removes old Scout and wish records. Stage 3B removes duplicate scope search, snapshots and comparison and resets analysis history once, while keeping independent trend ranges. Stage 3C provides four main Settings groups, footer Help & version, grouped Data tools and directly visible AI configuration. The wishlist now precedes cross-site search. Tables, fields, unrelated records and backup/import/export compatibility remain unchanged.
+
+Finalization fixes saving and draft recovery, removes unused components and styles, separates Data navigation, aggregation and guide content, and shares reset safeguards and the runtime-script allowlist. Windows distribution and GitHub synchronization facts are maintained in the release notes; further work remains driven by actual usage feedback.

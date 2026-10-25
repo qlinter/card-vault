@@ -5,6 +5,7 @@ import { normalizePortfolioFilterInput } from "@/lib/portfolio-analysis";
 import { prisma } from "@/lib/prisma";
 import { buildCardFilters } from "@/lib/card-helpers";
 import { parseExportSelection } from "@/lib/card-export-selection";
+import { operationFailure, OperationError } from "@/lib/operation-errors";
 export const runtime = "nodejs";
 const active = new Set<string>();
 async function exportResponse(query: Record<string, unknown>, format: string, publicOnly: boolean, selection?: unknown, signal?: AbortSignal) {
@@ -23,8 +24,10 @@ export async function GET(request: NextRequest) {
       return await exportResponse(Object.fromEntries(params), params.get("export")!, params.get("publicOnly") === "true", params.get("ids"), request.signal);
     }
     if (!params.get("id")) throw new Error("请指定导入批次。");
-    return NextResponse.json(await getJob(params.get("id")!));
-  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "读取失败。" }, { status: 400 }); }
+    const after = Number(params.get("after") || "0");
+    if (!Number.isSafeInteger(after) || after < 0) throw new Error("分页参数无效。");
+    return NextResponse.json(await getJob(params.get("id")!, after));
+  } catch (error) { const failure = operationFailure(error, "读取失败。"); return NextResponse.json(failure.body, { status: failure.status }); }
 }
 export async function POST(request: NextRequest) {
   let lock: string | undefined;
@@ -34,7 +37,7 @@ export async function POST(request: NextRequest) {
       if (text.length > 2 * 1024 * 1024) throw new Error("请求超过大小限制。");
       const form = new URLSearchParams(text);
       if (form.get("action") !== "export") throw new Error("操作无效。");
-      return await exportResponse({ q: form.get("q") }, form.get("format") ?? "", form.get("publicOnly") === "true", form.get("ids"), request.signal);
+      return await exportResponse(Object.fromEntries(form), form.get("format") ?? "", form.get("publicOnly") === "true", form.get("ids"), request.signal);
     }
     if (request.headers.get("content-type")?.includes("multipart/form-data")) {
       if (Number(request.headers.get("content-length")) > 11 * 1024 * 1024) throw new Error("文件不能超过 10 MB。");
@@ -49,9 +52,9 @@ export async function POST(request: NextRequest) {
     if (body.action === "repreview" && typeof body.id === "string") return NextResponse.json(await repreviewJob(body.id));
     if (body.action !== "apply" && body.action !== "undo") throw new Error("操作无效。");
     if (typeof body.id !== "string" || body.id.length > 128 || (body.cursor !== undefined && (!Number.isInteger(body.cursor) || body.cursor < 0))) throw new Error("批次参数无效。");
-    if (active.has(body.id)) throw new Error("此批次正在处理中，请稍后重试。");
+    if (active.has(body.id)) throw new OperationError("conflict", "此批次正在处理中，请稍后重试。");
     lock = body.id; active.add(body.id);
     return NextResponse.json(await applyJob(body.id, body.action === "undo", body.cursor));
-  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "操作失败。" }, { status: 400 }); }
+  } catch (error) { const failure = operationFailure(error, "操作失败。"); return NextResponse.json(failure.body, { status: failure.status }); }
   finally { if (lock) active.delete(lock); }
 }

@@ -39,7 +39,7 @@ export function LanguageSwitch() {
     <button
       ref={trigger}
       type="button"
-      className="language-switch"
+      className="language-switch header-tool"
       aria-label={label}
       title={label}
       aria-haspopup="menu"

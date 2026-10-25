@@ -15,6 +15,17 @@ import { parseShareSectionDrafts } from "@/lib/share-sections";
 import { normalizeShareTheme } from "@/lib/share-themes";
 import { errorMessage } from "@/lib/feedback-messages";
 import { slugify } from "@/lib/slugify";
+import { scoutIdentity } from "@/lib/scout-identity";
+
+function savedShareRedirect(formData: FormData, id: string, success: string) {
+  const token = formData.get("draftSubmissionId");
+  const query = new URLSearchParams({ success });
+  if (typeof token === "string" && /^[\da-f-]{36}$/i.test(token)) {
+    query.set("savedDraft", `${scoutIdentity()}:${id}`);
+    query.set("submission", token);
+  }
+  return `/shares?${query}`;
+}
 
 const shareCoverDir = getShareCoversDir();
 const shareBackgroundDir = getShareBackgroundsDir();
@@ -232,7 +243,7 @@ export async function createShareCollectionAction(formData: FormData): Promise<v
     uploadedPaths = [];
 
     revalidatePath("/shares");
-    redirectPath = "/shares?success=created";
+    redirectPath = savedShareRedirect(formData, "new", "created");
   } catch (error) {
     await Promise.all(uploadedPaths.map((imagePath) => removeManagedShareImage(imagePath)));
     const message = errorMessage(error, "创建分享集失败，请稍后重试。");
@@ -282,7 +293,7 @@ export async function updateShareCollectionAction(shareId: string, formData: For
     revalidatePath(`/shares/${shareId}/edit`);
     revalidatePath(`/shares/${shareId}/preview`);
     revalidatePath(`/shares/${shareId}/export`);
-    redirectPath = "/shares?success=updated";
+    redirectPath = savedShareRedirect(formData, shareId, "updated");
   } catch (error) {
     await Promise.all(uploadedPaths.map((imagePath) => removeManagedShareImage(imagePath)));
     const message = errorMessage(error, "更新分享集失败，请稍后重试。");

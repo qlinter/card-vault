@@ -1,11 +1,5 @@
+import { withUiDatabase as fixture } from './database-fixture.mjs';
 import { expect, test } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
-import path from "node:path";
-
-function fixture(action) {
-  const db=new DatabaseSync(path.resolve("tests/.ui-test-runtime/data/dev.db"));
-  try { db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000");return action(db); } finally {db.close();}
-}
 const title="Entry finance v134 test";
 test.afterEach(async ({ page, request, baseURL }) => {
   const draft=new URL(page.url()).searchParams.get("draft");
@@ -22,6 +16,7 @@ async function fill(record,key,value) { await record.locator(`[name$=".${key}"]`
 
 test("entry saves supplementary finance and sale links atomically after draft recovery",async({page})=>{
   await page.goto("/cards/new",{waitUntil:"networkidle"});
+  await page.getByText("财务记录（可选）",{exact:true}).click();
   await expect(page.locator('[name="secondaryPurchasePrice"]')).toHaveCount(0);
   await expect(page.locator('[name="valuationSource"] > option')).toHaveText(["个人估值", "卡淘成交", "eBay成交", "Others"]);
   await page.locator('[name="playerName"]').fill("Entry Test");

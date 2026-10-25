@@ -10,13 +10,19 @@ function sameShape(value: unknown, sample: unknown): boolean {
   return Object.keys(expected).length ? Object.entries(expected).every(([key, entry]) => sameShape(stored[key], entry)) : Object.values(stored).every(entry => typeof entry === "string");
 }
 export function useScoutState<T>(identity: string, name: string, initial: T, session = false, valid: (value: unknown) => boolean = value => sameShape(value, initial)) {
-  const key = `card-vault:scout:2:${identity}:${name}`;
+  const key = `card-vault:scout:3:${identity}:${name}`;
   const [value, setValue] = useState(initial), [loadedKey, setLoadedKey] = useState(""), [available, setAvailable] = useState(true);
   const ready = loadedKey === key;
   const initialRef = useRef(initial), validRef = useRef(valid);
   const setters = useRef(new Map<keyof T, Dispatch<SetStateAction<T[keyof T]>>>());
   useEffect(() => {
     let restored = initialRef.current, readable = true;
+    for (const name of ["localStorage", "sessionStorage"] as const) {
+      try {
+        const storage = window[name];
+        for (const oldKey of Object.keys(storage)) if (oldKey.startsWith("card-vault:scout:2:") || oldKey.startsWith("card-vault:scout-scroll:")) storage.removeItem(oldKey);
+      } catch { /* Each storage surface can be unavailable independently. */ }
+    }
     try {
       const raw = (session ? window.sessionStorage : window.localStorage).getItem(key);
       if (raw && raw.length < 2000000) { const parsed: unknown = JSON.parse(raw); if (validRef.current(parsed)) restored = parsed as T; }

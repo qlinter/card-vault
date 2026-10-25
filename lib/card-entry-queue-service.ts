@@ -301,7 +301,7 @@ function summarizeQueueItem(item: QueueItemWithRelations): CardEntryQueueItemSum
   return {
     id: item.id,
     batchId: item.batchId,
-    batchLabel: item.batch.label || "未命名批次",
+    batchLabel: item.batch.label || "",
     status: item.status as CardEntryQueueItemSummary["status"],
     attemptCount: item.attemptCount,
     errorMessage: item.errorMessage ?? undefined,

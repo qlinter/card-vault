@@ -31,10 +31,13 @@ export function PortfolioAnalysisButton({ cardCount, query, scope }: PortfolioAn
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
+  const activeRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => activeRequest.current?.abort(), []);
   const fingerprint = JSON.stringify(query);
 
   useEffect(() => setMounted(true), []);
-  useEffect(() => { setAnalysis(null); setSnapshot(null); setWarning(null); setError(null); setOpen(false); }, [fingerprint]);
+  useEffect(() => { activeRequest.current?.abort(); requestId.current++; setLoading(false); setAnalysis(null); setSnapshot(null); setWarning(null); setError(null); setOpen(false); }, [fingerprint]);
+  useEffect(() => { if (!open) { activeRequest.current?.abort(); requestId.current++; setLoading(false); } }, [open]);
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
@@ -48,17 +51,20 @@ export function PortfolioAnalysisButton({ cardCount, query, scope }: PortfolioAn
   }, [open]);
 
   async function analyze() {
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     const id = ++requestId.current;
     setLoading(true); setWarning(null); setError(null);
     try {
-      const response = await fetch("/api/ai/portfolio-analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
+      const response = await fetch("/api/ai/portfolio-analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query }), signal: controller.signal });
       const data = await response.json() as AnalysisResponse;
       if (data.snapshot && id === requestId.current) setSnapshot(data.snapshot);
       if (!response.ok || !data.analysis || !data.snapshot) throw new Error(data.error ?? "AI 暂时无法完成分析，请稍后重试。");
       if (id !== requestId.current) return;
       setAnalysis(data.analysis); setSnapshot(data.snapshot); setProvider(data.provider ?? "统一 AI"); setWarning(data.warning ?? null);
     } catch (requestError) {
-      if (id === requestId.current) setError(errorMessage(requestError, "组合分析失败，请稍后重试。"));
+      if (id === requestId.current) setError(controller.signal.aborted ? "已取消分析，可以重新开始。" : errorMessage(requestError, "组合分析失败，请稍后重试。"));
     } finally { if (id === requestId.current) setLoading(false); }
   }
 
@@ -79,7 +85,7 @@ export function PortfolioAnalysisButton({ cardCount, query, scope }: PortfolioAn
         {snapshot ? <><div className={styles.snapshotStrip}><span><small><UiText text={"活跃收藏"} /></small><strong>{snapshot.activeCount}<UiText text={" 张"} /></strong></span><span><small><UiText text={"已售 / 待送评"} /></small><strong>{snapshot.soldCount} / {snapshot.pendingGradingCount}<UiText text={" 张"} /></strong></span><span><small><UiText text={"估值覆盖"} /></small><strong>{formatPortfolioCountPercent(snapshot.financials.valuationCoverageCount, snapshot.financials.valuationEligibleCount, "--")}</strong></span><span><small><UiText text={"90 天内估值"} /></small><strong>{snapshot.financials.freshValuationCount}<UiText text={" 张"} /></strong></span></div>
         <FinancialReportNote accounting={snapshot.accounting} showBasis={false} /><UiElement as="section" uiAttributes={["aria-label"]} className={styles.financialOverview} aria-label="财务摘要">{snapshot.financials.currencies.map((item) => <article key={item.currency}><header><strong>{item.currency}</strong><span>{item.valuedCardCount}<UiText text={" 张有最新估值"} /></span></header><dl><div><dt><UiText text={"持仓估值"} /></dt><dd>{currency(item.latestValue, item.currency)}</dd></div><div><dt><UiText text={"剩余成本"} /></dt><dd>{currency(item.activeCostBasis, item.currency)}</dd></div><div><dt><UiText text={"已实现盈亏"} /></dt><dd>{currency(item.realizedProfit, item.currency)}</dd></div><div><dt><UiText text={"未实现盈亏"} /></dt><dd>{currency(item.unrealizedDifference, item.currency)}</dd></div></dl></article>)}</UiElement>
         <div className={styles.dataFreshness}><span><UiText text={"最新估值日期："} /><strong>{date(snapshot.financials.latestValuationAt)}</strong></span><span><UiText text={"超过 180 天："} /><strong>{snapshot.financials.staleValuationCount}<UiText text={" 张"} /></strong></span><span><UiText text={"交易记录覆盖："} /><strong>{snapshot.financials.transactionCoverageCount}/{snapshot.cardCount}</strong></span></div></> : null}<div className={styles.scope}><strong><UiText text={"本次分析范围"} /></strong><span>{scopeText}</span></div>
-        {loading ? <div className={styles.loading}><span /><strong><UiText text={"正在生成五维组合概览"} /></strong><p><UiText text={"AI 正在分析组合结构、财务记录、收藏特征、估值时效和档案完整度。"} /></p></div> : null}
+        {loading ? <div className={styles.loading}><span /><strong><UiText text={"正在生成五维组合概览"} /></strong><p><UiText text={"AI 正在分析组合结构、财务记录、收藏特征、估值时效和档案完整度。"} /></p><button type="button" className="btn btn-secondary" onClick={() => activeRequest.current?.abort()}><UiText text="取消分析" /></button></div> : null}
         {!loading && error ? <div className={styles.error}><strong><UiText text={"暂时无法完成分析"} /></strong><p><UiText text={error} /></p><div><button type="button" className="btn btn-primary" onClick={() => void analyze()}><UiText text={"重新分析"} /></button><a className="btn btn-secondary" href="/settings"><UiText text={"前往 AI 设置"} /></a></div></div> : null}
         {!loading && analysis ? <div className={styles.report}>{warning ? <div className={styles.fallbackNotice} role="status"><strong><UiText text={"已启用稳定性兜底"} /></strong><span>{warning}</span></div> : null}<section className={styles.verdict}><div className={styles.score}><strong>{analysis.executiveSummary.overallScore}</strong><span><UiText text={"综合评分"} /></span></div><div><span className={styles.positioning}>{analysis.executiveSummary.positioning}</span><p>{analysis.executiveSummary.summary}</p><small className={styles.confidence}><UiText text={"置信度："} />{analysis.executiveSummary.confidence}<UiText text={" · 数据充分度："} />{analysis.executiveSummary.dataSufficiency}</small></div></section>
           <UiElement as="section" uiAttributes={["aria-label"]} className={styles.dimensions} aria-label="五维组合概览"><header className={styles.dimensionsIntro}><h3><UiText text={"五维组合概览"} /></h3><p><UiText text={"每个维度合并展示评分、判断依据和关键结论，避免评分与分析重复分组。"} /></p></header>{dimensions.map((dimension) => <article key={dimension.id} className={styles.dimension}><header className={styles.dimensionHeader}><div><h3>{dimension.label}</h3><span>{dimension.subtitle}</span></div><div className={styles.dimensionScore}><strong>{dimension.score.score}</strong><span><UiText text={"数据充分度："} />{dimension.detail.dataSufficiency}</span></div></header><p className={styles.dimensionSummary}>{dimension.score.explanation}</p>{dimension.score.evidence.length ? <div className={styles.dimensionEvidence}>{dimension.score.evidence.map((item) => <span key={`${dimension.id}-${item.sourcePath}-${item.label}`}><UiText text={item.label} />：{item.value}</span>)}</div> : null}<div className={styles.dimensionFindings}>{dimension.detail.findings.map((finding) => <div key={`${dimension.id}-${finding.title}`} className={styles.finding}><div><strong>{finding.title}</strong><span><UiText text={"置信度："} />{finding.confidence}</span></div><p>{finding.content}</p>{finding.evidence.length ? <small>{finding.evidence.map((item) => `${item.label}：${item.value}`).join(" · ")}</small> : null}</div>)}</div></article>)}</UiElement>

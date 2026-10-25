@@ -4,34 +4,35 @@ import { buildCardFilters, buildCardSorting, splitTagString } from "./card-helpe
 import { ensureCardReports } from "./card-report-index";
 import { homeThumbnailPublicPath } from "./card-thumbnail-core.js";
 import { buildQueryHref } from "./query-params";
+import { OperationError, operationMessages } from "./operation-errors";
 
 export const homePageSize = 24;
 export const optionFields = ["sport", "team", "year", "brand", "productLine", "subsetName", "parallel", "gradingCompany", "grade", "autoType", "patchType"] as const;
 type Query = Parameters<typeof buildCardFilters>[0];
 
-export async function loadHomeData(query: Query, page = 0, attempt = 0): Promise<{ cards: Array<{ id: string; playerName: string; cardTitle: string; details: string; tags: string[]; imagePath: string | null; imageRotation: number; href: string }>; totalCount: number; statusCounts: Record<string, number>; currency: string; totalValue: string | null; valuedCount: number; wish: { id: string; title: string } | null }> {
+export async function loadHomeData(query: Query, page = 0, attempt = 0): Promise<{ cards: Array<{ id: string; playerName: string; cardTitle: string; details: string; tags: string[]; imagePath: string | null; imageRotation: number; href: string }>; totalCount: number; activeCount: number; statusCounts: Record<string, number>; currency: string; totalValue: string | null; valuedCount: number }> {
   await ensureCardReports();
   const where = buildCardFilters(query);
   const orderBy = buildCardSorting(query.sort);
   const statusQuery = prisma.card.groupBy({ by: ["collectionStatus"], where, _count: { _all: true } });
-  const [cards, totalCount, summary, settings, meta, statuses, wish] = await prisma.$transaction([
+  const [cards, totalCount, summary, settings, meta, statuses, activeCount] = await prisma.$transaction([
     prisma.card.findMany({ where, take: homePageSize, skip: Math.max(0, Math.trunc(page)) * homePageSize, orderBy, select: { id: true, playerName: true, cardTitle: true, year: true, team: true, productLine: true, tags: true, images: { take: 1, orderBy: { createdAt: "asc" }, select: { path: true, rotation: true } } } }),
     prisma.card.count({ where }),
     prisma.cardReport.aggregate({ where: { card: where }, _sum: { valueMinor: true }, _count: { valueMinor: true } }),
     prisma.financialSettings.findUnique({ where: { id: "default" } }),
     prisma.dataRevision.findUniqueOrThrow({ where: { id: 1 } }),
     statusQuery,
-    prisma.collectionPlan.findUnique({ where: { id: query.wish || "" }, select: { id: true, title: true } })
+    prisma.cardReport.count({ where: { card: where, quantity: { gt: 0 } } })
   ]);
   if (meta.revision !== meta.projectionRevision) {
-    if (attempt >= 2) throw new Error("收藏数据正在连续变化，请稍后刷新。");
+    if (attempt >= 2) throw new OperationError("data_changed", operationMessages.dataChanged);
     return loadHomeData(query, page, attempt + 1);
   }
   const returnTo = buildQueryHref("/", query);
   return {
     cards: cards.map(card => ({ id: card.id, playerName: card.playerName, cardTitle: card.cardTitle, details: [card.year, card.team, card.productLine].filter(Boolean).join(" / "), tags: splitTagString(card.tags).slice(0, 4), imagePath: card.images[0] ? homeThumbnailPublicPath(card.images[0].path) : null, imageRotation: card.images[0]?.rotation ?? 0, href: `/cards/${card.id}?returnTo=${encodeURIComponent(returnTo)}` })),
-    totalCount, statusCounts: Object.fromEntries(statuses.map(row => [row.collectionStatus, row._count._all])), currency: settings?.reportingCurrency ?? "CNY", wish,
-    totalValue: summary._sum.valueMinor?.toString() ?? null, valuedCount: summary._count.valueMinor
+    totalCount, statusCounts: Object.fromEntries(statuses.map(row => [row.collectionStatus, row._count._all])), currency: settings?.reportingCurrency ?? "CNY",
+    totalValue: summary._sum.valueMinor?.toString() ?? null, valuedCount: summary._count.valueMinor, activeCount
   };
 }
 

@@ -6,11 +6,11 @@ Card Vault 的 Windows 代码签名是可选增强。`npm run release:win` 在�
 
 ## 执行前提
 
-v1.4.1使用 Electron 42，`package:win` 会先调用 Electron 官方安装器准备并校验二进制，再执行打包，适用于全新检出后延迟下载的依赖。基础修复及验收记录见[开发记录](./development-v1.4.1.md)。
+当前使用 Electron 42，`package:win` 会先调用 Electron 官方安装器准备并校验二进制，再执行打包，适用于全新检出后延迟下载的依赖。
 
-当前源码版本为 v1.4.1（2026-10-23），本轮只同步源码与版本标签，尚未生成本版安装包或便携包。后续运行 `npm run release:win` 会执行完整源码门槛、包内业务、实际桌面启动及产物校验；`npm run check:release` 本身不生成安装文件。源码范围与验收见 [v1.4.1 发布说明](./release-v1.4.1.md)，已有分发文件及校验值保留在 [v1.4.0 发布说明](./release-v1.4.0.md)。
+当前版本为 v1.5.0（2026-10-25），产物与实际验收范围见 [v1.5.0 发布说明](./release-v1.5.0.md)。`npm run release:win` 执行完整源码门槛、包内业务、实际桌面启动及产物校验；`npm run check:release` 本身不生成安装文件。历史分发事实保留在各版本发布说明中。
 
-分发过滤排除 `scripts/benchmark-*`、`scripts/check-*`、UI 测试启动器和固定测试时钟，以及付费 AI、真实照片、实机安装和 Playwright 桌面专项脚本；包内保留数据库初始化、存储校验及业务验收脚本，文件卫生检查拒绝开发文件进入分发包。
+运行脚本白名单由 `scripts/release-runtime-files.js` 统一维护，构建配置与产物检查共用。安装包只包含初始化、存储、缩略图及授权历史清理所需的脚本；测试、基准、发布工具、固定测试时钟及源码映射全部排除。业务冒烟脚本从源码侧使用包内 Electron 的 Node 运行时启动，服务与初始化路径明确指向包内应用，避免为测试交付整套开发工具。
 
 ## 无证书发布
 
@@ -75,6 +75,10 @@ npm.cmd run release:win
 6. 生成便携 ZIP 和 SHA-256 校验值，并再次验证 ZIP 内主程序与本次签名模式一致。
 
 `npm run package:win` 只执行基础 electron-builder 打包，适合本机快速检查。对外发布应使用 `npm run release:win`，即使没有证书，也能获得完整门禁、冒烟测试、便携 ZIP 和 SHA-256 清单。
+
+已完成源码验收、仅需重新生成分发文件时，可显式执行 `npm run release:win:package`。该模式校对已安装依赖与锁文件，生成 Prisma 客户端和新的生产构建，跳过完整源码检查及包内运行测试，保留结构、版本、签名状态、大小和 SHA-256 校验。`node scripts/release-win.js --package-only --plan` 只显示执行计划，不构建或修改分发文件。默认完整流程不受影响。
+
+成功发布会写入 `dist/release-<版本>.json`，记录源码提交及是否有未提交改动、实际工作区源码树哈希（含未跟踪源码）、锁文件哈希、构建 ID、Node 与直接依赖版本、签名模式、产物大小和哈希，以及各项检查的通过／跳过状态。仅打包记录不能替代完整发布验收。
 
 ## GitHub Actions
 

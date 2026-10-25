@@ -18,7 +18,7 @@ export function CardEntryFinancialRecords({ initialValue = "[]" }: { initialValu
     previousSignature.current = signature;
   }, [signature]);
   const labels = {transaction:"交易",expense:"费用",valuation:"估值"};
-  const sales = records.filter(row => row.type === "transaction" && row.values.kind === "sale").map((row,index) => ({id:row.id,label:`${locale === "en" ? "Sale" : "售出"} ${index+1} · ${row.values.occurredAt || "—"} · ${row.values.amount || "—"} ${row.values.currency || "CNY"}`}));
+  const sales = records.filter(row => row.type === "transaction" && row.values.kind === "sale").map((row,index) => ({id:row.id,label:`${locale === "en" ? "Sale" : "售出"} ${index+1} · ${row.values.occurredAt || "–"} · ${row.values.amount || "–"} ${row.values.currency || "CNY"}`}));
   function add(type: EntryFinanceRecord["type"]) {
     setRecords(current => [...current, {id:crypto.randomUUID(),type,values:{}}]);
     setAdding(false);
@@ -30,7 +30,7 @@ export function CardEntryFinancialRecords({ initialValue = "[]" }: { initialValu
     const value = input.value;
     setRecords(current => current.map(row => row.id === id ? {...row,values:{...row.values,[key]:value}} : row));
   }
-  return <div className="entry-financial-records" ref={panel}>
+  return <div className="entry-financial-records full" ref={panel}>
     <div className="entry-financial-record-toolbar">
       <button type="button" className="btn btn-secondary" aria-expanded={adding} disabled={records.length >= maxEntryFinanceRecords} onClick={() => setAdding(value => !value)}><UiText text="＋ 新增记录" /></button>
       {adding ? <div className="entry-financial-record-types">{(["transaction","expense","valuation"] as const).map(type => <button type="button" className="btn btn-secondary" key={type} onClick={() => add(type)}><UiText text={labels[type]} /></button>)}</div> : null}

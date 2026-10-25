@@ -50,6 +50,21 @@
 .table td small { display:block; margin-top:.2rem; color:var(--muted-ink); max-width:25rem; overflow-wrap:anywhere; }
 .table td.numeric,.table th.numeric { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
 .table a { color:inherit; text-decoration:none; } .table a:hover { color:var(--teal); }
+.detailsTable { table-layout:fixed; min-width:850px; }
+.detailsTable col:nth-child(1) { width:24%; }
+.detailsTable col:nth-child(2) { width:9%; }
+.detailsTable col:nth-child(3) { width:11%; }
+.detailsTable col:nth-child(4) { width:19%; }
+.detailsTable col:nth-child(5) { width:23%; }
+.detailsTable col:nth-child(6) { width:14%; }
+.detailsTable td { vertical-align:top; overflow-wrap:anywhere; }
+.rowMetrics { margin:0; display:grid; gap:.35rem; font-size:.76rem; }
+.rowMetrics>div { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:.15rem .5rem; }
+.rowMetrics dt { color:var(--muted-ink); font-size:.7rem; }
+.rowMetrics dd { margin:0 0 0 auto; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.rowDates>div { display:grid; justify-content:stretch; }
+.rowDates dd { margin:0; }
+.reviewCount { margin:0 0 .7rem; color:var(--muted-ink); font-size:.78rem; }
 .structureTable { table-layout:fixed; min-width:620px; }
 .structureTable col:first-child { width:34%; }
 .structureTable col:nth-child(2),.structureTable col:nth-child(3) { width:13%; }
@@ -71,11 +86,5 @@
 .qualityFilters { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; margin-bottom:.75rem; }
 .qualityFilters a { font-size:.78rem; padding:.35rem .55rem; border:1px solid var(--line); border-radius:5px; color:inherit; text-decoration:none; }
 .qualityFilters a[aria-current=page] { color:var(--teal); background:var(--theme-soft,#f1f3f5); }
-.scopeEditor { flex:1 1 13rem; width:auto; border-top:1px solid var(--line); padding-top:.35rem; }
-.scopeEditor[open] { flex-basis:100%; }
-.scopeEditor>summary { cursor:pointer; font-size:.8rem; min-height:28px; }
-.scopeEditor form { display:flex; align-items:end; flex-wrap:wrap; gap:.6rem; padding-top:.6rem; }
-.scopeEditor label { display:grid; gap:.3rem; font-size:.76rem; }
-.scopeEditor select,.scopeEditor input { width:auto; max-width:15rem; min-height:34px; font-size:.8rem; }
 @media(max-width:1100px) { .metrics strong{font-size:1.2rem;} .financialList{grid-template-columns:repeat(2,minmax(0,1fr));} }
 @media(max-width:750px) { .metrics{grid-template-columns:repeat(2,minmax(0,1fr));} .financialList{grid-template-columns:1fr;} .tools{margin-left:0;} }

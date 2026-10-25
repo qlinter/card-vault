@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(await recognizeCardImages(prepared.map((image) => ({
       mimeType: image.extension === "jpg" ? "image/jpeg" : `image/${image.extension}`,
       buffer: image.buffer
-    }))));
+    })), request.signal));
   } catch (error) {
     const message = errorMessage(error, "AI 识别失败，请稍后重试。");
     return NextResponse.json({ error: message }, { status: error instanceof AiUpstreamError ? 502 : 400 });

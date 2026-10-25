@@ -21,7 +21,8 @@ function buildRecognitionPrompt(): string {
 
 async function repairRecognitionJson(
   settings: ActiveAiSettings,
-  rawText: string
+  rawText: string,
+  signal?: AbortSignal
 ): Promise<CardRecognitionResult> {
   const content = await requestAiChatText(settings, {
     messages: [{
@@ -33,7 +34,7 @@ async function repairRecognitionJson(
     }],
     maxTokens: 900,
     temperature: 0,
-    operation: "识别结果修复"
+    operation: "识别结果修复", signal
   });
   return normalizeCardRecognitionResult(extractJsonRecord(content));
 }
@@ -41,7 +42,7 @@ async function repairRecognitionJson(
 export async function recognizeCardImages(images: Array<{
   mimeType: string;
   buffer: Buffer;
-}>): Promise<CardRecognitionResult> {
+}>, signal?: AbortSignal): Promise<CardRecognitionResult> {
   if (images.length < 1 || images.length > 2) {
     throw new Error("请选择 1 到 2 张图片用于 AI 识别。");
   }
@@ -62,13 +63,14 @@ export async function recognizeCardImages(images: Array<{
     maxTokens: 1100,
     temperature: 0,
     operation: "识别",
-    timeoutMs: 90000
+    timeoutMs: 90000, signal
   });
   let result: CardRecognitionResult;
   try {
     result = normalizeCardRecognitionResult(extractJsonRecord(content));
   } catch {
-    result = await repairRecognitionJson(settings, content);
+    signal?.throwIfAborted();
+    result = await repairRecognitionJson(settings, content, signal);
   }
   if (Object.keys(result.suggestion).length < 1) {
     throw new Error("AI 未返回可用的识别字段，请调整图片后重试。");

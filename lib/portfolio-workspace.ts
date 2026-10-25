@@ -1,71 +1,15 @@
-import type { PortfolioFilterInput } from "./portfolio-analysis-scope.ts";
 import type { PortfolioCardRecord } from "./portfolio-analysis-types.ts";
 import type { buildReportingPortfolio } from "./portfolio-reporting.ts";
 import { assessPortfolioCardQuality } from "./portfolio-quality.ts";
-import { searchTerms } from "./search-terms.ts";
-import { buildQueryHref } from "./query-params.ts";
 import { minorMoneyToNumber } from "./financial-history.ts";
+import { structureFields, cardAttributeFields, type DataRow, type DataIssue, type DataWorkspace, type StructureField } from "./portfolio-workspace-types.ts";
+import { isClosedDataRow, selectDataRows } from "./portfolio-data-rows.ts";
+import { dataGroupCount } from "./portfolio-navigation.ts";
 
-export const dataTabs = ["overview", "trends", "structure", "details"] as const;
-export type DataTab = typeof dataTabs[number];
-export const structureFields = ["playerName", "sport", "team", "brand", "year", "productLine", "gradingCompany", "collectionStatus"] as const;
-export type StructureField = typeof structureFields[number];
-export const cardAttributeFields = ["isRookie", "isAutograph", "isPatch", "isSerialNumbered"] as const;
-export type CardAttributeField = typeof cardAttributeFields[number];
-export type CardAttributeSummary = { count: number; quantity: number; value: number; valuedCount: number; soldCount: number };
-export type DataIssue = { key: string; label: string; financial: boolean };
-export type DataRow = {
-  id: string; playerName: string; cardTitle: string; sport: string; team: string; brand: string; year: string; productLine: string; gradingCompany: string; collectionStatus: string;
-  quantity: number; value: number | null; cost: number | null; realized: number | null; netSales: number | null; soldCost: number | null; returnRate: number | null; soldQuantity: number; soldAt: string | null; valuedAt: string | null; issues: DataIssue[];
-};
-export type DataWorkspace = {
-  quantity: number; currency: string; top: DataRow[]; rows: DataRow[]; total: number; page: number; pages: number;
-  issueCounts: Record<string, number>; qualityCount: number; physical: Record<string, Record<string, number>>;
-  closed: Record<string, Record<string, number>>; attributes: Record<CardAttributeField, CardAttributeSummary>;
-};
-
-export function dataTab(value?: string): DataTab { return dataTabs.includes(value as DataTab) ? value as DataTab : "overview"; }
-export function dataHref(query: PortfolioFilterInput, state: Record<string, string | undefined>, changes: Record<string, string | undefined> = {}) {
-  return buildQueryHref("/portfolio", { ...query, ...state, ...changes, success: undefined, error: undefined });
-}
-export function profitTone(value: number | null): "positive" | "negative" | "neutral" {
-  return value === null || value === 0 ? "neutral" : value > 0 ? "positive" : "negative";
-}
-export function valuationChangeAvailable(row: { baselineValuedCardCount: number; currentValuedCardCount: number }) {
-  return row.baselineValuedCardCount > 0 && row.currentValuedCardCount > 0;
-}
-export function isClosedDataRow(row: Pick<DataRow, "quantity" | "soldQuantity" | "collectionStatus">) {
-  return row.quantity === 0 && (row.soldQuantity > 0 || row.collectionStatus === "sold");
-}
-export function dataGroupCount(groups: DataWorkspace["physical"], field: StructureField, name: string): number {
-  const values = groups[field];
-  return values && Object.hasOwn(values, name) ? values[name] : 0;
-}
 function incrementGroup(groups: DataWorkspace["physical"], field: StructureField, name: string, amount: number) {
   const values = groups[field] ||= {};
   // User-entered names may match Object.prototype properties, including __proto__.
   Object.defineProperty(values, name, { value: dataGroupCount(groups, field, name) + amount, enumerable: true, writable: true, configurable: true });
-}
-
-export function selectDataRows(rows: DataRow[], params: Record<string, string | undefined>) {
-  const terms = searchTerms((params.search || "").slice(0, 160)).map(term => term.toLocaleLowerCase());
-  const field = structureFields.includes(params.dimension as StructureField) ? params.dimension as StructureField : undefined;
-  const filtered = rows.filter(row => {
-    if (params.kind === "quality" ? row.issues.length === 0 : params.kind === "sold" ? row.soldQuantity === 0 : params.kind !== "all" && row.quantity === 0) return false;
-    if (params.closed === "1" && !isClosedDataRow(row)) return false;
-    if (params.kind === "quality" && params.issue && !row.issues.some(issue => issue.key === params.issue || params.issue === "financial" && issue.financial || params.issue === "archive" && !issue.financial)) return false;
-    if (field && (row[field].trim() || "未填写") !== params.item) return false;
-    const text = [row.playerName, row.cardTitle, row.sport, row.team, row.brand, row.year, row.productLine, row.gradingCompany].join(" ").toLocaleLowerCase();
-    return terms.every(term => text.includes(term));
-  });
-  const metric = params.order === "costDesc" ? "cost" : params.order === "profitDesc" ? "realized" : "value";
-  filtered.sort((a, b) => params.order === "nameAsc" ? a.playerName.localeCompare(b.playerName) || a.id.localeCompare(b.id)
-    : params.order === "dateDesc" ? (params.kind === "sold" ? b.soldAt || "" : b.valuedAt || "").localeCompare(params.kind === "sold" ? a.soldAt || "" : a.valuedAt || "") || a.id.localeCompare(b.id)
-      : (b[metric] ?? -Infinity) - (a[metric] ?? -Infinity) || a.id.localeCompare(b.id));
-  const pages = Math.max(1, Math.ceil(filtered.length / 20));
-  const parsed = Number(params.page);
-  const page = Math.min(pages, Math.max(1, Number.isFinite(parsed) ? Math.floor(parsed) : 1));
-  return { rows: filtered.slice((page - 1) * 20, page * 20), total: filtered.length, page, pages };
 }
 
 /** Reuse the financial pass; summary tabs retain aggregates and five positions only. */
@@ -135,5 +79,8 @@ export function createDataCollector(asOf = new Date(), { includeRows = true }: {
     return { quantity, currency, physical, closed, attributes, issueCounts, qualityCount, top: [...top],
       ...(includeRows ? selectDataRows(rows, params) : { rows: [], total: count, page: 1, pages: 1 }) };
   }
-  return { add, finish };
+  function finishAll(): DataWorkspace {
+    return { quantity, currency, physical, closed, attributes, issueCounts, qualityCount, top: [...top], rows, total: count, page: 1, pages: Math.max(1, Math.ceil(count / 20)) };
+  }
+  return { add, finish, finishAll };
 }

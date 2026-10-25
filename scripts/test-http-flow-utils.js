@@ -3,7 +3,7 @@ const net = require("node:net");
 const path = require("node:path");
 const { execFileSync, spawn } = require("node:child_process");
 
-const rootDir = path.resolve(__dirname, "..");
+const rootDir = process.env.CARD_VAULT_TEST_APP_ROOT ? path.resolve(process.env.CARD_VAULT_TEST_APP_ROOT) : path.resolve(__dirname, "..");
 const initDbScriptPath = path.join(rootDir, "scripts", "init-db.js");
 const nextCliPath = path.join(rootDir, "node_modules", "next", "dist", "bin", "next");
 

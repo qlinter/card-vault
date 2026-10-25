@@ -16,12 +16,13 @@ function createStorageConfig({ appDataRoot, projectRoot }) {
   const getEnv = () => ({ CARD_VAULT_DATA_DIR: getDataDir(), CARD_VAULT_DB_PATH: getDbPath(), CARD_VAULT_STORAGE_CONFIG_PATH: storageConfigPath });
   const saveStorageConfig = (dataDir) => saveJson(storageConfigPath, { ...loadStorageConfig(), dataDir });
   const saveBackupConfig = (backupDir) => saveJson(storageConfigPath, { ...loadStorageConfig(), backupDir });
+  const saveBackupResult = (lastBackup) => saveJson(storageConfigPath, { ...loadStorageConfig(), lastBackup });
   const validateBackupDir = (backupDir) => {
     const dataDir = path.resolve(getDataDir());
     const resolvedBackupDir = path.resolve(backupDir);
     if (pathsEqual(dataDir, resolvedBackupDir) || isSubPath(dataDir, resolvedBackupDir)) throw new Error("Backup path cannot be inside the current data folder.");
   };
-  return { storageConfigPath, loadStorageConfig, getDataDir, getBackupDir, getUploadsDir, getThumbnailsDir, getShareCoversDir, getShareBackgroundsDir, getDbPath, getEnv, saveStorageConfig, saveBackupConfig, validateBackupDir, ensureDataLayout };
+  return { storageConfigPath, loadStorageConfig, getDataDir, getBackupDir, getUploadsDir, getThumbnailsDir, getShareCoversDir, getShareBackgroundsDir, getDbPath, getEnv, saveStorageConfig, saveBackupConfig, saveBackupResult, validateBackupDir, ensureDataLayout };
 }
 
 module.exports = { createStorageConfig };

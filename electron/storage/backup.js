@@ -4,6 +4,8 @@ const { copyDataFilesForBackup, createDatabaseSnapshot } = require("./database-s
 const { mapProgress, reportProgress } = require("./progress");
 const { inspectDataFolder } = require("./health");
 const { writeBackupManifest } = require("./backup-manifest");
+const { directoryBytes, ensureFreeSpace } = require("./free-space");
+const { createHash } = require("node:crypto");
 
 function dateFolderName(date = new Date()) { return [String(date.getFullYear()), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-"); }
 function timeSuffix(date = new Date()) { return [String(date.getHours()).padStart(2, "0"), String(date.getMinutes()).padStart(2, "0"), String(date.getSeconds()).padStart(2, "0")].join(""); }
@@ -20,6 +22,12 @@ function uniqueBackupTarget(dateDir) {
 }
 
 function createBackupService({ config, ensureDataLayout }) {
+  function sourceIdentity() {
+    const database = path.resolve(config.getDbPath());
+    let created = "";
+    try { created = String(fs.statSync(database).birthtimeMs); } catch { /* Database not initialized yet. */ }
+    return createHash("sha256").update(`${path.resolve(config.getDataDir())}|${database}|${created}`).digest("hex");
+  }
   function chooseBackupDir(selectedPath) {
     const backupDir = path.resolve(selectedPath);
     config.validateBackupDir(backupDir);
@@ -35,9 +43,12 @@ function createBackupService({ config, ensureDataLayout }) {
     config.validateBackupDir(backupDir);
     ensureDataLayout(sourceDataDir);
     if (!fs.existsSync(sourceDataDir)) throw new Error("Data folder does not exist.");
+    // Include an external database conservatively; the reserve covers snapshot overhead.
+    ensureFreeSpace(backupDir, directoryBytes(sourceDataDir) + directoryBytes(sourceDbPath));
     const dateDir = path.join(backupDir, dateFolderName());
     fs.mkdirSync(dateDir, { recursive: true });
     const targetDataDir = uniqueBackupTarget(dateDir);
+    let lastBackup;
     try {
       copyDataFilesForBackup(sourceDataDir, targetDataDir, sourceDbPath, mapProgress(onProgress, 12, 58));
       const targetDbPath = path.join(targetDataDir, "dev.db");
@@ -47,12 +58,23 @@ function createBackupService({ config, ensureDataLayout }) {
       if (health.integrity !== "ok" || health.missingFiles.length > 0) {
         throw new Error(`备份验证失败：数据库异常或有 ${health.missingFiles.length} 个引用文件缺失。请检查数据健康后重试。`);
       }
-      writeBackupManifest(targetDataDir);
+      const sourceKey = sourceIdentity();
+      const manifest = writeBackupManifest(targetDataDir);
+      lastBackup = { path: targetDataDir, dataPath: path.resolve(sourceDataDir), sourceKey, createdAt: manifest.createdAt, bytes: manifest.files.reduce((sum, file) => sum + file.bytes, 0), fileCount: manifest.files.length, imageCount: manifest.files.filter(file => /\.(?:jpg|jpeg|png|webp)$/i.test(file.name)).length, verified: true };
     } catch (error) { fs.rmSync(targetDataDir, { recursive: true, force: true }); throw error; }
+    let metadataWarning;
+    try { config.saveBackupResult(lastBackup); }
+    catch { metadataWarning = "备份文件已完成校验，但最近备份状态未能保存。请保留本次备份路径。"; }
     reportProgress(onProgress, 100, "备份完成。");
-    return { backupRoot: backupDir, datePath: dateDir, backupPath: targetDataDir };
+    return { backupRoot: backupDir, datePath: dateDir, backupPath: targetDataDir, metadataWarning };
   }
-  return { chooseBackupDir, backupDataFolder };
+  function getBackupSettings() {
+    const last = config.loadStorageConfig().lastBackup;
+    const valid = last && typeof last.path === "string" && Number.isFinite(Date.parse(last.createdAt)) && Number.isFinite(last.bytes) && Number.isFinite(last.imageCount);
+    const lastBackup = valid && last.dataPath === path.resolve(config.getDataDir()) && last.sourceKey === sourceIdentity() ? { ...last, available: fs.existsSync(path.join(last.path, "backup-manifest.json")) } : null;
+    return { path: config.getBackupDir(), lastBackup };
+  }
+  return { chooseBackupDir, backupDataFolder, getBackupSettings };
 }
 
 module.exports = { createBackupService, dateFolderName, uniqueBackupTarget };

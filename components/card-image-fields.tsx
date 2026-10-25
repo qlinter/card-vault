@@ -1,6 +1,8 @@
 "use client";
 
 import { UiElement, UiText } from "@/components/ui-text";
+import { cardImageSelectionError } from "@/lib/card-image-limits.js";
+import type { DraftImage } from "@/lib/card-entry-draft-images.js";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   cardImageRotationStyle,
@@ -34,6 +36,7 @@ type CardImageFieldsProps = {
   cardTitle: string;
   existingImages: ExistingImage[];
   queuedImages: QueuedImage[];
+  draftImages?: DraftImage[];
 };
 
 function RotationButtons({ label, onLeft, onRight }: { label: string; onLeft: () => void; onRight: () => void }) {
@@ -45,7 +48,7 @@ function RotationButtons({ label, onLeft, onRight }: { label: string; onLeft: ()
   );
 }
 
-export function CardImageFields({ mode, cardTitle, existingImages, queuedImages }: CardImageFieldsProps) {
+export function CardImageFields({ mode, cardTitle, existingImages, queuedImages, draftImages }: CardImageFieldsProps) {
   const [existingRotations, setExistingRotations] = useState<Record<string, number>>(() => Object.fromEntries(
     existingImages.map((image) => [image.id, normalizeCardImageRotation(image.rotation)])
   ));
@@ -53,9 +56,38 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages 
     queuedImages.map((image) => [image.id, 0])
   ));
   const [newImages, setNewImages] = useState<NewImagePreview[]>([]);
+  const [selectionError, setSelectionError] = useState("");
   const objectUrls = useRef<string[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
   const selectedFiles = useRef<File[]>([]);
+  useEffect(() => {
+    if (!draftImages?.length) return;
+    const controller = new AbortController();
+    const input = fileInput.current;
+    input?.setCustomValidity("正在恢复草稿图片，请稍候。");
+    void Promise.all(draftImages.map(async image => {
+      const response = await fetch(image.path, { signal: controller.signal });
+      if (!response.ok) throw new Error("草稿图片恢复失败，请重新选择图片。");
+      return new File([await response.blob()], image.name, { type: response.headers.get("content-type") || "image/jpeg", lastModified: 0 });
+    })).then(files => {
+      if (controller.signal.aborted || selectedFiles.current.length || !input) return;
+      const transfer = new DataTransfer();
+      files.forEach(file => transfer.items.add(file));
+      input.files = transfer.files;
+      input.dataset.draftRestored = "restored";
+      input.setCustomValidity("");
+      selectedFiles.current = files;
+      objectUrls.current.forEach(url => URL.revokeObjectURL(url));
+      const next = files.map((file, index) => ({ id: `restored-${index}`, name: file.name, url: URL.createObjectURL(file), rotation: draftImages[index].rotation }));
+      objectUrls.current = next.map(image => image.url);
+      setNewImages(next);
+    }).catch(error => {
+      if (controller.signal.aborted) return;
+      input?.setCustomValidity("");
+      setSelectionError(error instanceof Error ? error.message : "草稿图片恢复失败。");
+    });
+    return () => controller.abort();
+  }, [draftImages]);
   useEffect(() => {
     const form = fileInput.current?.form;
     const restore = () => queueMicrotask(() => {
@@ -73,7 +105,11 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages 
   }, []);
 
   function selectNewImages(event: ChangeEvent<HTMLInputElement>) {
+    event.target.dataset.draftRestored = "selected";
     selectedFiles.current = Array.from(event.target.files ?? []);
+    const error = cardImageSelectionError(selectedFiles.current);
+    event.target.setCustomValidity(error);
+    setSelectionError(error);
     objectUrls.current.forEach((url) => URL.revokeObjectURL(url));
     const next = Array.from(event.target.files ?? []).map((file, index) => ({
       id: `${file.name}-${file.lastModified}-${index}`,
@@ -97,6 +133,7 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages 
     setNewImages((current) => current.map((image) => image.id === id
       ? { ...image, rotation: rotateCardImageDegrees(image.rotation, direction) }
       : image));
+    fileInput.current?.form?.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
   return (
@@ -106,6 +143,8 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages 
           {mode === "create" ? queuedImages.length > 0 ? <UiText text={"队列已有 {0} 张图片，可追加至总计 5 张"} values={[queuedImages.length]} /> : <UiText text={"上传图片（1-5 张）*"} /> : <UiText text={"新增图片（可选，单张卡总计最多 5 张）"} />}
         </span>
         <input ref={fileInput} name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={selectNewImages} />
+        <small><UiText text="支持 JPG、PNG、WebP，单张最多 15MB，总计最多 5 张。" /></small>
+        {selectionError ? <span role="alert" className="note-error"><UiText text={selectionError} /></span> : null}
       </label>
 
       <input type="hidden" name="existingImageRotations" value={JSON.stringify(Object.fromEntries(

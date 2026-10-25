@@ -1,5 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { packagedScripts } = require("./release-runtime-files");
+const runtimeScripts = new Set(packagedScripts);
 
 const mebibyte = 1024 * 1024;
 const defaultArtifactLimits = Object.freeze({
@@ -14,7 +16,7 @@ function normalizePackagedEntry(value) {
 function isForbiddenPackagedEntry(value) {
   const normalized = normalizePackagedEntry(value).toLowerCase();
   if (!normalized.startsWith("resources/app/")) return false;
-  return /^resources\/app\/scripts\/(?:benchmark-|check-|start-ui-test-server\.js$|ui-test-clock\.js$|test-(?:live-ai|storage-photos|windows-installation|packaged-desktop(?:-utils)?)\.js$)/.test(normalized)
+  return (normalized.startsWith("resources/app/scripts/") && !runtimeScripts.has(normalized.slice("resources/app/scripts/".length)))
     || normalized.endsWith(".map")
     || /^resources\/app\/prisma\/(?:[^/]+\.db[^/]*|schema-backups\/.*)$/.test(normalized)
     || (normalized.includes("/node_modules/.prisma/client/") && /\.tmp[^/]*$/.test(normalized));

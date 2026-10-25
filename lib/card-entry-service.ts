@@ -9,7 +9,7 @@ import {
 } from "@/lib/card-media-service";
 import { prisma } from "@/lib/prisma";
 import { createInitialFinancialHistory } from "@/lib/card-entry-finance-service";
-import { bindWishCards } from "@/lib/scout-binding-service";
+import { readDraftImages, type DraftImage } from "./card-entry-draft-images.js";
 
 export async function createCardEntry(input: {
   values: CardFormValues;
@@ -44,6 +44,7 @@ export async function createCardEntry(input: {
   }
 
   let imagePaths = await saveCardUploads(files);
+  let completedDraftImages: DraftImage[] = [];
   try {
     const card = await prisma.$transaction(async (transaction) => {
       const transactionQueueItem = queueItemId
@@ -84,16 +85,11 @@ export async function createCardEntry(input: {
         cardData.gradingCompany,
         initialQuantity
       );
-      if (values.wishId) {
-        const position = await transaction.card.findUniqueOrThrow({ where: { id: created.id }, select: { holdingQuantity: true, collectionStatus: true } });
-        if (position.holdingQuantity < 1 || position.collectionStatus === "sold") throw new Error("完成心愿需要录入实际持有的卡片。");
-        const wish = await transaction.collectionPlan.findUnique({ where: { id: values.wishId }, include: { acquiredCards: { orderBy: { cardId: "asc" } } } });
-        if (!wish || wish.status !== "planned") throw new Error("心愿已实现、已取消或不存在，请先返回寻卡确认。");
-        const previous = wish.acquiredCards.map(link => link.cardId);
-        if (previous.length >= 500) throw new Error("每个心愿最多绑定 500 张卡片。");
-        await bindWishCards(transaction, wish.id, [...previous, created.id], previous);
+      if (draftId) {
+        const draft = await transaction.cardEntryDraft.findUnique({ where: { id: draftId } });
+        completedDraftImages = draft ? readDraftImages(draft.valuesJson) : [];
+        await transaction.cardEntryDraft.deleteMany({ where: { id: draftId } });
       }
-      if (draftId) await transaction.cardEntryDraft.deleteMany({ where: { id: draftId } });
       if (transactionQueueItem) {
         await transaction.cardEntryQueueItem.delete({
           where: { id: transactionQueueItem.id }
@@ -110,6 +106,7 @@ export async function createCardEntry(input: {
       return created;
     });
     imagePaths = [];
+    await Promise.all(completedDraftImages.map(image => removeCardImageIfExists(image.path)));
     return { card, usedQueueItemId: queueItemId };
   } finally {
     await Promise.all(imagePaths.map((imagePath) => removeCardImageIfExists(imagePath)));

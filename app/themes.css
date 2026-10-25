@@ -14,7 +14,8 @@ html[data-app-theme]:not([data-app-theme="classic"]) body .site-bg {
   background-repeat: no-repeat;
   opacity: .42;
 }
-html[data-app-theme]:not([data-app-theme="classic"]) body:has(.home-page, .showcase-backdrop) .site-bg { opacity: 1; }
+html[data-app-theme]:not([data-app-theme="classic"]) body:has(.home-page) .site-bg { opacity: 1; }
+html[data-app-theme]:not([data-app-theme="classic"]) body:has(.showcase-backdrop) .site-bg { opacity: .1; }
 html[data-app-theme]:not([data-app-theme="classic"]) .topbar {
   background: rgba(var(--theme-surface-rgb), .88);
   border-color: var(--line);
@@ -24,7 +25,7 @@ html[data-app-theme]:not([data-app-theme="classic"]) .page > .title-row {
   background: rgba(var(--theme-surface-rgb), .92);
   border-color: var(--line);
 }
-html[data-app-theme]:not([data-app-theme="classic"]) :is(.home-page, .showcase-backdrop) :is(.panel, .showcase-card, .card-item) {
+html[data-app-theme]:not([data-app-theme="classic"]) .home-page :is(.panel, .card-item) {
   background: rgba(var(--theme-surface-rgb), .9);
   border-color: var(--line);
   box-shadow: var(--shadow-soft);
@@ -36,7 +37,7 @@ html[data-app-theme]:not([data-app-theme="classic"]) :is(.btn-primary, .btn-prim
   box-shadow: var(--shadow-soft);
 }
 html[data-app-theme]:not([data-app-theme="classic"]) .btn-primary:hover { background: var(--theme-accent-hover); }
-html[data-app-theme]:not([data-app-theme="classic"]) :is(.nav-links a.active, .showcase-chip.active, .financial-record-tabs button[aria-selected="true"], .financial-history-filters button[aria-pressed="true"]) {
+html[data-app-theme]:not([data-app-theme="classic"]) :is(.nav-links a.active, .financial-record-tabs button[aria-selected="true"], .financial-history-filters button[aria-pressed="true"]) {
   background: var(--accent);
   color: var(--theme-on-accent);
   border-color: var(--accent);

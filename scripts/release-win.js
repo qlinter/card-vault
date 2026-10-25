@@ -10,6 +10,7 @@ const {
 const { resolveWindowsSigning } = require("./windows-signing");
 const { inspectAuthenticodeSignature, verifyAuthenticodeSignature } = require("./authenticode");
 const { verifyPackagedApplication } = require("./packaged-app");
+const { releasePlan, verifyInstalledDependencies, releaseManifest } = require("./release-plan");
 
 const rootDir = path.resolve(__dirname, "..");
 const packageJson = require(path.join(rootDir, "package.json"));
@@ -90,11 +91,11 @@ function verifyPackagedFiles() {
 }
 
 function smokeTestPackagedRuntime(executablePath) {
-  const packagedScriptsDir = path.join(unpackedDir, "resources", "app", "scripts");
+  const packagedAppRoot = path.join(unpackedDir, "resources", "app");
   for (const scriptName of ["test-card-flow.js", "test-share-flow.js", "test-management-flow.js", "test-scout-flow.js", "test-streaming-export-flow.js"]) {
-    run(executablePath, [path.join(packagedScriptsDir, scriptName)], {
+    run(executablePath, [path.join(rootDir, "scripts", scriptName)], {
       timeout: 120000,
-      env: { ELECTRON_RUN_AS_NODE: "1" }
+      env: { ELECTRON_RUN_AS_NODE: "1", CARD_VAULT_TEST_APP_ROOT: packagedAppRoot }
     });
   }
 }
@@ -126,6 +127,8 @@ function createPortableZip() {
 
 
 async function main() {
+  const plan = releasePlan(process.argv.slice(2));
+  if (process.argv.includes("--plan")) { process.stdout.write(JSON.stringify(plan, null, 2) + "\n"); return; }
   if (process.platform !== "win32") {
     throw new Error("Windows release packaging must run on Windows.");
   }
@@ -133,7 +136,13 @@ async function main() {
   const signing = resolveWindowsSigning(process.env);
   process.stdout.write(`Windows signing mode: ${signing.description}\n`);
 
-  run("npm.cmd", ["run", "check:release"], { env: { CARD_VAULT_UI_SCREENSHOT_MODE: "compare" } });
+  const versions = verifyInstalledDependencies(rootDir);
+  if (plan.checks === "required") run("npm.cmd", ["run", "check:release"], { env: { CARD_VAULT_UI_SCREENSHOT_MODE: "compare" } });
+  else {
+    process.stdout.write("Package-only mode: source quality checks and packaged runtime suites are explicitly skipped.\n");
+    run("node", ["node_modules/prisma/build/index.js", "generate"]);
+    run("node", ["node_modules/next/dist/bin/next", "build", "--webpack"]);
+  }
   cleanDistDirectory();
   const removedPrismaTemps = prunePrismaTempEngines(path.join(rootDir, "node_modules", ".prisma", "client"));
   process.stdout.write(`Release dependency cleanup removed ${removedPrismaTemps.length} Prisma temporary engine file(s).\n`);
@@ -156,9 +165,11 @@ async function main() {
     const installerSignature = verifyAuthenticodeSignature(setupPath, "Windows installer", { publisher });
     process.stdout.write(`Verified signer: ${installerSignature?.Subject || executableSignature?.Subject}\n`);
   }
-  smokeTestPackagedRuntime(executablePath);
-  verifyPackagedHealthEndpoint(executablePath);
-  run("node", ["scripts/test-packaged-desktop.js", executablePath], { timeout: 180000 });
+  if (plan.runtimeTests === "required") {
+    smokeTestPackagedRuntime(executablePath);
+    verifyPackagedHealthEndpoint(executablePath);
+    run("node", ["scripts/test-packaged-desktop.js", executablePath], { timeout: 180000 });
+  }
   removeArtifact(path.join(unpackedDir, "resources", "app", "logs"));
   createPortableZip();
   assertArtifactSize(setupPath, defaultArtifactLimits.installer, "Windows installer");
@@ -174,6 +185,9 @@ async function main() {
   run("node", ["scripts/verify-release-artifacts.js"], {
     env: { CARD_VAULT_EXPECTED_SIGNING_MODE: signing.mode === "unsigned" ? "unsigned" : "signed" }
   });
+  const artifacts = [setupPath, zipPath].map(file => ({ name: path.basename(file), bytes: fs.statSync(file).size, sha256: sha256File(file).toUpperCase() }));
+  const manifestPath = path.join(distDir, `release-${packageJson.version}.json`);
+  fs.writeFileSync(manifestPath, JSON.stringify(releaseManifest(rootDir, plan, versions, { signingMode: signing.mode, artifacts }), null, 2) + "\n");
 
   process.stdout.write(`\nWindows ${signing.mode === "unsigned" ? "unsigned " : "signed "}release completed.\n`);
   process.stdout.write(`${path.basename(setupPath)}  SHA256 ${setupHash}\n`);

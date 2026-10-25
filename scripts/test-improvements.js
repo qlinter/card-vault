@@ -1,0 +1,114 @@
+const assert = require("node:assert/strict"), fs = require("node:fs"), os = require("node:os"), path = require("node:path");
+const { DatabaseSync } = require("node:sqlite");
+const { chromium } = require("@playwright/test");
+const { fetchTestServer: fetch, fileDatabaseUrl, findAvailablePort, initializeTestDatabase, removeTempRoot, startTestServer, stopServer, waitForServer } = require("./test-http-flow-utils");
+
+async function main() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "card-vault-improvements-"));
+  const data = path.join(root, "data"), database = path.join(data, "dev.db"), output = [];
+  const env = { ...process.env, CARD_VAULT_DATA_DIR: data, DATABASE_URL: fileDatabaseUrl(database), NODE_ENV: "production" };
+  const port = await findAvailablePort(3390), base = `http://127.0.0.1:${port}`;
+  let db, server, browser;
+  try {
+    initializeTestDatabase(env);
+    db = new DatabaseSync(database);
+    db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=30000");
+    db.exec("INSERT INTO Card(id,playerName,cardTitle,sport,collectionStatus,holdingQuantity,isRookie,brand,year,productLine) VALUES('quoted','A','Quoted','Basketball','holding',1,1,'Test brand','2020','Test line'),('unquoted','B','Unquoted','Basketball','holding',1,0,NULL,NULL,NULL),('sold','C','Sold','Basketball','sold',0,0,NULL,NULL,NULL)");
+    db.prepare("INSERT INTO CardValuation(id,cardId,amountMinor,currency,valuedAt,source,provenance) VALUES('quote','quoted',10000,'CNY',?,'个人估计','test')").run(new Date("2026-01-01T00:00:00Z").getTime());
+    const insert = db.prepare("INSERT INTO PortfolioSnapshotRecord(id,name,queryJson,snapshotJson,capturedAt) VALUES(?,?,?,?,?)");
+    insert.run("left", "Left CNY", "{}", "{}", Date.now());
+    insert.run("right", "Right CNY", "{}", "{}", Date.now());
+    insert.run("broken", "Broken", "{invalid", "null", Date.now());
+    server = startTestServer(port, env, output);
+    await waitForServer(base, output, server, "Improvements");
+    browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, locale: "zh-CN" });
+    await page.goto(base);
+    await page.locator(".valuation-coverage").waitFor();
+    assert.match(await page.locator(".valuation-coverage").innerText(), /1\/2/);
+    for (const tab of ["overview", "details", "trends", "structure"]) {
+      const response = await fetch(`${base}/portfolio?tab=${tab}`);
+      const html = await response.text();
+      assert.equal(response.status, 200);
+      assert.ok(!html.includes("快照与比较") && !html.includes("调整范围"));
+      assert.ok(!html.includes("data-next-error-message="));
+    }
+    db.exec("UPDATE Card SET cardTitle='Unquoted updated' WHERE id='unquoted'");
+    const changed = await fetch(`${base}/portfolio?tab=details&kind=all`);
+    assert.ok((await changed.text()).includes("Unquoted updated"), "a cached projection must invalidate after a card write");
+    const future = Date.now() + 2000;
+    db.prepare("INSERT INTO CardValuation(id,cardId,amountMinor,currency,valuedAt,source,provenance) VALUES('future','unquoted',25000,'CNY',?,'个人估计','test')").run(future);
+    await page.goto(`${base}/portfolio`);
+    assert.match(await page.locator('[aria-label="financial summary"] article strong').first().innerText(), /100\.00/);
+    await page.waitForTimeout(Math.max(0, future - Date.now() + 50));
+    await page.reload();
+    assert.match(await page.locator('[aria-label="financial summary"] article strong').first().innerText(), /350\.00/, "future records must invalidate reuse without any database write");
+    db.exec("INSERT INTO FinancialSettings(id,reportingCurrency) VALUES('default','USD') ON CONFLICT(id) DO UPDATE SET reportingCurrency='USD'");
+    await page.goto(`${base}/portfolio?compareLeft=snapshot%3Aleft&compareRight=snapshot%3Aright&workspace=1`);
+    assert.ok(!(await page.locator("body").innerText()).includes("报表币种不同"));
+    assert.equal(await page.getByRole("heading", { name: "组合比较", exact: true }).count(), 0);
+    assert.ok(!(await page.locator("body").innerText()).includes("Left CNY"));
+    db.exec("INSERT INTO ExchangeRate(id,effectiveDate,rateMicros,source,revision) VALUES('rate','2000-01-01',7000000,'test',1)");
+    await page.goto(`${base}/portfolio`);
+    assert.match(await page.locator('[aria-label="financial summary"] article strong').first().innerText(), /50\.00/, "exchange-rate changes must invalidate reporting results");
+    await page.goto(`${base}/portfolio?tab=structure&isRookie=false`);
+    await page.getByRole("button", { name: "卡片属性", exact: true }).click();
+    assert.equal(await page.getByRole("row").filter({ hasText: "新秀卡" }).getByRole("link", { name: "新秀卡", exact: true }).count(), 0);
+    await page.goto(`${base}/cards/new`);
+    fs.mkdirSync("logs", { recursive: true });
+    await page.screenshot({ path: "logs/improvements-entry-collapsed.png", fullPage: true, animations: "disabled" });
+    await page.setViewportSize({ width: 1100, height: 900 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "collapsed entry form must fit the minimum desktop width");
+    await page.screenshot({ path: "logs/improvements-entry-min-width.png", fullPage: true, animations: "disabled" });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    assert.equal(await page.getByText("版本与卡片属性（可选）", { exact: true }).locator("..").getAttribute("open"), null);
+    await page.getByText("评级信息（可选）", { exact: true }).click();
+    await page.locator('input[name="gradingLink"]').fill("invalid-url");
+    await page.getByText("评级信息（可选）", { exact: true }).click();
+    await page.getByRole("button", { name: "保存并查看", exact: true }).click();
+    assert.ok(await page.getByText("评级信息（可选）", { exact: true }).locator("..").getAttribute("open") !== null);
+    await page.locator('input[name="gradingLink"]').fill("");
+    await page.locator('input[name="playerName"]').fill("Draft subject");
+    await page.locator('input[name="cardTitle"]').fill("Draft title");
+    await page.locator('input[name="sport"]').fill("Basketball");
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+    await page.locator('.card-image-upload input[name="images"]').setInputFiles({ name: "saved.png", mimeType: "image/png", buffer: png });
+    await page.waitForURL(/draft=/);
+    const id = new URL(page.url()).searchParams.get("draft");
+    const saved = JSON.parse(db.prepare("SELECT valuesJson FROM CardEntryDraft WHERE id=?").get(id).valuesJson);
+    assert.equal(saved.draftImages.length, 1);
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('.card-image-upload input[name="images"]').files.length === 1);
+    assert.equal(await page.locator('input[name="playerName"]').inputValue(), "Draft subject");
+    await page.getByText("版本与卡片属性（可选）", { exact: true }).click();
+    await page.locator('input[name="parallel"]').fill("Gold");
+    await page.waitForTimeout(1000);
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('.card-image-upload input[name="images"]').files.length === 1);
+    assert.ok(await page.getByText("版本与卡片属性（可选）", { exact: true }).locator("..").getAttribute("open") !== null);
+    assert.equal(await page.locator('input[name="parallel"]').inputValue(), "Gold");
+    const suggestion = await fetch(`${base}/api/cards/options`);
+    assert.ok((await suggestion.json()).brand.includes("Test brand"));
+    await page.locator('datalist[id="card-entry-brand-options"] option[value="Test brand"]').waitFor({ state: "attached" });
+    await page.getByRole("button", { name: "第 1 张新增图片向右旋转", exact: true }).click();
+    await page.waitForTimeout(1000);
+    assert.equal(JSON.parse(db.prepare("SELECT valuesJson FROM CardEntryDraft WHERE id=?").get(id).valuesJson).draftImages[0].rotation, 90);
+    await page.route("**/api/ai/recognize-card", async route => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      try { await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ suggestion: { playerName: "Cancelled result" } }) }); } catch { /* The cancelled request may already be gone. */ }
+    });
+    await page.locator('.entry-ai-tools > summary').click();
+    await page.locator('.ai-recognition-panel input[type="file"]').setInputFiles({ name: "ai.png", mimeType: "image/png", buffer: png });
+    await page.locator('input[name="playerName"]').fill("Draft subject");
+    await page.getByRole("button", { name: "识别并填入", exact: true }).click();
+    await page.getByRole("button", { name: "取消识别", exact: true }).click();
+    await page.getByText("已取消识别，可以重新开始。", { exact: true }).waitFor();
+    assert.equal(await page.locator('input[name="playerName"]').inputValue(), "Draft subject");
+    const response = await fetch(`${base}/api/card-entry/drafts/${id}`, { method: "DELETE" });
+    assert.equal(response.status, 200);
+    assert.ok(!fs.existsSync(path.join(data, "uploads", path.basename(saved.draftImages[0].path))));
+    console.log("Improvements passed: valuation coverage, isolated invalid snapshots, historical comparison, scoped drill-down, image draft save/reload/rotation/cleanup, field suggestions and cancelled AI recognition.");
+  } catch (error) { console.error(output.join("")); throw error; }
+  finally { await browser?.close(); db?.close(); stopServer(server); await removeTempRoot(root); }
+}
+main().catch(error => { console.error(error); process.exitCode = 1; });

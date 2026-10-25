@@ -26,7 +26,7 @@ function parseAnalysis(rawText: string, snapshot: PortfolioSnapshot): PortfolioA
   return completePortfolioAnalysis(normalizePortfolioAnalysis(extractJsonRecord(rawText)), snapshot);
 }
 
-async function repairAnalysis(settings: AiSettings, rawText: string, snapshot: PortfolioSnapshot): Promise<PortfolioAnalysis> {
+async function repairAnalysis(settings: AiSettings, rawText: string, snapshot: PortfolioSnapshot, signal?: AbortSignal): Promise<PortfolioAnalysis> {
   const result = await requestAiChatTextResult(settings, {
     messages: [
       { role: "system", content: "You repair JSON. Return only one strict JSON object and never add facts." },
@@ -45,12 +45,12 @@ async function repairAnalysis(settings: AiSettings, rawText: string, snapshot: P
     temperature: 0,
     responseFormat: "json_object",
     timeoutMs: 90000,
-    operation: "组合分析格式修复"
+    operation: "组合分析格式修复", signal
   });
   return parseAnalysis(result.text, snapshot);
 }
 
-async function remoteAnalysis(settings: AiSettings, snapshot: PortfolioSnapshot): Promise<PortfolioAnalysis> {
+async function remoteAnalysis(settings: AiSettings, snapshot: PortfolioSnapshot, signal?: AbortSignal): Promise<PortfolioAnalysis> {
   const failures: string[] = [];
   const standardPrompt = portfolioAnalysisPrompt(snapshot, "standard");
   let firstText = "";
@@ -68,20 +68,22 @@ async function remoteAnalysis(settings: AiSettings, snapshot: PortfolioSnapshot)
       temperature: settings.provider === "azure" ? 0.1 : 0.2,
       responseFormat: "json_object",
       timeoutMs: 120000,
-      operation: "组合分析"
+      operation: "组合分析", signal
     });
     firstText = first.text;
     firstFinishReason = first.finishReason;
     console.info(`[portfolio-analysis] firstResponseChars=${first.text.length} finishReason=${first.finishReason ?? "unknown"}`);
     return parseAnalysis(first.text, snapshot);
   } catch (error) {
+    signal?.throwIfAborted();
     failures.push(`首次生成：${errorMessage(error, "失败").slice(0, 240)}`);
   }
 
   if (firstText && firstFinishReason !== "length" && firstFinishReason !== "max_tokens") {
     try {
-      return await repairAnalysis(settings, firstText, snapshot);
+      return await repairAnalysis(settings, firstText, snapshot, signal);
     } catch (error) {
+      signal?.throwIfAborted();
       failures.push(`格式修复：${errorMessage(error, "失败").slice(0, 240)}`);
     }
   } else if (firstText) {
@@ -99,11 +101,12 @@ async function remoteAnalysis(settings: AiSettings, snapshot: PortfolioSnapshot)
       temperature: 0,
       responseFormat: "json_object",
       timeoutMs: 120000,
-      operation: "组合分析精简重试"
+      operation: "组合分析精简重试", signal
     });
     console.info(`[portfolio-analysis] compactResponseChars=${regenerated.text.length} finishReason=${regenerated.finishReason ?? "unknown"}`);
     return parseAnalysis(regenerated.text, snapshot);
   } catch (error) {
+    signal?.throwIfAborted();
     failures.push(`精简重试：${errorMessage(error, "失败").slice(0, 240)}`);
   }
 
@@ -120,9 +123,11 @@ export async function POST(request: NextRequest) {
     const clientSnapshot = buildPortfolioClientSnapshot(snapshot);
 
     try {
-      const analysis = await remoteAnalysis(settings, snapshot);
+      request.signal.throwIfAborted();
+      const analysis = await remoteAnalysis(settings, snapshot, request.signal);
       return NextResponse.json({ analysis, snapshot: clientSnapshot, provider, fallback: false });
     } catch (error) {
+      request.signal.throwIfAborted();
       console.warn(`[portfolio-analysis] remote analysis exhausted; using local fallback: ${errorMessage(error, "unknown").slice(0, 500)}`);
       return NextResponse.json({
         analysis: buildFallbackPortfolioAnalysis(snapshot),

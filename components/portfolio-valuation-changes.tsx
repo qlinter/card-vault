@@ -1,6 +1,6 @@
 import { UiText } from "./ui-text";
 import type { PortfolioValuationChange } from "@/lib/portfolio-insights";
-import { profitTone, valuationChangeAvailable } from "@/lib/portfolio-workspace";
+import { profitTone, valuationChangeAvailable } from "@/lib/portfolio-navigation";
 import { formatPortfolioMoney as money, formatSignedPortfolioMoney as signed, formatPortfolioDate as date } from "@/lib/portfolio-presentation";
 import { formatPercentage } from "@/lib/percentage-format";
 import styles from "./portfolio-data.module.css";

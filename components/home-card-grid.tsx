@@ -10,6 +10,7 @@ import {
 } from "@/lib/home-card-grid-state";
 import { useLanguage } from "@/components/language-provider";
 import { formatHomeLoadMoreLabel } from "@/lib/ui-locale";
+import { CollectionExportControls, useCollectionExport } from "./collection-export-controls";
 
 export type HomeCardGridItem = {
   id: string;
@@ -26,9 +27,11 @@ type HomeCardGridProps = {
   cards: HomeCardGridItem[];
   historyKey: string;
   totalCount: number;
+  exportMode?: boolean;
+  query?: Record<string, string | undefined>;
 };
 
-export function HomeCardGrid({ cards, historyKey, totalCount }: HomeCardGridProps) {
+export function HomeCardGrid({ cards, historyKey, totalCount, exportMode = false, query = {} }: HomeCardGridProps) {
   const { locale, t } = useLanguage();
   const [view] = useCollectionView();
   const [visibleCards, setCards] = useState(cards);
@@ -38,6 +41,7 @@ export function HomeCardGrid({ cards, historyKey, totalCount }: HomeCardGridProp
   const nextPage = useRef(1);
   const busy = useRef(false);
   const remainingCount = Math.max(count - visibleCards.length, 0);
+  const selection = useCollectionExport(historyKey, exportMode);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -94,10 +98,12 @@ export function HomeCardGrid({ cards, historyKey, totalCount }: HomeCardGridProp
 
   return (
     <>
-      <section className={`cards-grid${view === "list" ? " is-list" : ""}`} data-testid="home-card-grid">
+      {exportMode ? <CollectionExportControls selection={selection} query={query} loadedIds={visibleCards.map(card => card.id)} totalCount={count} /> : null}
+      <section className={`cards-grid${view === "list" ? " is-list" : ""}${exportMode ? " is-selecting" : ""}`} data-testid="home-card-grid">
         {visibleCards.map((card, index) => (
-          <article key={card.id} className="card-item">
-            <a className="card-link" href={card.href}>
+          <article key={card.id} className={`card-item${exportMode && selection.selected.includes(card.id) ? " is-selected" : ""}`}>
+            {exportMode ? <label className="collection-card-select"><input type="checkbox" aria-label={`${locale === "en" ? "Select" : "选择"} ${card.playerName} · ${card.cardTitle}`} checked={selection.selected.includes(card.id)} disabled={selection.busy} onChange={event => selection.choose(event.target.checked ? [...selection.selected, card.id] : selection.selected.filter(id => id !== card.id))} /></label> : null}
+            <a className="card-link" href={exportMode ? `/cards/${encodeURIComponent(card.id)}?returnTo=${encodeURIComponent(historyKey)}` : card.href}>
               {card.imagePath ? (
                 <img
                   className="card-thumb"

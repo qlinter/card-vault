@@ -1,5 +1,6 @@
 export const supportedImageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-export const maxStoredImageBytes = 15 * 1024 * 1024;
+import { maxStoredImageBytes } from "./card-image-limits.js";
+export { maxStoredImageBytes } from "./card-image-limits.js";
 
 type PreparedImageUpload = {
   buffer: Buffer;

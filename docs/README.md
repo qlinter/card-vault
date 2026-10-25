@@ -1,20 +1,26 @@
 # Card Vault 文档
 
-当前源码版本为 v1.4.1（2026-10-23）。数据板块、首页、寻卡性能、启动修复及整理范围见 [v1.4.1 发布说明](./release-v1.4.1.md)与 [Git 更新说明](./git-update-v1.4.1.md)。分阶段验收见[开发记录](./development-v1.4.1.md)。
-
-本轮发布源码与版本标签，未生成新的安装包或便携包。既有 v1.4.0 分发文件及校验值仍见[历史发布说明](./release-v1.4.0.md)，历史发布事实保留。
+当前版本为 v1.5.0（2026-10-25）。轻量化三个阶段及全面复核修复已完成，包含收藏展示升级、独立心愿录入、设置简化和代码结构整理。功能、Windows 安装包与便携包、验证及 GitHub 同步情况统一见 [v1.5.0 发布说明](./release-v1.5.0.md)；阶段实施历史见[开发记录](./development-v1.5.0.md)。
 
 ## 入口与规划
 
+- [v1.5.0 发布说明](./release-v1.5.0.md)：第一、二阶段交付、分阶段确认及数据兼容边界。
+- [v1.5.0 开发记录](./development-v1.5.0.md)：实施范围与针对性验证。
+
+- [v1.4.2 发布说明](./release-v1.4.2.md)：展示升级、评估修复与本版交付范围。
+- [v1.4.2 开发记录](./development-v1.4.2.md)：此前改进迁入、展示实施及针对性验证。
+- [收藏展示规范](./showcase-guide.md)：展墙、展签、单卡大图及图片适配规则。
+
 - [v1.4.1 发布说明](./release-v1.4.1.md)：本版功能、结构整理、财务规则及源码验收。
+- [v1.4.1 开发记录](./development-v1.4.1.md)：原始版本的分阶段验收与后续版本归属。
 - [v1.4.1 Git 更新说明](./git-update-v1.4.1.md)：提交范围、版本标签和 GitHub 同步。
 
 - [应用主题与扩展方式](./app-themes.md)：四种主题风格、持久化与颜色适配。
 - [中文 README](../README.md) / [English README](../README.en.md)：功能、启动、最新版本详细更新和全部历史版本摘要。
 - [v1.4.0 发布说明](./release-v1.4.0.md)：功能、数据扩展、隔离验收与版本边界。
 - [v1.4.0 Git 更新说明](./git-update-v1.4.0.md)：提交内容、结构整理、验证及版本交付。
-- [寻卡使用与数据规则](./scout-guide.md)：跨站查询、关键词管理、目标进度、草稿恢复与心愿入藏。
-- [数据分析板块](./data-analysis-guide.md)：四页签、共享范围、数量口径、结构下钻及快照比较规则。
+- [寻卡使用与数据规则](./scout-guide.md)：独立跨站查询、简化心愿、草稿及授权历史清理。
+- [数据分析板块](./data-analysis-guide.md)：四页签、共享范围、数量口径、结构下钻及独立趋势范围。
 - [v1.3.6 发布说明](./release-v1.3.6.md)：历史更新、结构审查、源码与包内验收、分发校验值和 Git 更新介绍。
 - [版本历史资料说明](./version-history-sources.md)：Git 来源及早期独立文档缺失范围。
 - [产品路线图](./product-roadmap.md) / [Product Roadmap](./product-roadmap.en.md)：能力状态与后续优先级。
@@ -28,7 +34,7 @@
 - [Cloudflare Drop 临时发布](./cloudflare-drop-publishing.md)：人工发布流程、文件及隐私边界。
 - [Windows 代码签名](./windows-code-signing.md)：打包流程、可选签名及产物校验。
 
-应用内操作说明从“设置 → 使用说明”展开，由 [UserGuide](../components/user-guide.tsx) 维护中英文；工程约束保留在规范中。
+应用内操作说明从“设置 → 帮助与版本 → 使用说明”进入，中英文内容统一在[说明内容](../lib/user-guide-content.ts)维护，[UserGuide](../components/user-guide.tsx)负责渲染；工程约束保留在规范中。
 
 ## 历史版本
 
@@ -47,7 +53,9 @@
 
 ## 维护规则
 
-组合聚合由 `lib/portfolio-batch.ts` 编排，分组、财务汇总和月度历史分别放在 `portfolio-batch-groups.ts`、`portfolio-batch-financials.ts` 和 `portfolio-batch-history.ts`。`financial-reporting.ts` 保留统一入口，币种换算与历史估值投影分别由 `financial-currency.ts` 和 `financial-valuation-projection.ts` 处理。仅汇总调用使用 `loadPortfolioSummary`；明细页面使用 `loadPortfolioSnapshot`。比较计算仅在单次请求内复用，不跨请求缓存。冻结对照实现位于 `tests/fixtures/*-reference.ts`，只供测试与基准使用，不作为运行时代码依赖。
+组合聚合由 `lib/portfolio-batch.ts` 编排，分组、财务汇总和月度历史分别放在对应模块。`financial-reporting.ts` 为统一核算入口，币种换算与历史估值投影独立维护。数据页的导航与展示辅助集中在 `portfolio-navigation.ts`，类型在 `portfolio-workspace-types.ts`，`portfolio-workspace.ts` 只负责聚合，`portfolio-data-rows.ts` 负责明细选择；服务缓存以数据修订号与有效期为边界。冻结参考实现只供测试与基准使用，不作为运行时代码依赖。
+
+授权的一次性历史清理由 `scripts/reset-history.js` 统一事务、安全副本及回滚边界，两个业务入口分别定义清理范围与版本顺序。`history-readiness.ts` 按数据库文件身份和已完成版本复用就绪状态，恢复或替换文件后失效，避免每次刷新与写入争用 SQLite。Windows 运行脚本白名单统一在 `scripts/release-runtime-files.js`，打包配置及产物检查共用；测试脚本从源码侧启动包内运行时，不随安装包交付。
 
 项目按职责维护：`app` 负责路由及操作入口，`components` 负责界面，`lib` 负责领域规则和服务，`electron` 负责桌面、存储与 IPC，`scripts` 负责初始化、验收和发布，`tests` 保留回归用例及视觉基线。录入与详情的交易、费用和估值共用 `FinancialRecordFields`；录入与导入的初始财务写入统一由 `lib/card-entry-finance-service.ts` 编排，卡片图片处理保留在卡片录入服务；表单解析与财务核算各自共享，不复制整套页面流程。组合统计在一次计算内复用数量、最新报价和金额，覆盖分母使用统一规则。
 

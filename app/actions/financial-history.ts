@@ -39,12 +39,17 @@ async function mutateHistory(
   });
 }
 
-function finishHistoryMutation(cardId: string, success: string, returnTo?: string, error?: unknown): never {
+function revalidateHistory(cardId: string) {
   revalidatePath("/");
   revalidatePath(`/cards/${cardId}`);
+  revalidatePath(`/cards/${cardId}/edit`);
   revalidatePath("/showcase");
   revalidatePath("/portfolio");
   revalidatePath(`/showcase/cards/${cardId}`);
+}
+
+function finishHistoryMutation(cardId: string, success: string, returnTo?: string, error?: unknown): never {
+  revalidateHistory(cardId);
   const preservedReturnTo = normalizeReturnTo(returnTo);
   const returnQuery = preservedReturnTo ? `&returnTo=${encodeURIComponent(preservedReturnTo)}` : "";
   if (error) {
@@ -54,7 +59,7 @@ function finishHistoryMutation(cardId: string, success: string, returnTo?: strin
   redirect(`/cards/${cardId}?success=${success}${returnQuery}#financial-history`);
 }
 
-export async function saveFinancialRecordFormAction(cardId: string, type: FinancialRecordType, recordId: string | null, returnTo: string | undefined, _previousState: { error: string }, formData: FormData): Promise<{ error: string }> {
+export async function saveFinancialRecordFormAction(cardId: string, type: FinancialRecordType, recordId: string | null, returnTo: string | undefined, _previousState: { error: string }, formData: FormData, stayOnPage = false): Promise<{ error: string }> {
   try {
     await mutateHistory(cardId, async (transaction) => {
       if (type === "transaction") return recordId ? updateCardTransaction(transaction, cardId, recordId, transactionInput(formData)) : createCardTransaction(transaction, { cardId, ...transactionInput(formData), externalKey: optionalText(formData, "submissionId") });
@@ -62,6 +67,7 @@ export async function saveFinancialRecordFormAction(cardId: string, type: Financ
       return recordId ? updateCardValuation(transaction, cardId, recordId, valuationInput(formData)) : createCardValuation(transaction, { cardId, ...valuationInput(formData), externalKey: optionalText(formData, "submissionId") });
     });
   } catch (error) { return { error: errorMessage(error, "财务记录操作失败，请稍后重试。") }; }
+  if (stayOnPage) { revalidateHistory(cardId); return { error: "" }; }
   finishHistoryMutation(cardId, recordId ? "history-updated" : "history-added", returnTo);
 }
 

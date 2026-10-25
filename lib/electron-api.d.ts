@@ -25,9 +25,9 @@ declare global {
   interface Window {
     cardVaultDesktop?: {
       chooseStorageDirectory: () => Promise<{ path: string; changed: boolean; cancelled: boolean }>;
-      getBackupSettings: () => Promise<{ path: string }>;
+      getBackupSettings: () => Promise<{ path: string; lastBackup: { path: string; createdAt: string; bytes: number; fileCount: number; imageCount: number; verified: boolean; available: boolean } | null }>;
       chooseBackupDirectory: () => Promise<{ path: string; cancelled: boolean }>;
-      backupDataFolder: () => Promise<{ backupRoot: string; datePath: string; backupPath: string }>;
+      backupDataFolder: () => Promise<{ backupRoot: string; datePath: string; backupPath: string; metadataWarning?: string }>;
       checkDataHealth: () => Promise<DesktopDataHealth>;
       showOrphanFileInFolder: (file: DesktopMediaFile) => Promise<{ path: string }>;
       cleanOrphanFiles: () => Promise<{

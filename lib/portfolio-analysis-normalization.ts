@@ -224,12 +224,6 @@ function normalizeAccounting(value: unknown, cardCount: number): PortfolioSnapsh
   return { version: safeText(record.version, 100), currency: String(record.currency), incompleteCardCount: boundedCount(record.incompleteCardCount, cardCount), missing: Array.isArray(record.missing) ? record.missing.map((reason) => safeText(reason, 500)) : [], rates };
 }
 
-export function normalizeStoredPortfolioSnapshot(value: unknown): PortfolioSnapshot {
-  const snapshot = normalizePortfolioSnapshot(value);
-  if (!snapshot.accounting) throw new Error("组合快照格式不受支持，缺少当前财务口径。");
-  return snapshot;
-}
-
 export function normalizePortfolioSnapshot(value: unknown): PortfolioSnapshot {
   const snapshot = objectRecord(value);
   const cardCountValue = snapshot.cardCount;

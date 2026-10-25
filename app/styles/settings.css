@@ -1,0 +1,79 @@
+/* Shared settings surfaces, including the standalone Data page. */
+.settings-surface { --settings-control-height: 40px; }
+.settings-surface :is(.settings-section, .management-section, .settings-disclosure-content, .form-grid, .field, .title-row) { min-width: 0; }
+.settings-surface > .settings-section { margin-block: 1rem; }
+.settings-surface :is(.ai-settings-toggle strong, .about-title) { font-size: 1.125rem; font-weight: 700; line-height: 1.4; }
+.settings-surface :is(.settings-section, .management-section) h2 { margin: 0 0 .75rem; font-size: 1rem; font-weight: 650; line-height: 1.4; }
+.settings-surface h3 { font-size: 1rem; font-weight: 600; line-height: 1.4; }
+.settings-surface :is(.settings-disclosure-content, .financial-settings-body) { margin-top: 1rem; }
+.settings-surface :is(label.field, .management-section label) { min-width: 0; gap: .4rem; font-size: .8rem; font-weight: 500; line-height: 1.5; }
+.settings-surface label.field > span { font-size: inherit; }
+.settings-surface :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=hidden]), select, textarea) { width: 100%; min-width: 0; max-width: 100%; min-height: var(--settings-control-height); border-radius: 8px; border-color: var(--line-strong); padding: .45rem .65rem; font-size: .85rem; font-weight: 400; line-height: 1.4; }
+.settings-surface select:not([multiple]) { height: var(--settings-control-height); padding-right: 2.25rem; background-position: right .75rem center; }
+.settings-surface textarea { min-height: 96px; resize: vertical; }
+.settings-surface :is(input[type=checkbox], input[type=radio]) { flex-shrink: 0; width: 18px; height: 18px; min-height: 0; margin: 0; padding: 0; }
+.settings-surface input[type=file] { padding: 4px; }
+.settings-surface input[type=file]::file-selector-button { min-height: 30px; margin-right: .65rem; padding: .25rem .65rem; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-soft); color: var(--ink); font: inherit; cursor: pointer; }
+.settings-surface .btn { min-height: var(--settings-control-height); max-width: 100%; padding: .45rem .8rem; border-radius: 8px; font-size: .85rem; font-weight: 600; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+.settings-surface :is(.settings-path, .backup-message, .health-result, .about-release-notes, .exchange-rate-summary) { overflow-wrap: anywhere; }
+.settings-surface :is(.settings-path, .backup-message, .muted, .note-error, .note-ok) { font-size: .85rem; line-height: 1.6; }
+.settings-surface :is(.storage-actions, .backup-actions) { max-width: 100%; }
+.settings-surface .title-row > div:first-child { min-width: 0; }
+.settings-surface .title-row h2 { margin-bottom: 0; }
+.settings-surface .health-result { padding: .8rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); font-weight: 400; }
+.settings-surface .orphan-file-list code { min-width: 0; font-size: .78rem; line-height: 1.5; }
+.settings-surface .orphan-reveal-button { margin: 0; }
+.settings-surface .theme-option-copy { padding: .75rem; }
+.settings-surface .theme-option-copy strong { min-width: 0; font-size: .85rem; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.settings-surface .ai-provider-picker { align-items: end; gap: .75rem; margin-block: 1rem; }
+.settings-surface .ai-provider-picker > .field { flex-basis: 20rem; }
+.settings-surface .ai-provider-actions { gap: .5rem; }
+.settings-surface .ai-settings-panel .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+.settings-surface .ai-endpoint-field { grid-column: 1 / -1; }
+.settings-surface .ai-key-status-field { grid-column: 1 / -1; flex-direction: row; align-items: center; flex-wrap: wrap; gap: .75rem; }
+.settings-surface .ai-key-status-field > span:has(input) { display: inline-flex; align-items: center; gap: .5rem; min-height: 32px; font-weight: 400; }
+.settings-surface .ai-settings-panel .ai-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+.settings-surface .exchange-rate-form { grid-template-columns: minmax(140px, 1fr) minmax(160px, 1fr) minmax(0, 2fr); }
+.settings-surface .exchange-rate-form .field > input { margin-top: auto; }
+.settings-surface .primary-currency-form .field { width: 200px; min-width: 0; max-width: 100%; }
+.settings-surface .exchange-rate-summary { flex-wrap: wrap; }
+.settings-surface .exchange-rate-summary > div:first-child { flex: 1 1 240px; min-width: 0; }
+.settings-surface .exchange-rate-summary .financial-form-actions { flex: 0 1 auto; }
+.settings-surface .about-content { padding: 1rem 1rem 0; }
+.settings-surface .about-footer { margin-inline: -1rem; padding-inline: 1rem; }
+.settings-surface .settings-help { margin-top: 1rem; border-top: 1px solid var(--line); }
+.settings-surface .settings-help-toggle { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; min-height: 48px; padding: .65rem .2rem; border: 0; background: transparent; color: var(--muted-ink); font: inherit; font-size: .85rem; font-weight: 600; cursor: pointer; text-align: left; }
+.settings-surface .settings-help-toggle > span:last-child { display: flex; align-items: center; gap: .8rem; }
+.settings-surface .settings-help-toggle small { font-size: .75rem; font-weight: 400; }
+.settings-surface .settings-help-content { padding: 1rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.settings-surface .settings-help-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.settings-surface .settings-help-copyright { margin: 1rem 0 0; color: var(--muted-ink); font-size: .75rem; }
+.settings-surface .data-workspace > .settings-section, .data-workspace.settings-surface > .settings-section { margin-block: 1rem 0; box-shadow: none; }
+.settings-surface .data-workspace .settings-section .ai-settings-toggle strong, .data-workspace.settings-surface .settings-section .ai-settings-toggle strong { font-size: 1rem; font-weight: 600; }
+
+/* The same Data controls are used inside Settings and on /settings/data. */
+.settings-surface .data-workspace .management-section, .data-workspace.settings-surface .management-section { margin-block: 1rem; }
+.settings-surface .data-workspace .management-section:first-child, .data-workspace.settings-surface .management-section:first-of-type { margin-top: 0; }
+.data-workspace .import-file-field { margin-bottom: .85rem; }
+.data-workspace .import-mapping-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+.data-workspace .import-mapping-grid > label { display: flex; flex-direction: column; padding: .8rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); }
+.data-workspace .import-mapping-grid > label > span { flex: 1; min-height: 2.8em; overflow-wrap: anywhere; }
+.data-workspace .import-mapping-grid small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-height: 2.8em; max-height: none; overflow: hidden; font-size: .75rem; line-height: 1.4; }
+.data-workspace .import-options { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; margin-top: 1rem; }
+.data-workspace .import-options > label { flex: 1 1 280px; }
+.data-workspace .management-table { max-width: 100%; border: 1px solid var(--line); border-radius: 8px; }
+.data-workspace .management-table table { table-layout: fixed; font-size: .8rem; }
+.data-workspace .management-table :is(th, td):nth-child(1) { width: 8%; }
+.data-workspace .management-table :is(th, td):nth-child(2) { width: 50%; }
+.data-workspace .management-table :is(th, td):nth-child(3) { width: 17%; }
+.data-workspace .management-table :is(th, td):nth-child(4) { width: 25%; }
+.data-workspace .management-table th { background: var(--surface-soft); font-weight: 600; }
+.data-workspace .management-table td { vertical-align: top; line-height: 1.5; }
+
+@media (max-width: 700px) {
+  .settings-surface :is(.ai-settings-panel .form-grid, .exchange-rate-form), .data-workspace .import-mapping-grid { grid-template-columns: minmax(0, 1fr); }
+  .settings-surface :is(.storage-actions, .backup-actions) { flex-basis: auto; }
+  .settings-surface .orphan-file-list li { grid-template-columns: minmax(0, 1fr); }
+  .settings-surface .orphan-reveal-button { grid-column: 1; justify-self: start; }
+}
+.ai-settings-fields { border: 0; margin: 0; padding: 0; min-width: 0; }

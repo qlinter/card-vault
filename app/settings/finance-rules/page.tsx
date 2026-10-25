@@ -15,7 +15,7 @@ export default function FinanceRulesPage() {
     ["已实现盈亏", "Realized profit", "出售金额 − 出售费用 − 卖出卡片结转的成本。", "Sale proceeds − sale expenses − the cost allocated to sold cards."],
     ["未实现盈亏", "Unrealized profit", "持仓估值 − 对应的剩余成本。", "Holding value − the corresponding remaining cost."],
     ["总盈亏", "Total profit", "已实现盈亏 + 未实现盈亏。全部售出时，仅保留已实现盈亏。", "Realized + unrealized profit. Once fully sold, only realized profit remains."],
-    ["未实现回报率", "Unrealized return", "未实现盈亏 ÷ 对应剩余成本 × 100%；成本为零或资料不完整时显示“—”。", "Unrealized profit ÷ corresponding remaining cost × 100%. Shown as unavailable when the cost is zero or data are incomplete."]
+    ["未实现回报率", "Unrealized return", "未实现盈亏 ÷ 对应剩余成本 × 100%；成本为零或资料不完整时显示“–”。", "Unrealized profit ÷ corresponding remaining cost × 100%. Shown as unavailable when the cost is zero or data are incomplete."]
   ];
   return <div className="page finance-rules-page" data-i18n-skip>
     <div className="title-row"><h1 className="h1">{t("财务计算规则", "Financial calculation rules")}</h1><Link className="btn btn-secondary" href="/settings#financial-settings">{t("返回财务", "Back to Finance")}</Link></div>
@@ -35,8 +35,8 @@ export default function FinanceRulesPage() {
       <p>{t("编辑或删除旧汇率会重新计算受影响日期区间；切换主币种会重新生成当前报表，原币金额不变。金额逐项折算并四舍五入到分后汇总；汇率最多保留六位小数。", "Editing or deleting an older rate recalculates its affected period. Changing the primary currency regenerates live reports while preserving original amounts. Each component is converted and rounded to cents before aggregation; rates allow up to six decimal places.")}</p>
     </section>
     <section className="panel"><h2>{t("5. 整体汇总与历史趋势", "5. Portfolio totals and historical trends")}</h2>
-      <p>{t("整体数据仅统计当前筛选范围。首页与持仓财务的估值合计已有报价的持仓，并显示覆盖数；完整的成本与盈亏需要对应资料齐全，缺失时显示“—”。", "Totals cover the current filter scope. Home and holding values sum quoted holdings and show coverage. Complete costs and returns require the corresponding data; otherwise they are unavailable.")}</p>
-      <p>{t("财务历史按每个月月末重建，本月截至当前时间，不用之后的报价倒填过去。只要当月部分持仓有估值，就显示这些持仓的估值合计；未实现盈亏只减去这些已估值持仓的剩余成本，其中缺少成本时显示“—”。完全没有报价时保留空值。", "History is reconstructed at each month-end, or now for the current month. Later quotes never fill earlier months. Any quoted holdings can contribute to historical value. Historical unrealized profit subtracts only those holdings’ remaining costs; missing costs make that return unavailable. With no quotes, values remain missing.")}</p>
+      <p>{t("整体数据仅统计当前筛选范围。首页与持仓财务的估值合计已有报价的持仓，并显示覆盖数；完整的成本与盈亏需要对应资料齐全，缺失时显示“–”。", "Totals cover the current filter scope. Home and holding values sum quoted holdings and show coverage. Complete costs and returns require the corresponding data; otherwise they are unavailable.")}</p>
+      <p>{t("财务历史按每个月月末重建，本月截至当前时间，不用之后的报价倒填过去。只要当月部分持仓有估值，就显示这些持仓的估值合计；未实现盈亏只减去这些已估值持仓的剩余成本，其中缺少成本时显示“–”。完全没有报价时保留空值。", "History is reconstructed at each month-end, or now for the current month. Later quotes never fill earlier months. Any quoted holdings can contribute to historical value. Historical unrealized profit subtracts only those holdings’ remaining costs; missing costs make that return unavailable. With no quotes, values remain missing.")}</p>
       <p>{t("“估值覆盖 X/Y”表示当月有估值的持仓卡片条目数 / 全部持仓条目数；“成本完整 X/Y”同理。部分覆盖期间的曲线不代表全部组合收益。30/90/180 天估值变化包含数量与报价覆盖变化，不等于投资回报。", "Valuation coverage X/Y counts quoted holding entries out of all holding entries; cost coverage works similarly. Partially covered periods do not represent full portfolio returns. The 30/90/180-day value changes include quantity and coverage changes and are not investment returns.")}</p>
     </section>
     <section className="panel"><h2>{t("6. 活动趋势的金额与数量", "6. Activity amounts and quantities")}</h2>

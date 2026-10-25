@@ -15,6 +15,7 @@ type SharedFormProps = {
   submitLabel: string;
   marker?: string;
 };
+export type ExpenseSaleTransaction = Pick<CardTransaction, "id" | "kind" | "quantity" | "amountMinor" | "currency" | "occurredAt">;
 
 function amountInput(amountMinor: bigint, currency: string): string {
   return formatMinorMoney(amountMinor, currency).replace(`${currency} `, "");
@@ -31,22 +32,23 @@ function HistorySubmit({ editing, label }: { editing: boolean; label: string }) 
   return <button className={editing ? "btn btn-secondary" : "btn btn-primary"} type="submit" disabled={pending}><UiText text={label} /></button>;
 }
 
-function HistoryRecordForm({ action, submitLabel, marker, type, values, editing, sales = [] }: SharedFormProps & {
+function HistoryRecordForm({ action, submitLabel, marker, type, values, editing, sales = [], transactionKind }: SharedFormProps & {
   type: EntryFinanceRecord["type"];
   values: EntryFinanceValues;
   editing: boolean;
   sales?: Array<{ id: string; label: ReactNode }>;
+  transactionKind?: "purchase" | "sale";
 }) {
   return <PersistentForm action={action} className="financial-form">
     <FormMarker value={marker} />
-    <FinancialRecordFields type={type} values={values} prefix="" sales={sales} showExpenseHelp />
+    <FinancialRecordFields type={type} values={values} prefix="" sales={sales} showExpenseHelp transactionKind={transactionKind} />
     <HistorySubmit editing={editing} label={submitLabel} />
   </PersistentForm>;
 }
 
-export function TransactionForm({ record, ...props }: SharedFormProps & { record?: CardTransaction }) {
-  return <HistoryRecordForm {...props} type="transaction" editing={Boolean(record)} values={{
-    kind: record?.kind ?? "purchase",
+export function TransactionForm({ record, transactionKind, ...props }: SharedFormProps & { record?: CardTransaction; transactionKind?: "purchase" | "sale" }) {
+  return <HistoryRecordForm {...props} type="transaction" editing={Boolean(record)} transactionKind={record ? undefined : transactionKind} values={{
+    kind: record?.kind ?? transactionKind ?? "purchase",
     amount: record ? amountInput(record.amountMinor, record.currency) : "",
     currency: record?.currency ?? "CNY",
     quantity: String(record?.quantity ?? 1),
@@ -56,7 +58,7 @@ export function TransactionForm({ record, ...props }: SharedFormProps & { record
   }} />;
 }
 
-export function ExpenseForm({ record, transactions, ...props }: SharedFormProps & { record?: CardExpense; transactions: CardTransaction[] }) {
+export function ExpenseForm({ record, transactions, ...props }: SharedFormProps & { record?: CardExpense; transactions: ExpenseSaleTransaction[] }) {
   const sales = transactions.filter(transaction => transaction.kind === "sale").map(sale => ({
     id: sale.id,
     label: <>{formatHistoryDateInput(sale.occurredAt)} · {sale.quantity}<UiText text=" 张 · " />{formatMinorMoney(sale.amountMinor, sale.currency)}</>

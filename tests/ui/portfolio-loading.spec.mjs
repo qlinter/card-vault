@@ -1,19 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
-import path from "node:path";
-
-const databasePath = path.resolve("tests/.ui-test-runtime/data/dev.db");
-function database() {
-  const db = new DatabaseSync(databasePath);
-  db.exec("PRAGMA busy_timeout=5000");
-  return db;
-}
 
 for (const locale of ["zh", "en"]) {
   test(`slow navigation keeps the current page and delays its navigation hint (${locale})`, async ({ page, context }, testInfo) => {
     if (locale === "en") await context.addCookies([{ name: "card_vault_ui_locale", value: "en", url: "http://127.0.0.1:3360" }]);
     await page.goto("/", { waitUntil: "networkidle" });
-    await expect(page.locator(".summary-grid")).toBeVisible();
+    await expect(page.locator(".collection-summary")).toBeVisible();
     await page.clock.install();
     await page.clock.pauseAt(new Date());
     let release;
@@ -26,10 +17,10 @@ for (const locale of ["zh", "en"]) {
       await page.locator('.nav-links a[href="/portfolio"]').click();
       await page.clock.runFor(399);
       await expect(page.locator(".navigation-pending")).toHaveCount(0);
-      await expect(page.locator(".summary-grid")).toBeVisible();
+      await expect(page.locator(".collection-summary")).toBeVisible();
       await page.clock.runFor(1);
       await expect(page.locator('.nav-links a[href="/portfolio"]').getByRole("status")).toBeVisible();
-      await expect(page.locator(".summary-grid")).toBeVisible();
+      await expect(page.locator(".collection-summary")).toBeVisible();
       await expect(page.getByTestId("portfolio-loading")).toHaveCount(0);
       await expect(page.getByTestId("page-loading")).toHaveCount(0);
       await page.screenshot({ path: testInfo.outputPath(`navigation-${locale}.png`) });
@@ -40,54 +31,4 @@ for (const locale of ["zh", "en"]) {
     await expect(page.locator(".portfolio-page")).toBeVisible();
     await expect(page.locator(".navigation-pending")).toHaveCount(0);
   });
-
-  test(`portfolio failure can be retried without losing filters (${locale})`, async ({ page, context }, testInfo) => {
-    if (locale === "en") await context.addCookies([{ name: "card_vault_ui_locale", value: "en", url: "http://127.0.0.1:3360" }]);
-    const db = database();
-    const restore = () => db.prepare("DELETE FROM PortfolioSnapshotRecord WHERE id='page-recovery-fixture'").run();
-    try {
-      db.prepare("INSERT INTO PortfolioSnapshotRecord(id,name,queryJson,snapshotJson) VALUES('page-recovery-fixture','Recovery fixture','invalid','{}')").run();
-      await page.goto("/portfolio?sport=Basketball&sort=yearAsc");
-      await expect(page.getByRole("heading", { name: locale === "en" ? "This page could not be loaded" : "暂时无法加载此页面" })).toBeVisible();
-      await page.screenshot({ path: testInfo.outputPath(`recovery-${locale}.png`) });
-      restore();
-      await page.getByRole("button", { name: locale === "en" ? "Try again" : "重试", exact: true }).click();
-      await expect(page.locator(".portfolio-page")).toBeVisible();
-      expect(new URL(page.url()).searchParams.get("sport")).toBe("Basketball");
-      expect(new URL(page.url()).searchParams.get("sort")).toBe("yearAsc");
-      await expect(page.locator(".page-recovery")).toHaveCount(0);
-    } finally {
-      restore();
-      db.close();
-    }
-  });
 }
-
-for (const locale of ["zh", "en"]) test(`a failed comparison leaves the current portfolio available and can be retried (${locale})`, async ({ page, context }) => {
-  if (locale === "en") await context.addCookies([{ name: "card_vault_ui_locale", value: "en", url: "http://127.0.0.1:3360" }]);
-  const db = database();
-  try {
-    await page.goto("/portfolio?sport=Basketball&workspace=1", { waitUntil: "networkidle" });
-    await page.getByLabel(locale === "en" ? "Snapshot Name" : "时间点快照名称", { exact: true }).fill("Recovery comparison");
-    await page.getByRole("button", { name: locale === "en" ? "Save Current Snapshot" : "保存当前快照", exact: true }).click();
-    await expect(page.locator(".note-ok")).toBeVisible();
-    const record = db.prepare("SELECT * FROM PortfolioSnapshotRecord WHERE name='Recovery comparison'").get();
-    db.prepare("DELETE FROM PortfolioSnapshotRecord WHERE id=?").run(record.id);
-    await page.goto(`/portfolio?sport=Basketball&compareLeft=snapshot%3A${record.id}&compareRight=current`);
-    await expect(page.locator(".portfolio-page")).toBeVisible();
-    await expect(page.locator('details').filter({ has: page.locator('select[name="compareRight"]') })).toHaveAttribute("open", "");
-    await expect(page.locator('.portfolio-page').getByRole("alert")).toContainText(locale === "en" ? "missing or has been deleted" : "快照不存在");
-    await expect(page.getByRole("button", { name: locale === "en" ? "Try again" : "重试", exact: true })).toBeVisible();
-    await expect(page.locator("#portfolio-current-title")).toBeVisible();
-    // Restore the missing source, then retry without changing the comparison query.
-    db.prepare("INSERT INTO PortfolioSnapshotRecord(id,name,queryJson,snapshotJson,capturedAt) VALUES(?,?,?,?,?)").run(record.id, record.name, record.queryJson, record.snapshotJson, record.capturedAt);
-    await page.getByRole("button", { name: locale === "en" ? "Try again" : "重试", exact: true }).click();
-    await expect(page.locator('.portfolio-page').getByRole("alert")).toHaveCount(0);
-    await expect(page.locator(".portfolio-page")).toBeVisible();
-    expect(new URL(page.url()).searchParams.get("compareLeft")).toBe(`snapshot:${record.id}`);
-    expect(new URL(page.url()).searchParams.get("compareRight")).toBe("current");
-  } finally {
-    db.prepare("DELETE FROM PortfolioSnapshotRecord WHERE name='Recovery comparison'").run();
-    db.close();
-  }
-});

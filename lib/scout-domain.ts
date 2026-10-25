@@ -1,22 +1,4 @@
 export type ScoutQuery = { keyword: string };
-export type ScoutOwnedCard = { id: string; playerName: string; cardTitle: string; details: string; imagePath: string | null; imageRotation: number; certNumber: string | null };
-export type ScoutOwnedCardsPage = { cards: ScoutOwnedCard[]; totalCount: number; page: number; pageSize: number };
-export type WishUndo = { id: string; status: string; cardIds: string[]; revision: string };
-export function scoutTargetCount(value: unknown): number | null {
-  if (value === "" || value === undefined || value === null) return null;
-  if (typeof value !== "string" && typeof value !== "number") throw new Error("目标数量须为 1 至 500 的整数。");
-  const count = Number(value);
-  if (!Number.isInteger(count) || count < 1 || count > 500) throw new Error("目标数量须为 1 至 500 的整数。");
-  return count;
-}
-export function wishProgressStatus(count: number, target: number | null): "planned" | "acquired" {
-  return target !== null && count < target ? "planned" : "acquired";
-}
-export function scoutCardIds(value: unknown, allowEmpty = false): string[] {
-  if (!Array.isArray(value) || (!allowEmpty && !value.length) || value.length > 500 || value.some(id => typeof id !== "string" || !id.trim() || id.length > 160)) throw new Error("请选择有效的入藏卡片，最多 500 张。");
-  if (new Set(value).size !== value.length) throw new Error("入藏卡片不能重复选择。");
-  return [...value].sort();
-}
 export const emptyScoutQuery: ScoutQuery = { keyword: "" };
 export function normalizeScoutQuery(input: unknown): ScoutQuery {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("查询条件无效。");

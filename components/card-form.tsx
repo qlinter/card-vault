@@ -1,48 +1,21 @@
 "use client";
 
 import { cardCollectionStatuses, collectionStatusText } from "@/lib/card-domain";
-import { UiText, UiElement } from "@/components/ui-text";
-import { Card, CardImage } from "@prisma/client";
-import { useEffect, useRef, type FormEventHandler, type Ref } from "react";
+import { UiText } from "@/components/ui-text";
+import { useEffect, useRef } from "react";
 import { AiRecognitionPanel } from "@/components/ai-recognition-panel";
 import { CardImageFields } from "@/components/card-image-fields";
 import { CardEntryDuplicatePanel } from "@/components/card-entry-duplicate-panel";
-import { CardEntryTemplatePanel } from "@/components/card-entry-template-panel";
 import { CardEntryFinancialRecords } from "@/components/card-entry-financial-records";
 import { InvestmentInputs } from "@/components/investment-inputs";
-import { splitTagString, stringifyTags } from "@/lib/card-helpers";
-import { CardFormValues } from "@/lib/card-form-values";
 import { defaultInitialQuantityForStatus } from "@/lib/card-quantity";
+import { CardArchiveFields } from "./card-archive-fields";
+import { CardGradingFields } from "./card-grading-fields";
+import { CardDescriptionFields } from "./card-description-fields";
+import type { CardFormProps } from "@/lib/card-form-types";
+import { pickCardField as pickValue, revealCardField, hasOptionalCardData } from "@/lib/card-form-display";
+import { OptionalCardFields } from "./optional-card-fields";
 import { encodeReturnTo } from "@/lib/query-params";
-import type { CardEntryRecognitionSummary } from "@/lib/card-entry-queue-domain";
-
-type QueuedCardImage = {
-  id: string;
-  url: string;
-  side: "front" | "back";
-  originalName: string;
-};
-
-type CardFormProps = {
-  mode: "create" | "edit";
-  action: (formData: FormData) => void | Promise<void>;
-  error?: string;
-  card?: Card & { images: CardImage[] };
-  values?: CardFormValues;
-  returnTo?: string;
-  formRef?: Ref<HTMLFormElement>;
-  draftId?: string;
-  onSubmit?: FormEventHandler<HTMLFormElement>;
-  onInvalid?: FormEventHandler<HTMLFormElement>;
-  submitDisabled?: boolean;
-  queueItemId?: string;
-  queuedImages?: QueuedCardImage[];
-  queueRecognition?: CardEntryRecognitionSummary;
-};
-
-function pickValue(value: string | undefined, fallback: string): string {
-  return value ?? fallback;
-}
 
 const attributeFields = {
   isSerialNumbered: ["serialNumber", "serialRange"],
@@ -59,6 +32,7 @@ export function CardForm({
   returnTo,
   formRef,
   draftId,
+  draftImages,
   onSubmit,
   onInvalid,
   submitDisabled = false,
@@ -66,13 +40,39 @@ export function CardForm({
   queuedImages = [],
   queueRecognition
 }: CardFormProps) {
-  const tags = splitTagString(card?.tags ?? null);
   const defaultAiImageUrls = queuedImages.length > 0
     ? queuedImages.slice(0, 2).map((image) => image.url)
     : card?.images.slice(0, 2).map((image) => image.path) ?? [];
   const collectionStatus = pickValue(values?.collectionStatus, card?.collectionStatus ?? "holding");
+  const statusFields = <div className="form-grid card-status-fields full">
+    <label className="field">
+      <span><UiText text="公开状态" /></span>
+      <select name="visibility" defaultValue={pickValue(values?.visibility, card?.visibility ?? "private")}>
+        <option value="private"><UiText text="私密" /></option>
+        <option value="public"><UiText text="公开" /></option>
+        <option value="linkOnly"><UiText text="仅链接可见" /></option>
+      </select>
+    </label>
+    <label className="field">
+      <span><UiText text="收藏状态" /></span>
+      <select name="collectionStatus" defaultValue={collectionStatus}>
+        {cardCollectionStatuses.map(status => <option key={status} value={status}><UiText text={collectionStatusText(status)} /></option>)}
+      </select>
+    </label>
+  </div>;
   const numberedRef = useRef<HTMLInputElement>(null);
-  const hasSerial = Boolean(pickValue(values?.serialNumber, card?.serialNumber ?? "").trim() || pickValue(values?.serialRange, card?.serialRange ?? "").trim());
+
+  useEffect(() => {
+    const form = numberedRef.current?.form;
+    const sport = form?.elements.namedItem("sport");
+    if (mode !== "create" || !(sport instanceof HTMLInputElement)) return;
+    try {
+      if (!draftId && !queueItemId && !sport.value) sport.value = window.localStorage.getItem("card-vault:last-entry-sport") || "";
+    } catch { /* Entry remains available when browser preferences are unavailable. */ }
+    const remember = () => { try { if (sport.value.trim()) window.localStorage.setItem("card-vault:last-entry-sport", sport.value.trim()); } catch { /* Optional preference. */ } };
+    sport.addEventListener("change", remember);
+    return () => sport.removeEventListener("change", remember);
+  }, [mode, draftId, queueItemId]);
 
   useEffect(() => {
     const checkbox = numberedRef.current;
@@ -99,167 +99,44 @@ export function CardForm({
   }, [values, card]);
 
   return (
-    <form ref={formRef} action={action} onSubmit={onSubmit} onInvalid={onInvalid} className={mode === "create" ? "panel card-entry-form" : "panel"} encType="multipart/form-data" data-card-entry-form={mode === "create" ? "true" : undefined}>
+    <form ref={formRef} action={action} onSubmit={onSubmit} onInvalid={onInvalid} onInvalidCapture={event => { if (event.target instanceof HTMLElement) revealCardField(event.target); }} className={mode === "create" ? "panel card-entry-form" : "panel"} encType="multipart/form-data" data-card-entry-form={mode === "create" ? "true" : undefined}>
       {error ? <p className="note-error"><UiText text={error} /></p> : null}
       {mode === "edit" && returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       {mode === "create" && draftId ? <input type="hidden" name="draftId" value={draftId} /> : null}
-      {mode === "create" && values?.wishId ? <div className="note-ok"><UiText text="成功入藏后将更新关联心愿的收集进度。" /><a href={"/collection?tab=wishlist&wish=" + encodeURIComponent(values.wishId)}><UiText text="返回寻卡" /></a><input type="hidden" name="wishId" value={values.wishId} /></div> : null}
       {mode === "create" && queueItemId ? <input type="hidden" name="queueItemId" value={queueItemId} /> : null}
 
-      {mode === "create" ? <CardEntryTemplatePanel /> : null}
-
-      <AiRecognitionPanel
+      <details className="entry-ai-tools" open={queueRecognition?.status === "review" || undefined}><summary><UiText text="AI 识图填充" /></summary><AiRecognitionPanel
         mode={mode}
         defaultImageUrls={defaultAiImageUrls}
         queueItemId={queueItemId}
         persistedRecognition={queueRecognition}
-      />
+      /></details>
 
       {mode === "create" ? <CardEntryDuplicatePanel /> : null}
 
       <div className="form-grid">
+        <CardImageFields
+          mode={mode}
+          cardTitle={pickValue(values?.cardTitle, card?.cardTitle ?? "")}
+          existingImages={(card?.images ?? []).map((image) => ({
+            id: image.id,
+            url: image.path,
+            rotation: image.rotation
+          }))}
+          queuedImages={queuedImages}
+          draftImages={draftImages}
+        />
         {mode === "create" ? (
           <div className="form-section-heading full"><div><h2><UiText text="卡片信息" /></h2></div></div>
         ) : null}
-        <label className="field card-field-wide">
-          <span><UiText text={"卡片主体 *"} /></span>
-          <input name="playerName" required defaultValue={pickValue(values?.playerName, card?.playerName ?? "")} />
-        </label>
+        <CardArchiveFields values={values} card={card} numberedRef={numberedRef} afterBasicFields={mode === "create" ? statusFields : undefined} />
 
-        <label className="field card-field-wide">
-          <span><UiText text={"卡片名称 *"} /></span>
-          <input name="cardTitle" required defaultValue={pickValue(values?.cardTitle, card?.cardTitle ?? "")} />
-        </label>
-
-        <label className="field">
-          <span><UiText text={"运动类型 *"} /></span>
-          <UiElement as="input" uiAttributes={["placeholder"]}
-            name="sport"
-            required
-            placeholder="篮球 / 足球 / 棒球"
-            defaultValue={pickValue(values?.sport, card?.sport ?? "")}
-          />
-        </label>
-
-        <label className="field">
-          <span>Team</span>
-          <input name="team" defaultValue={pickValue(values?.team, card?.team ?? "")} />
-        </label>
-
-        <label className="field">
-          <span><UiText text={"年份"} /></span>
-          <UiElement as="input" uiAttributes={["placeholder"]} name="year" type="text" placeholder="例如 2016-17" defaultValue={pickValue(values?.year, card?.year ?? "")} />
-        </label>
-
-        <label className="field">
-          <span><UiText text={"品牌"} /></span>
-          <UiElement as="input" uiAttributes={["placeholder"]} name="brand" placeholder="例如 Panini / Topps" defaultValue={pickValue(values?.brand, card?.brand ?? "")} />
-        </label>
-
-        <label className="field">
-          <span><UiText text={"产品线"} /></span>
-          <UiElement as="input" uiAttributes={["placeholder"]} name="productLine" placeholder="例如 Prizm / Select / Immaculate" defaultValue={pickValue(values?.productLine, card?.productLine ?? "")} />
-        </label>
-
-        <label className="field">
-          <span><UiText text={"子系列"} /></span>
-          <input name="subsetName" defaultValue={pickValue(values?.subsetName, card?.subsetName ?? "")} />
-        </label>
-
-        <label className="field">
-          <span><UiText text={"平行版本"} /></span>
-          <UiElement as="input" uiAttributes={["placeholder"]} name="parallel" placeholder="例如 Gold / Mojo / Refractor" defaultValue={pickValue(values?.parallel, card?.parallel ?? "")} />
-        </label>
-
-        <label className="field">
-          <span><UiText text={"卡号"} /></span>
-          <input name="cardNumber" defaultValue={pickValue(values?.cardNumber, card?.cardNumber ?? "")} />
-        </label>
-
-        <label className="field card-field-wide">
-          <span><UiText text={"编号"} /></span>
-          <input name="serialNumber" defaultValue={pickValue(values?.serialNumber, card?.serialNumber ?? "")} />
-        </label>
-
-        <label className="field card-field-wide">
-          <span><UiText text={"编号范围"} /></span>
-          <UiElement as="input" uiAttributes={["placeholder"]} name="serialRange" placeholder="例如 /99" defaultValue={pickValue(values?.serialRange, card?.serialRange ?? "")} />
-        </label>
-
-        <label className="field card-field-wide">
-          <span><UiText text={"签字类型"} /></span>
-          <input name="autoType" defaultValue={pickValue(values?.autoType, card?.autoType ?? "")} />
-        </label>
-
-        <label className="field card-field-wide">
-          <span><UiText text={"Patch 类型"} /></span>
-          <input name="patchType" defaultValue={pickValue(values?.patchType, card?.patchType ?? "")} />
-        </label>
-
-        <div className="card-attribute-options full">
-        <label className="field card-numbered-option">
-          <span>
-            <input
-              ref={numberedRef}
-              name="isSerialNumbered"
-              type="checkbox"
-              defaultChecked={hasSerial || (values?.isSerialNumbered ?? card?.isSerialNumbered ?? false)}
-            />{" "}<UiText text={"限量编号卡"} /></span>
-        </label>
-          <label className="field">
-            <span>
-              <input name="isAutograph" type="checkbox" defaultChecked={Boolean(pickValue(values?.autoType, card?.autoType ?? "").trim()) || (values?.isAutograph ?? card?.isAutograph ?? false)} /><UiText text={"是否签名卡"} /></span>
-          </label>
-          <label className="field">
-            <span><input name="isPatch" type="checkbox" defaultChecked={Boolean(pickValue(values?.patchType, card?.patchType ?? "").trim()) || (values?.isPatch ?? card?.isPatch ?? false)} /><UiText text={"是否 Patch/Jersey"} /></span>
-          </label>
-          <label className="field">
-            <span><input name="isRookie" type="checkbox" defaultChecked={values?.isRookie ?? card?.isRookie ?? false} /><UiText text={"是否 Rookie"} /></span>
-          </label>
-        </div>
+        <CardGradingFields values={values} card={card} mode={mode} />
 
         {mode === "create" ? (
-          <div className="form-section-heading full"><div><h2><UiText text="评级信息" /></h2></div></div>
-        ) : null}
-        <label className="field">
-          <span><UiText text={"评级机构"} /></span>
-          <input name="gradingCompany" defaultValue={pickValue(values?.gradingCompany, card?.gradingCompany ?? "")} />
-        </label>
+          <OptionalCardFields title="财务记录（可选）" initialOpen={hasOptionalCardData(values, undefined, ["purchaseDate", "purchaseSource", "purchasePrice", "gradingFee", "currentValue", "valuationDate"]) || Boolean(values?.financialRecords && values.financialRecords !== "[]") || Boolean(values?.initialQuantity && values.initialQuantity !== String(defaultInitialQuantityForStatus(collectionStatus)))}>
 
-        <label className="field">
-          <span><UiText text={"评级"} /></span>
-          <UiElement as="input" uiAttributes={["placeholder"]}
-            name="grade"
-            type="text"
-            placeholder="例如 9.5 / Auto Auth / Authentic"
-            defaultValue={pickValue(values?.grade, card?.grade ?? "")}
-          />
-        </label>
-
-        <label className="field">
-          <span><UiText text={"证书号"} /></span>
-          <input name="certNumber" defaultValue={pickValue(values?.certNumber, card?.certNumber ?? "")} />
-        </label>
-
-        <label className={mode === "create" ? "field" : "field full"}>
-          <span><UiText text={"评级链接"} /></span>
-          <input
-            name="gradingLink"
-            type="url"
-            placeholder="https://www.psacard.com/..."
-            defaultValue={pickValue(values?.gradingLink, card?.gradingLink ?? "")}
-          />
-        </label>
-
-        {mode === "create" ? (
-          <section className="card-finance-fields full">
-            <div className="form-section-heading full">
-              <div>
-                <h2><UiText text={"财务记录"} /></h2>
-              </div>
-            </div>
-
-            <div className="form-grid card-finance-grid">
+            <div className="form-grid card-finance-grid full">
               <label className="field">
                 <span><UiText text={"购买日期"} /></span>
                 <input name="purchaseDate" type="date" defaultValue={values?.purchaseDate ?? ""} />
@@ -282,53 +159,14 @@ export function CardForm({
               />
             </div>
             <CardEntryFinancialRecords initialValue={values?.financialRecords} />
-          </section>
+          </OptionalCardFields>
         ) : null}
 
-        <label className="field">
-          <span><UiText text={"公开状态"} /></span>
-          <select name="visibility" defaultValue={pickValue(values?.visibility, card?.visibility ?? "private")}>
-            <option value="private"><UiText text={"私密"} /></option>
-            <option value="public"><UiText text={"公开"} /></option>
-            <option value="linkOnly"><UiText text={"仅链接可见"} /></option>
-          </select>
-        </label>
+        {mode === "edit" ? statusFields : null}
 
-        <label className="field">
-          <span><UiText text={"收藏状态"} /></span>
-          <select name="collectionStatus" defaultValue={collectionStatus}>
-            {cardCollectionStatuses.map(status => <option key={status} value={status}><UiText text={collectionStatusText(status)} /></option>)}
-          </select>
-        </label>
+        <CardDescriptionFields values={values} card={card} mode={mode} />
 
-        <label className={mode === "create" ? "field card-field-wide" : "field full"}>
-          <span><UiText text={"标签（逗号分隔）"} /></span>
-          <input name="tags" placeholder="rookie, holo, psa" defaultValue={pickValue(values?.tags, stringifyTags(tags))} />
-        </label>
 
-        <label className={mode === "create" ? "field card-field-wide" : "field full"}>
-          <span><UiText text={"展示描述"} /></span>
-          <textarea
-            name="publicDescription"
-            defaultValue={pickValue(values?.publicDescription, card?.publicDescription ?? "")}
-          />
-        </label>
-
-        <label className={mode === "create" ? "field card-field-wide" : "field full"}>
-          <span><UiText text={"备注"} /></span>
-          <textarea name="notes" defaultValue={pickValue(values?.notes, card?.notes ?? "")} />
-        </label>
-
-        <CardImageFields
-          mode={mode}
-          cardTitle={pickValue(values?.cardTitle, card?.cardTitle ?? "")}
-          existingImages={(card?.images ?? []).map((image) => ({
-            id: image.id,
-            url: image.path,
-            rotation: image.rotation
-          }))}
-          queuedImages={queuedImages}
-        />
       </div>
 
       <div className="card-form-actions">
@@ -338,7 +176,7 @@ export function CardForm({
             <button disabled={submitDisabled} type="submit" name="saveIntent" value="continue" className="btn btn-secondary" title="Ctrl + Enter"><UiText text={"保存并继续"} /></button>
           </>
         ) : (
-          <button type="submit" className="btn btn-primary"><UiText text={"保存修改"} /></button>
+          <button type="submit" className="btn btn-primary" disabled={submitDisabled}><UiText text={"保存修改"} /></button>
         )}
         <a href={mode === "create" ? "/" : `/cards/${card?.id}${encodeReturnTo(returnTo)}`} className="btn btn-secondary"><UiText text={"取消"} /></a>
       </div>

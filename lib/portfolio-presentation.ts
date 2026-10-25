@@ -16,16 +16,16 @@ const dateTimeFormat = new Intl.DateTimeFormat("zh-CN", {
 });
 
 export function formatPortfolioMoney(value: number | null, currency: string): string {
-  return value === null ? "—" : `${currency} ${moneyFormat.format(value)}`;
+  return value === null ? "–" : `${currency} ${moneyFormat.format(value)}`;
 }
 
 export function formatSignedPortfolioMoney(value: number | null, currency: string): string {
-  if (value === null) return "—";
+  if (value === null) return "–";
   const sign = value > 0 ? "+" : value < 0 ? "−" : "";
   return `${currency} ${sign}${moneyFormat.format(Math.abs(value))}`;
 }
 
-export function formatPortfolioCountPercent(count: number, total: number, fallback = "—"): string {
+export function formatPortfolioCountPercent(count: number, total: number, fallback = "–"): string {
   return total > 0 ? formatPercentage(count / total * 100, { fractionDigits: 0 }) : fallback;
 }
 

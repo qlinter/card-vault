@@ -8,6 +8,7 @@ const { checkPackagedDesktop } = require("./test-packaged-desktop-utils");
 async function main() {
   const root = path.resolve(__dirname, "..");
   const development = process.argv.includes("--development");
+  const dataWorkspace = development || process.argv.includes("--workspace");
   const executable = development ? require("electron") : path.resolve(process.argv[2] || path.join(root, "dist", "win-unpacked", "Card Vault.exe"));
   assert.ok(fs.existsSync(executable), "Packaged executable is missing.");
   const logDir = path.join(root, "logs", development ? "development-runtime-review" : `v${require("../package.json").version}-review`);
@@ -31,8 +32,8 @@ async function main() {
   const env = { ...process.env, CARD_VAULT_USER_DATA_DIR: userData, CARD_VAULT_ACCEPTANCE_MODE: "1" };
   delete env.ELECTRON_RUN_AS_NODE;
   const version = require(development ? path.join(root, "package.json") : path.join(path.dirname(executable), "resources", "app", "package.json")).version;
-  const electronVersion = await checkPackagedDesktop(executable, version, { env, userData, playerName: "Native Fixture", query: "Native", args: development ? [root] : [], dataWorkspace: development, electronVersion: development ? require("electron/package.json").version : undefined });
-  const result = { testedAt: new Date().toISOString(), version, electronVersion, executable, mode: development ? "development" : "packaged", checks: ["desktop-startup", "sandbox-and-preload", "saved-edit-back-to-filter", "repeated-cancel-back-to-filter", ...(development ? ["data-workspace-tabs"] : [])], ok: true };
+  const electronVersion = await checkPackagedDesktop(executable, version, { env, userData, playerName: "Native Fixture", query: "Native", args: development ? [root] : [], dataWorkspace, electronVersion: development ? require("electron/package.json").version : undefined });
+  const result = { testedAt: new Date().toISOString(), version, electronVersion, executable, mode: development ? "development" : "packaged", checks: ["desktop-startup", "sandbox-and-preload", "saved-edit-back-to-filter", "repeated-cancel-back-to-filter", ...(dataWorkspace ? ["data-workspace-tabs", "backup-settings-ipc"] : [])], ok: true };
   fs.writeFileSync(path.join(logDir, development ? "development-desktop.json" : "packaged-desktop.json"), JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result));
 }

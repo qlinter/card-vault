@@ -14,6 +14,7 @@ const restoreMessageKey = "card-vault:restore-completed";
 
 export function BackupSettings() {
   const [backupPath, setBackupPath] = useState("正在读取...");
+  const [lastBackup, setLastBackup] = useState<Awaited<ReturnType<NonNullable<Window["cardVaultDesktop"]>["getBackupSettings"]>>["lastBackup"]>(null);
   const [busyAction, setBusyAction] = useState<"choose" | "backup" | "restore" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const { progress, setProgress, activeStorageOperation } = useDesktopStorageProgress(["backup", "restore"]);
@@ -35,6 +36,7 @@ export function BackupSettings() {
         const settings = await api.getBackupSettings();
         if (mounted) {
           setBackupPath(settings.path);
+          setLastBackup(settings.lastBackup);
         }
       } catch {
         if (mounted) {
@@ -79,7 +81,8 @@ export function BackupSettings() {
     try {
       const result = await api.backupDataFolder();
       setBackupPath(result.backupRoot);
-      setMessage(`备份完成：${result.backupPath}`);
+      setMessage(`备份完成：${result.backupPath}${result.metadataWarning ? ` · ${result.metadataWarning}` : ""}`);
+      setLastBackup((await api.getBackupSettings()).lastBackup);
     } catch (error) {
       setMessage(`备份失败：${errorMessage(error, "请稍后重试。")}`);
     } finally {
@@ -118,7 +121,7 @@ export function BackupSettings() {
   const busy = busyAction !== null || activeStorageOperation !== null;
 
   return (
-    <section className="panel settings-section">
+    <section className="panel settings-section backup-settings">
       <div className="title-row" style={{ marginBottom: "0.4rem" }}>
         <div>
           <h2><UiText text={"备份与恢复"} /></h2>
@@ -138,6 +141,10 @@ export function BackupSettings() {
       <p className="settings-path">
         <UiText text={"备份路径："} />{["正在读取...", "当前运行环境不支持本地备份。", "读取备份路径失败。"].includes(backupPath) ? <UiText text={backupPath} /> : backupPath}
       </p>
+      {lastBackup ? <p className="muted" role="status">
+          <UiText text="最近成功备份：{0}，{1}MB，{2} 张图片。" values={[new Date(lastBackup.createdAt).toLocaleString(), (lastBackup.bytes / 1024 / 1024).toFixed(1), lastBackup.imageCount]} />
+          {!lastBackup.available ? <UiText text="备份文件当前不可用，请检查路径或重新备份。" /> : Date.now() - new Date(lastBackup.createdAt).getTime() > 7 * 86400000 ? <UiText text="距上次备份已超过 7 天，建议重新备份。" /> : <UiText text="创建时已完成完整性校验。" />}
+      </p> : null}
       <OperationProgress progress={progress} />
       {message ? <p className="muted backup-message"><UiText text={message} /></p> : null}
     </section>

@@ -1,11 +1,5 @@
+import { withUiDatabase as database } from './database-fixture.mjs';
 import { test, expect } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
-import path from "node:path";
-
-function database(action) {
-  const db = new DatabaseSync(path.resolve("tests/.ui-test-runtime/data/dev.db"));
-  try { db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000"); return action(db); } finally { db.close(); }
-}
 test.beforeEach(() => database(db => {
   db.exec("BEGIN");
   for (let index = 0; index < 45; index++) {
@@ -51,7 +45,7 @@ for (const locale of ["zh", "en"]) test(`data tabs retain scope, count physical 
   await expect(page).toHaveURL(/\/cards\/data-ui-00\?/);
   await page.getByRole("link", { name: locale === "en" ? "Back" : "返回上一页", exact: true }).click();
   await page.getByRole("link", { name: labels[3], exact: true }).click();
-  await expect(page.getByTestId("data-details").locator("nav").first().getByRole("link")).toHaveText(locale === "en" ? ["Holdings", "Sale", "Needs attention", "All"] : ["持仓", "出售", "待完善", "全部"]);
+  await expect(page.getByTestId("data-details").locator("nav").first().getByRole("link")).toHaveText(locale === "en" ? ["List", "Review"] : ["列表", "整理"]);
   expect(new URL(page.url()).searchParams.get("team")).toBe("A&B / 队");
   await expect(page.getByTestId("data-details").locator("tbody tr")).toHaveCount(20);
   await page.getByRole("link", { name: locale === "en" ? "Next" : "下一页", exact: true }).click();
@@ -137,18 +131,19 @@ test("structure attributes include closed archives without adding them to holdin
   expect(new URL(page.url()).searchParams.has("closed")).toBe(false);
 });
 
-test("quality filters cover all records and card editing returns to the same issue and page", async ({ page }) => {
+test("Review shows all records without search and editing returns to the complete list", async ({ page }) => {
   database(db => db.prepare("INSERT INTO CardImage(id,cardId,path) VALUES('data-ui-edit-image','data-ui-44','/media/ui-card-1.webp')").run());
   await page.goto(scoped + "&tab=details&kind=quality&issue=missing_cost", { waitUntil: "networkidle" });
-  await expect(page.getByTestId("data-details").locator("tbody tr")).toHaveCount(1);
+  await expect(page.getByTestId("data-details").locator("tbody tr")).toHaveCount(45);
+  await expect(page.getByTestId("data-details").locator('input[type="search"], form')).toHaveCount(0);
   await page.getByTestId("data-details").locator('a[href^="/cards/data-ui-44?"]').click();
   await page.locator(".title-row").getByRole("link", { name: "编辑", exact: true }).click();
   await page.getByRole("button", { name: "保存修改", exact: true }).click();
   await page.waitForURL(/success=updated/);
   await page.getByRole("link", { name: "返回上一页", exact: true }).click();
   await expect(page.getByTestId("data-details")).toBeVisible();
-  expect(new URL(page.url()).searchParams.get("issue")).toBe("missing_cost");
-  await expect(page.getByTestId("data-details").locator("tbody tr")).toHaveCount(1);
+  await expect(page.getByTestId("data-details").locator('input[name="issue"], input[type="search"]')).toHaveCount(0);
+  await expect(page.getByTestId("data-details").locator("tbody tr")).toHaveCount(45);
 });
 
 test("trend range, series switches and data tables preserve explicit missing baselines", async ({ page }, testInfo) => {
@@ -178,92 +173,32 @@ test("trend range, series switches and data tables preserve explicit missing bas
   await page.screenshot({ path: testInfo.outputPath("data-trends.png"), fullPage: true });
 });
 
-test("keyword search retains scope, snapshots stay frozen, and comparison expands", async ({ page }, testInfo) => {
-  await page.goto(scoped + "&collectionStatus=listed&tab=trends&workspace=1", { waitUntil: "networkidle" });
-  await page.getByLabel("财务趋势时间范围").selectOption("6");
-  await expect(page.getByRole("button", { name: "开始比较", exact: true })).toBeDisabled();
-  await page.getByText("调整范围", { exact: true }).click();
-  await page.getByRole("searchbox", { name: "搜索关键词", exact: true }).fill("DataBrand");
-  await page.getByRole("button", { name: "搜索", exact: true }).click();
-  await page.getByText("快照与比较", { exact: true }).click();
-  expect(new URL(page.url()).searchParams.get("financialRange")).toBe("6");
-  expect(new URL(page.url()).searchParams.get("collectionStatus")).toBe("listed");
-  expect(new URL(page.url()).searchParams.get("q")).toBe("DataBrand");
-  expect(new URL(page.url()).searchParams.get("tab")).toBe("trends");
-  await page.getByLabel("时间点快照名称", { exact: true }).fill("Data UI frozen");
-  await page.getByRole("button", { name: "保存当前快照", exact: true }).click();
-  await expect(page.locator(".note-ok[role=status]")).toContainText("时间点组合快照已保存。");
-  const before = database(db => db.prepare("SELECT id,snapshotJson,capturedAt FROM PortfolioSnapshotRecord WHERE name='Data UI frozen'").get());
-  expect(database(db => JSON.parse(db.prepare("SELECT queryJson FROM PortfolioSnapshotRecord WHERE id=?").get(before.id).queryJson)).q).toBe("DataBrand");
-  await expect(page.locator('select[name="compareLeft"]')).toHaveValue(`snapshot:${before.id}`);
-  await expect(page.locator('select[name="compareRight"]')).toHaveValue("current");
-  await page.getByText("已保存快照", { exact: true }).click();
-  await page.getByLabel("快照名称", { exact: true }).fill("Data UI renamed");
-  await page.getByRole("button", { name: "重命名", exact: true }).click();
-  await expect(page.locator(".note-ok[role=status]")).toContainText("快照名称已更新。");
-  const after = database(db => db.prepare("SELECT snapshotJson,capturedAt FROM PortfolioSnapshotRecord WHERE id=?").get(before.id));
-  expect(after.snapshotJson).toBe(before.snapshotJson); expect(after.capturedAt).toBe(before.capturedAt);
-  database(db => db.prepare("UPDATE CardValuation SET amountMinor=16000 WHERE id='data-ui-00-quote'").run());
-  await page.getByText("已保存快照", { exact: true }).click();
-  await page.getByRole("link", { name: "查看", exact: true }).click();
-  await expect(page.getByTestId("frozen-snapshot")).toContainText("1,120.00");
-  await page.locator('select[name="compareLeft"]').selectOption(`snapshot:${before.id}`);
-  await page.locator('select[name="compareRight"]').selectOption("current");
-  await page.getByRole("button", { name: "开始比较", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "组合比较", exact: true })).toBeVisible();
-  await expect(page.getByText("包含冻结快照的时间点比较；请核对两侧收藏范围。", { exact: true })).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath("data-comparison.png"), fullPage: true });
-});
-
-for (const locale of ["zh", "en"]) test(`snapshot actions reject damaged scope before changing a saved snapshot (${locale})`, async ({ page, context }) => {
-  if (locale === "en") await context.addCookies([{ name: "card_vault_ui_locale", value: "en", url: "http://127.0.0.1:3360" }]);
-  const l = (zh, en) => locale === "en" ? en : zh;
-  await page.goto(scoped + "&workspace=1", { waitUntil: "networkidle" });
-  await page.getByLabel(l("时间点快照名称", "Snapshot Name"), { exact: true }).fill("Data UI protected");
-  await page.getByRole("button", { name: l("保存当前快照", "Save Current Snapshot"), exact: true }).click();
-  await expect(page.locator(".note-ok")).toBeVisible();
-  const before = database(db => db.prepare("SELECT id,name,snapshotJson FROM PortfolioSnapshotRecord WHERE name='Data UI protected'").get());
-  for (const action of ["rename", "delete"]) {
-    await page.goto(scoped + "&workspace=1", { waitUntil: "networkidle" });
-    await page.getByText(l("已保存快照", "Saved snapshots"), { exact: true }).click();
-    const button = page.getByRole("button", { name: action === "rename" ? l("重命名", "Rename") : l("删除", "Delete"), exact: true });
-    const form = button.locator("..");
-    await form.locator('input[name="queryJson"]').evaluate(input => { input.value = "invalid"; });
-    if (action === "rename") await form.locator('input[name="name"]').fill("Should not change");
-    else page.once("dialog", dialog => dialog.accept());
-    await button.click();
-    await expect(page.locator(".note-error[role=alert]")).toContainText(l("当前组合筛选条件无效", "The current collection filters are invalid"));
-    expect(database(db => db.prepare("SELECT id,name,snapshotJson FROM PortfolioSnapshotRecord WHERE id=?").get(before.id))).toEqual(before);
-  }
-});
-
-for (const theme of ["gallery", "midnight", "archive"]) test(`compact home and data summaries align in the ${theme} theme`, async ({ page, context }, testInfo) => {
+for (const theme of ["gallery", "midnight", "archive"]) test(`compact collection and data summaries align in the ${theme} theme`, async ({ page, context }, testInfo) => {
   await context.addCookies([{ name: "card_vault_app_theme", value: theme, url: "http://127.0.0.1:3360" }]);
-  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.setViewportSize({ width: 1100, height: 900 });
   await page.goto("/?q=Data+UI", { waitUntil: "networkidle" });
-  const panels = await page.locator(".home-summary-grid > .panel").evaluateAll(items => items.map(item => item.getBoundingClientRect().top));
-  expect(panels).toHaveLength(3);
-  expect(Math.max(...panels) - Math.min(...panels)).toBeLessThan(2);
+  await expect(page.locator(".collection-summary")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath(`collection-${theme}.png`) });
+  await page.goto(scoped, { waitUntil: "networkidle" });
   const period = page.getByRole("combobox", { name: "统计周期", exact: true });
   await period.selectOption("monthly");
   await expect(period).toBeEnabled();
   await expect(page.getByText("已保存。", { exact: true })).toHaveCount(0);
   await period.selectOption("weekly");
   await expect(period).toBeEnabled();
-  await page.screenshot({ path: testInfo.outputPath(`home-${theme}.png`) });
-  await page.getByRole("button", { name: "查看全部", exact: true }).click();
-  await expect(page.locator(".overview-review-list")).toBeVisible();
+  await page.getByRole("link", { name: /待完善数据/ }).click();
+  const toggle = page.locator(".collection-follow-up-toggle");
+  await toggle.click();
+  await expect(page.getByRole("checkbox", { name: "显示已处理", exact: true })).toBeVisible();
   await page.getByRole("checkbox", { name: "显示已处理", exact: true }).check();
-  await page.getByRole("button", { name: "收起", exact: true }).click();
-  await expect(page.locator(".overview-review-list")).toHaveCount(0);
-  await page.getByRole("button", { name: "查看全部", exact: true }).click();
+  await toggle.click();
+  await expect(page.locator(".collection-follow-up > section")).toHaveCount(0);
+  await toggle.click();
   await expect(page.getByRole("checkbox", { name: "显示已处理", exact: true })).not.toBeChecked();
-  await page.screenshot({ path: testInfo.outputPath(`home-expanded-${theme}.png`) });
-  await page.goto(scoped, { waitUntil: "networkidle" });
   await expect(page.locator("html")).toHaveAttribute("data-app-theme", theme);
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
-  expect(overflow).toBe(false);
-  await page.screenshot({ path: testInfo.outputPath(`data-${theme}.png`), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath(`review-${theme}.png`), fullPage: true });
 });
 
 test("slow tab navigation retains current data and delays its progress hint", async ({ page }) => {

@@ -1,12 +1,15 @@
-import { Card, CardImage, ShareCollection, ShareCollectionItem, ShareSection } from "@prisma/client";
+import { ShareCollection, ShareCollectionItem, ShareSection } from "@prisma/client";
+import type { ShareCatalogCard } from "@/lib/share-card-catalog";
+import { homeThumbnailPublicPath } from "@/lib/card-thumbnail-core.js";
 import { SharePickerCard } from "@/components/share-card-picker";
 import { ShareCollectionWizard } from "@/components/share-collection-wizard";
 import { ShareThemeCard } from "@/components/share-theme-generator";
 import { normalizeShareTheme } from "@/lib/share-themes";
 import { parseSharePresentation, sanitizeSharePresentationCards } from "@/lib/share-presentation";
 import { type ShareSectionDraft } from "@/lib/share-sections";
+import { scoutIdentity } from "@/lib/scout-identity";
 
-type CardOption = Card & { images: CardImage[] };
+type CardOption = ShareCatalogCard;
 type ShareWithItems =
   | (ShareCollection & {
       items: Array<ShareCollectionItem & { card: CardOption }>;
@@ -68,6 +71,7 @@ function toPickerCard(card: CardOption, item: (ShareCollectionItem & { card: Car
     visibility: card.visibility,
     tags: card.tags,
     imagePath: card.images[0]?.path ?? null,
+    thumbnailPath: card.images[0] ? homeThumbnailPublicPath(card.images[0].path) : null,
     imageRotation: card.images[0]?.rotation ?? 0,
     selected: Boolean(item),
     sortOrder: item?.sortOrder ?? 0,
@@ -115,7 +119,7 @@ export function ShareCollectionForm({ action, cards, share, error }: ShareCollec
   return (
     <ShareCollectionWizard
       action={action}
-      draftId={share?.id ?? "new"}
+      draftId={`${scoutIdentity()}:${share?.id ?? "new"}`}
       cards={pickerCards}
       aiCards={cards.map(cardSummary)}
       initialValues={{

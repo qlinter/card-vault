@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type WorkspaceIssue = { kind: "load" | "save" | "refresh"; message: string };
-export type WorkspaceMutationResult = { id?: string; undo?: import("@/lib/scout-domain").WishUndo };
+export type WorkspaceMutationResult = { id?: string };
 export type WorkspaceMutation = (body: Record<string, unknown>) => Promise<WorkspaceMutationResult | null>;
 
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {

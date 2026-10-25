@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { UiText, UiElement } from "./ui-text";
-import { dataHref, dataGroupCount, cardAttributeFields, type StructureField, type DataWorkspace } from "@/lib/portfolio-workspace";
+import { dataHref, dataGroupCount, attributeDrillQuery } from "@/lib/portfolio-navigation";
+import { cardAttributeFields, type StructureField, type DataWorkspace } from "@/lib/portfolio-workspace-types";
 import type { PortfolioSnapshot, PortfolioAllocation, PortfolioFilterInput } from "@/lib/portfolio-analysis";
 import { formatPercentage } from "@/lib/percentage-format";
 import { formatPortfolioMoney as money } from "@/lib/portfolio-presentation";
@@ -16,7 +17,7 @@ const dimensions: [StructureField, keyof PortfolioAllocation, string][] = [
   ["gradingCompany", "byGradingCompany", "评级机构"], ["collectionStatus", "byStatus", "收藏状态"]
 ];
 const attributeLabels = { isRookie: "新秀卡", isAutograph: "签名卡", isPatch: "Patch", isSerialNumbered: "限量卡" };
-type StructureRow = { name: string; count: number; quantity: number; value: number; valuedCount: number; soldCount: number; href: string; soldHref: string };
+type StructureRow = { name: string; count: number; quantity: number; value: number; valuedCount: number; soldCount: number; href: string | null; soldHref: string | null };
 
 function StructureTable({ rows, label, currency, totalValue, continuation = false }: {
   rows: StructureRow[]; label: string; currency: string; totalValue: number; continuation?: boolean;
@@ -28,10 +29,10 @@ function StructureTable({ rows, label, currency, totalValue, continuation = fals
     <tbody>{rows.map(row => {
       const share = row.valuedCount && totalValue > 0 ? row.value / totalValue * 100 : null;
       return <tr key={row.name}>
-        <td><Link href={row.href}><UiText text={row.name} /></Link><div className={styles.bar}><i style={{ width: `${share || 0}%` }} /></div></td>
-        <td className={styles.numeric}><span>{row.count}</span>{row.soldCount ? <Link className={styles.soldNote} href={row.soldHref}><UiText text="已售" /> {row.soldCount} <UiText text="项" /></Link> : null}</td>
+        <td>{row.href && row.count ? <Link href={row.href}><UiText text={row.name} /></Link> : <UiText text={row.name} />}<div className={styles.bar}><i style={{ width: `${share || 0}%` }} /></div></td>
+        <td className={styles.numeric}><span>{row.count}</span>{row.soldCount && row.soldHref ? <Link className={styles.soldNote} href={row.soldHref}><UiText text="已售" /> {row.soldCount} <UiText text="项" /></Link> : null}</td>
         <td className={styles.numeric}>{row.quantity}</td>
-        <td className={styles.numeric}>{row.valuedCount ? money(row.value, currency) : "—"}</td>
+        <td className={styles.numeric}>{row.valuedCount ? money(row.value, currency) : "–"}</td>
         <td className={styles.numeric}>{formatPercentage(share, { fractionDigits: 1 })}</td>
       </tr>;
     })}</tbody>
@@ -56,10 +57,10 @@ export function PortfolioStructureView({ snapshot, physical, closed, attributes,
       href: dataHref(query, drill), soldHref: dataHref(query, drill, { closed: "1" })
     };
   }).sort((a, b) => b.value - a.value || b.count - a.count || a.name.localeCompare(b.name));
-  const attributeRows: StructureRow[] = cardAttributeFields.map(field => ({
-    ...attributes[field], name: attributeLabels[field],
-    href: dataHref({ ...query, [field]: "true" }, detailState), soldHref: dataHref({ ...query, [field]: "true" }, detailState, { closed: "1" })
-  }));
+  const attributeRows: StructureRow[] = cardAttributeFields.map(field => {
+    const drill = attributeDrillQuery(query, field);
+    return { ...attributes[field], name: attributeLabels[field], href: drill ? dataHref(drill, detailState) : null, soldHref: drill ? dataHref(drill, detailState, { closed: "1" }) : null };
+  });
   const rows = showAttributes ? attributeRows : distribution;
   const share = (value: number) => totalValue > 0 ? value / totalValue * 100 : null;
   const tableProps = { currency, totalValue, label: showAttributes ? "卡片属性" : dimension[2] };

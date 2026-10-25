@@ -1,9 +1,7 @@
+import { withUiDatabase as fixture } from './database-fixture.mjs';
 import { expect, test } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
-import path from "node:path";
 import { readFileSync } from "node:fs";
 const productVersion = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version;
-function fixture(action) { const db = new DatabaseSync(path.resolve("tests/.ui-test-runtime/data/dev.db")); try { db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000"); return action(db); } finally { db.close(); } }
 test.beforeEach(() => fixture(db => {
   db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,tags,notes) VALUES('management-ui','卡片数量','备注','Basketball','公开,标签','保存')").run();
   db.prepare("INSERT INTO CardImage(id,cardId,path) VALUES('management-ui-image','management-ui','/media/ui-card-1.webp')").run();
@@ -24,12 +22,12 @@ for (const locale of ["zh", "en"]) {
     const advanced = page.locator(".filter-details");
     const disclosure = advanced.locator("summary");
     await expect(disclosure).toHaveAccessibleName(locale === "en" ? "More Filters" : "更多筛选");
-    await expect(disclosure).toHaveText("");
+    await expect(disclosure).toHaveText(locale === "en" ? "More Filters" : "更多筛选");
     await expect(advanced).not.toHaveAttribute("open", "");
     await expect(page.getByRole("link", { name: labels.all, exact: true })).toHaveAttribute("href", "/portfolio?sort=yearAsc");
     await expect(page.locator(".nav-links a")).toHaveText(locale === "en"
-      ? ["Home", "Data", "Showcase", "Sharing", "Scout", "Settings"]
-      : ["首页", "数据", "展示", "分享", "寻卡", "设置"]);
+      ? ["Collection", "Showcase", "Data"]
+      : ["收藏", "展示", "数据"]);
     const query = new URLSearchParams({ q: "Import UI", team: "A&B / 队", isAutograph: "false", sort: "yearAsc" });
     await page.goto(`/?${query}`, { waitUntil: "networkidle" });
     await expect(advanced).toHaveAttribute("open", "");
@@ -43,27 +41,13 @@ for (const locale of ["zh", "en"]) {
     // Unsaved form changes must not silently alter the scope of the displayed results.
     await page.locator('input[name="q"]').fill("Not applied");
     await expect(link).toHaveAttribute("href", `/portfolio?${query}`);
-    for (const width of [1440, 1024]) {
+    for (const width of [1440, 1100]) {
       await page.setViewportSize({ width, height: 1000 });
-      const filterGeometry = await page.locator(".home-filter-form").evaluate(form => {
-        const base = form.querySelector(":scope > .filters").getBoundingClientRect();
-        const arrow = form.querySelector("summary").getBoundingClientRect();
-        const extra = form.querySelector(".filter-details-grid").getBoundingClientRect();
-        const actions = form.querySelector(".filter-actions").getBoundingClientRect();
-        const tops = [...form.querySelectorAll(":scope > .filters > *")].map(item => item.getBoundingClientRect().top);
-        return { gap: arrow.top - base.bottom, width: arrow.width, height: arrow.height, extraGap: extra.top - arrow.bottom, actionsGap: actions.top - extra.bottom, rowSpread: Math.max(...tops) - Math.min(...tops) };
-      });
-      expect(filterGeometry.gap).toBeGreaterThanOrEqual(-1);
-      expect(filterGeometry.gap).toBeLessThanOrEqual(1);
-      expect(filterGeometry.width).toBe(24);
-      expect(filterGeometry.height).toBe(24);
-      expect(filterGeometry.extraGap).toBeLessThanOrEqual(5);
-      expect(filterGeometry.actionsGap).toBeLessThanOrEqual(9);
-      expect(filterGeometry.rowSpread).toBeLessThan(2);
-      const panels = await page.locator(".home-summary-grid > .panel").evaluateAll(items => items.map(item => ({ top: item.getBoundingClientRect().top, height: item.getBoundingClientRect().height })));
-      expect(panels).toHaveLength(3);
-      expect(Math.max(...panels.map(item => item.top)) - Math.min(...panels.map(item => item.top))).toBeLessThan(2);
-      expect(Math.max(...panels.map(item => item.height)) - Math.min(...panels.map(item => item.height))).toBeLessThan(2);
+      const primaryTops = await page.locator(".home-filter-form > .filters > *").evaluateAll(items => items.map(item => item.getBoundingClientRect().top));
+      expect(primaryTops).toHaveLength(3);
+      expect(Math.max(...primaryTops) - Math.min(...primaryTops)).toBeLessThan(2);
+      await expect(page.locator(".collection-summary")).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       const actions = page.getByTestId("home-filter-actions");
       const rectangles = await actions.locator(".filter-main-actions > *, .filter-display-actions > *").evaluateAll(elements => elements.map(element => {
         const rect = element.getBoundingClientRect();
@@ -99,10 +83,10 @@ test("language switches leave dictionary-like user content unchanged", async ({ 
   await page.goto("/?q=卡片数量", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "选择语言" }).click(); await page.getByRole("menuitemradio", { name: "English" }).click();
   const card = page.getByTestId("home-card-grid"); await expect(card.getByRole("heading", { name: "卡片数量" })).toBeVisible(); await expect(card.getByText("备注", { exact: true })).toBeVisible(); await expect(card.getByText("公开", { exact: true })).toBeVisible();
-  await card.locator("a").click(); await expect(page.locator(".details")).toContainText("卡片数量");
+  await card.locator("a").click(); await expect(page.getByRole("heading", { level: 1 })).toContainText("卡片数量");
   await page.goto("/cards/management-ui/edit", { waitUntil: "networkidle" });
   await expect(page.locator('[name="playerName"]')).toHaveValue("卡片数量"); await expect(page.locator('[name="cardTitle"]')).toHaveValue("备注");
-  await page.getByRole("button", { name: "Choose language" }).click(); await page.getByRole("menuitemradio", { name: "简体中文" }).click(); await expect(page.locator('[name="notes"]')).toHaveValue("保存");
+  await page.getByRole("button", { name: "Choose language" }).click(); await page.getByRole("menuitemradio", { name: "简体中文" }).click(); await expect(page.locator('.entry-page > form [name="notes"]')).toHaveValue("保存");
 });
 
 test("CSV download respects selection across pages and the public filter", async ({ page }) => {
@@ -110,13 +94,12 @@ test("CSV download respects selection across pages and the public filter", async
     const insert = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,visibility) VALUES(?,'Import UI',?,'Basketball',?)");
     for (let i = 0; i < 26; i++) insert.run(`selected-${String(i).padStart(2, '0')}`, `Selected ${i}`, i === 0 ? "private" : "public");
   });
-  await page.goto("/settings/data", { waitUntil: "networkidle" });
-  await page.getByLabel("搜索收藏").fill("Import UI");
-  const rows = page.locator(".management-card-option");
+  await page.goto("/?q=Import+UI&export=1", { waitUntil: "networkidle" });
+  const rows = page.getByTestId("home-card-grid").locator(".card-item");
   await expect(rows).toHaveCount(24);
   await rows.first().getByRole("checkbox").check();
-  await page.getByRole("navigation", { name: "导出分页" }).getByRole("button", { name: "下一页" }).click();
-  await expect(rows).toHaveCount(2);
+  await page.getByTestId("home-load-more").click();
+  await expect(rows).toHaveCount(26);
   await rows.last().getByRole("checkbox").check();
   const ids = JSON.parse(await page.locator('input[name="ids"]').inputValue());
   expect(ids).toHaveLength(2);
@@ -141,6 +124,8 @@ test("CSV download respects selection across pages and the public filter", async
 });
 test("failed edit retains fields, choices and newly selected images", async ({ page }) => {
   await page.goto("/cards/management-ui/edit", { waitUntil: "networkidle" });
+  await page.locator(".card-optional-fields").filter({ has: page.locator('[name="gradingLink"]') }).locator("summary").click();
+  await page.locator(".card-optional-fields").filter({ has: page.locator('[name="isRookie"]') }).locator("summary").click();
   await page.locator('[name="playerName"]').fill("输入保留测试"); await page.locator('[name="gradingLink"]').fill("ftp://example.test/cert"); await page.locator('[name="isRookie"]').check();
   await page.locator('[name="images"]').setInputFiles({ name: "selected.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j9wAAAABJRU5ErkJggg==", "base64") });
   await page.getByRole("button", { name: "保存修改", exact: true }).click();
@@ -155,7 +140,7 @@ for (const blockedStorage of [false, true]) {
     await page.goto(`/?${query}`, { waitUntil: "networkidle" });
     await page.getByTestId("home-card-grid").locator(".card-item a").first().click();
     await page.locator(".title-row").getByRole("link", { name: "编辑", exact: true }).click();
-    await page.locator('[name="notes"]').fill("完成编辑后应回到筛选结果");
+    await page.locator('.entry-page > form [name="notes"]').fill("完成编辑后应回到筛选结果");
     await page.getByRole("button", { name: "保存修改", exact: true }).click();
     await expect(page).toHaveURL(/success=updated/);
     await page.reload({ waitUntil: "networkidle" });
@@ -183,9 +168,9 @@ for (const blockedStorage of [false, true]) test(`cancelled repeated edits are s
 });
 test("failed financial record preserves entered values and leaves history unchanged", async ({ page }) => {
   await page.goto("/cards/management-ui", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "＋ 新增记录", exact: true }).click();
+  await page.getByRole('button', { name: '新增财务记录', exact: true }).click();
+  await page.getByRole('combobox', { name: '录入类型', exact: true }).selectOption('sale');
   const form = page.locator("#financial-add-record form:visible");
-  await form.locator('[name="kind"]').selectOption("sale");
   await form.locator('[name="amount"]').fill("12.34");
   await form.locator('[name="quantity"]').fill("50");
   await form.locator('[name="occurredAt"]').fill("2026-09-01");
@@ -200,11 +185,7 @@ test("failed financial record preserves entered values and leaves history unchan
 });
 test("import preview applies a card and a confirmed undo removes it", async ({ page }) => {
   await page.goto("/settings/data", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "表格视图", exact: true }).click();
-  await page.getByRole("button", { name: "选择全部", exact: true }).click();
-  await expect(page.locator("tbody input[type=checkbox]").first()).toBeChecked();
-  await page.getByRole("button", { name: "列表视图", exact: true }).click();
-  await page.getByRole("button", { name: "清空选择", exact: true }).click();
+  await page.locator('#data-transfer > button').click();
   await page.getByLabel("选择文件").setInputFiles({ name: "cards.csv", mimeType: "text/csv", buffer: Buffer.from("playerName,cardTitle,sport\nImport UI,00123,Basketball") });
   await page.getByRole("button", { name: "建立导入预演" }).click(); await expect(page.getByRole("heading", { name: "批次预演与结果" })).toBeVisible();
   await page.getByRole("button", { name: "执行 / 重试失败行" }).click(); await expect(page.locator("tbody tr").first()).toContainText("已完成");
@@ -214,15 +195,15 @@ test("import preview applies a card and a confirmed undo removes it", async ({ p
 });
 test("wishlist budget persists and reminders can be snoozed", async ({ page }, testInfo) => {
   await page.goto("/collection", { waitUntil: "networkidle" });
-  await page.getByRole("tab", { name: "心愿单", exact: true }).click();
-  await page.locator(".wish-header-actions").getByRole("button", { name: "新增", exact: true }).click();
-  await page.getByLabel("心愿名称", { exact: true }).fill("UI wishlist"); await page.getByLabel("预算", { exact: true }).fill("88.25"); await page.getByRole("button", { name: "添加心愿" }).click(); await expect(page.getByText("UI wishlist", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "新增心愿", exact: true }).click();
+  await page.getByLabel("心愿名称 *", { exact: true }).fill("UI wishlist"); await page.getByLabel("预算（可选）", { exact: true }).fill("88.25"); await page.getByRole("button", { name: "添加心愿" }).click(); await expect(page.getByText("UI wishlist", { exact: true })).toBeVisible();
   await expect(page.locator(".scout-wish .record-status")).toHaveCount(0);
-  await page.goto("/?q=卡片数量", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "查看全部", exact: true }).click();
+  fixture(db => db.exec("UPDATE Card SET collectionStatus='listed',updatedAt='2025-01-01T00:00:00.000Z' WHERE id='management-ui'; UPDATE CardTracking SET statusStartedAt='2025-01-01T00:00:00.000Z' WHERE cardId='management-ui'"));
+  await page.goto("/portfolio?tab=details&kind=quality&q=卡片数量", { waitUntil: "networkidle" });
+  await page.locator(".collection-follow-up-toggle").click();
   const task = page.locator(".management-task").filter({ hasText: "卡片数量" }).first(); await task.getByRole("button", { name: "延后 7 天" }).click();
   await page.reload({ waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "查看全部", exact: true }).click();
+  await page.locator(".collection-follow-up-toggle").click();
   expect(fixture(db => db.prepare("SELECT budgetMinor FROM CollectionPlan WHERE title='UI wishlist'").get().budgetMinor)).toBe(8825);
   expect(fixture(db => db.prepare("SELECT status FROM CollectionTaskState WHERE id LIKE 'management-ui:%'").get().status)).toBe("snoozed");
   await page.getByLabel("显示已处理").check();
@@ -231,10 +212,9 @@ test("wishlist budget persists and reminders can be snoozed", async ({ page }, t
   await page.getByRole("button", { name: "选择语言" }).click();
   await page.getByRole("menuitemradio", { name: "English" }).click();
   await page.goto("/collection", { waitUntil: "networkidle" });
-  await page.getByRole("tab", { name: "Wishlist", exact: true }).click();
   await expect(page.locator(".scout-wish .record-status")).toHaveCount(0);
-  await page.goto("/?q=卡片数量", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "View all", exact: true }).click();
+  await page.goto("/portfolio?tab=details&kind=quality&q=卡片数量", { waitUntil: "networkidle" });
+  await page.locator(".collection-follow-up-toggle").click();
   await page.getByLabel("Show handled reminders").check();
   await expect(page.locator(".management-task small").filter({ hasText: "Snoozed" })).toBeVisible();
 });
@@ -248,24 +228,24 @@ test("management titles follow the locale and Settings owns the shared user guid
   await page.getByRole("menuitemradio", { name: "English" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Data");
   await page.goto("/collection", { waitUntil: "networkidle" });
-  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(0);
-  await expect(page.getByRole("tab")).toHaveText(["Cross-site search", "Wishlist"]);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Scout");
+  await expect(page.locator('.scout-page > .panel h2')).toHaveText(["Wishlist", "Cross-site search"]);
   await expect(page.getByLabel("Enable local digest notifications")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Help", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Choose language" }).click();
   await page.getByRole("menuitemradio", { name: "简体中文" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(0);
-  await expect(page.getByRole("tab")).toHaveText(["跨站查询", "心愿单"]);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("寻卡");
+  await expect(page.locator('.scout-page > .panel h2')).toHaveText(["心愿单", "跨站查询"]);
   await expect(page.getByText("当前没有待整理项目。", { exact: true })).toHaveCount(0);
   await page.goto("/settings", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "展开使用说明", exact: true }).click();
-  await expect(page.getByRole("button", { name: "收起使用说明", exact: true })).toHaveAttribute("aria-expanded", "true");
-  await expect(page.locator("#plans")).toContainText("180 天");
-  await expect(page.locator("#plans")).toContainText("不发送系统通知");
+  await page.locator('.settings-help-toggle').click();
+  await page.getByRole('link', { name: '使用说明', exact: true }).click();
+  await expect(page).toHaveURL(/settings\/guide$/);
+  await expect(page.locator("#plans")).toContainText("不与心愿或卡片建立关联");
   await expect(page.locator(".user-guide-index a")).toHaveCount(9);
   await page.getByRole("button", { name: "选择语言" }).click();
   await page.getByRole("menuitemradio", { name: "English" }).click();
-  await expect(page.getByRole("button", { name: "Collapse User guide", exact: true })).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('User guide');
   expect(await page.locator(".user-guide-page").innerText()).not.toMatch(/[\u3400-\u9fff]/u);
   await page.getByRole("link", { name: "Detailed financial calculation rules" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Financial calculation rules");
@@ -273,7 +253,7 @@ test("management titles follow the locale and Settings owns the shared user guid
 
 test("incomplete portfolio data links to the affected card and preserves the filter", async ({ page }) => {
   await page.goto("/portfolio?q=卡片数量", { waitUntil: "networkidle" });
-  await page.getByRole("link", { name: "查看与处理", exact: false }).click();
+  await page.getByRole("link", { name: /待完善数据/ }).click();
   const note = page.getByTestId("data-details");
   const link = note.locator('a[href^="/cards/management-ui?"]');
   await expect(link).toBeVisible();
@@ -293,21 +273,26 @@ test("Settings groups data management and fits the minimum Windows window", asyn
   await page.setViewportSize({ width: 1100, height: 760 });
   await page.goto("/settings", { waitUntil: "networkidle" });
   await expect(page.locator(".nav-links").getByRole("link", { name: "数据", exact: true })).toHaveAttribute("href", "/portfolio");
-  await expect(page.locator(".settings-page > .settings-section")).toHaveText(["主题", "数据", "AI", "财务", "使用说明", `关于v${productVersion}`]);
+  await expect(page.locator(".settings-page > .settings-section")).toHaveText(["主题", "数据", "AI", "财务"]);
+  await expect(page.locator('.settings-help-toggle')).toHaveText(`帮助与版本v${productVersion}`);
   await page.getByRole("button", { name: "展开数据", exact: true }).click();
   await expect(page).toHaveURL(/settings$/);
-  await expect(page.getByRole("heading", { name: "存储", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "备份与恢复", exact: true })).toBeVisible();
+  await expect(page.locator('#data-maintenance-content')).toBeHidden();
+  await expect(page.locator('#data-transfer-content')).toBeHidden();
+  await page.locator('#data-transfer > button').click();
+  await page.locator('#data-maintenance > button').click();
+  await expect(page.getByRole("heading", { name: "存储", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "导入", exact: true })).toBeVisible();
-  await expect(page.locator('.nav-links a.active')).toHaveText("设置");
+  await expect(page.locator('.header-settings[aria-current="page"]')).toHaveAccessibleName("设置");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await expect(page.getByRole("heading", { name: "最近批次", exact: true })).toHaveCount(0);
-  await expect(page.locator(".selection-actions button")).toHaveText(["选中本页", "选择全部", "清空选择"]);
-  await page.getByLabel("搜索收藏").fill("卡片数量");
+  await expect(page.locator(".selection-actions button")).toHaveCount(0);
+  await page.getByLabel("仅导出公开档案").check();
   await page.getByRole("button", { name: "收起数据", exact: true }).click();
-  await expect(page.getByLabel("搜索收藏")).toBeHidden();
+  await expect(page.getByLabel("仅导出公开档案")).toBeHidden();
   await page.getByRole("button", { name: "展开数据", exact: true }).click();
-  await expect(page.getByLabel("搜索收藏")).toHaveValue("卡片数量");
+  await expect(page.getByLabel("仅导出公开档案")).toBeChecked();
   await page.goto("/data-center", { waitUntil: "networkidle" });
   await expect(page).toHaveURL(/settings\/data$/);
 });
@@ -344,73 +329,64 @@ test("view switching works when preference storage is blocked", async ({ page })
   await expect(page.getByTestId("home-card-grid")).not.toHaveClass(/is-list/);
 });
 
-for (const mode of ["list", "table"]) {
-  test(`export ${mode} card info returns to the expanded data section with its state`, async ({ page }) => {
+for (const mode of ["list", "grid"]) {
+  test(`export ${mode} card info restores collection filters, loaded cards and selection`, async ({ page }) => {
     fixture(db => { const insert = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,tags) VALUES(?,?,?,'Basketball','')"); for (let i=0;i<26;i++) insert.run("export-return-"+i, "Import UI", "Return card "+i); });
-    await page.goto("/settings", { waitUntil: "networkidle" });
-    await page.getByRole("button", { name: "展开数据", exact: true }).click();
-    await page.getByLabel("搜索收藏").fill("Import UI");
-    const pagination = page.getByRole("navigation", { name: "导出分页" });
-    await expect(pagination.locator("span")).toHaveText("1 / 2");
-    await pagination.getByRole("button", { name: "下一页" }).click();
-    await expect(pagination.locator("span")).toHaveText("2 / 2");
-    await page.getByRole("button", { name: mode === "table" ? "表格视图" : "列表视图", exact: true }).click();
-    const rows = page.locator(mode === "table" ? "#data-export tbody tr" : ".management-card-option");
-    await expect(rows).toHaveCount(2);
+    await page.goto("/?q=Import+UI&export=1", { waitUntil: "networkidle" });
+    await page.getByRole("button", { name: mode === "list" ? "列表视图" : "卡片视图", exact: true }).click();
+    const rows = page.getByTestId("home-card-grid").locator(".card-item");
+    await expect(rows).toHaveCount(24);
+    await page.getByTestId("home-load-more").click();
+    await expect(rows).toHaveCount(26);
     await page.getByLabel("仅导出公开档案").check();
-    await page.getByRole("button", { name: "选中本页", exact: true }).click();
-    await expect(page.locator(".selection-actions > span")).toHaveText("2 / 26 · 导出选中");
-    const info = rows.first().locator("a").last();
+    await rows.last().getByRole("checkbox").check();
+    await expect(page.locator(".collection-export-heading p")).toHaveText("已选 1 张");
+    const info = rows.last().locator("a");
     const destination = await info.getAttribute("href");
-    await expect(page.locator("#data-export").getByRole("link", { name: "详情", exact: true })).toHaveCount(0);
     await info.click();
     await expect(page).toHaveURL(/\/cards\/export-return-/);
     const returnTo = new URL(page.url()).searchParams.get("returnTo");
-    expect(returnTo).toContain("exportPage=1");
-    expect(returnTo).toContain("#data-export");
+    expect(returnTo).toContain("q=Import+UI");
+    expect(returnTo).toContain("export=1");
     const back = page.getByRole("link", { name: "返回上一页", exact: true });
     await expect(back).toHaveAttribute("href", returnTo);
     await back.click();
-    await expect(page).toHaveURL(/settings\?.*#data-export$/);
-    await expect(page.getByRole("button", { name: "收起数据", exact: true })).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByLabel("搜索收藏")).toHaveValue("Import UI");
-    await expect(pagination.locator("span")).toHaveText("2 / 2");
+    await expect(page).toHaveURL("http://127.0.0.1:3360" + returnTo);
+    await expect(rows).toHaveCount(26);
     await expect(page.getByLabel("仅导出公开档案")).toBeChecked();
-    await expect(page.getByRole("button", { name: mode === "table" ? "表格视图" : "列表视图", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await expect(rows).toHaveCount(2);
-    await expect(rows.first().getByRole("checkbox")).toBeChecked();
+    await expect(page.getByRole("button", { name: mode === "list" ? "列表视图" : "卡片视图", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(rows.last().getByRole("checkbox")).toBeChecked();
-    await expect(rows.first().locator("a").last()).toHaveAttribute("href", destination);
+    await expect(rows.last().locator("a")).toHaveAttribute("href", destination);
     await page.reload({ waitUntil: "networkidle" });
-    await expect(rows.first().getByRole("checkbox")).toBeChecked();
-    await expect(page.getByLabel("搜索收藏")).toHaveValue("Import UI");
+    await expect(rows).toHaveCount(26);
+    await expect(rows.last().getByRole("checkbox")).toBeChecked();
+    await expect(page.locator('input[name="q"]').first()).toHaveValue("Import UI");
   });
 }
 
 test("wishlist list opens its editor on demand and retains drafts and failed deletions", async ({ page }) => {
   await page.goto("/collection", { waitUntil: "networkidle" });
-  await page.getByRole("tab", { name: "心愿单", exact: true }).click();
   const editor = page.locator(".wish-editor");
   const displaySection = page.locator(".wish-list");
-  const newButton = page.locator(".wish-header-actions").getByRole("button", { name: "新增", exact: true });
+  const newButton = page.getByRole("button", { name: "新增心愿", exact: true });
   await expect(editor).toHaveCount(0);
   await expect(page.locator(".wish-list-toggle")).toHaveCount(0);
   const header = page.locator(".wish-header");
   expect((await newButton.boundingBox()).y).toBeLessThan((await displaySection.boundingBox()).y);
   await expect(header.getByRole("heading")).toHaveText("心愿单");
   await newButton.click();
-  await page.getByLabel("心愿名称", { exact: true }).fill("UI wishlist");
+  await page.getByLabel("心愿名称 *", { exact: true }).fill("UI wishlist");
   await page.getByRole("button", { name: "关闭录入", exact: true }).click();
   await expect(editor).toHaveCount(0);
   await newButton.click();
-  await expect(page.getByLabel("心愿名称", { exact: true })).toHaveValue("UI wishlist");
+  await expect(page.getByLabel("心愿名称 *", { exact: true })).toHaveValue("UI wishlist");
   await page.getByRole("button", { name: "添加心愿", exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(displaySection.getByText("UI wishlist", { exact: true })).toBeVisible();
   await displaySection.getByRole("button", { name: "编辑", exact: true }).click();
-  await expect(page.getByLabel("心愿名称", { exact: true })).toHaveValue("UI wishlist");
+  await expect(page.getByLabel("心愿名称 *", { exact: true })).toHaveValue("UI wishlist");
   await expect(editor.getByRole("heading")).toHaveText("编辑心愿");
-  const deleteWish = page.getByRole("button", { name: "删除心愿", exact: true });
+  const deleteWish = displaySection.locator('.scout-wish').filter({ hasText: 'UI wishlist' }).getByRole("button", { name: "删除", exact: true });
   page.once("dialog", dialog => dialog.dismiss());
   await deleteWish.click();
   await expect(displaySection.getByText("UI wishlist", { exact: true })).toBeVisible();
@@ -422,7 +398,7 @@ test("wishlist list opens its editor on demand and retains drafts and failed del
   page.once("dialog", dialog => dialog.accept());
   await deleteWish.click();
   await expect(page.locator(".scout-page").getByRole("alert")).toContainText("删除失败，请重试。");
-  await expect(page.getByLabel("心愿名称", { exact: true })).toHaveValue("UI wishlist");
+  await expect(page.getByLabel("心愿名称 *", { exact: true })).toHaveValue("UI wishlist");
   await expect(displaySection.getByText("UI wishlist", { exact: true })).toBeVisible();
   await page.unroute("**/api/scout");
   page.once("dialog", dialog => dialog.accept());
@@ -431,7 +407,7 @@ test("wishlist list opens its editor on demand and retains drafts and failed del
   await expect(editor).toHaveCount(0);
   expect(fixture(db => db.prepare("SELECT COUNT(*) n FROM CollectionPlan WHERE title='UI wishlist'").get().n)).toBe(0);
   await newButton.click();
-  await expect(page.getByLabel("心愿名称", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("心愿名称 *", { exact: true })).toHaveValue("");
   await page.getByRole("button", { name: "关闭录入", exact: true }).click();
   await page.reload({ waitUntil: "networkidle" });
   await expect(displaySection.getByText("UI wishlist", { exact: true })).toHaveCount(0);

@@ -24,7 +24,6 @@ type CardFilterInput = {
   certNumber?: string;
   visibility?: string;
   collectionStatus?: string;
-  wish?: string;
   sort?: string;
 };
 
@@ -131,9 +130,6 @@ export function buildCardFilters(input: CardFilterInput): Prisma.CardWhereInput 
   }
   if (input.collectionStatus) {
     andParts.push({ collectionStatus: input.collectionStatus });
-  }
-  if (input.wish) {
-    andParts.push({ acquiredWishes: { some: { planId: input.wish } } });
   }
 
   addBooleanFilter(andParts, input.isRookie, "isRookie");

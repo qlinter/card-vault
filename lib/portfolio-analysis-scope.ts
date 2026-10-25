@@ -23,8 +23,7 @@ export const portfolioFilterDefinitions = {
   grade: "评级",
   certNumber: "证书号",
   visibility: "公开状态",
-  collectionStatus: "收藏状态",
-  wish: "关联心愿"
+  collectionStatus: "收藏状态"
 } as const;
 
 export type PortfolioFilterInput = Record<string, string | undefined>;

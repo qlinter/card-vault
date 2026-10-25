@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { PortfolioCardRecord } from "../lib/portfolio-analysis-types.ts";
-import { buildPortfolioSnapshot } from "../lib/portfolio-analysis-snapshot.ts";
 import {
-  buildPortfolioComparisonPoint,
   buildPortfolioFinancialHistory,
   buildPortfolioPositionReviews,
   buildPortfolioValuationChanges,
@@ -143,19 +141,6 @@ test("高成本持仓和已售复盘复用移动平均核算结果", () => {
   assert.equal(reviews.soldReviews[0].realizedReturnRate, 60);
 });
 
-test("比较点保留分币种价值、成本与收益", () => {
-  const snapshot = buildPortfolioSnapshot([card({
-    transactions: [{ kind: "purchase", amountMinor: 10000n, currency: "CNY", quantity: 1, occurredAt: new Date("2026-01-01") }],
-    valuations: [{ amountMinor: 15000n, currency: "CNY", valuedAt: new Date("2026-08-01"), createdAt: new Date("2026-08-01"), source: "个人估计" }]
-  })], undefined, new Date("2026-08-25T00:00:00.000Z"));
-  const point = buildPortfolioComparisonPoint(snapshot, "全部收藏", new Date("2026-08-25T00:00:00.000Z"));
-
-  assert.equal(point.label, "全部收藏");
-  assert.equal(point.currencies[0].activeCostBasis, 100);
-  assert.equal(point.capturedAt, "2026-08-25T00:00:00.000Z");
-  assert.equal(point.structures.find((item) => item.key === "player")?.items[0].name, "Player A");
-  assert.equal(point.structures.find((item) => item.key === "cardType")?.items.length, 4);
-});
 
 test("财务历史从业务月份开始并解释估值缺失，后来的报价不倒填", () => {
   const history = buildPortfolioFinancialHistory([card({

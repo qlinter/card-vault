@@ -1,23 +1,23 @@
 export const currentReleaseNotes = {
-  "date": "2026-10-23",
+  "date": "2026-10-25",
   "highlights": {
     "zh": [
-      "数据板块采用总览、趋势、结构、明细四页签和统一收藏范围，支持关键词搜索、条件移除、精确档案下钻与完整问题清单。",
-      "仅保留固定快照，支持查看、重命名、删除及历史比较；比较差额为对象减基准，冻结结果和核算依据不随重命名变化。",
-      "财务与活动趋势独立选择期限，金额与数量并排切换，数量图不包含费用；结构统计全部档案，按持仓估值计算占比，显示已售归档和 Top 1／3／5。",
-      "首页三栏与数值对齐，卡片列表整行可点击；简化视图切换和筛选箭头，保留原有条件。结构列表展开后在末尾收起。",
-      "寻卡搜索加入防抖、数据库分页与关联索引复用，损坏的滚动缓存可安全恢复；没有新增商品、价格记录或后台抓取。",
-      "修复 start-desktop 的 Electron 运行程序准备及失败重试，使用 Next.js 16.4.1 和 Electron 42.11.9。",
-      "统一页面参数与快照异常处理，汇总页只保留汇总和前五项；删除旧拖拽布局、动态视图操作、失效样式与重复发布入口，保留财务独立对照测试和现有数据格式。"
+      "v1.5.0 三个阶段已交付：精简收藏、录入、详情、分享与寻卡；数据移除重复搜索、分析快照及比较；设置收拢为四项及底部帮助，AI 配置集中展示。",
+      "主导航归并为收藏、展示、数据；统一整理收藏入口，收藏筛选直接用于选卡导出，设置保留导出全部数据。AI 组合分析保留。",
+      "图片提前展示，财务和 AI 工具按需展开；自动草稿保留，模板与批量队列集中到录入工具。",
+      "单卡隐藏空档案字段，财务统一从新增财务记录进入，依次选择买入、卖出、费用、估值；历史记录与图表按需查看。",
+      "分享改为选卡、预览保存两步；AI 文案辅助、自定义设计和视觉微调按需使用，保留已有内容与设置。",
+      "数据库表、字段和备份及导入导出格式保持兼容；按本轮授权一次性清理旧寻卡、心愿及分析历史，其他卡片、财务与分享数据保留。",
+      "清理失效组件与样式，分离数据导航、聚合及说明内容，共用历史清理安全流程和发布脚本白名单；更新 Electron 与间接依赖的安全修复版本。"
     ],
     "en": [
-      "Data uses Overview, Trends, Structure and Details with one collection scope, keyword search, removable conditions, exact archive drill-through and complete issue lists.",
-      "Only fixed snapshots remain, with viewing, renaming, deletion and historical comparison. Differences are target minus baseline; renaming never changes frozen results or accounting evidence.",
-      "Financial and activity charts have independent ranges and adjacent amount/quantity controls. Quantities exclude expenses. Structure counts all archives, uses held values for shares and shows sold archives and Top 1/3/5.",
-      "Home panels and numbers align, and card list rows are clickable throughout. View and filter controls are compact while all filter conditions remain. Expanded structure lists collapse from the end.",
-      "Scout adds debounced queries, database pagination, shared relationship indexes and safe recovery from damaged scroll caches. No item/price records or background scraping are added.",
-      "Desktop startup prepares the Electron runtime separately and supports retry. Dependencies use Next.js 16.4.1 and Electron 42.11.9.",
-      "Page state and snapshot recovery are shared; summary tabs retain aggregates and five positions only. Old drag layouts, live-view actions, stale styles and a duplicate release entry are removed. Independent financial reference tests and the existing data format remain."
+      "v1.5.0 completes all three stages: simpler Collection, entry, details, sharing and Scout; no duplicate Data search, snapshots or comparison; four Settings groups with footer help and directly visible AI configuration.",
+      "Navigation is Collection, Showcase and Data. Review collection has one workspace; export uses Collection filters and selection. Settings retains Export all data. AI portfolio analysis remains.",
+      "Images appear earlier. Finance and AI tools expand on demand; automatic drafts remain, with templates and batch queues grouped under Entry tools.",
+      "Card details omit empty archive fields. Add Financial Record offers Purchase, Sale, Expense and Valuation in order; history and charts appear on demand.",
+      "Sharing uses two steps: select cards and preview/save. AI writing, custom design and visual fine-tuning are optional; existing content and settings remain.",
+      "Tables, fields and backup/import/export formats remain compatible. The authorized one-time resets remove old Scout, wish and analysis history; other card, financial and share data remains.",
+      "Remove unused components and styles; separate Data navigation, aggregation and guide content; share reset safeguards and the release-script allowlist; update Electron and transitive dependencies to patched versions."
     ]
   }
 } as const;

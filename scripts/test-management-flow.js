@@ -10,7 +10,16 @@ async function main() {
   let server, db;
   async function post(body, route = "/api/data-center") { const response = await fetch(base + route, { method: "POST", headers: { "Content-Type": "application/json", Origin: base }, body: JSON.stringify(body) }); const data = await response.json(); assert.equal(response.status, 200, JSON.stringify(data)); return data; }
   async function get(route) { const response = await fetch(base + route); const body = await response.text(); assert.equal(response.status, 200, body); return JSON.parse(body); }
-  async function all(id, action) { let cursor, result; do { result = await post({ id, action, cursor }); cursor = result.nextCursor ?? undefined; } while (cursor !== undefined); return result; }
+  async function all(id, action) {
+    let cursor;
+    do {
+      const result = await post({ id, action, cursor });
+      assert.equal(result.delta, true); assert.ok(result.rows.length <= 50);
+      assert.ok(result.rows.every(row => !("values" in row)), "chunk responses must omit input values");
+      cursor = result.nextCursor ?? undefined;
+    } while (cursor !== undefined);
+    return get(`/api/data-center?id=${id}`);
+  }
   try {
     initializeTestDatabase(env); server = startTestServer(port, env, output); await waitForServer(base, output, server, "Management"); db = new DatabaseSync(dbPath);
     const headers = ["playerName", "cardTitle", "sport", "purchasePrice", "purchaseDate", "currentValue", "valuationDate", "valuationSource"];
@@ -45,6 +54,24 @@ async function main() {
     const multi = await post({ action: "preview", headers: table.headers, mapping: { playerName: "playerName", cardTitle: "cardTitle", sport: "sport" }, policy: "skip", rows: [["Invalid row", "", "Basketball"], ...Array.from({ length: 61 }, (_, i) => ["Chunked", `Card ${i}`, "Basketball"])] });
     const multiResult = await all(multi.id, "apply"); assert.equal(multiResult.rows.filter(row => row.status === "applied").length, 61); assert.equal(multiResult.rows.filter(row => row.status === "failed").length, 1);
     await all(multi.id, "undo"); assert.equal(db.prepare("SELECT COUNT(*) n FROM Card").get().n, 1);
+    const paged = await post({ action: "preview", headers: ["playerName", "cardTitle", "sport"], mapping: { playerName: "playerName", cardTitle: "cardTitle", sport: "sport" }, policy: "separate", rows: Array.from({ length: 205 }, (_, i) => ["Paged", `Card ${i}`, "Basketball"]) });
+    assert.equal(paged.total, 205); assert.equal(paged.rows.length, 100); assert.equal(paged.counts.pending, 205);
+    const secondPage = await get(`/api/data-center?id=${paged.id}&after=${paged.nextRow}`);
+    const finalPage = await get(`/api/data-center?id=${paged.id}&after=${secondPage.nextRow}`);
+    assert.equal(new Set([...paged.rows, ...secondPage.rows, ...finalPage.rows].map(row => row.id)).size, 205);
+    assert.equal(finalPage.nextRow, null);
+    const pagedResult = await all(paged.id, "apply");
+    assert.equal(pagedResult.counts.applied, 205); assert.equal(pagedResult.rows.length, 100);
+    const duplicatePreview = await post({ action: "preview", headers: ["playerName", "cardTitle", "sport"], mapping: { playerName: "playerName", cardTitle: "cardTitle", sport: "sport" }, policy: "separate", rows: [["Paged", "Card 0", "Basketball"], ["Paged", "Card 0", "Basketball"]] });
+    await all(duplicatePreview.id, "apply");
+    const ambiguous = await post({ action: "preview", headers: ["playerName", "cardTitle", "sport"], mapping: { playerName: "playerName", cardTitle: "cardTitle", sport: "sport" }, policy: "skip", rows: [["Paged", "Card 0", "Basketball"]] });
+    assert.match(ambiguous.rows[0].error, /匹配到多张/);
+    const independent = await post({ action: "preview", headers: ["playerName", "cardTitle", "sport"], mapping: { playerName: "playerName", cardTitle: "cardTitle", sport: "sport" }, policy: "separate", rows: [["Paged", "Card 0", "Basketball"]] });
+    assert.equal(independent.rows[0].status, "pending");
+    const missingId = await post({ action: "preview", headers: ["id"], mapping: { id: "id" }, policy: "update", rows: [["not-present"]] });
+    assert.match(missingId.rows[0].error, /卡片 ID 不存在/);
+    await all(duplicatePreview.id, "undo");
+    await all(paged.id, "undo"); assert.equal(db.prepare("SELECT COUNT(*) n FROM Card").get().n, 1);
     const exportResponse = await fetch(base + "/api/data-center?export=xlsx"); assert.equal(exportResponse.status, 200); const exported = new ExcelJS.Workbook(); await exported.xlsx.load(Buffer.from(await exportResponse.arrayBuffer())); assert.equal(exported.worksheets[0].name, "Cards"); assert.equal(exported.getWorksheet("Financial history").rowCount, 3);
     const invalidExport = await fetch(base + "/api/data-center?export=pdf"); assert.equal(invalidExport.status, 400);
     const publicXlsxResponse = await fetch(base + "/api/data-center?export=xlsx&publicOnly=true"); assert.equal(publicXlsxResponse.status, 200);
@@ -61,6 +88,24 @@ async function main() {
     assert.equal(publicSelected.rows[0][publicSelected.headers.indexOf("id")], "export-other");
     assert.equal((await selectedExport([])).status, 400);
     assert.equal((await (await selectedExport(["deleted-card"])).text()).trim().split(/\r?\n/).length, 1);
+    db.exec("UPDATE Card SET team='A&B / 队',brand='Export brand',year='2024',isAutograph=0 WHERE id='export-other'");
+    const scope = { q: "Export", team: "A&B / 队", brand: "Export brand", year: "2024", isAutograph: "false", visibility: "public", collectionStatus: "holding" };
+    const selectedIds = await get("/api/data-center?" + new URLSearchParams({ ...scope, selection: "true" }));
+    assert.deepEqual(selectedIds.ids, ["export-other"]);
+    async function scopedExport(extra = {}) {
+      const response = await fetch(base + "/api/data-center", { method: "POST", headers: { Origin: base }, body: new URLSearchParams({ action: "export", format: "csv", ...scope, ids: JSON.stringify([cardId, "export-other"]), ...extra }) });
+      assert.equal(response.status, 200); return response;
+    }
+    const scopedCsv = parseCsv(await (await scopedExport()).text());
+    assert.equal(scopedCsv.rows.length, 1);
+    assert.equal(scopedCsv.rows[0][scopedCsv.headers.indexOf("id")], "export-other");
+    assert.equal((await (await scopedExport({ team: "different" })).text()).trim().split(/\r?\n/).length, 1);
+    assert.equal((await (await scopedExport({ isAutograph: "true" })).text()).trim().split(/\r?\n/).length, 1);
+    const scopedBook = new ExcelJS.Workbook();
+    await scopedBook.xlsx.load(Buffer.from(await (await scopedExport({ format: "xlsx", publicOnly: "true" })).arrayBuffer()));
+    assert.deepEqual(scopedBook.worksheets.map(sheet => sheet.name), ["Cards"]);
+    assert.equal(scopedBook.worksheets[0].rowCount, 2);
+    assert.ok(!scopedBook.worksheets[0].getRow(1).values.includes("notes"));
     db.exec("DELETE FROM Card WHERE id='export-other'");
     assert.equal(exported.getWorksheet("Financial history").getRow(1).getCell(15).text, "transactionId");
     assert.equal(exported.getWorksheet("Financial history").getRow(2).getCell(14).text, "12025");
@@ -70,9 +115,22 @@ async function main() {
       assert.equal(response.status, 400);
     }
     await post({ action: "task", id: reminder.id, fingerprint: reminder.fingerprint, status: "snoozed" }, "/api/collection-management"); assert.equal((await get("/api/home-overview?tasks=1&handled=1")).tasks.find(task => task.id === reminder.id).state, "snoozed");
-    const wishId = (await post({ action: "wish", title: "愿望清单", budget: "123.45", currency: "CNY", watchIds: [] }, "/api/scout")).id;
-    assert.equal((await get("/api/scout")).budgets.CNY, "12345");
-    await post({ action: "wish", title: "保留心愿", budget: "10.00", currency: "CNY", watchIds: [] }, "/api/scout");
+    db.exec("INSERT INTO Card(id,playerName,cardTitle,sport,collectionStatus,updatedAt) VALUES('review-grading','Review scope','Grade old','Basketball','grading','2025-01-01T00:00:00.000Z'),('review-listed','Review scope','Listed old','Basketball','listed','2025-01-01T00:00:00.000Z')");
+    db.exec("UPDATE CardTracking SET statusStartedAt='2025-01-01T00:00:00.000Z' WHERE cardId IN ('review-grading','review-listed')");
+    const follow = await get("/api/home-overview?review=followup&tasks=1&q=Review+scope");
+    assert.equal(follow.followupOpenCount, 2);
+    assert.deepEqual(new Set(follow.tasks.map(task => task.kind)), new Set(["grading", "listed"]));
+    assert.equal((await get("/api/home-overview?review=followup&tasks=1&q=Review+scope&reviewSearch=Grade")).tasks.length, 1);
+    assert.equal((await get("/api/home-overview?review=followup&tasks=1&q=Review+scope&reviewSearch=Import")).tasks.length, 0);
+    const grading = follow.tasks.find(task => task.kind === "grading");
+    await post({ action: "task", id: grading.id, fingerprint: grading.fingerprint, status: "done" }, "/api/collection-management");
+    assert.equal((await get("/api/home-overview?review=followup&tasks=1&q=Review+scope")).followupOpenCount, 1);
+    assert.ok((await get("/api/home-overview?review=followup&tasks=1&handled=1&q=Review+scope")).tasks.some(task => task.id === grading.id && task.state === "done"));
+    assert.ok((await get("/api/home-overview?review=followup&tasks=1&handled=1")).tasks.some(task => task.id === reminder.id && task.state === "snoozed"));
+    db.exec("DELETE FROM Card WHERE id IN ('review-grading','review-listed'); DELETE FROM CollectionTaskState WHERE id LIKE 'review-%'");
+    const wishId = (await post({ action: "wish", title: "愿望清单", budget: "123.45", currency: "CNY" }, "/api/scout")).id;
+    assert.equal((await get("/api/scout")).plans.find(plan => plan.id === wishId).budgetMinor, "12345");
+    await post({ action: "wish", title: "保留心愿", budget: "10.00", currency: "CNY" }, "/api/scout");
     for (const id of ["", "missing-wish"]) {
       const response = await fetch(base + "/api/scout", { method: "POST", headers: { "Content-Type": "application/json", Origin: base }, body: JSON.stringify({ action: "wish-delete", id }) });
       assert.equal(response.status, 400);
@@ -81,7 +139,7 @@ async function main() {
     const afterWishDelete = await get("/api/scout");
     assert.equal(afterWishDelete.plans.some(plan => plan.id === wishId), false);
     assert.equal(afterWishDelete.plans.some(plan => plan.title === "保留心愿"), true);
-    assert.equal(afterWishDelete.budgets.CNY, "1000");
+    assert.equal(afterWishDelete.plans.find(plan => plan.title === "保留心愿").budgetMinor, "1000");
     await post({ action: "task", id: reminder.id, fingerprint: reminder.fingerprint, status: "open" }, "/api/collection-management");
     await post({ action: "task", id: reminder.id, fingerprint: reminder.fingerprint, status: "done" }, "/api/collection-management");
     db.prepare("INSERT INTO CardImage(id,cardId,path) VALUES('recurring-image',?,'/media/example.webp')").run(cardId);

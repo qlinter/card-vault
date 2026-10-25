@@ -7,10 +7,12 @@ import {
   useEffect,
   useRef,
   useState,
-  type FormEvent
+  type FormEvent,
+  type ReactNode
 } from "react";
 import { createCardFormAction, type CreateCardFormState } from "@/app/actions/cards";
 import { CardForm } from "@/components/card-form";
+import { CardEntryTemplatePanel } from "@/components/card-entry-template-panel";
 import {
   cardEntryDraftTitle,
   hasCardEntryDraftContent,
@@ -19,14 +21,18 @@ import {
 import type { CardEntryDraftSummary } from "@/lib/card-entry-drafts";
 import type { CardEntryQueueItemSummary } from "@/lib/card-entry-queue-domain";
 import type { CardFormValues } from "@/lib/card-form-values";
+import type { DraftImage } from "@/lib/card-entry-draft-images.js";
+import { cardImageSelectionError } from "@/lib/card-image-limits.js";
 
 type CreateCardFormProps = {
   initialValues: CardFormValues;
   initialDraftId?: string;
+  initialImages?: DraftImage[];
   initialMessage?: string;
   recentDrafts: CardEntryDraftSummary[];
   queueItem?: CardEntryQueueItemSummary;
   queueNavigation?: { previousId?: string; nextId?: string };
+  queuePanel?: ReactNode;
 };
 
 type DraftSaveResponse = {
@@ -45,10 +51,12 @@ function formatDraftTime(value: string): string {
 export function CreateCardForm({
   initialValues,
   initialDraftId,
+  initialImages = [],
   initialMessage,
   recentDrafts,
   queueItem,
-  queueNavigation = {}
+  queueNavigation = {},
+  queuePanel
 }: CreateCardFormProps) {
   const initialState: CreateCardFormState = {
     error: undefined,
@@ -66,6 +74,7 @@ export function CreateCardForm({
   const submittingRef = useRef(false);
   const navigatingRef = useRef(false);
   const mountedRef = useRef(true);
+  const savedImages = useRef<string | undefined>(initialImages.length ? undefined : "[]");
   const [draftId, setDraftId] = useState(initialDraftId);
   const [draftStatus, setDraftStatus] = useState(
     initialDraftId
@@ -80,13 +89,26 @@ export function CreateCardForm({
     values: CardFormValues,
     announce = true
   ): Promise<string | undefined> => {
-    if (!hasCardEntryDraftContent(values) && !draftIdRef.current) return;
+    const imageInput = formRef.current?.elements.namedItem("images") as HTMLInputElement | null;
+    const images = Array.from(imageInput?.files ?? []);
+    if (!hasCardEntryDraftContent(values) && !draftIdRef.current && !images.length) return;
+    const imageError = cardImageSelectionError(images);
+    if (imageError) throw new Error(imageError);
+    const signature = JSON.stringify(images.map(file => [file.name, file.size, file.lastModified]));
+    const restored = imageInput?.dataset.draftRestored === "restored";
+    if (savedImages.current === undefined && restored) savedImages.current = signature;
+    const manageImages = !initialImages.length || Boolean(imageInput?.dataset.draftRestored) || images.length > 0;
+    const changedImages = manageImages && savedImages.current !== signature;
+    const rotations = manageImages ? JSON.parse(String((formRef.current?.elements.namedItem("newImageRotations") as HTMLInputElement | null)?.value || "[]")) : undefined;
     if (announce && mountedRef.current) setDraftStatus("正在保存草稿...");
 
-    const response = await fetch("/api/card-entry/drafts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: draftIdRef.current, values })
+    const body = new FormData();
+    if (draftIdRef.current) body.set("id", draftIdRef.current);
+    body.set("values", JSON.stringify(values));
+    body.set("imageRotations", JSON.stringify(rotations || []));
+    if (changedImages) images.forEach(file => body.append("images", file));
+    const response = await fetch("/api/card-entry/drafts", changedImages ? { method: "POST", body } : {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: draftIdRef.current, values, imageRotations: rotations })
     });
     const result = (await response.json()) as DraftSaveResponse;
     if (!response.ok || !result.id || !result.updatedAt) {
@@ -94,12 +116,13 @@ export function CreateCardForm({
     }
 
     draftIdRef.current = result.id;
+    if (changedImages) savedImages.current = signature;
     if (!mountedRef.current) return result.id;
     setDraftId(result.id);
     setDraftStatus(
       queueItem
         ? "草稿已保存；队列图片会继续保留。"
-        : "草稿已保存；图片仍需在正式提交时重新选择。"
+        : images.length ? "草稿和图片已保存，可在重新打开后继续录入。" : "草稿已保存。"
     );
     setDrafts((current) => {
       const next: CardEntryDraftSummary = {
@@ -121,7 +144,7 @@ export function CreateCardForm({
       `${url.pathname}${url.search}${url.hash}`
     );
     return result.id;
-  }, [queueItem]);
+  }, [queueItem, initialImages.length]);
 
   const navigateAfterSaving = useCallback(async (href: string) => {
     if (navigatingRef.current) return;
@@ -295,8 +318,9 @@ export function CreateCardForm({
   }
 
   return (
-    <div className="entry-workbench-layout">
-      <UiElement as="aside" uiAttributes={["aria-label"]} className="entry-draft-panel panel" aria-label="录入草稿">
+    <div className="entry-workbench-layout" data-card-entry-workspace>
+      {drafts.some(draft => draft.id !== draftId) ? <details className="entry-draft-panel panel">
+        <summary><UiText text="未完成草稿" /> · {drafts.length}</summary>
         <div className="entry-draft-heading">
           <div>
             <strong><UiText text={"录入草稿"} /></strong>
@@ -330,7 +354,7 @@ export function CreateCardForm({
         ) : (
           <p className="muted"><UiText text={"暂无草稿。开始填写后会自动创建。"} /></p>
         )}
-      </UiElement>
+      </details> : null}
 
       <div className="entry-form-column">
         {initialMessage ? (
@@ -350,6 +374,7 @@ export function CreateCardForm({
             </div>
           </div>
         ) : null}
+        <details className="entry-tools" open={Boolean(queueItem) || undefined}><summary><UiText text="录入工具" /></summary><CardEntryTemplatePanel />{queuePanel}</details>
         <CardForm
           mode="create"
           action={formAction}
@@ -357,6 +382,7 @@ export function CreateCardForm({
           values={state.values}
           formRef={formRef}
           draftId={draftId}
+          draftImages={initialImages}
           onSubmit={prepareSubmit}
           onInvalid={(event) => {
             const target = event.target;

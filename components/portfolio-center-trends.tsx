@@ -45,7 +45,7 @@ function LineChart({ months, series: allSeries, currency, ariaLabel, emptyLabel,
   coverage?: Array<{ active: number; valued: number; costKnown: number } | undefined>;
 }) {
   const { locale, t } = useLanguage();
-  const formatValue = (value: number | null) => currency ? money(value, currency) : value === null ? "—" : value.toLocaleString(locale === "en" ? "en-US" : "zh-CN");
+  const formatValue = (value: number | null) => currency ? money(value, currency) : value === null ? "–" : value.toLocaleString(locale === "en" ? "en-US" : "zh-CN");
   const [hidden, setHidden] = useState<string[]>([]);
   const series = allSeries.filter(item => !hidden.includes(item.key));
   const container = useRef<HTMLDivElement>(null);

@@ -10,7 +10,9 @@ import { NavigationStatus } from "./navigation-status";
 export function SiteHeader() {
   const pathname = usePathname();
   const { locale } = useLanguage();
-  const homeHref = pathname.startsWith("/showcase") ? "/showcase" : "/";
+  const showcaseActive = pathname.startsWith("/showcase") || pathname.startsWith("/shares");
+  const collectionActive = pathname === "/" || pathname.startsWith("/cards") || pathname.startsWith("/collection");
+  const homeHref = showcaseActive ? "/showcase" : "/";
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
   return (
@@ -20,15 +22,18 @@ export function SiteHeader() {
           Card Vault
           <NavigationStatus />
         </Link>
-        <nav className="nav-links">
-          <Link href="/" className={isActive("/") ? "active" : undefined}><UiText text={"首页"} /><NavigationStatus /></Link>
-          <Link href="/portfolio" className={isActive("/portfolio") ? "active" : undefined}><UiText text={"数据"} /><NavigationStatus /></Link>
-          <Link href="/showcase" className={isActive("/showcase") ? "active" : undefined}><UiText text={"展示"} /><NavigationStatus /></Link>
-          <Link href="/shares" className={isActive("/shares") ? "active" : undefined}><UiText text={"分享"} /><NavigationStatus /></Link>
-          <Link href="/collection" className={isActive("/collection") ? "active" : undefined}>{locale === "en" ? "Scout" : "寻卡"}<NavigationStatus /></Link>
-          <Link href="/settings" className={isActive("/settings") ? "active" : undefined}><UiText text={"设置"} /><NavigationStatus /></Link>
+        <nav className="nav-links" aria-label={locale === "en" ? "Main navigation" : "主导航"}>
+          <Link href="/" className={collectionActive ? "active" : undefined} aria-current={collectionActive ? "page" : undefined}><UiText text="收藏" /><NavigationStatus /></Link>
+          <Link href="/showcase" className={showcaseActive ? "active" : undefined} aria-current={showcaseActive ? "page" : undefined}><UiText text="展示" /><NavigationStatus /></Link>
+          <Link href="/portfolio" className={isActive("/portfolio") ? "active" : undefined} aria-current={isActive("/portfolio") ? "page" : undefined}><UiText text="数据" /><NavigationStatus /></Link>
         </nav>
-        <LanguageSwitch />
+        <div className="header-utilities">
+          <Link href="/settings" className="header-settings header-tool" aria-current={isActive("/settings") ? "page" : undefined} title={locale === "en" ? "Settings" : "设置"}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 3-1 3-3 1-2 3 2 2-1 3 2 3 3-1 2 3h3l1-3 3-1 2-3-2-2 1-3-2-3-3 1-2-3Z" /><circle cx="11.5" cy="11.5" r="3.5" /></svg>
+            <span className="sr-only"><UiText text="设置" /></span><NavigationStatus />
+          </Link>
+          <LanguageSwitch />
+        </div>
 
       </div>
     </header>

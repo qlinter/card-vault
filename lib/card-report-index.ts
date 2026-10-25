@@ -5,6 +5,7 @@ import { financialCardSelect } from "./card-query-shapes";
 import { loadFinancialSettings } from "./financial-settings";
 import { reportingHistory } from "./financial-reporting";
 import { calculateCurrencyPosition } from "./position-accounting";
+import { OperationError, operationMessages } from "./operation-errors";
 
 let rebuilding: Promise<void> | null = null;
 async function rebuild() {
@@ -56,7 +57,7 @@ async function rebuild() {
     });
     if (finished) return;
   }
-  throw new Error("收藏数据正在连续变化，请稍后刷新。");
+  throw new OperationError("data_changed", operationMessages.dataChanged);
 }
 
 export async function ensureCardReports() {

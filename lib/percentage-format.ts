@@ -5,7 +5,7 @@ type PercentageFormatOptions = {
 };
 
 export function formatPercentage(value: number | null, options: PercentageFormatOptions = {}): string {
-  if (value === null || !Number.isFinite(value)) return options.fallback ?? "—";
+  if (value === null || !Number.isFinite(value)) return options.fallback ?? "–";
   const fractionDigits = options.fractionDigits;
   const absoluteValue = options.signed ? Math.abs(value) : value;
   const formatted = absoluteValue.toLocaleString("zh-CN", {

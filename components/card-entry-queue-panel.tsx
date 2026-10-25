@@ -2,7 +2,8 @@
 
 import { UiElement, UiText } from "@/components/ui-text";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { useLanguage } from "./language-provider";
 import { DisclosureIcon } from "@/components/disclosure-icon";
 import type { CardEntryQueueItemSummary } from "@/lib/card-entry-queue-domain";
 
@@ -35,6 +36,7 @@ export function CardEntryQueuePanel({
   activeItemId
 }: CardEntryQueuePanelProps) {
   const router = useRouter();
+  const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isRecognizingBatch, setIsRecognizingBatch] = useState(false);
@@ -42,7 +44,7 @@ export function CardEntryQueuePanel({
     items.length > 0 || Boolean(activeItemId)
   );
   const [pendingItemId, setPendingItemId] = useState<string>();
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<string | { text: string; values: ReactNode[] }>("");
 
   async function importBatch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,9 +65,7 @@ export function CardEntryQueuePanel({
       });
       const result = (await response.json()) as QueueMutationResponse;
       if (!response.ok) throw new Error(result.error || "批量导入失败。");
-      setMessage(
-        `已建立 ${result.itemCount ?? 0} 个项目：${result.readyCount ?? 0} 个可录入，${result.failedCount ?? 0} 个失败。`
-      );
+      setMessage({ text: "已建立 {0} 个项目：{1} 个可录入，{2} 个失败。", values: [result.itemCount ?? 0, result.readyCount ?? 0, result.failedCount ?? 0] });
       form.reset();
       if (fileInputRef.current) fileInputRef.current.value = "";
       router.refresh();
@@ -80,7 +80,7 @@ export function CardEntryQueuePanel({
     id: string,
     operation: "retry" | "swap" | "delete"
   ) {
-    if (operation === "delete" && !window.confirm("确定移除这个待处理项目及其队列图片吗？")) {
+    if (operation === "delete" && !window.confirm(t("确定移除这个待处理项目及其队列图片吗？"))) {
       return;
     }
     setPendingItemId(id);
@@ -148,10 +148,10 @@ export function CardEntryQueuePanel({
     setIsRecognizingBatch(true);
     let succeeded = 0;
     for (const [index, item] of pending.entries()) {
-      setMessage(`正在识别 ${index + 1}/${pending.length}：${item.batchLabel}`);
+      setMessage({ text: "正在识别 {0}/{1}：{2}", values: [index + 1, pending.length, item.batchLabel || <UiText text="未命名批次" />] });
       if (await recognizeItem(item.id, false)) succeeded += 1;
     }
-    setMessage(`批量识别完成：${succeeded} 个成功，${pending.length - succeeded} 个失败。所有结果仍需逐项确认。`);
+    setMessage({ text: "批量识别完成：{0} 个成功，{1} 个失败。所有结果仍需逐项确认。", values: [succeeded, pending.length - succeeded] });
     setIsRecognizingBatch(false);
     router.refresh();
   }
@@ -212,7 +212,7 @@ export function CardEntryQueuePanel({
       ) : null}
 
       {message ? (
-        <p className="entry-queue-message" aria-live="polite"><UiText text={message} /></p>
+        <p className="entry-queue-message" aria-live="polite">{typeof message === "string" ? <UiText text={message} /> : <UiText text={message.text} values={message.values} />}</p>
       ) : null}
 
       {items.length > 0 ? (
@@ -226,7 +226,7 @@ export function CardEntryQueuePanel({
                 {item.images.map((image) => (
                   image.url ? (
                     <figure key={image.id}>
-                      <img src={image.url} alt={`${image.side === "front" ? "正面" : "背面"}：${image.originalName}`} />
+                      <UiElement as="img" src={image.url} alt={image.originalName} uiMessages={{ alt: { text: "{0}：{1}", values: [image.side === "front" ? "正面" : "背面", image.originalName], translateValues: [0] } }} />
                       <figcaption>{image.side === "front" ? <UiText text={"正面"} /> : <UiText text={"背面"} />}</figcaption>
                     </figure>
                   ) : (
@@ -238,12 +238,12 @@ export function CardEntryQueuePanel({
               </div>
               <div className="entry-queue-item-body">
                 <div className="entry-queue-item-title">
-                  <strong>{item.batchLabel}</strong>
+                  <strong>{item.batchLabel || <UiText text="未命名批次" />}</strong>
                   <span className={`entry-queue-status is-${item.status}`}>
-                    {statusLabel(item.status)}
+                    <UiText text={statusLabel(item.status)} />
                   </span>
                 </div>
-                <small><UiText text={"第"} />{item.attemptCount}<UiText text={" 次处理 · "} />{item.images.map((image) =>
+                <small><UiText text="处理 {0} 次 · " values={[item.attemptCount]} />{item.images.map((image) =>
                     image.processedBytes
                       ? `${formatBytes(image.originalBytes)} → ${formatBytes(image.processedBytes)}`
                       : formatBytes(image.originalBytes)

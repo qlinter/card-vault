@@ -4,8 +4,9 @@ import { prisma } from "./prisma";
 import { buildCardFilters } from "./card-helpers";
 import { taskCardSelect, taskCardsWithValuations } from "./collection-task-service";
 import { deriveCollectionTasks, taskIsVisible } from "./collection-tasks";
+import { includeFollowUpTask, isFollowUpTask } from "./collection-review";
 
-export async function loadHomeOverview(query: Parameters<typeof buildCardFilters>[0], options: { includeTasks?: boolean; handled?: boolean; page?: number } = {}) {
+export async function loadHomeOverview(query: Parameters<typeof buildCardFilters>[0], options: { includeTasks?: boolean; handled?: boolean; page?: number; followupOnly?: boolean; search?: string } = {}) {
   const now = new Date();
   const [settings, states] = await Promise.all([prisma.managementSettings.findUnique({ where: { id: "default" } }), prisma.collectionTaskState.findMany()]);
   const cadence = settings?.digestCadence ?? "weekly";
@@ -14,17 +15,21 @@ export async function loadHomeOverview(query: Parameters<typeof buildCardFilters
   const stateMap = new Map(states.map(state => [state.id, state]));
   const tasks: Array<ReturnType<typeof deriveCollectionTasks>[number] & { state: string }> = [];
   const requestedPage = Math.max(1, Math.min(1000000, Math.floor(options.page || 1))), pageSize = 50;
-  let openCount = 0, totalCount = 0, taskCount = 0;
+  let openCount = 0, totalCount = 0, taskCount = 0, followupOpenCount = 0;
+  const baseWhere = buildCardFilters(query);
+  const where = options.search ? { AND: [baseWhere, buildCardFilters({ q: options.search.slice(0, 160) })] } : baseWhere;
   const compareTasks = (a: typeof tasks[number], b: typeof tasks[number]) => b.days - a.days || a.id.localeCompare(b.id);
   const digest = { days, newCards: 0, purchases: 0, sales: 0, valuations: 0 };
   let cursor: string | undefined;
   for (;;) {
-    const cards = await prisma.card.findMany({ where: buildCardFilters(query), select: taskCardSelect, orderBy: { id: "asc" }, take: 250, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) });
+    const cards = await prisma.card.findMany({ where, select: taskCardSelect, orderBy: { id: "asc" }, take: 250, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) });
     if (cards.length) {
       const ids = Prisma.join(cards.map(card => card.id));
       const taskCards = await taskCardsWithValuations(cards, now);
       for (const task of deriveCollectionTasks(taskCards, now)) {
         const state = taskIsVisible(task, stateMap.get(task.id), now) ? "open" : stateMap.get(task.id)!.status;
+        if (isFollowUpTask(task.kind) && state === "open") followupOpenCount++;
+        if (options.followupOnly && !includeFollowUpTask(task.kind, state, options.handled)) continue;
         totalCount++;
         if (state === "open") openCount++;
         if (options.handled || state === "open") {
@@ -49,5 +54,5 @@ export async function loadHomeOverview(query: Parameters<typeof buildCardFilters
     cursor = cards.at(-1)!.id;
   }
   const page = Math.min(requestedPage, Math.max(1, Math.ceil(taskCount / pageSize)));
-  return { digest, tasks: options.includeTasks ? tasks.slice((page - 1) * pageSize, page * pageSize) : [], cadence, openCount, totalCount, taskCount, page, pageSize };
+  return { digest, tasks: options.includeTasks ? tasks.slice((page - 1) * pageSize, page * pageSize) : [], cadence, openCount, followupOpenCount, totalCount, taskCount, page, pageSize };
 }

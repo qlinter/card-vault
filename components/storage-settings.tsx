@@ -164,22 +164,22 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
       {health ? (
         <div className={health.ok ? "note-ok health-result" : "note-error health-result"}>
           <strong>{health.ok ? <UiText text={"数据状态正常"} /> : <UiText text={"数据需要处理"} />}</strong>
-          <p><UiText text={"数据库："} />{health.integrity}<UiText text={"；卡片 "} />{health.counts.cards}<UiText text={" 张；图片记录 "} />{health.counts.images}<UiText text={" 条；待处理项目 "} />{health.counts.queueItems}<UiText text={" 个；分享集 "} />{health.counts.shares}<UiText text={"个。"} /></p>
-          <p><UiText text={"缺失文件"} />{health.missingFiles.length}<UiText text={" 个；未被数据库引用的文件 "} />{health.orphanFiles.length}<UiText text={"个。"} /></p>
+          <p><UiText text="数据库：{0}；卡片 {1} 张；图片记录 {2} 条；待处理项目 {3} 个；分享集 {4} 个。" values={[health.integrity, health.counts.cards, health.counts.images, health.counts.queueItems, health.counts.shares]} /></p>
+          <p><UiText text="缺失文件 {0} 个；未被数据库引用的文件 {1} 个。" values={[health.missingFiles.length, health.orphanFiles.length]} /></p>
           {health.issues.map((issue) => <p key={issue}>{issue}</p>)}
           {health.orphanFiles.length > 0 ? (
             <div className="orphan-cleanup-panel">
               <details>
-                <summary><UiText text={"查看未引用文件明细（"} />{health.orphanFiles.length}<UiText text={" 个）"} /></summary>
+                <summary><UiText text="查看未引用文件明细（{0} 个）" values={[health.orphanFiles.length]} /></summary>
                 <p className="muted"><UiText text={"这些文件位于当前数据目录中，但没有被任何卡片或分享集引用。"} /></p>
                 <ul className="orphan-file-list">
                   {health.orphanFiles.map((file) => (
                     <li key={`${file.type}:${file.path}`}>
-                      <span>{orphanTypeLabel(file)}</span>
+                      <span><UiText text={orphanTypeLabel(file)} /></span>
                       <code>{file.path}</code>
                       <button
                         type="button"
-                        className="orphan-reveal-button"
+                        className="btn btn-secondary orphan-reveal-button"
                         onClick={() => void handleRevealOrphanFile(file)}
                         disabled={busy}
                       >

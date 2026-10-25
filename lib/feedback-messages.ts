@@ -15,6 +15,8 @@ export const cardSuccessMessages = {
 } as const;
 
 export const shareListSuccessMessages = {
+  created: "分享集已创建。",
+  updated: "分享集已保存。",
   deleted: "分享集已删除。"
 } as const;
 

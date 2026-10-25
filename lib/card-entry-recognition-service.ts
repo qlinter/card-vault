@@ -57,7 +57,8 @@ export async function recoverInterruptedCardEntryRecognitions() {
 }
 
 export async function recognizeCardEntryQueueItem(
-  itemId: string
+  itemId: string,
+  signal?: AbortSignal
 ): Promise<CardEntryRecognitionSummary> {
   await recoverInterruptedCardEntryRecognitions();
   const item = await prisma.cardEntryQueueItem.findFirst({
@@ -98,7 +99,8 @@ export async function recognizeCardEntryQueueItem(
       }
       return { mimeType: "image/webp", buffer };
     }));
-    const result = await recognizeCardImages(recognitionImages);
+    const result = await recognizeCardImages(recognitionImages, signal);
+    signal?.throwIfAborted();
     const recognition = await prisma.cardEntryRecognition.update({
       where: { itemId },
       data: {

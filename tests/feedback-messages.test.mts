@@ -13,6 +13,8 @@ test("feedback success messages resolve common and scenario-specific codes", () 
   assert.equal(resolveSuccessMessage("created", commonSuccessMessages), "添加成功");
   assert.equal(resolveSuccessMessage("history-added", cardSuccessMessages), "财务记录已添加");
   assert.equal(resolveSuccessMessage("deleted", shareListSuccessMessages), "分享集已删除。");
+  assert.equal(resolveSuccessMessage("created", shareListSuccessMessages), "分享集已创建。");
+  assert.equal(resolveSuccessMessage("updated", shareListSuccessMessages), "分享集已保存。");
   assert.equal(resolveSuccessMessage("updated", shareEditSuccessMessages), "分享集已保存。");
   assert.equal(resolveSuccessMessage("unknown", shareListSuccessMessages), null);
   assert.equal(resolveSuccessMessage("unknown", commonSuccessMessages, { passthroughUnknown: true }), "unknown");

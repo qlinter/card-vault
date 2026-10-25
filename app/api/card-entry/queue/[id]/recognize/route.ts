@@ -10,12 +10,12 @@ import {
 export const runtime = "nodejs";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   context: CardEntryRouteContext
 ) {
   try {
     const id = await requireCardEntryRouteId(context, "待处理项编号无效。");
-    return NextResponse.json({ recognition: await recognizeCardEntryQueueItem(id) });
+    return NextResponse.json({ recognition: await recognizeCardEntryQueueItem(id, request.signal) });
   } catch (error) {
     return cardEntryErrorResponse(
       error,

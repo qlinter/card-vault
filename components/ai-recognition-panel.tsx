@@ -2,7 +2,7 @@
 
 import { UiText } from "@/components/ui-text";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { errorMessage } from "@/lib/feedback-messages";
 import type { CardEntryRecognitionSummary } from "@/lib/card-entry-queue-domain";
 import {
@@ -61,11 +61,11 @@ function applySuggestion(
   return applied;
 }
 
-async function appendUrlImages(formData: FormData, urls: string[]): Promise<number> {
+async function appendUrlImages(formData: FormData, urls: string[], signal?: AbortSignal): Promise<number> {
   let count = 0;
 
   for (const url of urls.slice(0, 2)) {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal });
     if (!response.ok) {
       throw new Error(`读取已有图片失败：${response.status}`);
     }
@@ -85,6 +85,8 @@ export function AiRecognitionPanel({
 }: AiRecognitionPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const actionButtonRef = useRef<HTMLButtonElement>(null);
+  const activeRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => activeRequest.current?.abort(), []);
   const [overwrite, setOverwrite] = useState(false);
   const [useExistingImages, setUseExistingImages] = useState(defaultImageUrls.length > 0);
   const [isPending, setIsPending] = useState(false);
@@ -96,6 +98,7 @@ export function AiRecognitionPanel({
   });
 
   function handleImageSelectionChange(event: React.ChangeEvent<HTMLInputElement>) {
+    activeRequest.current?.abort();
     clearRecognizedFields(event.currentTarget);
     const count = event.currentTarget.files?.length ?? 0;
     setUseExistingImages(false);
@@ -103,6 +106,7 @@ export function AiRecognitionPanel({
   }
 
   async function handleRecognize() {
+    if (activeRequest.current) return;
     const files = Array.from(fileInputRef.current?.files ?? []);
 
     if (!useExistingImages && (files.length < 1 || files.length > 2)) {
@@ -112,6 +116,8 @@ export function AiRecognitionPanel({
 
     setIsPending(true);
     setMessage(null);
+    const controller = new AbortController();
+    activeRequest.current = controller;
 
     try {
       let suggestion: CardRecognitionSuggestion | undefined;
@@ -119,7 +125,7 @@ export function AiRecognitionPanel({
       if (queueItemId && useExistingImages) {
         const response = await fetch(
           `/api/card-entry/queue/${encodeURIComponent(queueItemId)}/recognize`,
-          { method: "POST" }
+          { method: "POST", signal: controller.signal }
         );
         const data = await response.json() as {
           recognition?: CardEntryRecognitionSummary;
@@ -133,7 +139,7 @@ export function AiRecognitionPanel({
       } else {
         const formData = new FormData();
         if (useExistingImages) {
-          const count = await appendUrlImages(formData, defaultImageUrls);
+          const count = await appendUrlImages(formData, defaultImageUrls, controller.signal);
           if (count < 1) {
             throw new Error("当前卡片没有可用于识别的已有图片。");
           }
@@ -144,7 +150,8 @@ export function AiRecognitionPanel({
         }
         const response = await fetch("/api/ai/recognize-card", {
           method: "POST",
-          body: formData
+          body: formData,
+          signal: controller.signal
         });
         const data = (await response.json()) as {
           suggestion?: CardRecognitionSuggestion;
@@ -158,6 +165,7 @@ export function AiRecognitionPanel({
         confidence = data.confidence;
       }
 
+      controller.signal.throwIfAborted();
       const button = actionButtonRef.current;
       const applied = button && suggestion
         ? applySuggestion(button, suggestion, overwrite)
@@ -174,9 +182,10 @@ export function AiRecognitionPanel({
           : "AI 返回了建议，但当前表单没有可填入的空字段。") + confidenceNote
       );
     } catch (error) {
-      const detail = errorMessage(error, "请稍后重试。");
+      const detail = controller.signal.aborted ? "已取消识别，可以重新开始。" : errorMessage(error, "请稍后重试。");
       setMessage(detail);
     } finally {
+      activeRequest.current = null;
       setIsPending(false);
     }
   }
@@ -216,6 +225,7 @@ export function AiRecognitionPanel({
           >
             {isPending ? <UiText text={"识别中..."} /> : mode === "edit" ? <UiText text={"识别并填充"} /> : <UiText text={"识别并填入"} />}
           </button>
+          {isPending ? <button type="button" className="btn btn-secondary" onClick={() => activeRequest.current?.abort()}><UiText text="取消识别" /></button> : null}
         </div>
       </div>
 

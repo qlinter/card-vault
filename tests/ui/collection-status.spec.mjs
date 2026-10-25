@@ -1,13 +1,8 @@
+import { withUiDatabase as fixture } from './database-fixture.mjs';
 import { expect, test } from "@playwright/test";
-import { DatabaseSync } from "node:sqlite";
-import path from "node:path";
 
 const statuses = ["holding", "pending_grading", "grading", "listed", "sold"];
 const labels = ["持有", "待送评", "送评中", "待售", "已售"];
-function fixture(action) {
-  const db = new DatabaseSync(path.resolve("tests/.ui-test-runtime/data/dev.db"));
-  try { db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000"); return action(db); } finally { db.close(); }
-}
 test.afterEach(async ({ page, request, baseURL }) => {
   const draft = new URL(page.url()).searchParams.get("draft");
   await page.goto("about:blank");
@@ -56,6 +51,7 @@ test("awaiting-grading entry saves its physical purchase and restores its status
   await page.locator('[name="cardTitle"]').fill("Collection status test");
   await page.locator('[name="sport"]').fill("Basketball");
   await page.locator('[name="collectionStatus"]').selectOption("pending_grading");
+  await page.getByText("财务记录（可选）", { exact: true }).click();
   await expect(page.locator('[name="initialQuantity"]')).toHaveValue("1");
   await page.locator('[name="initialQuantity"]').fill("3");
   await page.locator('[name="purchaseDate"]').fill("2026-01-01");

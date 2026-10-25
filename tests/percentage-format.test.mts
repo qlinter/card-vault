@@ -18,7 +18,7 @@ test("组合百分比可保留既有的一位或两位显示精度", () => {
   assert.equal(formatPercentage(12.34, { fractionDigits: 1 }), "12.3%");
   assert.equal(formatPercentage(12.3, { fractionDigits: 2 }), "12.30%");
   assert.equal(formatPercentage(-7.125, { fractionDigits: 2, signed: true }), "−7.13%");
-  assert.equal(formatPercentage(null), "—");
+  assert.equal(formatPercentage(null), "–");
 });
 
 test("组合金额与覆盖率共用统一展示格式", () => {

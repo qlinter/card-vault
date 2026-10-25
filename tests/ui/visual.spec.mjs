@@ -6,18 +6,25 @@ if (!new Set(["compare", "capture"]).has(screenshotMode)) {
 }
 
 const pages = [
-  { name: "home", path: "/", ready: ".summary-grid" },
+  { name: "home", path: "/", ready: ".collection-summary" },
   { name: "home-list", path: "/", ready: ".cards-grid.is-list", view: "list" },
+  { name: "home-export", path: "/?export=1", ready: ".collection-export" },
   { name: "showcase", path: "/showcase", ready: ".showcase-grid" },
   { name: "showcase-list", path: "/showcase", ready: ".showcase-views.is-list", view: "list" },
   { name: "card-entry", path: "/cards/new", ready: ".entry-workbench-layout" },
+  { name: "card-entry-descriptions", path: "/cards/new", ready: '[name="tags"]' },
   { name: "portfolio", path: "/portfolio", ready: ".portfolio-page" },
+  { name: "data-details", path: "/portfolio?tab=details", ready: '[data-testid="data-details"]' },
+  { name: "review", path: "/portfolio?tab=details&kind=quality", ready: ".collection-follow-up" },
   { name: "shares", path: "/shares", ready: ".share-list" },
   { name: "share-editor", path: "/shares/ui-share-1/edit", ready: ".shares-page" },
+  { name: "share-create", path: "/shares/new", ready: ".share-design-workspace" },
+  { name: "share-picker", path: "/shares/new", ready: ".share-sport-group[open] .share-card-option:first-child" },
+  { name: "share-picker-overrides", path: "/shares/new", ready: ".share-card-overrides[open] textarea" },
   { name: "share-preview", path: "/shares/ui-share-1/preview", ready: ".share-unified-preview-page" },
   { name: "settings", path: "/settings", ready: ".settings-page" },
-  { name: "settings-data", path: "/settings#data-settings", ready: ".management-card-list" },
-  { name: "data-center", path: "/settings/data", ready: ".management-card-list" },
+  { name: "settings-data", path: "/settings#data-settings", ready: ".backup-settings" },
+  { name: "data-center", path: "/settings/data", ready: ".backup-settings" },
   { name: "collection", path: "/collection", ready: ".scout-query" },
   { name: "user-guide", path: "/settings/guide", ready: ".user-guide-index" },
   { name: "finance-rules", path: "/settings/finance-rules", ready: ".finance-rules-page" }
@@ -27,7 +34,6 @@ const englishAuditPages = [
   ...pages,
   { name: "data-trends", path: "/portfolio?tab=trends", ready: '[data-testid="data-trends"]' },
   { name: "data-structure", path: "/portfolio?tab=structure", ready: '[data-testid="data-structure"]' },
-  { name: "data-details", path: "/portfolio?tab=details", ready: '[data-testid="data-details"]' },
   { name: "data-quality", path: "/portfolio?tab=details&kind=quality", ready: '[data-testid="data-details"]' },
 
   { name: "showcase-card", path: "/showcase/cards/ui-card-1", ready: ".showcase-detail" },
@@ -40,6 +46,24 @@ const englishAuditPages = [
 
 const hanPattern = /[\u3400-\u9fff]/u;
 
+async function prepareTarget(page, target) {
+  if (target.name === "share-picker" || target.name === "share-picker-overrides") {
+    const group = page.locator(".share-sport-group").first();
+    if (await group.getAttribute("open") === null) await group.locator(":scope > summary").click();
+    if (target.name === "share-picker-overrides") await group.locator(".share-card-overrides > summary").first().click();
+  }
+  if (target.name === "share-create") {
+    const group = page.locator(".share-sport-group").first();
+    if (await group.getAttribute("open") === null) await group.locator(":scope > summary").click();
+    await page.locator('.share-card-option input[type="checkbox"]').first().check();
+    await page.getByRole("button", { name: /预览并保存|Preview & save/ }).click();
+    await expect(page.locator(".share-editor-history small")).toHaveCount(0);
+  }
+  if (target.name === "card-entry-descriptions") await page.locator(".card-optional-fields").filter({ has: page.locator('[name="tags"]') }).locator("summary").click();
+  if (target.name === "home-export") await expect(page.locator(".collection-export button[name='format']").first()).toBeEnabled();
+  if (target.name === "review") await expect(page.locator(".collection-follow-up-toggle small")).toHaveText(/^\d+$/);
+}
+
 test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
 });
@@ -47,18 +71,22 @@ test.beforeEach(async ({ page }) => {
 for (const target of pages) {
   test(`${target.name} visual baseline`, async ({ page }, testInfo) => {
     await page.goto(target.path, { waitUntil: "networkidle" });
+    await prepareTarget(page, target);
     await expect(page.locator(".site-bg")).toHaveCSS("background-image", /\/home-bg\.webp/);
     if (target.view === "list") await page.getByRole("button", { name: /^(列表视图|List view)$/ }).click();
     if (target.name === "share-editor") {
-      await page.getByRole("button", { name: /内容修改/ }).click();
-      await page.getByRole("button", { name: /视觉设计/ }).click();
+      await page.getByRole("button", { name: /预览并保存/ }).click();
       await expect(page.locator(".share-design-workspace")).toBeVisible();
+      await expect(page.locator(".share-editor-history small")).toHaveCount(0);
     }
     await page.addStyleTag({
       content: "*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important;caret-color:transparent!important}"
     });
     await expect(page.locator(target.ready)).toBeVisible();
-    if (["data-center", "settings-data"].includes(target.name)) await page.getByTestId("storage-path").evaluate(element => { element.textContent = "C:\\CardVault\\data"; });
+    if (target.name === "portfolio") {
+      await expect(page.locator(".overview-digest")).toBeVisible();
+      await expect(page.locator(".home-overview-grid")).toHaveAttribute("aria-busy", "false");
+    }
     if (screenshotMode === "capture") {
       // Optional local diagnostics; release and CI require comparison mode.
       await testInfo.attach(`${target.name}-${testInfo.project.name}`, {
@@ -84,16 +112,17 @@ test.describe("English interface", () => {
   for (const target of englishAuditPages) {
     test(`${target.name} contains no untranslated interface text`, async ({ page }) => {
       await page.goto(target.path, { waitUntil: "networkidle" });
+      await prepareTarget(page, target);
     if (target.view === "list") await page.getByRole("button", { name: /^(列表视图|List view)$/ }).click();
       if (target.name === "share-editor") {
-        await page.getByRole("button", { name: "Edit Content" }).click();
+        await page.getByRole("button", { name: /Preview & save/ }).click();
         await expect(page.locator(".share-design-workspace")).toBeVisible();
       }
       if (target.name === "settings") {
         await page.getByRole("button", { name: "Expand Theme", exact: true }).click();
         await page.getByRole("button", { name: "Expand AI" }).click();
         await page.getByRole("button", { name: "Expand Finance" }).click();
-        await page.getByTestId("about-settings").locator("button.about-toggle").click();
+        await page.getByTestId("settings-help").locator(".settings-help-toggle").click();
         await page.getByRole("button", { name: "Release Notes" }).click();
       }
       await expect(page.locator(target.ready)).toBeVisible();
@@ -126,7 +155,7 @@ test.describe("English interface", () => {
   test("language switch updates the live interface and persists the choice", async ({ page }) => {
     await page.goto("/", { waitUntil: "networkidle" });
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.getByRole("link", { name: "Home", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Collection", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Choose language" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.getByRole("menuitemradio", { name: "English" })).toHaveAttribute("aria-checked", "true");
@@ -136,14 +165,14 @@ test.describe("English interface", () => {
     await page.getByRole("button", { name: "Choose language" }).click();
     await page.getByRole("menuitemradio", { name: "简体中文" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
-    await expect(page.getByRole("link", { name: "首页", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "收藏", exact: true })).toBeVisible();
     await page.reload({ waitUntil: "networkidle" });
     await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
     await page.getByRole("button", { name: "选择语言" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
     await page.getByRole("menuitemradio", { name: "English" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.getByRole("link", { name: "Home", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Collection", exact: true })).toBeVisible();
   });
 
   test("portfolio uses one localized title per section", async ({ page }) => {
@@ -156,8 +185,9 @@ test.describe("English interface", () => {
 
 test("share gallery styles unify layout while themes and fine tuning remain independent", async ({ page }) => {
   await page.goto("/shares/ui-share-1/edit", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: /内容修改/ }).click();
-  await page.getByRole("button", { name: /视觉设计/ }).click();
+  await page.getByRole("button", { name: /预览并保存/ }).click();
+  await page.locator(".share-custom-tools > summary").click();
+      await page.getByRole("button", { name: /视觉设计/ }).click();
 
   await expect(page.locator("[data-template-id]")).toHaveCount(3);
   await expect(page.getByRole("radiogroup", { name: "展馆版式" })).toHaveCount(0);
@@ -169,6 +199,7 @@ test("share gallery styles unify layout while themes and fine tuning remain inde
   await expect(page.locator('select[name="theme"]')).toHaveValue(themeBefore);
   await expect(page.locator('input[name="title"]')).toHaveValue(titleBefore);
 
+  await page.getByText("微调视觉参数", { exact: true }).click();
   await page.getByLabel("字体风格").selectOption("modern");
   await page.getByLabel("内容密度").selectOption("compact");
   await page.getByLabel("图片构图").selectOption("contain");
@@ -204,10 +235,10 @@ test("generated share preview fills the page canvas without redundant helper cop
   expect(iframeBox.height).toBeGreaterThanOrEqual(640);
 });
 
-test("share gallery wizard keeps four concise steps without redundant helper copy", async ({ page }) => {
+test("share gallery wizard keeps two concise steps without redundant helper copy", async ({ page }) => {
   await page.goto("/shares/ui-share-1/edit", { waitUntil: "networkidle" });
 
-  await expect(page.locator(".share-wizard-step")).toHaveCount(4);
+  await expect(page.locator(".share-wizard-step")).toHaveCount(2);
   for (const helper of [
     "先挑选本次分享要展示的卡片。",
     "只会导出你勾选的卡片。价格、成本、购买渠道和备注不会进入分享包。",
@@ -217,17 +248,20 @@ test("share gallery wizard keeps four concise steps without redundant helper cop
     await expect(page.getByText(helper, { exact: true })).toHaveCount(0);
   }
 
-  await page.getByRole("button", { name: /内容修改/ }).click();
-  await page.getByRole("button", { name: /视觉设计/ }).click();
+  await page.getByRole("button", { name: /预览并保存/ }).click();
+  await page.locator(".share-custom-tools > summary").click();
+      await page.getByRole("button", { name: /视觉设计/ }).click();
   await expect(page.getByText("展馆样式", { exact: true })).toBeVisible();
   await expect(page.getByText("展馆版式", { exact: true })).toHaveCount(0);
+  await page.getByText("自定义背景与封面", { exact: true }).click();
   await expect(page.getByText("分享集背景图", { exact: true })).toBeVisible();
   await expect(page.getByText("封面图", { exact: true })).toBeVisible();
 });
 
 test("share gallery featured-card story updates the live preview", async ({ page }) => {
   await page.goto("/shares/ui-share-1/edit", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: /内容修改/ }).click();
+  await page.getByRole("button", { name: /预览并保存/ }).click();
+  await page.locator(".share-custom-tools > summary").click();
   await page.getByRole("button", { name: /单卡展示/ }).click();
 
   const firstCard = page.locator(".share-item-edit-card").first();
@@ -244,9 +278,11 @@ test("share gallery featured-card story updates the live preview", async ({ page
 
 test("share gallery background upload can be cancelled before saving", async ({ page }) => {
   await page.goto("/shares/ui-share-1/edit", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: /内容修改/ }).click();
-  await page.getByRole("button", { name: /视觉设计/ }).click();
+  await page.getByRole("button", { name: /预览并保存/ }).click();
+  await page.locator(".share-custom-tools > summary").click();
+      await page.getByRole("button", { name: /视觉设计/ }).click();
 
+  await page.getByText("自定义背景与封面", { exact: true }).click();
   await page.locator('input[name="backgroundImage"]').setInputFiles({
     name: "temporary-background.png",
     mimeType: "image/png",
@@ -266,7 +302,7 @@ test("share editor remains usable when browser draft storage is unavailable", as
     Storage.prototype.removeItem = () => { throw new DOMException("Storage blocked", "SecurityError"); };
   });
   await page.goto("/shares/ui-share-1/edit", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: /内容修改/ }).click();
+  await page.getByRole("button", { name: /预览并保存/ }).click();
 
   await expect(page.getByText("本机草稿不可用；修改仍可保存到分享集")).toBeVisible();
   await expect(page.locator('input[name="title"]')).toBeEditable();

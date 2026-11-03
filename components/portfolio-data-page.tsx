@@ -57,7 +57,7 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
   const pending = loadPortfolioData(query, state);
   const homeHref = buildQueryHref("/", { ...query, sort: state.sort });
   return <div className={`page portfolio-page ${styles.stack}`}>
-    <h1 className="sr-only"><UiText text="数据" /></h1>
+    <h1 className="sr-only"><UiText text="统计" /></h1>
     {params.success ? <p role="status" className="note-ok"><UiText text={params.success} /></p> : null}
     {params.error ? <p role="alert" className="note-error"><UiText text={params.error} /></p> : null}
     <header className={styles.toolbar}>

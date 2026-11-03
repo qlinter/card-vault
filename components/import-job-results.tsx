@@ -20,10 +20,10 @@ export function ImportJobResults({ job, busy, paused, stop, ...actions }: Props)
       {job.nextRow !== null ? <button className="btn btn-secondary" disabled={busy} onClick={onMore}>{l("显示更多结果", "Show more results")}</button> : null}
       <div className="management-toolbar">
         <button className="btn btn-secondary" disabled={busy} onClick={onRepreview}>{l("重新建立预演", "Create fresh preview")}</button>
-        <button className="btn" disabled={busy || !(job.counts.pending || job.counts.failed) || job.status === "undone"} onClick={onApply}>{busy ? l("处理中…", "Processing…") : l("执行 / 重试失败行", "Apply / retry failed rows")}</button>
+        <button className="btn btn-secondary" disabled={busy || !(job.counts.pending || job.counts.failed) || job.status === "undone"} onClick={onApply}>{busy ? l("处理中…", "Processing…") : l("执行 / 重试失败行", "Apply / retry failed rows")}</button>
         {busy ? <button className="btn btn-secondary" onClick={onPause}>{l("完成当前批次后暂停", "Pause after current chunk")}</button> : null}
         <button className="btn btn-secondary" disabled={busy || !(job.counts.applied || job.counts["undo-failed"])} onClick={onUndoRequest}>{l("撤销本批次", "Undo this batch")}</button>
       </div>
-      {stop ? <p className="note-error">{l("将恢复本批次修改前的值，并删除本批次新建卡片。后续已修改的卡片会保留并提示冲突。", "Restore previous values and delete cards created by this batch. Later edits are preserved and reported as conflicts.")} <button className="btn" disabled={busy} onClick={onUndoConfirm}>{l("确认撤销", "Confirm undo")}</button> <button className="btn btn-secondary" onClick={onUndoCancel}>{l("取消", "Cancel")}</button></p> : null}
+      {stop ? <p className="note-error">{l("将恢复本批次修改前的值，并删除本批次新建卡片。后续已修改的卡片会保留并提示冲突。", "Restore previous values and delete cards created by this batch. Later edits are preserved and reported as conflicts.")} <button className="btn btn-secondary" disabled={busy} onClick={onUndoConfirm}>{l("确认撤销", "Confirm undo")}</button> <button className="btn btn-secondary" onClick={onUndoCancel}>{l("取消", "Cancel")}</button></p> : null}
     </section>;
 }

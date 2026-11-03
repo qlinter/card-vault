@@ -3,7 +3,7 @@
 import { UiText, UiElement } from "@/components/ui-text";
 import { useMemo, useState, type CSSProperties } from "react";
 import type { ShareCardDraft, SharePickerCard } from "@/components/share-card-picker";
-import type { ShareThemeValues } from "@/components/share-theme-generator";
+import type { ShareThemeValues } from "@/lib/share-theme-domain";
 import { sharePreviewSandboxPolicy } from "@/lib/share-preview-policy";
 import { getSharePreviewDevice, sharePreviewDevices, type SharePreviewDeviceId } from "@/lib/share-preview-devices";
 import { renderPreviewDocument } from "@/lib/share-export-render";

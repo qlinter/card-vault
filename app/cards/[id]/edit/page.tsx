@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { normalizeReturnTo, toScalar } from "@/lib/query-params";
 import { CardFinancialHistory } from "@/components/card-financial-history";
+import { cardEditVersions } from "@/lib/card-write-guards";
+import { updateCardFormAction } from "@/app/actions/cards";
 
 type EditProps = {
   params: Promise<{ id: string }>;
@@ -27,7 +29,7 @@ export default async function EditCardPage({ params, searchParams }: EditProps) 
 
   return (
     <div className="page entry-page">
-      <EditCardForm card={archive} error={error} returnTo={returnTo} />
+      <EditCardForm card={archive} action={updateCardFormAction.bind(null, card.id)} {...cardEditVersions(archive)} error={error} returnTo={returnTo} />
       <CardFinancialHistory editorOnly cardId={card.id} returnTo={returnTo} transactions={transactions} />
     </div>
   );

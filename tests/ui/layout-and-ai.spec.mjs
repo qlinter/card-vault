@@ -3,6 +3,43 @@ import { expect, test } from "@playwright/test";
 
 test.afterEach(() => fixture(db => db.exec("DELETE FROM Card WHERE id='layout-long-product';")));
 
+test("OpenAI defaults can read models, test vision settings and save without changing MiniMax or DeepSeek", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.cardVaultDesktop = {
+      getAiSettings: async () => ({ provider: "openai", customProviders: [], minimax: { endpoint: "https://mini.test", model: "MiniMax-VL-01", hasApiKey: true }, deepseek: { endpoint: "https://deep.test", model: "deepseek-flash", hasApiKey: true } }),
+      saveAiSettings: async draft => {
+        window.__savedAiDraft = draft;
+        return { ...draft, openai: { ...draft.openai, hasApiKey: true } };
+      }
+    };
+  });
+  await page.route("**/api/ai/models", route => route.fulfill({ json: { models: ["gpt-5.4-mini", "gpt-5.4"] } }));
+  let tested;
+  await page.route("**/api/ai/test-settings", route => { tested = route.request().postDataJSON(); return route.fulfill({ json: { ok: true } }); });
+  await page.goto("/settings", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "展开 AI" }).click();
+  const picker = page.getByRole("combobox", { name: "当前服务", exact: true });
+  await expect(picker).toHaveValue("openai");
+  await expect(picker.locator("option")).toHaveText(["OpenAI", "MiniMax", "DeepSeek"]);
+  await expect(page.getByLabel("Endpoint", { exact: true })).toHaveValue("https://api.openai.com/v1/chat/completions");
+  await expect(page.getByLabel("Model", { exact: true })).toHaveValue("gpt-5.4-mini");
+  await page.getByLabel("API Key", { exact: true }).fill("official-mock-key");
+  await page.getByRole("button", { name: "读取模型", exact: true }).click();
+  await page.getByRole("combobox", { name: "选择模型", exact: true }).selectOption("gpt-5.4");
+  await page.getByRole("button", { name: "测试连接", exact: true }).click();
+  await expect(page.getByText("OpenAI 连接测试通过。", { exact: true })).toBeVisible();
+  expect(tested.openai.model).toBe("gpt-5.4");
+  await page.getByRole("button", { name: "保存设置", exact: true }).click();
+  const saved = await page.evaluate(() => window.__savedAiDraft);
+  expect(saved.azure).toBeUndefined();
+  expect(saved.openai.apiKey).toBe("official-mock-key");
+  expect(saved.minimax.model).toBe("MiniMax-VL-01");
+  expect(saved.deepseek.model).toBe("deepseek-flash");
+  expect(saved.minimax.apiKey).toBeUndefined();
+  expect(saved.deepseek.apiKey).toBeUndefined();
+  await expect(page.getByLabel("API Key", { exact: true })).toHaveValue("");
+});
+
 test("financial history keeps amounts and edit actions aligned when an editor opens", async ({ page }) => {
   await page.goto("/cards/ui-card-1", { waitUntil: "networkidle" });
   await page.locator('.financial-history-details > summary').click();
@@ -42,8 +79,8 @@ test("DeepSeek settings select, test and save the official defaults without clea
   await page.addInitScript(() => {
     window.cardVaultDesktop = {
       getAiSettings: async () => ({
-        provider: "azure", activeCustomId: "", customProviders: [],
-        azure: { endpoint: "https://azure.test", deployment: "vision", hasApiKey: true },
+        provider: "openai", activeCustomId: "", customProviders: [],
+        openai: { endpoint: "https://openai.test", model: "vision", hasApiKey: true },
         minimax: { endpoint: "https://minimax.test", model: "vision", hasApiKey: true }
       }),
       saveAiSettings: async draft => {
@@ -72,7 +109,7 @@ test("DeepSeek settings select, test and save the official defaults without clea
   await expect(page.getByLabel("API Key", { exact: true })).toHaveValue("");
   const saved = await page.evaluate(() => window.__savedAiDraft);
   expect(saved.provider).toBe("deepseek");
-  expect(saved.azure.endpoint).toBe("https://azure.test");
-  expect(saved.azure.apiKey).toBeUndefined();
+  expect(saved.openai.endpoint).toBe("https://openai.test");
+  expect(saved.openai.apiKey).toBeUndefined();
   expect(saved.minimax.model).toBe("vision");
 });

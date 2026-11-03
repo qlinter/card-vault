@@ -3,11 +3,13 @@ import type { ShareCatalogCard } from "@/lib/share-card-catalog";
 import { homeThumbnailPublicPath } from "@/lib/card-thumbnail-core.js";
 import { SharePickerCard } from "@/components/share-card-picker";
 import { ShareCollectionWizard } from "@/components/share-collection-wizard";
-import { ShareThemeCard } from "@/components/share-theme-generator";
+import { ShareThemeCard } from "@/lib/share-theme-domain";
 import { normalizeShareTheme } from "@/lib/share-themes";
 import { parseSharePresentation, sanitizeSharePresentationCards } from "@/lib/share-presentation";
 import { type ShareSectionDraft } from "@/lib/share-sections";
 import { scoutIdentity } from "@/lib/scout-identity";
+import { shareEditVersion } from "@/lib/share-write-guards";
+import type { PersistentFormAction } from "./persistent-form";
 
 type CardOption = ShareCatalogCard;
 type ShareWithItems =
@@ -18,7 +20,8 @@ type ShareWithItems =
   | null;
 
 type ShareCollectionFormProps = {
-  action: (formData: FormData) => void | Promise<void>;
+  action?: (formData: FormData) => void | Promise<void>;
+  editAction?: PersistentFormAction;
   cards: CardOption[];
   share?: ShareWithItems;
   error?: string;
@@ -80,7 +83,7 @@ function toPickerCard(card: CardOption, item: (ShareCollectionItem & { card: Car
   };
 }
 
-export function ShareCollectionForm({ action, cards, share, error }: ShareCollectionFormProps) {
+export function ShareCollectionForm({ action, editAction, cards, share, error }: ShareCollectionFormProps) {
   const selected = shareItemMap(share);
   const sortedCards = [...cards].sort((a, b) => {
     const aItem = selected.get(a.id);
@@ -119,6 +122,8 @@ export function ShareCollectionForm({ action, cards, share, error }: ShareCollec
   return (
     <ShareCollectionWizard
       action={action}
+      editAction={editAction}
+      editVersion={share ? shareEditVersion(share) : ""}
       draftId={`${scoutIdentity()}:${share?.id ?? "new"}`}
       cards={pickerCards}
       aiCards={cards.map(cardSummary)}

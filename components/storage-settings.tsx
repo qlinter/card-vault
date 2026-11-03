@@ -189,7 +189,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
                   ))}
                 </ul>
               </details>
-              <button type="button" className="btn btn-danger" onClick={handleCleanup} disabled={busy}>
+              <button type="button" className="btn btn-secondary" onClick={handleCleanup} disabled={busy}>
                 {busyAction === "cleanup" ? <UiText text={"清理中..."} /> : <UiText text={"清理 {0} 个未引用文件"} values={[health.orphanFiles.length]} />}
               </button>
             </div>

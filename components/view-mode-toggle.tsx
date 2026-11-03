@@ -2,14 +2,14 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { useLanguage } from "./language-provider";
 export type ViewMode = "grid" | "list" | "table";
-export function useViewMode(scope: string, initial: ViewMode): [ViewMode, (mode: ViewMode) => void] {
+function useViewMode(scope: string, initial: ViewMode): [ViewMode, (mode: ViewMode) => void] {
   const [mode, setMode] = useState(initial);
   const key = "card-vault:view:" + scope;
   useEffect(() => { try { const saved = window.localStorage.getItem(key); if (saved === "list" || saved === initial || (scope === "data" && saved === "table")) setMode(saved); } catch { /* View switching also works without browser storage. */ } }, [key, scope, initial]);
   const change = useCallback((next: ViewMode) => { setMode(next); try { window.localStorage.setItem(key, next); } catch { /* Retain the choice for this page session. */ } }, [key]);
   return [mode, change];
 }
-export function ViewModeToggle({ value, onChange, modes }: { value: ViewMode; onChange: (mode: ViewMode) => void; modes: ViewMode[] }) {
+function ViewModeToggle({ value, onChange, modes }: { value: ViewMode; onChange: (mode: ViewMode) => void; modes: ViewMode[] }) {
   const { locale } = useLanguage();
   const labels = locale === "en" ? { grid: "Cards", list: "List", table: "Table" } : { grid: "卡片", list: "列表", table: "表格" };
   return (

@@ -6,14 +6,6 @@ const moneyFormat = new Intl.NumberFormat("zh-CN", {
 });
 
 const dateFormat = new Intl.DateTimeFormat("zh-CN");
-const dateTimeFormat = new Intl.DateTimeFormat("zh-CN", {
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false
-});
 
 export function formatPortfolioMoney(value: number | null, currency: string): string {
   return value === null ? "–" : `${currency} ${moneyFormat.format(value)}`;
@@ -31,8 +23,4 @@ export function formatPortfolioCountPercent(count: number, total: number, fallba
 
 export function formatPortfolioDate(value: string | null, fallback = "暂无"): string {
   return value ? dateFormat.format(new Date(value)) : fallback;
-}
-
-export function formatPortfolioDateTime(value: string): string {
-  return dateTimeFormat.format(new Date(value));
 }

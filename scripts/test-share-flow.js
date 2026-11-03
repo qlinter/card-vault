@@ -64,6 +64,7 @@ async function submitExport(baseUrl, html, submitLabel, exportMode) {
 
 async function submitShareEdit(baseUrl, editPage) {
   const formData = new FormData();
+  formData.set("editVersion", decodeHtmlAttribute(editPage.match(/name="editVersion" value="([^"]*)"/)?.[1] || ""));
   for (const [name, value] of shareActionFields(editPage)) {
     formData.append(name, value);
   }

@@ -60,11 +60,12 @@ function finishHistoryMutation(cardId: string, success: string, returnTo?: strin
 }
 
 export async function saveFinancialRecordFormAction(cardId: string, type: FinancialRecordType, recordId: string | null, returnTo: string | undefined, _previousState: { error: string }, formData: FormData, stayOnPage = false): Promise<{ error: string }> {
+  const expectedVersion = String(formData.get("editVersion") ?? "");
   try {
     await mutateHistory(cardId, async (transaction) => {
-      if (type === "transaction") return recordId ? updateCardTransaction(transaction, cardId, recordId, transactionInput(formData)) : createCardTransaction(transaction, { cardId, ...transactionInput(formData), externalKey: optionalText(formData, "submissionId") });
-      if (type === "expense") return recordId ? updateCardExpense(transaction, cardId, recordId, expenseInput(formData)) : createCardExpense(transaction, { cardId, ...expenseInput(formData), externalKey: optionalText(formData, "submissionId") });
-      return recordId ? updateCardValuation(transaction, cardId, recordId, valuationInput(formData)) : createCardValuation(transaction, { cardId, ...valuationInput(formData), externalKey: optionalText(formData, "submissionId") });
+      if (type === "transaction") return recordId ? updateCardTransaction(transaction, cardId, recordId, transactionInput(formData), expectedVersion) : createCardTransaction(transaction, { cardId, ...transactionInput(formData), externalKey: optionalText(formData, "submissionId") });
+      if (type === "expense") return recordId ? updateCardExpense(transaction, cardId, recordId, expenseInput(formData), expectedVersion) : createCardExpense(transaction, { cardId, ...expenseInput(formData), externalKey: optionalText(formData, "submissionId") });
+      return recordId ? updateCardValuation(transaction, cardId, recordId, valuationInput(formData), expectedVersion) : createCardValuation(transaction, { cardId, ...valuationInput(formData), externalKey: optionalText(formData, "submissionId") });
     });
   } catch (error) { return { error: errorMessage(error, "财务记录操作失败，请稍后重试。") }; }
   if (stayOnPage) { revalidateHistory(cardId); return { error: "" }; }
@@ -75,10 +76,11 @@ export async function deleteFinancialRecordAction(
   cardId: string,
   recordType: FinancialRecordType,
   recordId: string,
-  returnTo: string | undefined
+  returnTo: string | undefined,
+  expectedVersion: string
 ): Promise<void> {
   try {
-    await mutateHistory(cardId, (transaction) => deleteCardFinancialRecord(transaction, cardId, recordType, recordId));
+    await mutateHistory(cardId, (transaction) => deleteCardFinancialRecord(transaction, cardId, recordType, recordId, expectedVersion));
   } catch (error) {
     finishHistoryMutation(cardId, "", returnTo, error);
   }

@@ -169,7 +169,7 @@ async function main() {
     assert.ok(await page.evaluate(() => document.querySelector("dialog").contains(document.activeElement)), "modal focus remains inside the dialog");
     await page.keyboard.press("Escape");
     assert.equal(await page.locator("dialog[open]").count(), 0);
-    assert.equal(await page.evaluate(() => document.activeElement?.textContent), "查看大图");
+    assert.ok(await page.getByRole("button", { name: "查看大图", exact: true }).evaluate(button => document.activeElement === button), "closing the lightbox restores focus to its accessible icon button");
     await page.waitForFunction(() => document.body.style.overflow !== "hidden");
     assert.equal(await page.evaluate(() => document.body.style.overflow), "");
     await page.getByRole("link", { name: "返回展墙", exact: true }).click();

@@ -56,8 +56,9 @@ exit /b 9
         if (["path", "electron_mirror", "electron_config_cache"].includes(key.toLowerCase())) delete env[key];
       }
       env.Path = `${path.join(root, "bin")};${process.env.Path || process.env.PATH}`;
+      env.NoDefaultCurrentDirectoryInExePath = "1";
       Object.assign(env, extraEnv);
-      return spawnSync("cmd.exe", ["/d", "/c", "start-desktop.bat"], { cwd: root, env, input: "\n", encoding: "utf8", windowsHide: true, timeout: 30000 });
+      return spawnSync("cmd.exe", ["/d", "/c", ".\\start-desktop.bat"], { cwd: root, env, input: "\n", encoding: "utf8", windowsHide: true, timeout: 30000 });
     },
     events: () => fs.readFileSync(path.join(root, "events.log"), "utf8").trim().split("\n")
   };

@@ -12,7 +12,7 @@ async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
   if (!response.ok) throw new Error(result.error || "读取失败。");
   return result as T;
 }
-export const readWorkspaceJson = <T,>(source: string, signal?: AbortSignal): Promise<T> => readJson<T>(source, { signal });
+const readWorkspaceJson = <T,>(source: string, signal?: AbortSignal): Promise<T> => readJson<T>(source, { signal });
 export type WorkspaceReader<T> = (source: string, signal?: AbortSignal, committed?: boolean) => Promise<T>;
 
 /** Keep a committed write distinct from a failed read, so retry never repeats a write. */

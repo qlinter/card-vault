@@ -1,0 +1,10 @@
+export type AiProxySettings = { mode: "auto" | "manual" | "direct"; protocol: "http" | "https" | "socks5"; host: string; port: string; username: string; password: string; noProxy: string };
+export type PublicAiProxySettings = Omit<AiProxySettings, "password"> & { hasPassword: boolean };
+export const defaultNoProxy: string;
+export function normalizeAiProxy(value?: unknown): AiProxySettings;
+export function validateAiProxy(proxy: AiProxySettings): void;
+export function manualProxyUrl(proxy: AiProxySettings): string;
+export function bypassProxy(target: string, rules: string): boolean;
+export function normalizeProxyUrl(value: string): string;
+export function systemProxyUrl(rules: string): string;
+export function systemProxyUrls(rules: string): string[];

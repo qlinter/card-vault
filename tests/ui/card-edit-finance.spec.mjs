@@ -98,7 +98,7 @@ test('entry AI emphasis and unified edit actions fit all themes and both languag
     if (theme === 'classic' && width === 1100) await panel.screenshot({ path: testInfo.outputPath(`edit-finance-${locale}.png`) });
   }
   await page.goto('/', { waitUntil: 'networkidle' });
-  await expect(page.locator('.collection-shortcuts a')).toHaveText(['Wishlist & search']);
+  await expect(page.locator('.collection-shortcuts a')).toHaveText(['Goals & search']);
   await page.locator('.collection-scout-link').click();
   await expect(page).toHaveURL(/\/collection\?tab=wishlist$/);
 });

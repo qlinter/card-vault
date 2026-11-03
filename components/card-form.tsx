@@ -33,6 +33,7 @@ export function CardForm({
   formRef,
   draftId,
   draftImages,
+  editVersion,
   onSubmit,
   onInvalid,
   submitDisabled = false,
@@ -102,6 +103,7 @@ export function CardForm({
     <form ref={formRef} action={action} onSubmit={onSubmit} onInvalid={onInvalid} onInvalidCapture={event => { if (event.target instanceof HTMLElement) revealCardField(event.target); }} className={mode === "create" ? "panel card-entry-form" : "panel"} encType="multipart/form-data" data-card-entry-form={mode === "create" ? "true" : undefined}>
       {error ? <p className="note-error"><UiText text={error} /></p> : null}
       {mode === "edit" && returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
+      {mode === "edit" ? <input type="hidden" name="editVersion" value={editVersion ?? ""} /> : null}
       {mode === "create" && draftId ? <input type="hidden" name="draftId" value={draftId} /> : null}
       {mode === "create" && queueItemId ? <input type="hidden" name="queueItemId" value={queueItemId} /> : null}
 

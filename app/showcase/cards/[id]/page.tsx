@@ -69,7 +69,7 @@ export default async function ShowcaseCardPage({ params, searchParams }: Showcas
 
       <section className="showcase-detail">
         <div className="showcase-detail-gallery">
-          <ShowcaseGallery key={card.id} cardTitle={card.cardTitle} images={card.images} />
+          <ShowcaseGallery key={card.id} cardId={card.id} cardTitle={card.cardTitle} images={card.images} />
         </div>
 
         <div className="showcase-detail-copy">

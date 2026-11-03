@@ -6,13 +6,13 @@ import path from "node:path";
 import { prisma } from "./prisma";
 import { snapshotExportDatabase } from "./export-database-snapshot.js";
 
-type ExportWorkspace = { directory: string; snapshot: string; signal: AbortSignal };
+type ExportWorkspace = { directory: string; signal: AbortSignal };
 let activeExports = 0;
 export class ExportLimitError extends Error {
   constructor() { super("已有两个导出任务，请等待完成后重试。"); }
 }
 /** All private tabular exports share limits, consistent reads and cancellation cleanup. */
-export async function exportFromSnapshot(build: (workspace: ExportWorkspace) => Promise<string>, requestSignal?: AbortSignal) {
+export async function exportInWorkspace(build: (workspace: ExportWorkspace) => Promise<string>, requestSignal?: AbortSignal) {
   if (activeExports >= 2) throw new ExportLimitError();
   activeExports++;
   let directory: string | undefined, cleanupPromise: Promise<void> | undefined;
@@ -24,12 +24,7 @@ export async function exportFromSnapshot(build: (workspace: ExportWorkspace) => 
     const signal = AbortSignal.any([...(requestSignal ? [requestSignal] : []), AbortSignal.timeout(600000)]);
     signal.throwIfAborted();
     directory = await mkdtemp(path.join(tmpdir(), "card-vault-export-"));
-    const databases = await prisma.$queryRaw<Array<{ name: string; file: string }>>`PRAGMA database_list`;
-    const source = databases.find(row => row.name === "main")?.file;
-    if (!source) throw new Error("无法定位收藏数据库。");
-    const snapshot = path.join(directory, "snapshot.db");
-    await snapshotExportDatabase(source, snapshot, signal);
-    const output = await build({ directory, snapshot, signal });
+    const output = await build({ directory, signal });
     signal.throwIfAborted();
     const size = (await stat(output)).size, stream = createReadStream(output, { highWaterMark: 65536 });
     const iterator = stream[Symbol.asyncIterator]();
@@ -53,4 +48,15 @@ export async function exportFromSnapshot(build: (workspace: ExportWorkspace) => 
     }, { highWaterMark: 65536, size: chunk => chunk.byteLength });
     return { body, size };
   } catch (error) { await cleanup(); throw error; }
+}
+
+export async function exportFromSnapshot(build: (workspace: ExportWorkspace & { snapshot: string }) => Promise<string>, requestSignal?: AbortSignal) {
+  return exportInWorkspace(async ({ directory, signal }) => {
+    const databases = await prisma.$queryRaw<Array<{ name: string; file: string }>>`PRAGMA database_list`;
+    const source = databases.find(row => row.name === "main")?.file;
+    if (!source) throw new Error("无法定位收藏数据库。");
+    const snapshot = path.join(directory, "snapshot.db");
+    await snapshotExportDatabase(source, snapshot, signal);
+    return build({ directory, snapshot, signal });
+  }, requestSignal);
 }

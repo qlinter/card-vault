@@ -1,3 +1,4 @@
+import { CardImageExport } from "@/components/card-image-export";
 import { collectionStatusText } from "@/lib/card-domain";
 import { UiText } from "@/components/ui-text";
 import { BackButton } from "@/components/back-button";
@@ -82,7 +83,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
 
       <div className="details">
         <section className="panel">
-          <h2><UiText text={"图片展示"} /></h2>
+          <div className="card-images-heading"><h2><UiText text="图片展示" /></h2>{card.images.length ? <CardImageExport cardId={card.id} /> : null}</div>
           {!card.images.length ? <p className="muted"><UiText text="暂无图片" /></p> : null}
           <div className="gallery">
             {card.images.map((image) => (

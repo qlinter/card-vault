@@ -143,3 +143,9 @@ form.home-filter-form > .filters { grid-template-columns: minmax(220px, 3fr) rep
   .financial-history .financial-history-actions { justify-content: flex-start; }
   .share-form .share-wizard-header { grid-template-columns: minmax(0, 1fr); }
 }
+
+.card-images-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: 1rem; }
+.card-images-heading h2 { margin: 0; }
+.card-image-export { min-width: 0; }
+.card-image-export button { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; white-space: nowrap; }
+.card-image-export .note-error { max-width: 22rem; margin: .5rem 0 0; white-space: normal; }

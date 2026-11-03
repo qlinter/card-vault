@@ -1,5 +1,31 @@
 import { withUiDatabase as fixture } from './database-fixture.mjs';
 import { expect, test } from '@playwright/test';
+
+test('leaving the share editor cancels in-flight AI theme generation', async ({ page }) => {
+  await page.addInitScript(() => {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      if (input !== '/api/ai/share-theme') return originalFetch(input, init);
+      window.__shareThemePending = true;
+      return new Promise((_resolve, reject) => {
+        init.signal.addEventListener('abort', () => {
+          window.__shareThemeCancelled = true;
+          reject(init.signal.reason);
+        }, { once: true });
+      });
+    };
+  });
+  await page.goto('/shares/new', { waitUntil: 'networkidle' });
+  await page.locator('.share-card-search input').fill('Jordan Lee');
+  await page.locator('.share-card-option:not([hidden])').first().getByRole('checkbox').check();
+  await page.getByRole('button', { name: /预览并保存/ }).click();
+  await page.locator('.share-ai-assistance > summary').click();
+  await page.getByRole('button', { name: '生成主题', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.__shareThemePending)).toBe(true);
+  await page.getByRole('link', { name: '收藏', exact: true }).first().click();
+  await expect(page).toHaveURL('/');
+  await expect.poll(() => page.evaluate(() => window.__shareThemeCancelled)).toBe(true);
+});
 test.afterEach(() => fixture(db => db.exec("DELETE FROM ShareCollection WHERE id='review-share'; DELETE FROM Card WHERE id LIKE 'review-%'")));
 
 test('financial saves synchronize sold and repurchased status and retain other record drafts', async ({ page }) => {
@@ -76,7 +102,7 @@ test('interrupted share saves retain drafts and successful saves acknowledge onl
 test('AI ignores late provider responses and confirms saves and custom deletion in English', async ({ page, context }) => {
   await context.addCookies([{name:'card_vault_ui_locale',value:'en',url:'http://127.0.0.1:3360'}]);
   await page.addInitScript(() => { window.cardVaultDesktop = {
-    getAiSettings: async () => ({provider:'custom',activeCustomId:'local',azure:{endpoint:'https://azure.example.test',deployment:'vision',hasApiKey:true},minimax:{endpoint:'https://mini.example.test',model:'mini',hasApiKey:true},deepseek:{endpoint:'https://deep.example.test',model:'deepseek-chat',hasApiKey:true},customProviders:[{id:'local',name:'Local model',endpoint:'https://local.example.test/v1/chat/completions',model:'local',modelsEndpoint:'',hasApiKey:false,apiKeyHeader:'Authorization',apiKeyPrefix:'Bearer'}]}),
+    getAiSettings: async () => ({provider:'custom',activeCustomId:'local',openai:{endpoint:'https://openai.example.test',model:'vision',hasApiKey:true},minimax:{endpoint:'https://mini.example.test',model:'mini',hasApiKey:true},deepseek:{endpoint:'https://deep.example.test',model:'deepseek-chat',hasApiKey:true},customProviders:[{id:'local',name:'Local model',endpoint:'https://local.example.test/v1/chat/completions',model:'local',modelsEndpoint:'',hasApiKey:false,apiKeyHeader:'Authorization',apiKeyPrefix:'Bearer'}]}),
     saveAiSettings: async draft => ({...draft,customProviders:draft.customProviders.map(item=>({...item,hasApiKey:false}))})
   }; });
   let release, started;

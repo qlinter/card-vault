@@ -5,8 +5,8 @@ test.afterEach(() => fixture(db => db.exec("DELETE FROM Card WHERE id LIKE 'stag
 
 test("three primary destinations keep sharing, scout and Settings accessible", async ({ page, context }) => {
   await page.goto("/", { waitUntil: "networkidle" });
-  await expect(page.locator(".nav-links a")).toHaveText(["收藏", "展示", "数据"]);
-  await page.getByRole("link", { name: "心愿与寻卡", exact: true }).click();
+  await expect(page.locator(".nav-links a")).toHaveText(["收藏", "展示", "统计"]);
+  await page.getByRole("link", { name: "目标 & 寻卡", exact: true }).click();
   await expect(page.locator('.nav-links a[aria-current="page"]')).toHaveText("收藏");
   await expect(page.getByRole("heading", { name: "心愿单", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "跨站查询", exact: true })).toBeVisible();
@@ -18,7 +18,8 @@ test("three primary destinations keep sharing, scout and Settings accessible", a
   await expect(page.locator(".header-settings")).toHaveAttribute("aria-current", "page");
   await context.addCookies([{ name: "card_vault_ui_locale", value: "en", url: "http://127.0.0.1:3360" }]);
   await page.goto("/", { waitUntil: "networkidle" });
-  await expect(page.locator(".nav-links a")).toHaveText(["Collection", "Showcase", "Data"]);
+  await expect(page.locator(".nav-links a")).toHaveText(["Collection", "Showcase", "Statistics"]);
+  await expect(page.getByRole("link", { name: "Goals & search", exact: true })).toBeVisible();
 });
 
 test("descriptions and notes share the first row with tags on the next row in every theme", async ({ page, context }) => {

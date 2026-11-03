@@ -25,7 +25,7 @@ export function SiteHeader() {
         <nav className="nav-links" aria-label={locale === "en" ? "Main navigation" : "主导航"}>
           <Link href="/" className={collectionActive ? "active" : undefined} aria-current={collectionActive ? "page" : undefined}><UiText text="收藏" /><NavigationStatus /></Link>
           <Link href="/showcase" className={showcaseActive ? "active" : undefined} aria-current={showcaseActive ? "page" : undefined}><UiText text="展示" /><NavigationStatus /></Link>
-          <Link href="/portfolio" className={isActive("/portfolio") ? "active" : undefined} aria-current={isActive("/portfolio") ? "page" : undefined}><UiText text="数据" /><NavigationStatus /></Link>
+          <Link href="/portfolio" className={isActive("/portfolio") ? "active" : undefined} aria-current={isActive("/portfolio") ? "page" : undefined}><UiText text="统计" /><NavigationStatus /></Link>
         </nav>
         <div className="header-utilities">
           <Link href="/settings" className="header-settings header-tool" aria-current={isActive("/settings") ? "page" : undefined} title={locale === "en" ? "Settings" : "设置"}>

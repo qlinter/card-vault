@@ -2,17 +2,19 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { requestAiChatText, requestAiChatTextResult } from "../lib/ai-chat-client.ts";
 import {
+  getActiveAiSettingsFromDraft,
   getChatCompletionsHeaders,
   getChatCompletionsUrl,
   getModelsUrl,
   type ActiveAiSettings
 } from "../lib/ai-settings.ts";
+import core from "../lib/ai-settings-core.js";
 
 const settings: ActiveAiSettings = {
-  provider: "azure",
-  endpoint: "https://example.openai.azure.com",
+  provider: "openai",
+  endpoint: "https://api.openai.com/v1/chat/completions",
   apiKey: "test-key",
-  deployment: "test-model"
+  model: "test-model"
 };
 
 test("user cancellation aborts the upstream request without retrying", async t => {
@@ -119,13 +121,14 @@ test("AI client translates an upstream network failure into an actionable messag
   );
 });
 
-test("Azure v1 routes GPT-5.4 through the unified API", async (t) => {
+test("OpenAI official vision endpoint uses Bearer auth and the selected GPT-5 model", async (t) => {
   const v1Settings: ActiveAiSettings = {
-    provider: "azure",
-    endpoint: "https://example.openai.azure.com",
+    provider: "openai",
+    endpoint: "https://api.openai.com/v1/chat/completions",
     apiKey: "test-key",
-    deployment: "gpt-5.4"
+    model: "gpt-5.4-mini"
   };
+  const messages = [{ role: "user" as const, content: [{ type: "text", text: "Read this card" }, { type: "image_url", image_url: { url: "data:image/png;base64,bW9jaw==" } }] }];
   const originalFetch = globalThis.fetch;
   let requestedUrl = "";
   let requestBody: Record<string, unknown> = {};
@@ -140,42 +143,32 @@ test("Azure v1 routes GPT-5.4 through the unified API", async (t) => {
   };
 
   const result = await requestAiChatText(v1Settings, {
-    messages: [{ role: "user", content: "test" }],
+    messages,
     maxTokens: 32,
     temperature: 0.2,
     operation: "测试"
   });
 
   assert.equal(result, "OK");
-  assert.equal(requestedUrl, "https://example.openai.azure.com/openai/v1/chat/completions");
-  assert.equal(requestBody.model, "gpt-5.4");
+  assert.equal(requestedUrl, "https://api.openai.com/v1/chat/completions");
+  assert.equal(getChatCompletionsHeaders(v1Settings).Authorization, "Bearer test-key");
+  assert.equal(getModelsUrl(v1Settings), "https://api.openai.com/v1/models");
+  assert.deepEqual(requestBody.messages, messages);
+  assert.equal(requestBody.model, "gpt-5.4-mini");
   assert.equal(requestBody.max_completion_tokens, 32);
   assert.equal("temperature" in requestBody, false);
 });
 
-test("Azure v1 accepts unified resource endpoints and exposes the models route", () => {
-  const unifiedSettings: ActiveAiSettings = {
-    provider: "azure",
-    endpoint: "https://example.services.ai.azure.com",
-    apiKey: "test-key",
-    deployment: "custom-deployment"
-  };
-
-  assert.equal(
-    getChatCompletionsUrl(unifiedSettings),
-    "https://example.services.ai.azure.com/openai/v1/chat/completions"
-  );
-  assert.equal(getModelsUrl(unifiedSettings), "https://example.services.ai.azure.com/openai/v1/models");
-
-  const openAiResourceSettings: ActiveAiSettings = {
-    ...unifiedSettings,
-    endpoint: "https://example.openai.azure.com"
-  };
-  assert.equal(
-    getChatCompletionsUrl(openAiResourceSettings),
-    "https://example.openai.azure.com/openai/v1/chat/completions"
-  );
-  assert.equal(getModelsUrl(openAiResourceSettings), "https://example.openai.azure.com/openai/v1/models");
+test("saved Azure resource endpoints remain isolated custom profiles", () => {
+  for (const endpoint of ["https://example.services.ai.azure.com", "https://example.openai.azure.com/openai/v1/chat/completions"]) {
+    const migrated = core.normalizeSettings({ provider: "azure", azure: { endpoint, apiKey: "azure-key", deployment: "vision" } });
+    const active = getActiveAiSettingsFromDraft(migrated);
+    assert.equal(active.provider, "custom");
+    assert.match(getChatCompletionsUrl(active), /^https:\/\/example\.(?:services\.ai|openai)\.azure\.com\/openai\/v1\/chat\/completions$/);
+    assert.match(getModelsUrl(active), /\/openai\/v1\/models$/);
+    assert.deepEqual(getChatCompletionsHeaders(active), { "Content-Type": "application/json", "api-key": "azure-key" });
+    assert.equal(migrated.openai.apiKey, "");
+  }
 });
 
 test("custom AI uses the configured OpenAI-compatible endpoints, model, and authorization header", async (t) => {
@@ -231,7 +224,7 @@ test("custom AI supports local services without an API key", () => {
   assert.deepEqual(getChatCompletionsHeaders(localSettings), { "Content-Type": "application/json" });
 });
 
-test("AI client retries without temperature when an Azure deployment rejects it", async (t) => {
+test("AI client retries without temperature when an upstream model rejects it", async (t) => {
   const originalFetch = globalThis.fetch;
   const requestBodies: Array<Record<string, unknown>> = [];
   t.after(() => {

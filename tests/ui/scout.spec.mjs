@@ -31,7 +31,7 @@ test("simple wishes retain drafts, reject invalid budgets and support edit, sear
   await expect(page.getByLabel("心愿名称 *", { exact: true })).toHaveValue("Scout UI 金签");
   await page.getByLabel("预算（可选）", { exact: true }).fill("1.234");
   await page.getByRole("button", { name: "添加心愿", exact: true }).click();
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.locator('.scout-page').getByRole("alert")).toHaveText("金额需为非负数，最多两位小数。");
   await expect(page.getByLabel("心愿名称 *", { exact: true })).toHaveValue("Scout UI 金签");
   await page.getByLabel("预算（可选）", { exact: true }).fill("0");
   await page.getByRole("button", { name: "添加心愿", exact: true }).click();

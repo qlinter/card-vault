@@ -1,6 +1,6 @@
 # Card Vault Product Roadmap
 
-Updated 2026-10-25. Current source version: v1.5.0. See the [release notes](./release-v1.5.0.md) and [development record](./development-v1.5.0.md).
+Updated 2026-11-03. Current source version: v1.5.1. See the [release notes](./release-v1.5.1.md).
 
 ## Completed capabilities
 
@@ -59,3 +59,7 @@ Financial work reuses the [unified accounting model](./financial-history-model.m
 Stage 1 implements compact Home, focused entry, concise card details and two-step sharing. AI portfolio analysis remains. Stage 2 implements consolidated navigation, unified review and exports that reuse Collection filters and selection. Stage 3A implements independent search and simple wish entry, removing saved keywords, acquisition and card binding. The newly authorized one-time reset removes old Scout and wish records. Stage 3B removes duplicate scope search, snapshots and comparison and resets analysis history once, while keeping independent trend ranges. Stage 3C provides four main Settings groups, footer Help & version, grouped Data tools and directly visible AI configuration. The wishlist now precedes cross-site search. Tables, fields, unrelated records and backup/import/export compatibility remain unchanged.
 
 Finalization fixes saving and draft recovery, removes unused components and styles, separates Data navigation, aggregation and guide content, and shares reset safeguards and the runtime-script allowlist. Windows distribution and GitHub synchronization facts are maintained in the release notes; further work remains driven by actual usage feedback.
+
+## v1.5.1 completed
+
+Official OpenAI defaults, card image exports, Statistics labels and concise Settings; entry deduplication, card/financial/share version guards, credential preservation and proxy compatibility. Existing modules have been reorganized; feature expansion is deferred. Scope and source release checks: [release notes](./release-v1.5.1.md).

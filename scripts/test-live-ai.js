@@ -39,7 +39,7 @@ if (!process.versions.electron) {
     const port = await findAvailablePort(3410), base = `http://127.0.0.1:${port}`;
     const env = { ...process.env, ...runtime, ELECTRON_RUN_AS_NODE: "1", CARD_VAULT_DATA_DIR: data, DATABASE_URL: fileDatabaseUrl(dbPath), CARD_VAULT_SESSION_TOKEN: token, CARD_VAULT_ALLOWED_ORIGIN: base };
     // Use the configured vision service for the public synthetic image fixture.
-    if (runtime.AZURE_OPENAI_API_KEY) env.CARD_VAULT_AI_PROVIDER = "azure";
+    if (runtime.OPENAI_API_KEY) env.CARD_VAULT_AI_PROVIDER = "openai";
     initializeTestDatabase(env);
     const db = new DatabaseSync(dbPath);
     db.exec("INSERT INTO Card(id,playerName,cardTitle,sport,holdingQuantity) VALUES('ai-acceptance','Jordan Lee','2024 Championship Rookie Auto','Basketball',1)");
@@ -67,7 +67,7 @@ if (!process.versions.electron) {
         await new Promise(resolve => setTimeout(resolve, 250));
       }
       assert.ok(ready, "Isolated AI server did not start.");
-      for (const provider of ["azure", "minimax", "deepseek"]) {
+      for (const provider of ["openai", "minimax", "deepseek"]) {
         if (visionOnly) break;
         if (!publicSettings[provider].hasApiKey) continue;
         await operation(`${provider}-connection`, async () => { assert.equal((await call("/api/ai/test-settings", { provider })).ok, true); return { provider }; });

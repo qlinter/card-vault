@@ -25,6 +25,7 @@ import type { DraftImage } from "@/lib/card-entry-draft-images.js";
 import { cardImageSelectionError } from "@/lib/card-image-limits.js";
 
 type CreateCardFormProps = {
+  submissionId: string;
   initialValues: CardFormValues;
   initialDraftId?: string;
   initialImages?: DraftImage[];
@@ -49,6 +50,7 @@ function formatDraftTime(value: string): string {
 }
 
 export function CreateCardForm({
+  submissionId,
   initialValues,
   initialDraftId,
   initialImages = [],
@@ -60,7 +62,8 @@ export function CreateCardForm({
 }: CreateCardFormProps) {
   const initialState: CreateCardFormState = {
     error: undefined,
-    values: initialValues
+    values: initialValues,
+    submissionId
   };
   const [state, formAction, isPending] = useActionState(
     createCardFormAction,
@@ -304,6 +307,9 @@ export function CreateCardForm({
       setDraftStatus(
         error instanceof Error ? error.message : "提交前草稿同步失败。"
       );
+      // A later retry must keep the same draft identity, including when this
+      // page is opened elsewhere. Do not commit while draft preparation failed.
+      return;
     } finally {
       preparingSubmitRef.current = false;
     }

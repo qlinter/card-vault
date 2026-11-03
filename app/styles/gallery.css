@@ -277,21 +277,13 @@ form.home-filter-form > .filters > * { min-width: 0; }
 }
 
 .orphan-reveal-button {
-  border: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.16);
   border-radius: 8px;
   padding: 0.35rem 0.58rem;
-  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.9);
-  color: var(--ink);
   cursor: pointer;
   font: inherit;
   font-size: 0.78rem;
   font-weight: 800;
   white-space: nowrap;
-}
-
-.orphan-reveal-button:hover:not(:disabled) {
-  border-color: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.32);
-  background: var(--theme-surface, #fff);
 }
 
 .orphan-reveal-button:disabled {
@@ -571,4 +563,3 @@ body:has(.share-unified-preview-page) main.container {
   background: var(--teal);
   color: white;
 }
-

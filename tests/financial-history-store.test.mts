@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { PrismaClient } from "@prisma/client";
+import { recordVersion } from "../lib/record-version.ts";
 import {
   createCardExpense,
   createCardTransaction,
@@ -88,12 +89,13 @@ test("simplified transaction edits preserve historical additional amounts and re
     cardExpense: { findFirst: async () => null }
   } as unknown as PrismaClient;
   const input = { kind: "purchase", amount: "125", currency: "CNY", quantity: 2, occurredAt: new Date("2026-01-01T00:00:00.000Z"), notes: "updated note" };
-  await updateCardTransaction(client, "card-1", "transaction-1", input);
+  const version = recordVersion({ currency: "CNY", paymentsJson });
+  await updateCardTransaction(client, "card-1", "transaction-1", input, version);
   assert.equal(written?.paymentsJson, paymentsJson);
   assert.equal(written?.amountMinor, 12500n);
   assert.equal(written?.notes, "updated note");
   written = undefined;
-  await assert.rejects(updateCardTransaction(client, "card-1", "transaction-1", { ...input, currency: "USD" }), /不能直接更改币种/);
+  await assert.rejects(updateCardTransaction(client, "card-1", "transaction-1", { ...input, currency: "USD" }, version), /不能直接更改币种/);
   assert.equal(written, undefined);
 });
 

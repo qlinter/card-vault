@@ -65,7 +65,7 @@ async function remoteAnalysis(settings: AiSettings, snapshot: PortfolioSnapshot,
         { role: "user", content: standardPrompt }
       ],
       maxTokens: 6000,
-      temperature: settings.provider === "azure" ? 0.1 : 0.2,
+      temperature: settings.provider === "openai" ? 0.1 : 0.2,
       responseFormat: "json_object",
       timeoutMs: 120000,
       operation: "组合分析", signal

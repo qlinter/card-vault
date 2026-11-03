@@ -22,10 +22,13 @@ import {
 import { prisma } from "@/lib/prisma";
 import { errorMessage } from "@/lib/feedback-messages";
 import { normalizeReturnTo } from "@/lib/query-params";
+import { assertCardEditVersion, cardEditConflictMessage, cardEditVersions } from "@/lib/card-write-guards";
 
 export type CreateCardFormState = {
   error?: string;
   values: CardFormValues;
+  submissionId?: string;
+  expectedVersion?: string;
 };
 
 export async function createCardFormAction(
@@ -37,10 +40,12 @@ export async function createCardFormAction(
   const saveIntent = readCardEntrySaveIntent(formData);
   const draftId = normalizeCardEntryId(formData.get("draftId"));
   const queueItemId = normalizeCardEntryId(formData.get("queueItemId"));
+  const submissionId = _previousState.submissionId ?? "";
 
   try {
     const files = readCardImageFiles(formData);
     const { card, usedQueueItemId } = await createCardEntry({
+      submissionId,
       values,
       files,
       newImageRotations: readNewCardImageRotations(formData, files.length),
@@ -72,7 +77,8 @@ export async function createCardFormAction(
   } catch (error) {
     return {
       error: errorMessage(error, "创建失败，请稍后重试。"),
-      values
+      values,
+      submissionId
     };
   }
 
@@ -80,6 +86,8 @@ export async function createCardFormAction(
 }
 
 export async function updateCardFormAction(cardId: string, _previousState: CreateCardFormState, formData: FormData): Promise<CreateCardFormState> {
+  const submittedVersion = formData.get("editVersion");
+  const expectedVersion = typeof submittedVersion === "string" ? submittedVersion : "";
   const rawReturnTo = formData.get("returnTo");
   const returnTo = normalizeReturnTo(typeof rawReturnTo === "string" ? rawReturnTo : undefined);
   const returnQuery = returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : "";
@@ -95,6 +103,7 @@ export async function updateCardFormAction(cardId: string, _previousState: Creat
     if (!existing) {
       throw new Error("卡片不存在或已删除。");
     }
+    assertCardEditVersion(existing, expectedVersion);
 
     const cardData = buildCardData(values);
     const removeImageIds = formData.getAll("removeImageIds").map((value) => String(value));
@@ -115,7 +124,8 @@ export async function updateCardFormAction(cardId: string, _previousState: Creat
     const imagePaths = await saveCardUploads(files);
     try {
       await prisma.$transaction(async (transaction) => {
-        const current = await transaction.card.findUniqueOrThrow({ where: { id: cardId }, select: { collectionStatus: true, holdingQuantity: true } });
+        const current = await transaction.card.findUniqueOrThrow({ where: { id: cardId }, include: { images: true } });
+        assertCardEditVersion(current, expectedVersion);
         if (current.collectionStatus !== cardData.collectionStatus) {
           assertCollectionStatusQuantity(cardData.collectionStatus, current.holdingQuantity);
         }
@@ -159,8 +169,10 @@ export async function updateCardFormAction(cardId: string, _previousState: Creat
     revalidatePath("/portfolio");
     redirectPath = `/cards/${cardId}?success=updated${returnQuery}`;
   } catch (error) {
-    const message = errorMessage(error, "更新失败，请稍后重试。");
-    return { error: message, values };
+    const latest = await prisma.card.findUnique({ where: { id: cardId }, include: { images: true } }).catch(() => null);
+    const message = latest && cardEditVersions(latest).version !== expectedVersion
+      ? cardEditConflictMessage : errorMessage(error, "更新失败，请稍后重试。");
+    return { error: message, values, expectedVersion };
   }
 
   redirect(redirectPath);

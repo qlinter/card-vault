@@ -3,6 +3,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 const sharp = require("sharp");
+const { verifyCardWriteSafety } = require("./test-card-write-safety");
 const {
   decodeHtmlAttribute,
   fetchPage,
@@ -34,6 +35,8 @@ function appendServerActionFields(formData, html) {
   for (const match of fields) {
     formData.append(match[1], decodeHtmlAttribute(match[2]));
   }
+  const editVersion = form.match(/name="editVersion" value="([^"]*)"/);
+  if (editVersion) formData.set("editVersion", decodeHtmlAttribute(editVersion[1]));
 }
 
 function appendActionFieldsForMarker(formData, html, marker) {
@@ -51,6 +54,8 @@ function appendActionFieldsForMarker(formData, html, marker) {
   for (const match of fields) {
     formData.append(match[1], decodeHtmlAttribute(match[2]));
   }
+  const editVersion = form.match(/name="editVersion" value="([^"]*)"/);
+  if (editVersion) formData.set("editVersion", decodeHtmlAttribute(editVersion[1]));
 }
 
 function appendCardFields(formData, values) {
@@ -364,6 +369,9 @@ async function main() {
     if (createResponse.status !== 303 || !cardId) {
       throw new Error(`Card create returned HTTP ${createResponse.status} (${createLocation}).\n${(await createResponse.text()).slice(0, 500)}`);
     }
+    const replay = await fetch(`${baseUrl}/cards/new`, { method: "POST", body: createForm, redirect: "manual" });
+    if (replay.status !== 303 || replay.headers.get("location") !== createLocation) throw new Error("Replaying a consumed queue item must return the original card.");
+    await replay.arrayBuffer();
 
     db = new DatabaseSync(dbPath, { readOnly: true });
     const created = db.prepare("SELECT playerName, cardTitle, year, grade, holdingQuantity, isSerialNumbered FROM Card WHERE id = ?").get(cardId);
@@ -838,6 +846,10 @@ async function main() {
     ) {
       throw new Error(`Portfolio analysis did not build a trusted server-side snapshot before AI configuration validation.\n${JSON.stringify(analysisPayload).slice(0, 500)}`);
     }
+    await verifyCardWriteSafety({ baseUrl, dbPath, dataDir }).catch(error => {
+      console.error(output.join("").slice(-6000));
+      throw error;
+    });
   console.log("Card flow HTTP E2E passed: workbench quantity, home thumbnails, portfolio center, financial overview and charts, linked sale expenses, status transitions, and core card routes.");
   } finally {
     stopServer(serverProcess);

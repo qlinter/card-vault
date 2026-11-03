@@ -16,8 +16,8 @@ for (const locale of ["zh", "en"]) {
       for (let i = 0; i < 25; i++) insert.run(`portfolio-scope-${i}`, `Scoped ${i}`);
     });
     const labels = locale === "en"
-      ? { all: "View portfolio data", filtered: "View filtered portfolio data", badge: "Filtered", back: "Back to results", count: "All Cards" }
-      : { all: "查看组合数据", filtered: "查看筛选组合数据", badge: "已筛选", back: "返回筛选结果", count: "全部卡片" };
+      ? { all: "View portfolio statistics", filtered: "View filtered portfolio statistics", badge: "Filtered", back: "Back to results", count: "All Cards" }
+      : { all: "查看组合统计", filtered: "查看筛选组合统计", badge: "已筛选", back: "返回筛选结果", count: "全部卡片" };
     await page.goto("/?sort=yearAsc", { waitUntil: "networkidle" });
     const advanced = page.locator(".filter-details");
     const disclosure = advanced.locator("summary");
@@ -26,8 +26,8 @@ for (const locale of ["zh", "en"]) {
     await expect(advanced).not.toHaveAttribute("open", "");
     await expect(page.getByRole("link", { name: labels.all, exact: true })).toHaveAttribute("href", "/portfolio?sort=yearAsc");
     await expect(page.locator(".nav-links a")).toHaveText(locale === "en"
-      ? ["Collection", "Showcase", "Data"]
-      : ["收藏", "展示", "数据"]);
+      ? ["Collection", "Showcase", "Statistics"]
+      : ["收藏", "展示", "统计"]);
     const query = new URLSearchParams({ q: "Import UI", team: "A&B / 队", isAutograph: "false", sort: "yearAsc" });
     await page.goto(`/?${query}`, { waitUntil: "networkidle" });
     await expect(advanced).toHaveAttribute("open", "");
@@ -272,7 +272,7 @@ test("incomplete portfolio data links to the affected card and preserves the fil
 test("Settings groups data management and fits the minimum Windows window", async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 760 });
   await page.goto("/settings", { waitUntil: "networkidle" });
-  await expect(page.locator(".nav-links").getByRole("link", { name: "数据", exact: true })).toHaveAttribute("href", "/portfolio");
+  await expect(page.locator(".nav-links").getByRole("link", { name: "统计", exact: true })).toHaveAttribute("href", "/portfolio");
   await expect(page.locator(".settings-page > .settings-section")).toHaveText(["主题", "数据", "AI", "财务"]);
   await expect(page.locator('.settings-help-toggle')).toHaveText(`帮助与版本v${productVersion}`);
   await page.getByRole("button", { name: "展开数据", exact: true }).click();

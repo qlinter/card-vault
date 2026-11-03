@@ -1,15 +1,13 @@
 "use server";
 
 import { randomUUID } from "crypto";
-import { mkdir, unlink, writeFile } from "fs/promises";
-import path from "path";
+import { assertShareVersion } from "@/lib/share-write-guards";
 import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { prepareImageUpload } from "@/lib/image-upload";
 import { prisma } from "@/lib/prisma";
 import { exportShareCollection, ShareExportMode } from "@/lib/share-export";
-import { getShareBackgroundsDir, getShareCoversDir } from "@/lib/storage-paths";
+import { removeManagedShareImage, saveShareImage } from "@/lib/share-media-service";
 import { createSharePresentation, sanitizeSharePresentationCards, serializeSharePresentation } from "@/lib/share-presentation";
 import { parseShareSectionDrafts } from "@/lib/share-sections";
 import { normalizeShareTheme } from "@/lib/share-themes";
@@ -27,8 +25,6 @@ function savedShareRedirect(formData: FormData, id: string, success: string) {
   return `/shares?${query}`;
 }
 
-const shareCoverDir = getShareCoversDir();
-const shareBackgroundDir = getShareBackgroundsDir();
 function toOptionalString(value: FormDataEntryValue | null): string | null {
   if (!value || typeof value !== "string") {
     return null;
@@ -36,53 +32,6 @@ function toOptionalString(value: FormDataEntryValue | null): string | null {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
-}
-
-function toShareCoverPublicPath(fileName: string): string {
-  return `/share-covers/${fileName}`;
-}
-
-function toShareBackgroundPublicPath(fileName: string): string {
-  return `/share-backgrounds/${fileName}`;
-}
-
-async function saveCoverUpload(file: File): Promise<string> {
-  const prepared = await prepareImageUpload(file, "分享封面");
-  await mkdir(shareCoverDir, { recursive: true });
-  const fileName = `share-cover-${Date.now()}-${randomUUID()}.${prepared.extension}`;
-  const fullPath = path.join(shareCoverDir, fileName);
-  await writeFile(fullPath, prepared.buffer);
-  return toShareCoverPublicPath(fileName);
-}
-
-async function saveBackgroundUpload(file: File): Promise<string> {
-  const prepared = await prepareImageUpload(file, "分享背景");
-  await mkdir(shareBackgroundDir, { recursive: true });
-  const fileName = `share-background-${Date.now()}-${randomUUID()}.${prepared.extension}`;
-  const fullPath = path.join(shareBackgroundDir, fileName);
-  await writeFile(fullPath, prepared.buffer);
-  return toShareBackgroundPublicPath(fileName);
-}
-
-async function removeManagedShareImage(imagePath: string | null): Promise<void> {
-  if (!imagePath) {
-    return;
-  }
-
-  const targetDir = imagePath.startsWith("/share-covers/")
-    ? shareCoverDir
-    : imagePath.startsWith("/share-backgrounds/")
-      ? shareBackgroundDir
-      : null;
-  if (!targetDir) {
-    return;
-  }
-
-  try {
-    await unlink(path.join(targetDir, path.basename(imagePath)));
-  } catch {
-    // Missing files do not need to block share collection updates.
-  }
 }
 
 async function uniqueSlug(title: string, existingId?: string): Promise<string> {
@@ -128,7 +77,7 @@ async function collectionData(formData: FormData, cardIds: string[]) {
     let coverImagePath =
       coverMode === "custom" ? toOptionalString(formData.get("existingCoverImagePath")) : null;
     if (coverMode === "custom" && coverUpload instanceof File && coverUpload.size > 0) {
-      coverImagePath = await saveCoverUpload(coverUpload);
+      coverImagePath = await saveShareImage(coverUpload, "cover");
       uploadedPaths.push(coverImagePath);
     }
 
@@ -139,7 +88,7 @@ async function collectionData(formData: FormData, cardIds: string[]) {
         ? null
         : toOptionalString(formData.get("existingBackgroundImagePath"));
     if (!clearBackgroundImage && backgroundUpload instanceof File && backgroundUpload.size > 0) {
-      backgroundImagePath = await saveBackgroundUpload(backgroundUpload);
+      backgroundImagePath = await saveShareImage(backgroundUpload, "background");
       uploadedPaths.push(backgroundImagePath);
     }
 
@@ -253,15 +202,18 @@ export async function createShareCollectionAction(formData: FormData): Promise<v
   redirect(redirectPath);
 }
 
-export async function updateShareCollectionAction(shareId: string, formData: FormData): Promise<void> {
+export async function updateShareCollectionAction(shareId: string, _previousState: { error: string }, formData: FormData): Promise<{ error: string }> {
   let redirectPath = `/shares/${shareId}/edit?error=unknown`;
   let uploadedPaths: string[] = [];
 
   try {
-    const existing = await prisma.shareCollection.findUnique({ where: { id: shareId } });
+    const expectedVersion = String(formData.get("editVersion") ?? "");
+    const existing = await prisma.shareCollection.findUnique({ where: { id: shareId }, include: { items: true, sections: true } });
     if (!existing) {
       throw new Error("分享集不存在或已删除。");
     }
+
+    assertShareVersion(existing, expectedVersion);
 
     const cardIds = selectedCardIds(formData);
     if (cardIds.length === 0) {
@@ -273,6 +225,8 @@ export async function updateShareCollectionAction(shareId: string, formData: For
     uploadedPaths = collection.uploadedPaths;
     const slug = await uniqueSlug(data.title, shareId);
     await prisma.$transaction(async (transaction) => {
+      const current = await transaction.shareCollection.findUniqueOrThrow({ where: { id: shareId }, include: { items: true, sections: true } });
+      assertShareVersion(current, expectedVersion);
       await transaction.shareCollection.update({
         where: { id: shareId },
         data: { ...data, slug }
@@ -297,7 +251,7 @@ export async function updateShareCollectionAction(shareId: string, formData: For
   } catch (error) {
     await Promise.all(uploadedPaths.map((imagePath) => removeManagedShareImage(imagePath)));
     const message = errorMessage(error, "更新分享集失败，请稍后重试。");
-    redirectPath = `/shares/${shareId}/edit?error=${encodeURIComponent(message)}`;
+    return { error: message };
   }
 
   redirect(redirectPath);

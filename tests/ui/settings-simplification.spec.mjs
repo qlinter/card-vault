@@ -25,7 +25,7 @@ test('AI fields are directly visible and preserve drafts and saved keys across p
     window.cardVaultDesktop = {
       getAiSettings: async () => ({
         provider: 'custom', activeCustomId: 'local',
-        azure: { endpoint: 'https://azure.example.test', deployment: 'vision', hasApiKey: true },
+        openai: { endpoint: 'https://openai.example.test', model: 'vision', hasApiKey: true },
         minimax: { endpoint: 'https://minimax.example.test', model: 'MiniMax-VL-01', hasApiKey: true },
         deepseek: { endpoint: 'https://deepseek.example.test', model: 'deepseek-flash', hasApiKey: true },
         customProviders: [{ id: 'local', name: 'Local model', endpoint: 'https://local.example.test/v1/chat/completions', model: 'vision-local', modelsEndpoint: '', hasApiKey: true, apiKeyHeader: 'X-API-Key', apiKeyPrefix: '' }]
@@ -46,7 +46,8 @@ test('AI fields are directly visible and preserve drafts and saved keys across p
   await toggle.click();
   await expect(page.getByLabel('Endpoint', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '新增自定义 AI', exact: true })).toBeVisible();
-  await expect(page.locator('.ai-settings-panel details')).toHaveCount(0);
+  await expect(page.locator('.ai-settings-panel details:not(.ai-proxy-settings)')).toHaveCount(0);
+  await expect(page.locator('.ai-proxy-settings')).toHaveCount(1);
   await page.getByLabel('Model *', { exact: true }).fill('vision-draft');
   await page.getByLabel('API Key', { exact: true }).fill('new-mock-key');
   await page.getByLabel('Endpoint', { exact: true }).fill('https://local.example.test/alternate/chat/completions');
@@ -65,8 +66,8 @@ test('AI fields are directly visible and preserve drafts and saved keys across p
   await expect.poll(() => page.evaluate(() => window.__savedAiDraft?.customProviders[0].apiKey)).toBe('');
   const saved = await page.evaluate(() => window.__savedAiDraft);
   expect(saved.customProviders[0]).toMatchObject({ model: 'vision-next', apiKeyHeader: 'X-API-Key', apiKeyPrefix: '' });
-  expect(saved.azure.endpoint).toBe('https://azure.example.test');
-  expect(saved.azure.apiKey).toBeUndefined();
+  expect(saved.openai.endpoint).toBe('https://openai.example.test');
+  expect(saved.openai.apiKey).toBeUndefined();
   expect(saved.deepseek.apiKey).toBeUndefined();
   await page.getByRole('button', { name: '新增自定义 AI', exact: true }).click();
   await expect(page.getByLabel('显示名称 *', { exact: true })).toBeVisible();

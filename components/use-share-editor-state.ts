@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ShareCardDraft, SharePickerCard } from "@/components/share-card-picker";
-import type { ShareThemeCard, ShareThemeValues } from "@/components/share-theme-generator";
+import type { ShareThemeCard, ShareThemeValues } from "@/lib/share-theme-domain";
 import type { SharePresentation } from "@/lib/share-presentation";
 import type { ShareSectionDraft } from "@/lib/share-sections";
 import type { ShareThemeId } from "@/lib/share-themes";

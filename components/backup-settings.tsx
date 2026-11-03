@@ -130,10 +130,10 @@ export function BackupSettings() {
           <button type="button" className="btn btn-secondary" onClick={handleChooseDirectory} disabled={busy}>
             {busyAction === "choose" ? <UiText text={"选择中..."} /> : <UiText text={"设置备份路径"} />}
           </button>
-          <button type="button" className="btn btn-primary" onClick={handleBackup} disabled={busy}>
+          <button type="button" className="btn btn-secondary" onClick={handleBackup} disabled={busy}>
             {busyAction === "backup" ? <UiText text={"备份中..."} /> : <UiText text={"一键备份"} />}
           </button>
-          <button type="button" className="btn btn-danger" onClick={handleRestore} disabled={busy}>
+          <button type="button" className="btn btn-secondary" onClick={handleRestore} disabled={busy}>
             {busyAction === "restore" ? <UiText text={"恢复中..."} /> : <UiText text={"备份恢复"} />}
           </button>
         </div>

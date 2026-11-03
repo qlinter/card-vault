@@ -1,7 +1,10 @@
 "use client";
 
+import { AiProxySettings } from "./ai-proxy-settings";
+
 import { UiText, UiElement } from "@/components/ui-text";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { useAiSettingsRequests } from "./use-ai-settings-requests";
 import { useLanguage } from "./language-provider";
 import { DisclosureIcon } from "@/components/disclosure-icon";
 import { errorMessage } from "@/lib/feedback-messages";
@@ -11,6 +14,21 @@ import type { AiProvider, PublicAiSettings, PublicCustomProviderSettings } from 
 type PublicSettings = PublicAiSettings & { keyRecoveryRequired?: boolean };
 
 const emptySettings: PublicSettings = publicAiSettings(normalizeSettings());
+type BuiltInProvider = Exclude<AiProvider, "custom">;
+const emptyApiKeys: Record<BuiltInProvider, string> = { openai: "", minimax: "", deepseek: "" };
+
+function loadedPublicSettings(value: Partial<PublicSettings>): PublicSettings {
+  return {
+    provider: value.provider ?? emptySettings.provider,
+    activeCustomId: value.activeCustomId ?? "",
+    keyRecoveryRequired: Boolean(value.keyRecoveryRequired),
+    proxy: { ...emptySettings.proxy, ...value.proxy },
+    openai: { ...emptySettings.openai, ...value.openai },
+    minimax: { ...emptySettings.minimax, ...value.minimax },
+    deepseek: { ...emptySettings.deepseek, ...value.deepseek },
+    customProviders: Array.isArray(value.customProviders) ? value.customProviders : []
+  };
+}
 
 function providerName(provider: AiProvider): string {
   if (provider === "custom") return "未命名配置";
@@ -19,17 +37,6 @@ function providerName(provider: AiProvider): string {
 
 function activeCustom(settings: PublicSettings): PublicCustomProviderSettings | undefined {
   return settings.customProviders.find((item) => item.id === settings.activeCustomId) ?? settings.customProviders[0];
-}
-
-function canTest(settings: PublicSettings, azureApiKey: string, minimaxApiKey: string, deepseekApiKey: string): boolean {
-  if (settings.provider === "custom") {
-    const custom = activeCustom(settings);
-    return Boolean(custom?.endpoint && custom.model);
-  }
-  if (settings.provider === "deepseek") return Boolean(settings.deepseek.endpoint && settings.deepseek.model && (settings.deepseek.hasApiKey || deepseekApiKey.trim()));
-  return settings.provider === "minimax"
-    ? Boolean(settings.minimax.endpoint && settings.minimax.model && (settings.minimax.hasApiKey || minimaxApiKey.trim()))
-    : Boolean(settings.azure.endpoint && settings.azure.deployment && (settings.azure.hasApiKey || azureApiKey.trim()));
 }
 
 function createCustomId(existingIds: Set<string>): string {
@@ -50,19 +57,15 @@ type AiSettingsProps = { defaultOpen?: boolean };
 export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   const { locale, t } = useLanguage();
   const [settings, setSettings] = useState<PublicSettings>(emptySettings);
-  const [azureApiKey, setAzureApiKey] = useState("");
-  const [minimaxApiKey, setMiniMaxApiKey] = useState("");
-  const [deepseekApiKey, setDeepSeekApiKey] = useState("");
+  const [apiKeys, setApiKeys] = useState(emptyApiKeys);
+  const [proxyPassword, setProxyPassword] = useState("");
+  const [clearProxyPassword, setClearProxyPassword] = useState(false);
   const [customApiKeys, setCustomApiKeys] = useState<Record<string, string>>({});
   const [clearCustomApiKeys, setClearCustomApiKeys] = useState<Record<string, boolean>>({});
-  const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
-  const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const requests = useRef<{ models?: AbortController; test?: AbortController }>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -74,18 +77,10 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
           ? await desktopApi.getAiSettings()
           : ((await fetch("/api/ai/settings").then((response) => response.json())) as PublicSettings);
         if (!cancelled) {
-          const loadedSettings: PublicSettings = {
-            provider: nextSettings.provider ?? emptySettings.provider,
-            activeCustomId: nextSettings.activeCustomId ?? "",
-            keyRecoveryRequired: Boolean(nextSettings.keyRecoveryRequired),
-            azure: { ...emptySettings.azure, ...nextSettings.azure },
-            minimax: { ...emptySettings.minimax, ...nextSettings.minimax },
-            deepseek: { ...emptySettings.deepseek, ...nextSettings.deepseek },
-            customProviders: Array.isArray(nextSettings.customProviders) ? nextSettings.customProviders : []
-          };
+          const loadedSettings = loadedPublicSettings(nextSettings);
           setSettings(loadedSettings);
           if (loadedSettings.keyRecoveryRequired) {
-            setMessage("检测到旧 API Key 无法由当前 Windows 环境解密，请重新输入 API Key 并保存；其他设置已保留。");
+            setMessage("检测到已保存的 AI 凭据无法由当前设备解密，请重新输入 API Key 或代理密码并保存；其他设置已保留。");
           }
         }
       } catch (error) {
@@ -99,32 +94,25 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   }, []);
 
   const currentCustom = activeCustom(settings);
-  const requestContext = JSON.stringify(settings.provider === "custom"
-    ? ["custom", currentCustom?.id, currentCustom?.endpoint, currentCustom?.modelsEndpoint, customApiKeys[currentCustom?.id || ""], clearCustomApiKeys[currentCustom?.id || ""]]
-    : [settings.provider, settings[settings.provider].endpoint, settings.provider === "azure" ? azureApiKey : settings.provider === "deepseek" ? deepseekApiKey : minimaxApiKey]);
-  useLayoutEffect(() => {
-    const activeRequests = requests.current;
-    setModelOptions([]);
-    setIsLoadingModels(false);
-    setIsTesting(false);
-    return () => { activeRequests.models?.abort(); activeRequests.test?.abort(); };
-  }, [requestContext]);
+  const providerContext = JSON.stringify(settings.provider === "custom"
+    ? ["custom", currentCustom?.id, currentCustom?.endpoint, currentCustom?.modelsEndpoint, currentCustom?.apiKeyHeader, currentCustom?.apiKeyPrefix, customApiKeys[currentCustom?.id || ""], clearCustomApiKeys[currentCustom?.id || ""]]
+    : [settings.provider, settings[settings.provider].endpoint, apiKeys[settings.provider]]);
+  const modelListContext = JSON.stringify([providerContext, settings.proxy, proxyPassword, clearProxyPassword]);
+  const requestContext = JSON.stringify([modelListContext, settings.provider === "custom" ? currentCustom?.model : settings[settings.provider].model]);
 
   function buildDraftPayload() {
+    const builtInDraft = (provider: BuiltInProvider) => ({
+      endpoint: settings[provider].endpoint,
+      apiKey: apiKeys[provider] || undefined,
+      model: settings[provider].model
+    });
     return {
+      proxy: { mode: settings.proxy.mode, protocol: settings.proxy.protocol, host: settings.proxy.host, port: settings.proxy.port, username: settings.proxy.username, noProxy: settings.proxy.noProxy, password: clearProxyPassword ? "" : proxyPassword || undefined },
       provider: settings.provider,
       activeCustomId: settings.activeCustomId,
-      azure: {
-        endpoint: settings.azure.endpoint,
-        apiKey: azureApiKey || undefined,
-        deployment: settings.azure.deployment
-      },
-      minimax: {
-        endpoint: settings.minimax.endpoint,
-        apiKey: minimaxApiKey || undefined,
-        model: settings.minimax.model
-      },
-      deepseek: { endpoint: settings.deepseek.endpoint, apiKey: deepseekApiKey || undefined, model: settings.deepseek.model },
+      openai: builtInDraft("openai"),
+      minimax: builtInDraft("minimax"),
+      deepseek: builtInDraft("deepseek"),
       customProviders: settings.customProviders.map((item) => ({
         id: item.id,
         name: item.name,
@@ -139,7 +127,6 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   }
 
   function handleProviderChange(value: string) {
-    setModelOptions([]);
     setMessage(null);
     if (value.startsWith("custom:")) {
       const activeCustomId = value.slice("custom:".length);
@@ -169,7 +156,6 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
         customProviders: [...current.customProviders, next]
       };
     });
-    setModelOptions([]);
     setMessage(null);
   }
 
@@ -181,7 +167,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
       const nextActive = customProviders[0];
       return {
         ...current,
-        provider: nextActive ? "custom" : "azure",
+        provider: nextActive ? "custom" : "openai",
         activeCustomId: nextActive?.id ?? "",
         customProviders
       };
@@ -196,7 +182,6 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
       delete next[deletedId];
       return next;
     });
-    setModelOptions([]);
     setMessage("自定义配置已从当前草稿移除，请点击“保存设置”确认删除。");
   }
 
@@ -217,22 +202,13 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
     setMessage(null);
     try {
       const saved = await window.cardVaultDesktop.saveAiSettings(buildDraftPayload());
-      const loaded: PublicSettings = {
-        provider: saved.provider,
-        activeCustomId: saved.activeCustomId,
-        keyRecoveryRequired: false,
-        azure: { ...emptySettings.azure, ...saved.azure },
-        minimax: { ...emptySettings.minimax, ...saved.minimax },
-        deepseek: { ...emptySettings.deepseek, ...saved.deepseek },
-        customProviders: saved.customProviders
-      };
-      setSettings(loaded);
-      setAzureApiKey("");
-      setMiniMaxApiKey("");
-      setDeepSeekApiKey("");
+      setSettings(loadedPublicSettings(saved));
+      setProxyPassword("");
+      setClearProxyPassword(false);
+      setApiKeys(emptyApiKeys);
       setCustomApiKeys({});
       setClearCustomApiKeys({});
-      setMessage("AI 设置已保存。");
+      setMessage(saved.keyRecoveryRequired ? "AI 设置已保存；无法解密的原凭据已保留，请重新输入需要使用的 API Key 或代理密码。" : "AI 设置已保存。");
     } catch (error) {
       setMessage("保存失败：" + errorMessage(error, "请稍后重试。"));
     } finally {
@@ -240,98 +216,33 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
     }
   }
 
-  async function handleTest() {
-    requests.current.test?.abort();
-    const controller = new AbortController();
-    requests.current.test = controller;
-    setIsTesting(true);
-    setMessage(null);
-    try {
-      const response = await fetch("/api/ai/test-settings", {
-        signal: controller.signal,
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildDraftPayload())
-      });
-      const data = (await response.json()) as { ok?: boolean; error?: string };
-      if (controller.signal.aborted) return;
-      const name = settings.provider === "custom" ? currentCustom?.name || "未命名配置" : providerName(settings.provider);
-      if (!response.ok || !data.ok) throw new Error(data.error || name + " 连接测试失败。");
-      setMessage(name + " 连接测试通过。");
-    } catch (error) {
-      if (controller.signal.aborted) return;
-      const fallback = settings.provider === "custom"
-        ? "请检查当前自定义配置的 Endpoint、Model 和 API Key。"
-        : settings.provider === "deepseek"
-          ? "请检查 DeepSeek Endpoint、API Key 和 Model。"
-          : settings.provider === "minimax"
-          ? "请检查 MiniMax Endpoint、API Key 和 Model。"
-          : "请检查 Azure Endpoint、API Key 和 Deployment。";
-      setMessage(errorMessage(error, fallback));
-    } finally {
-      if (requests.current.test === controller) setIsTesting(false);
-    }
-  }
-
-  async function handleLoadModels() {
-    requests.current.models?.abort();
-    const controller = new AbortController();
-    requests.current.models = controller;
-    setIsLoadingModels(true);
-    setMessage(null);
-    try {
-      const response = await fetch("/api/ai/models", {
-        signal: controller.signal,
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildDraftPayload())
-      });
-      const data = (await response.json()) as { models?: string[]; error?: string };
-      if (controller.signal.aborted) return;
-      if (!response.ok) throw new Error(data.error || "读取模型失败。");
-      const models = data.models ?? [];
-      setModelOptions(models);
-      setMessage(models.length > 0 ? `已读取 ${models.length} 个模型。` : "没有读取到可用模型。");
-    } catch (error) {
-      if (controller.signal.aborted) return;
-      setMessage(errorMessage(error, "请检查当前服务商的 Endpoint 和 API Key。"));
-    } finally {
-      if (requests.current.models === controller) setIsLoadingModels(false);
-    }
-  }
+  const { modelOptions, isTesting, isLoadingModels, testRoute, textTestPassed, handleTest, handleLoadModels } = useAiSettingsRequests({
+    modelListContext,
+    requestContext,
+    buildDraftPayload,
+    providerName: settings.provider === "custom" ? currentCustom?.name || "未命名配置" : providerName(settings.provider),
+    testFailureMessage: settings.provider === "custom"
+      ? "请检查当前自定义配置的 Endpoint、Model 和 API Key。"
+      : `请检查 ${providerName(settings.provider)} Endpoint、API Key 和 Model。`,
+    onMessage: setMessage
+  });
 
   function handleModelOptionChange(value: string) {
     if (settings.provider === "custom") {
       updateCurrentCustom({ model: value });
       return;
     }
-    if (settings.provider === "minimax" || settings.provider === "deepseek") {
-      const provider = settings.provider;
-      setSettings((current) => ({ ...current, [provider]: { ...current[provider], model: value } }));
-      return;
-    }
-    setSettings((current) => ({ ...current, azure: { ...current.azure, deployment: value } }));
+    const provider = settings.provider;
+    setSettings((current) => ({ ...current, [provider]: { ...current[provider], model: value } }));
   }
 
-  const builtInProvider = settings.provider === "deepseek" ? "deepseek" : "minimax";
-  const builtInSettings = settings[builtInProvider];
-  const builtInApiKey = builtInProvider === "deepseek" ? deepseekApiKey : minimaxApiKey;
-  const setBuiltInApiKey = builtInProvider === "deepseek" ? setDeepSeekApiKey : setMiniMaxApiKey;
-
-  const testable = canTest(settings, azureApiKey, minimaxApiKey, deepseekApiKey);
-  const modelsReadable = settings.provider === "custom"
-    ? Boolean(currentCustom?.endpoint)
-    : settings.provider === "deepseek"
-      ? Boolean(settings.deepseek.endpoint && (settings.deepseek.hasApiKey || deepseekApiKey.trim()))
-      : settings.provider === "minimax"
-      ? Boolean(settings.minimax.endpoint && (settings.minimax.hasApiKey || minimaxApiKey.trim()))
-      : Boolean(settings.azure.endpoint && (settings.azure.hasApiKey || azureApiKey.trim()));
+  const builtInProvider = settings.provider === "custom" ? null : settings.provider;
+  const builtInSettings = builtInProvider ? settings[builtInProvider] : null;
+  const selectedSettings = builtInSettings ?? currentCustom;
+  const modelsReadable = Boolean(selectedSettings?.endpoint && (!builtInProvider || selectedSettings.hasApiKey || apiKeys[builtInProvider].trim()));
+  const testable = modelsReadable && Boolean(selectedSettings?.model);
   const selectedProviderValue = settings.provider === "custom" ? `custom:${currentCustom?.id || ""}` : settings.provider;
-  const selectedModel = settings.provider === "custom"
-    ? currentCustom?.model || ""
-    : settings.provider !== "azure"
-      ? settings[settings.provider].model
-      : settings.azure.deployment;
+  const selectedModel = selectedSettings?.model || "";
 
   return (
     <section className="panel settings-section ai-settings-panel">
@@ -350,28 +261,24 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
           </label>
           <div className="ai-provider-actions">
             <button type="button" className="btn btn-secondary" onClick={addCustomProvider} disabled={!isDesktop}><UiText text="新增自定义 AI" /></button>
-            {settings.provider === "custom" && currentCustom ? <button type="button" className="btn btn-danger" onClick={deleteCurrentCustomProvider} disabled={!isDesktop}><UiText text="删除当前配置" /></button> : null}
+            {settings.provider === "custom" && currentCustom ? <button type="button" className="btn btn-secondary" onClick={deleteCurrentCustomProvider} disabled={!isDesktop}><UiText text="删除当前配置" /></button> : null}
           </div>
         </div>
 
         <div className="form-grid ai-common-fields">
           {settings.provider === "custom" && currentCustom ? <label className="field full"><span><UiText text="显示名称 *" /></span><UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.name} onChange={event => updateCurrentCustom({ name: event.target.value })} placeholder="例如 OpenRouter、DeepSeek 或本地模型" disabled={!isDesktop} /></label> : null}
-          {settings.provider === "azure" ? <label className="field full"><span>Endpoint</span><UiElement as="input" uiAttributes={["placeholder"]} value={settings.azure.endpoint} onChange={event => setSettings(current => ({ ...current, azure: { ...current.azure, endpoint: event.target.value } }))} placeholder="https://your-resource.openai.azure.com 或 https://your-resource.services.ai.azure.com" disabled={!isDesktop} /></label>
-            : settings.provider === "minimax" || settings.provider === "deepseek" ? <label className="field full"><span>Endpoint</span><input value={builtInSettings.endpoint} onChange={event => setSettings(current => ({ ...current, [builtInProvider]: { ...current[builtInProvider], endpoint: event.target.value } }))} placeholder={emptySettings[builtInProvider].endpoint} disabled={!isDesktop} /></label>
+          {builtInProvider && builtInSettings ? <label className="field full"><span>Endpoint</span><UiElement as="input" uiAttributes={["placeholder"]} value={builtInSettings.endpoint} onChange={event => setSettings(current => ({ ...current, [builtInProvider]: { ...current[builtInProvider], endpoint: event.target.value } }))} placeholder={emptySettings[builtInProvider].endpoint} disabled={!isDesktop} /></label>
             : currentCustom ? <label className="field full"><span>Endpoint</span><input value={currentCustom.endpoint} onChange={event => updateCurrentCustom({ endpoint: event.target.value })} placeholder="https://example.com/v1/chat/completions" disabled={!isDesktop} /></label> : null}
-          {settings.provider === "azure" ? <>
-            <label className="field"><span>Deployment</span><UiElement as="input" uiAttributes={["placeholder"]} value={settings.azure.deployment} onChange={event => setSettings(current => ({ ...current, azure: { ...current.azure, deployment: event.target.value } }))} placeholder="你的部署名称" disabled={!isDesktop} /></label>
-            <label className="field"><span>API Key</span><UiElement as="input" uiAttributes={["placeholder"]} value={azureApiKey} type="password" onChange={event => setAzureApiKey(event.target.value)} placeholder={settings.azure.hasApiKey ? "已保存；留空则不修改" : "请输入 API Key"} disabled={!isDesktop} /></label>
-          </> : settings.provider === "minimax" || settings.provider === "deepseek" ? <>
-            <label className="field"><span>Model</span><input value={builtInSettings.model} onChange={event => setSettings(current => ({ ...current, [builtInProvider]: { ...current[builtInProvider], model: event.target.value } }))} placeholder={emptySettings[builtInProvider].model} disabled={!isDesktop} /></label>
-            <label className="field"><span>API Key</span><UiElement as="input" uiAttributes={["placeholder"]} value={builtInApiKey} type="password" onChange={event => setBuiltInApiKey(event.target.value)} placeholder={builtInSettings.hasApiKey ? "已保存；留空则不修改" : "请输入 API Key"} disabled={!isDesktop} /></label>
+          {builtInProvider && builtInSettings ? <>
+            <label className="field"><span>Model</span><UiElement as="input" uiAttributes={["placeholder"]} value={builtInSettings.model} onChange={event => setSettings(current => ({ ...current, [builtInProvider]: { ...current[builtInProvider], model: event.target.value } }))} placeholder={emptySettings[builtInProvider].model} disabled={!isDesktop} /></label>
+            <label className="field"><span>API Key</span><UiElement as="input" uiAttributes={["placeholder"]} value={apiKeys[builtInProvider]} type="password" onChange={event => setApiKeys(current => ({ ...current, [builtInProvider]: event.target.value }))} placeholder={builtInSettings.hasApiKey ? "已保存；留空则不修改" : "请输入 API Key"} disabled={!isDesktop} /></label>
           </> : currentCustom ? <>
             <label className="field"><span>Model *</span><UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.model} onChange={event => updateCurrentCustom({ model: event.target.value })} placeholder="服务商提供的模型 ID" disabled={!isDesktop} /></label>
             <label className="field"><span>API Key</span><UiElement as="input" uiAttributes={["placeholder"]} value={customApiKeys[currentCustom.id] || ""} type="password"
               onChange={event => { setCustomApiKeys(current => ({ ...current, [currentCustom.id]: event.target.value })); setClearCustomApiKeys(current => ({ ...current, [currentCustom.id]: false })); }}
               placeholder={currentCustom.hasApiKey ? "已保存；留空则不修改" : "本地无鉴权服务可留空"} disabled={!isDesktop} /></label>
           </> : null}
-          {modelOptions.length > 0 ? <label className="field full"><span>{settings.provider === "azure" ? <UiText text="选择 Deployment" /> : <UiText text="选择模型" />}</span>
+          {modelOptions.length > 0 ? <label className="field full"><span><UiText text="选择模型" /></span>
             <select title={selectedModel} value={selectedModel} onChange={event => handleModelOptionChange(event.target.value)}><option value=""><UiText text="请选择" /></option>{modelOptions.map(model => <option key={model} value={model}>{model}</option>)}</select>
           </label> : null}
           {settings.provider === "custom" && currentCustom ? <>
@@ -380,14 +287,17 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
               <label className="field full"><span><UiText text="模型列表 Endpoint（可选）" /></span><UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.modelsEndpoint} onChange={event => updateCurrentCustom({ modelsEndpoint: event.target.value })} placeholder="留空时从 /chat/completions 自动推断 /models" disabled={!isDesktop} /></label>
             </> : settings.provider === "custom" ? <p className="muted full"><UiText text="尚未创建自定义配置，请点击“新增自定义 AI”。" /></p> : null}
         </div>
+        <AiProxySettings value={settings.proxy} onChange={patch => setSettings(current => ({ ...current, proxy: { ...current.proxy, ...patch } }))} password={proxyPassword} onPassword={setProxyPassword} clearPassword={clearProxyPassword} onClearPassword={setClearProxyPassword} disabled={!isDesktop} />
         <div className="ai-actions">
-          <button type="button" className="btn btn-primary" onClick={handleSave} disabled={isDesktop !== true || isSaving}>{isSaving ? <UiText text="保存中..." /> : <UiText text="保存设置" />}</button>
+          <button type="button" className="btn btn-secondary" onClick={handleSave} disabled={isDesktop !== true || isSaving}>{isSaving ? <UiText text="保存中..." /> : <UiText text="保存设置" />}</button>
           <button type="button" className="btn btn-secondary" onClick={handleTest} disabled={isTesting || !testable}>{isTesting ? <UiText text="测试中..." /> : <UiText text="测试连接" />}</button>
           <button type="button" className="btn btn-secondary" onClick={handleLoadModels} disabled={isLoadingModels || !modelsReadable}>{isLoadingModels ? <UiText text="读取中..." /> : <UiText text="读取模型" />}</button>
         </div>
         {isDesktop === false ? <p className="muted" style={{ margin: "0.65rem 0 0" }}><UiText text="当前不是桌面端环境，界面内保存不可用；开发态可通过 .env.local 配置 AI 服务商。" /></p> : null}
       </fieldset> : null}
       {message ? <p className="muted" role="status" style={{ margin: "0.65rem 0 0" }}><UiText text={message} /></p> : null}
+      {testRoute ? <p className="muted ai-route-result"><UiText text={{ direct: "直连设置", bypass: "绕过规则", manual: "手动代理", environment: "环境代理", system: "系统规则" }[testRoute.source]} /> · <UiText text={testRoute.connection === "direct" ? "直连" : "经代理连接"} />{testRoute.protocol ? ` (${testRoute.protocol.toUpperCase()})` : ""}</p> : null}
+      {textTestPassed ? <p className="muted ai-capability-result"><UiText text="文本连接通过；图片识别能力需另行确认。" /></p> : null}
     </section>
   );
 }

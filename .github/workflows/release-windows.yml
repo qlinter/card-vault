@@ -40,5 +40,6 @@ jobs:
             dist/card-vault-*-setup.exe
             dist/card-vault-*-portable.zip
             dist/SHA256SUMS.txt
+            dist/release-*.json
           if-no-files-found: error
           retention-days: 14

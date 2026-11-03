@@ -1,6 +1,7 @@
-type IconName = "search" | "expand" | "close" | "previous" | "next" | "plus" | "minus" | "left" | "right" | "image";
+type IconName = "search" | "expand" | "close" | "previous" | "next" | "plus" | "minus" | "left" | "right" | "image" | "download";
 
 const paths: Record<IconName, string> = {
+  download: "M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5",
   search: "M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0",
   expand: "M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5",
   close: "M6 6l12 12M18 6 6 18", previous: "m15 5-7 7 7 7", next: "m9 5 7 7-7 7",

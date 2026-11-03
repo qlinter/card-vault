@@ -2,10 +2,13 @@
 
 import { UiText, UiElement } from "@/components/ui-text";
 import type { FormEvent, MouseEvent } from "react";
+import { useActionState, useState } from "react";
+import type { PersistentFormAction } from "./persistent-form";
 import { useFormStatus } from "react-dom";
 import { ShareCardPicker, type ShareCardDraft, type SharePickerCard } from "@/components/share-card-picker";
 import { ShareGalleryEditor } from "@/components/share-gallery-editor";
-import { ShareThemeGenerator, type ShareThemeCard, type ShareThemeField, shareThemeFields } from "@/components/share-theme-generator";
+import { ShareThemeGenerator } from "@/components/share-theme-generator";
+import { type ShareThemeCard, type ShareThemeField, shareThemeFields } from "@/lib/share-theme-domain";
 import { useShareDraftPersistence } from "@/components/use-share-draft-persistence";
 import { useShareEditorHistory } from "@/components/use-share-editor-history";
 import { useShareEditorState, type ShareEditorInitialValues } from "@/components/use-share-editor-state";
@@ -16,7 +19,9 @@ import { toggleFeaturedCardId } from "@/lib/share-presentation";
 import type { ShareSectionDraft } from "@/lib/share-sections";
 
 type ShareCollectionWizardProps = {
-  action: (formData: FormData) => void | Promise<void>;
+  action?: (formData: FormData) => void | Promise<void>;
+  editAction?: PersistentFormAction;
+  editVersion?: string;
   draftId: string;
   cards: SharePickerCard[];
   aiCards: ShareThemeCard[];
@@ -40,7 +45,11 @@ function safeText(value: unknown): string {
   return "";
 }
 
-export function ShareCollectionWizard({ action, draftId, cards, aiCards, initialValues, error }: ShareCollectionWizardProps) {
+const emptyEditAction: PersistentFormAction = async () => ({ error: "" });
+
+export function ShareCollectionWizard({ action, editAction, editVersion, draftId, cards, aiCards, initialValues, error }: ShareCollectionWizardProps) {
+  const [state, submitEdit] = useActionState(editAction ?? emptyEditAction, { error: "" });
+  const [openedVersion, setOpenedVersion] = useState(editVersion ?? "");
   const editor = useShareEditorState(cards, aiCards, initialValues);
   const { activeStep, setActiveStep, message, setMessage, goNext, goPrevious, goToStep } = useShareWizardNavigation(steps.length, editor.selectedIds.length);
   const applySnapshot = (snapshot: ShareEditorSnapshot) => {
@@ -53,7 +62,7 @@ export function ShareCollectionWizard({ action, draftId, cards, aiCards, initial
     editor.setCoverMode(snapshot.coverMode);
   };
   const history = useShareEditorHistory(editor.currentSnapshot, applySnapshot);
-  const persistence = useShareDraftPersistence({ draftId, cards, error, initialSnapshot: editor.initialSnapshot, currentSnapshot: editor.currentSnapshot, applySnapshot, resetHistory: history.resetHistory });
+  const persistence = useShareDraftPersistence({ draftId, cards, error, baseVersion: openedVersion, onRestoreVersion: setOpenedVersion, initialSnapshot: editor.initialSnapshot, currentSnapshot: editor.currentSnapshot, applySnapshot, resetHistory: history.resetHistory });
 
   function updateSelection(cardId: string, selected: boolean) {
     history.recordHistory();
@@ -139,7 +148,9 @@ export function ShareCollectionWizard({ action, draftId, cards, aiCards, initial
     setMessage("正在保存分享集，请稍候…");
   }
 
-  return <form action={action} className="share-form" onSubmit={handleSubmit} noValidate>
+  return <form action={editAction ? submitEdit : action} className="share-form" onSubmit={handleSubmit} onReset={event => event.preventDefault()} noValidate>
+    <input type="hidden" name="editVersion" value={openedVersion} />
+    {state.error ? <p className="note-error" role="alert"><UiText text={state.error} /></p> : null}
     <input type="hidden" name="draftSubmissionId" />
     {editor.selectedIds.map((cardId) => <input key={cardId} type="hidden" name="cardIds" value={cardId} />)}
     <input type="hidden" name="templateId" value={editor.presentation.templateId} /><input type="hidden" name="layout" value={editor.presentation.layout} /><input type="hidden" name="backgroundPositionX" value={editor.presentation.backgroundPosition.x} /><input type="hidden" name="backgroundPositionY" value={editor.presentation.backgroundPosition.y} /><input type="hidden" name="panelOpacity" value={editor.presentation.panelOpacity} /><input type="hidden" name="typography" value={editor.presentation.typography} /><input type="hidden" name="density" value={editor.presentation.density} /><input type="hidden" name="imageFit" value={editor.presentation.imageFit} /><input type="hidden" name="textScale" value={editor.presentation.textScale} /><input type="hidden" name="featuredCardIdsJson" value={JSON.stringify(editor.presentation.featuredCardIds)} /><input type="hidden" name="sectionsJson" value={JSON.stringify(editor.sections)} />

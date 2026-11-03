@@ -6,19 +6,20 @@ Card Vault is a local-first Windows sports-card collection application built wit
 
 ## Current status
 
-Source version: `1.5.0` (2026-10-25). Stages 1, 2, 3A, 3B and 3C are implemented. See the [release notes](./docs/release-v1.5.0.md) and [development record](./docs/development-v1.5.0.md).
+Source version: `1.5.1` (2026-11-02; reviewed and verified on 2026-11-03). This update includes AI defaults and proxy settings, card image downloads, Statistics labels, save reliability and code organization. See the [v1.5.1 release notes](./docs/release-v1.5.1.md).
 
-Windows distributions are `card-vault-1.5.0-setup.exe` and `card-vault-1.5.0-portable.zip`, accompanied by `SHA256SUMS.txt` and the build manifest `release-1.5.0.json`. Downloads and actual verification results are recorded in the [v1.5.0 release notes](./docs/release-v1.5.0.md); earlier release facts remain in their historical notes.
+This delivery updates source only; v1.5.1 Windows packages have not been built or published. Expected filenames are `card-vault-1.5.1-setup.exe` and `card-vault-1.5.1-portable.zip`. Historical distribution and verification facts remain in the [v1.5.0 release notes](./docs/release-v1.5.0.md).
 
-## Latest version: v1.5.0
+Full source release checks passed on 2026-11-03: 384 module tests, 177 UI regressions, the production build and every local business flow. Dependency auditing found no high or critical advisories; 31 moderate findings and their assessment remain in the [review record](./docs/assessment-2026-11-03.md).
 
-1. v1.5.0 completes all three stages: simpler Collection, entry, details, sharing and Scout; no duplicate Data search, snapshots or comparison; four Settings groups with footer help and directly visible AI configuration.
-2. Navigation is Collection, Showcase and Data. Review collection has one workspace; export uses Collection filters and selection. Settings retains Export all data. AI portfolio analysis remains.
-3. Images appear earlier. Finance and AI tools expand on demand; automatic drafts remain, with templates and batch queues grouped under Entry tools.
-4. Card details omit empty archive fields. Add Financial Record offers Purchase, Sale, Expense and Valuation in order; history and charts appear on demand.
-5. Sharing uses two steps: select cards and preview/save. AI writing, custom design and visual fine-tuning are optional; existing content and settings remain.
-6. Tables, fields and backup/import/export formats remain compatible. The authorized one-time resets remove old Scout, wish and analysis history; other card, financial and share data remains.
-7. Remove unused components and styles; separate Data navigation, aggregation and guide content; share reset safeguards and the release-script allowlist; update Electron and transitive dependencies to patched versions.
+## Latest version: v1.5.1
+
+1. OpenAI is the default built-in provider, with the official endpoint and gpt-5.4-mini prefilled. MiniMax and DeepSeek are unchanged; saved Azure settings remain as custom profiles.
+2. Card pages export one original image or a ZIP of multiple images. Both actions use icons; Showcase export sits beside the full-image icon.
+3. The Data navigation label becomes Statistics. Home links use View portfolio statistics and View filtered portfolio statistics.
+4. Retries, double clicks and concurrent submissions of one entry create one card, image set and initial financial history. Separate entries still support identical cards.
+5. Card, financial and share edits check their source version and retain input on conflict. Financial deletion and restored share drafts are protected too. Failed draft synchronization stops entry; failed requests remove their own staged uploads.
+6. AI supports device-local Automatic, Direct and manual HTTP/HTTPS/SOCKS5 proxies, authentication, subnet bypass and ordered system candidates, with redacted route diagnostics. Undecryptable credentials are preserved; action buttons across Settings use gray.
 
 ## Features
 
@@ -26,7 +27,7 @@ Windows distributions are `card-vault-1.5.0-setup.exe` and `card-vault-1.5.0-por
 - Home: search, filters, global financial ordering, paginated loading and remembered Cards/List views with consistent icon controls.
 - Cards: up to five images, rotation, drafts, continuous entry, templates, duplicate hints, batch image preparation and AI candidates requiring review.
 - Finance: one physical quantity, one currency per transaction, moving-average cost, transaction/expense/valuation history, manual FX and explicit incomplete-data states.
-- Showcase and Data: complete-image walls, compact lists and full-image viewing; see the [Showcase guide](./docs/showcase-guide.md). Analysis uses Overview, Trends, Structure and Details with shared scope, physical quantities, complete issue lists and independent financial/activity trend ranges; see the [Data guide](./docs/data-analysis-guide.md).
+- Showcase and Statistics: complete-image walls, compact lists and full-image viewing; see the [Showcase guide](./docs/showcase-guide.md). Analysis uses Overview, Trends, Structure and Details with shared scope, physical quantities, complete issue lists and independent financial/activity trend ranges; see the [Data guide](./docs/data-analysis-guide.md).
 - Shares: editable galleries, themes, sections and stories, shared preview/export rendering, static packages and the existing manual Drop workflow.
 - Scout: the wishlist appears first, followed by independent cross-site search, with simple wish entry, editing, deletion, search and drafts. Saved keywords, acquisition and card binding are removed.
 - Settings: four main groups (Theme, Data, AI and Finance) with Help & version in the footer. Data shows Backup & restore first, with Import & export and Maintenance on demand. AI endpoints, model, key and custom-provider controls are directly visible.
@@ -49,7 +50,7 @@ Alternatively, start the desktop development app with `start-desktop.bat`. It ch
 
 The local service prefers ports 3000–3019 and falls back to an OS-assigned loopback port when that range is occupied or reserved by Windows; system port exclusions need no changes. Development configuration uses `%APPDATA%\Card Vault Development`. The actual collection directory is shown under Settings → Data → Maintenance → Storage. Use the application migration controls to change it.
 
-API keys reside in the local user configuration and are encrypted with Windows safeStorage, not stored in the collection database. Optional AI supports Azure OpenAI, MiniMax, DeepSeek and OpenAI Chat Completions-compatible services. Relevant images or content are sent to the selected provider only when a feature is called. Manual entry does not require AI.
+API keys reside in the local user configuration and are encrypted with Windows safeStorage, not stored in the collection database. Optional AI defaults support OpenAI, MiniMax, DeepSeek and OpenAI Chat Completions-compatible services. Relevant images or content are sent to the selected provider only when a feature is called. Manual entry does not require AI.
 
 ## Validation and distribution
 
@@ -61,6 +62,7 @@ API keys reside in the local user configuration and are encrypted with Windows s
 | `npm run test:card` / `test:share` / `test:security` / `test:management` / `test:scout` / `test:export` | Business and security HTTP flows using isolated data. |
 | `npm run test:ui` | Desktop UI, minimum-window checks, narrow share previews and strict screenshot comparisons. |
 | `npm run test:desktop` | Real-server startup with port contention, session checks and service restart. |
+| `npm run test:proxy:pac` | Verify local PAC proxies, DIRECT and candidate order with an isolated Electron session; included in source release checks. |
 | `npm run test:desktop:launcher` | Run the actual Windows launcher with an isolated profile, checking automatic build and build reuse; rebuilds local `.next`. |
 | `npm run test:desktop:runtime` | Launch the current Electron with an isolated collection to check sandboxing, preload and edit-return navigation. |
 | `npm run benchmark` | Isolated 1k/5k/10k synthetic collection benchmarks. |
@@ -78,10 +80,11 @@ Keep a full backup before upgrades or moving computers. CSV/XLSX files omit medi
 
 ## Historical releases
 
-All 34 earlier versions are retained below, newest first. These summaries describe each release at the time; current behavior and compatibility follow the latest documentation. The original bilingual summaries were recovered from the v1.2.1 README files, with v1.3.0–v1.3.3 added from their release notes. Early standalone release notes were not found; see [historical sources and gaps](./docs/version-history-sources.md).
+All 35 earlier versions are retained below, newest first. These summaries describe each release at the time; current behavior and compatibility follow the latest documentation. The original bilingual summaries were recovered from the v1.2.1 README files, with v1.3.0–v1.3.3 added from their release notes. Early standalone release notes were not found; see [historical sources and gaps](./docs/version-history-sources.md).
 
 | Version | Main changes | Source |
 | --- | --- | --- |
+| `1.5.0` | Three-stage simplification of Collection, entry, details, sharing, Statistics and Settings, with code cleanup. | [Release notes](./docs/release-v1.5.0.md) |
 | `1.4.2` | Showcase wall, captions and image viewer; entry, import, Data reuse and backup improvements. | [Release notes](./docs/release-v1.4.2.md) |
 | `1.4.1` | Four-tab Data workspace, fixed snapshots and comparison, Scout query improvements and desktop startup fixes. | [Release notes](./docs/release-v1.4.1.md) |
 | `1.4.0` | Scout searches, saved keywords, multi-card wish acquisition and compact collection overview. | [Release notes](./docs/release-v1.4.0.md) |

@@ -1,3 +1,4 @@
+import { fetchAi, redactAiError } from "@/lib/ai-fetch";
 import { NextRequest, NextResponse } from "next/server";
 import {
   AiSettingsDraft,
@@ -45,13 +46,14 @@ export async function POST(request: NextRequest) {
       throw new Error(settings.provider === "custom" ? "请先填写自定义 AI 的 Endpoint。" : "请先填写当前服务商的 Endpoint 和 API Key。");
     }
 
-    const response = await fetch(getModelsUrl(settings), {
+    const response = await fetchAi(getModelsUrl(settings), {
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(30000)]),
       method: "GET",
       headers: getChatCompletionsHeaders(settings)
-    });
+    }, settings.proxy);
 
     if (!response.ok) {
-      const detail = await response.text();
+      const detail = redactAiError(await response.text(), settings.apiKey);
       return NextResponse.json(
         { error: `读取模型失败：${response.status} ${detail.slice(0, 240)}` },
         { status: 502 }
@@ -61,7 +63,7 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json({ models: extractModelIds(data) });
   } catch (error) {
-    const message = errorMessage(error, "读取模型失败。");
+    const message = error instanceof Error && error.name === "TimeoutError" ? "读取模型超时，请检查网络和代理设置。" : errorMessage(error, "读取模型失败。");
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

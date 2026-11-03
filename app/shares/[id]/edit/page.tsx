@@ -52,7 +52,7 @@ export default async function EditSharePage({ params, searchParams }: EditShareP
         </div>
       </div>
       {success ? <p className="note-ok"><UiText text={success} /></p> : null}
-      <ShareCollectionForm action={updateShareCollectionAction.bind(null, share.id)} cards={cards} share={share} error={error} />
+      <ShareCollectionForm editAction={updateShareCollectionAction.bind(null, share.id)} cards={cards} share={share} error={error} />
     </div>
   );
 }

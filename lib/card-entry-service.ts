@@ -10,8 +10,10 @@ import {
 import { prisma } from "@/lib/prisma";
 import { createInitialFinancialHistory } from "@/lib/card-entry-finance-service";
 import { readDraftImages, type DraftImage } from "./card-entry-draft-images.js";
+import { cardIdForSubmission } from "./card-write-guards";
 
 export async function createCardEntry(input: {
+  submissionId: string;
   values: CardFormValues;
   files: File[];
   newImageRotations?: CardImageRotation[];
@@ -19,7 +21,10 @@ export async function createCardEntry(input: {
   draftId?: string;
   queueItemId?: string;
 }) {
-  const { values, files, newImageRotations = [], queuedImageRotations = {}, draftId, queueItemId } = input;
+  const { submissionId, values, files, newImageRotations = [], queuedImageRotations = {}, draftId, queueItemId } = input;
+  const cardId = cardIdForSubmission(submissionId, draftId, queueItemId);
+  const previous = await prisma.card.findUnique({ where: { id: cardId } });
+  if (previous) return { card: previous, usedQueueItemId: queueItemId };
   const cardData = buildCardData(values);
   const initialQuantity = parseInitialCardQuantity(values.initialQuantity, cardData.collectionStatus);
   const queuedItem = queueItemId
@@ -29,6 +34,8 @@ export async function createCardEntry(input: {
       })
     : null;
   if (queueItemId && !queuedItem) {
+    const committed = await prisma.card.findUnique({ where: { id: cardId } });
+    if (committed) return { card: committed, usedQueueItemId: queueItemId };
     throw new Error("队列项目不存在、尚未准备完成或已经被处理。");
   }
   const queuedPaths = queuedItem?.images.flatMap((image) =>
@@ -47,6 +54,9 @@ export async function createCardEntry(input: {
   let completedDraftImages: DraftImage[] = [];
   try {
     const card = await prisma.$transaction(async (transaction) => {
+      // Reserve the unique submission identity before reading/consuming a queue or draft.
+      // SQLite serializes this write; a losing retry returns the committed card below.
+      const created = await transaction.card.create({ data: { id: cardId, ...cardData, holdingQuantity: initialQuantity } });
       const transactionQueueItem = queueItemId
         ? await transaction.cardEntryQueueItem.findFirst({
             where: { id: queueItemId, status: "ready" },
@@ -63,21 +73,10 @@ export async function createCardEntry(input: {
           rotation: queuedImageRotations[image.id] ?? 0
         };
       }) ?? [];
-      const created = await transaction.card.create({
-        data: {
-          ...cardData,
-          holdingQuantity: initialQuantity,
-          images: {
-            create: [
-              ...transactionQueueImages,
-              ...imagePaths.map((pathValue, index) => ({
-                path: pathValue,
-                rotation: newImageRotations[index] ?? 0
-              }))
-            ]
-          }
-        }
-      });
+      await transaction.cardImage.createMany({ data: [
+        ...transactionQueueImages,
+        ...imagePaths.map((pathValue, index) => ({ path: pathValue, rotation: newImageRotations[index] ?? 0 }))
+      ].map(image => ({ cardId, ...image })) });
       await createInitialFinancialHistory(
         transaction,
         created.id,
@@ -108,6 +107,11 @@ export async function createCardEntry(input: {
     imagePaths = [];
     await Promise.all(completedDraftImages.map(image => removeCardImageIfExists(image.path)));
     return { card, usedQueueItemId: queueItemId };
+  } catch (error) {
+    // Another request can have committed while this request was preparing its images.
+    const committed = await prisma.card.findUnique({ where: { id: cardId } });
+    if (committed) return { card: committed, usedQueueItemId: queueItemId };
+    throw error;
   } finally {
     await Promise.all(imagePaths.map((imagePath) => removeCardImageIfExists(imagePath)));
   }

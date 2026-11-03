@@ -7,7 +7,7 @@ const { spawn, spawnSync } = require("node:child_process");
 const { createOperationCoordinator } = require("./operation-coordinator");
 const { selectLocalPort } = require("./local-server-port");
 
-function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
+function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger, resolveSystemProxy }) {
   const runExclusiveOperation = createOperationCoordinator();
   const nextBuildIdPath = path.join(rootDir, ".next", "BUILD_ID");
   const nextHealthRoutePath = path.join(rootDir, ".next", "server", "app", "api", "health", "route.js");
@@ -141,8 +141,19 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger }) {
     for (let attempt = 0; attempt < 3; attempt++) {
       serverFailure = null;
       let bindError = null;
-      const child = spawn(process.execPath, [nextCliPath, "start", "--hostname", "127.0.0.1", "--port", String(serverPort)], { cwd: rootDir, windowsHide: true, env: { ...process.env, ...getDesktopEnv(), ELECTRON_RUN_AS_NODE: "1", DATABASE_URL: `file:${dbPath.replace(/\\/g, "/")}`, CARD_VAULT_SESSION_TOKEN: sessionToken, CARD_VAULT_ALLOWED_ORIGIN: serverUrl } });
+      const child = spawn(process.execPath, [nextCliPath, "start", "--hostname", "127.0.0.1", "--port", String(serverPort)], { cwd: rootDir, windowsHide: true, stdio: ["ignore", "pipe", "pipe", "ipc"], env: { ...process.env, ...getDesktopEnv(), ELECTRON_RUN_AS_NODE: "1", DATABASE_URL: `file:${dbPath.replace(/\\/g, "/")}`, CARD_VAULT_SESSION_TOKEN: sessionToken, CARD_VAULT_ALLOWED_ORIGIN: serverUrl, CARD_VAULT_DESKTOP_PROXY_BRIDGE: "1" } });
       serverProcess = child;
+      child.on("message", async message => {
+        if (!message || message.type !== "card-vault:resolve-ai-proxy" || typeof message.id !== "string" || message.id.length > 64 || typeof message.url !== "string" || message.url.length > 4096) return;
+        try {
+          const target = new URL(message.url);
+          if (!["http:", "https:"].includes(target.protocol)) throw new Error("Invalid proxy target");
+          const proxy = resolveSystemProxy ? await resolveSystemProxy(target.href) : "DIRECT";
+          if (child.connected) child.send({ type: "card-vault:ai-proxy-result", id: message.id, proxy }, () => {});
+        } catch {
+          if (child.connected) child.send({ type: "card-vault:ai-proxy-result", id: message.id, error: true }, () => {});
+        }
+      });
       child.stdout.on("data", chunk => logger.appendLog("server.log", chunk.toString().trimEnd()));
       child.stderr.on("data", chunk => {
         const text = chunk.toString();

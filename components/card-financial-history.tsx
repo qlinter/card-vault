@@ -5,6 +5,7 @@ import type { CardExpense, CardTransaction, CardValuation } from "@prisma/client
 import { useState } from "react";
 import { paymentComponents, type FinancialConfig } from "@/lib/financial-reporting";
 import { saveFinancialRecordFormAction, deleteFinancialRecordAction } from "@/app/actions/financial-history";
+import { recordVersion } from "@/lib/record-version";
 import { ExpenseForm, TransactionForm, ValuationForm, type ExpenseSaleTransaction } from "@/components/financial-history-forms";
 import { FinancialPositionOverview } from "@/components/financial-position-overview";
 import { formatMinorMoney } from "@/lib/financial-history";
@@ -118,9 +119,10 @@ function AddRecord({ cardId, returnTo, transactions, recordKind, open, onKindCha
 function TimelineRecord({ cardId, item, returnTo, transactions }: { cardId: string; item: TimelineItem; returnTo?: string; transactions: CardTransaction[] }) {
   const [isEditing, setIsEditing] = useState(false);
   const record = item.record;
+  const [editVersion] = useState(() => recordVersion(record));
   const editorId = `financial-edit-${item.type}-${record.id}`;
   const updateAction = saveFinancialRecordFormAction.bind(null, cardId, item.type, record.id, returnTo);
-  const deleteAction = deleteFinancialRecordAction.bind(null, cardId, item.type, record.id, returnTo);
+  const deleteAction = deleteFinancialRecordAction.bind(null, cardId, item.type, record.id, returnTo, editVersion);
   const source = recordSource(item);
   const linkedSale = item.type === "expense" && item.record.transactionId
     ? transactions.find((transaction) => transaction.id === item.record.transactionId)

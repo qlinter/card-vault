@@ -16,6 +16,7 @@ import {
 } from "@/lib/card-entry-drafts";
 import { emptyCardFormValues } from "@/lib/card-form-values";
 import { toScalar } from "@/lib/query-params";
+import { randomUUID } from "node:crypto";
 
 type NewCardPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -61,6 +62,7 @@ export default async function NewCardPage({ searchParams }: NewCardPageProps) {
         </div>
       </div>
       <CreateCardForm
+        submissionId={randomUUID()}
         queuePanel={<CardEntryQueuePanel items={queueItems} activeItemId={queueItem?.id} />}
         initialValues={initialValues}
         initialDraftId={draft?.id}

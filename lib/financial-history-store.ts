@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { assertFinancialVersion, financialConflictMessage } from "./record-version.ts";
 import {
   assertExpenseKind,
   assertExpenseContext,
@@ -86,7 +87,7 @@ export async function createCardTransaction(client: HistoryClient, input: Create
 export async function createCardExpense(client: HistoryClient, input: CreateExpenseInput) {
   const context = assertExpenseContext(input.context);
   const money = moneyValue(input);
-  const transactionId = await resolveExpenseTransactionId(client, input.cardId, context, money.currency, input.transactionId);
+  const transactionId = await resolveExpenseTransactionId(client, input.cardId, context, input.transactionId);
   return client.cardExpense.create({
     data: {
       cardId: input.cardId,
@@ -122,7 +123,8 @@ export async function updateCardTransaction(
   client: HistoryClient,
   cardId: string,
   recordId: string,
-  input: UpdateTransactionInput
+  input: UpdateTransactionInput,
+  expectedVersion: string
 ) {
   const money = paymentData(input);
   const kind = assertTransactionKind(input.kind);
@@ -130,8 +132,12 @@ export async function updateCardTransaction(
   if (!Number.isInteger(quantity) || quantity <= 0) {
     throw new Error("交易数量必须是正整数。");
   }
-  const existing = await client.cardTransaction.findFirst({ where: { id: recordId, cardId }, select: { currency: true, paymentsJson: true } });
+  const existing = await client.cardTransaction.findFirst({ where: { id: recordId, cardId } });
+  // Callers mutate inside a SQLite transaction: concurrent snapshot writes cannot
+  // commit. Compare content here rather than filtering Date columns, since valid
+  // databases can contain SQLite text dates as well as Prisma millisecond dates.
   if (!existing) throw new Error("交易记录不存在或已删除。");
+  assertFinancialVersion(existing, expectedVersion);
   // Keep historical payment facts when the simplified editor submits only one amount.
   if (existing.paymentsJson && existing.paymentsJson !== "[]" && money.currency !== existing.currency) throw new Error("历史交易包含多币种金额，不能直接更改币种。");
   const linkedExpense = await client.cardExpense.findFirst({ where: { transactionId: recordId } });
@@ -151,13 +157,15 @@ export async function updateCardTransaction(
       provenance: "manual_correction"
     }
   });
-  if (result.count !== 1) throw new Error("交易记录不存在或已删除。");
+  if (result.count !== 1) throw new Error(financialConflictMessage);
 }
 
-export async function updateCardExpense(client: HistoryClient, cardId: string, recordId: string, input: UpdateExpenseInput) {
+export async function updateCardExpense(client: HistoryClient, cardId: string, recordId: string, input: UpdateExpenseInput, expectedVersion: string) {
+  const existing = await client.cardExpense.findFirst({ where: { id: recordId, cardId } });
+  assertFinancialVersion(existing, expectedVersion);
   const context = assertExpenseContext(input.context);
   const money = moneyValue(input);
-  const transactionId = await resolveExpenseTransactionId(client, cardId, context, money.currency, input.transactionId);
+  const transactionId = await resolveExpenseTransactionId(client, cardId, context, input.transactionId);
   const result = await client.cardExpense.updateMany({
     where: { id: recordId, cardId },
     data: {
@@ -171,10 +179,12 @@ export async function updateCardExpense(client: HistoryClient, cardId: string, r
       provenance: "manual_correction"
     }
   });
-  if (result.count !== 1) throw new Error("费用记录不存在或已删除。");
+  if (result.count !== 1) throw new Error(financialConflictMessage);
 }
 
-export async function updateCardValuation(client: HistoryClient, cardId: string, recordId: string, input: UpdateValuationInput) {
+export async function updateCardValuation(client: HistoryClient, cardId: string, recordId: string, input: UpdateValuationInput, expectedVersion: string) {
+  const existing = await client.cardValuation.findFirst({ where: { id: recordId, cardId } });
+  assertFinancialVersion(existing, expectedVersion);
   const source = assertValuationSource(input.source.trim());
   const result = await client.cardValuation.updateMany({
     where: { id: recordId, cardId },
@@ -186,32 +196,37 @@ export async function updateCardValuation(client: HistoryClient, cardId: string,
       provenance: "manual_correction"
     }
   });
-  if (result.count !== 1) throw new Error("估值记录不存在或已删除。");
+  if (result.count !== 1) throw new Error(financialConflictMessage);
 }
 
 export async function deleteCardFinancialRecord(
   client: HistoryClient,
   cardId: string,
   recordType: "transaction" | "expense" | "valuation",
-  recordId: string
+  recordId: string,
+  expectedVersion: string
 ) {
+  const existing = recordType === "transaction" ? await client.cardTransaction.findFirst({ where: { id: recordId, cardId } })
+    : recordType === "expense" ? await client.cardExpense.findFirst({ where: { id: recordId, cardId } })
+      : await client.cardValuation.findFirst({ where: { id: recordId, cardId } });
+  assertFinancialVersion(existing, expectedVersion);
+  const where = { id: recordId, cardId };
   if (recordType === "transaction") {
     const linkedExpense = await client.cardExpense.findFirst({ where: { transactionId: recordId, cardId } });
     if (linkedExpense) throw new Error("该出售记录仍有关联费用，请先修改或删除关联费用。");
   }
   const result = recordType === "transaction"
-    ? await client.cardTransaction.deleteMany({ where: { id: recordId, cardId } })
+    ? await client.cardTransaction.deleteMany({ where })
     : recordType === "expense"
-      ? await client.cardExpense.deleteMany({ where: { id: recordId, cardId } })
-      : await client.cardValuation.deleteMany({ where: { id: recordId, cardId } });
-  if (result.count !== 1) throw new Error("财务记录不存在或已删除。");
+      ? await client.cardExpense.deleteMany({ where })
+      : await client.cardValuation.deleteMany({ where });
+  if (result.count !== 1) throw new Error(financialConflictMessage);
 }
 
 async function resolveExpenseTransactionId(
   client: HistoryClient,
   cardId: string,
   context: ExpenseContext,
-  _currency: string,
   transactionIdValue: string | null | undefined
 ): Promise<string | null> {
   const transactionId = normalizeOptionalHistoryText(transactionIdValue);

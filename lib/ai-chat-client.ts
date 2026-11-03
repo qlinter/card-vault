@@ -1,9 +1,10 @@
+import { fetchAi, redactAiError, type AiRouteDiagnostic } from "./ai-fetch.ts";
 import type { ActiveAiSettings } from "./ai-settings.ts";
 import {
   getChatCompletionsHeaders,
   getChatCompletionsModel,
   getChatCompletionsUrl,
-  isAzureReasoningDeployment
+  isReasoningModel
 } from "./ai-settings.ts";
 import { responseFinishReason, responseToText, safeText } from "./ai-response-parsing.ts";
 import { errorMessage } from "./feedback-messages.ts";
@@ -22,6 +23,7 @@ export type AiChatRequest = {
   timeoutMs?: number;
   signal?: AbortSignal;
   responseFormat?: "json_object";
+  onRoute?: (route: AiRouteDiagnostic) => void;
 };
 
 export type AiChatTextResult = {
@@ -39,7 +41,7 @@ export class AiUpstreamError extends Error {
 export function aiProviderName(provider: string, customName?: string): string {
   if (provider === "custom") return safeText(customName) || "自定义 AI";
   if (provider === "deepseek") return "DeepSeek";
-  return provider === "minimax" ? "MiniMax" : "Azure OpenAI";
+  return provider === "minimax" ? "MiniMax" : "OpenAI";
 }
 
 function activeProviderName(settings: ActiveAiSettings): string {
@@ -101,7 +103,7 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
   try {
     signal.throwIfAborted();
     let tokenField: "max_completion_tokens" | "max_tokens" = settings.provider === "deepseek" ? "max_tokens" : "max_completion_tokens";
-    let includeTemperature = request.temperature !== undefined && !isAzureReasoningDeployment(settings);
+    let includeTemperature = request.temperature !== undefined && !isReasoningModel(settings);
     let includeResponseFormat = request.responseFormat !== undefined;
     let response: Response | null = null;
     let detail = "";
@@ -110,8 +112,8 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
 
     while (transientRetryCount <= 2 && compatibilityRetryCount <= 3) {
       try {
-        response = await fetch(url, requestInit(tokenField, includeTemperature, includeResponseFormat));
-        detail = response.ok ? "" : await response.text();
+        response = await fetchAi(url, requestInit(tokenField, includeTemperature, includeResponseFormat), settings.proxy, request.onRoute);
+        detail = response.ok ? "" : redactAiError(await response.text(), settings.apiKey);
         if (response.ok) break;
         if (includeTemperature && isUnsupportedParameter(detail, "temperature")) {
           includeTemperature = false;

@@ -20,8 +20,8 @@ async function mockDesktop(page, emptyBackup = false) {
       getBackupSettings: async () => ({ path: longPath, ...(emptyBackup ? { automatic: { enabled: true, keep: 20 } } : {}), lastBackup: emptyBackup ? null : { createdAt: "2026-01-01T00:00:00Z", bytes: 123456789, imageCount: 1234, available: true } }),
       checkDataHealth: async () => ({ ok: true, integrity: "ok", counts: { cards: 3, images: 6, queueItems: 0, shares: 1 }, missingFiles: [], issues: [], orphanFiles: [{ type: "shareBackground", path: longPath + "background-image.jpg" }] }),
       getAiSettings: async () => ({
-        provider: "azure", activeCustomId: "style-provider",
-        azure: { endpoint: "https://azure.example.test/extended/deployment/endpoint", deployment: longModel, hasApiKey: true },
+        provider: "openai", activeCustomId: "style-provider",
+        openai: { endpoint: "https://openai.example.test/extended/model/endpoint", model: longModel, hasApiKey: true },
         minimax: { endpoint: "https://api.minimax.io/v1/chat/completions", model: "MiniMax-VL-01", hasApiKey: true },
         deepseek: { endpoint: "https://api.deepseek.com/chat/completions", model: "deepseek-flash", hasApiKey: true },
         customProviders: [{ id: "style-provider", name: longName, endpoint: "https://local.example.test/v1/chat/completions", modelsEndpoint: "https://local.example.test/v1/models", model: longModel, hasApiKey: true }]
@@ -57,12 +57,23 @@ async function expectContained(page) {
   expect(overflow).toEqual([]);
 }
 
+async function expectUniformButtons(page) {
+  await page.mouse.move(0, 0);
+  await expect.poll(() => page.locator(".settings-surface .btn").evaluateAll(buttons => [...new Set(buttons.filter(button => button.checkVisibility()).map(button => {
+    const style = getComputedStyle(button);
+    return JSON.stringify([style.backgroundColor, style.color, style.borderColor, style.boxShadow]);
+  }))])).toHaveLength(1);
+}
+
 test("backup offers manual actions without empty reminders and import selections retain their state", async ({ page }) => {
   await mockDesktop(page, true);
   await page.setViewportSize({ width: 1100, height: 760 });
   await page.goto("/settings#data-settings", { waitUntil: "networkidle" });
   const backup = page.locator(".backup-settings");
   await expect(backup.getByRole("button")).toHaveText(["设置备份路径", "一键备份", "备份恢复"]);
+  const buttonColors = await backup.getByRole("button").evaluateAll(buttons => buttons.map(button => { const style = getComputedStyle(button); return [style.backgroundColor, style.color, style.borderColor]; }));
+  expect(buttonColors[1]).toEqual(buttonColors[0]);
+  expect(buttonColors[2]).toEqual(buttonColors[0]);
   await expect(backup.locator('input, select, [role="status"]')).toHaveCount(0);
   await expect(backup).not.toContainText("当前收藏库尚无成功备份记录");
   await expect(backup).not.toContainText("自动备份");
@@ -104,17 +115,18 @@ test("expanded settings fit all themes, both languages and desktop window sizes"
     await rate.getByRole("button", { name: /^(编辑|Edit)$/ }).click();
     await expect(rate.locator('[name="source"]')).toHaveValue(rateSource);
     const provider = page.locator(".ai-provider-picker select");
-    for (const value of ["minimax", "deepseek", "custom:style-provider", "azure"]) {
+    for (const value of ["minimax", "deepseek", "custom:style-provider", "openai"]) {
       await provider.selectOption(value);
       await expectContained(page);
     }
     await provider.selectOption("custom:style-provider");
     await page.getByRole("button", { name: /^(读取模型|Load Models)$/ }).click();
-    const model = page.locator(".ai-settings-panel select").last();
+    const model = page.getByRole("combobox", { name: /^(选择模型|Select Model)$/ });
     await expect(model).toHaveValue(longModel);
     await model.selectOption("compact-vision");
     await expect(page.getByLabel("Model *", { exact: true })).toHaveValue("compact-vision");
     await expectContained(page);
+    await expectUniformButtons(page);
     if (theme === "classic" && (locale === "zh" || width === 1100) || theme === "midnight" && locale === "zh" && width === 1100) {
       for (const [name, selector] of [["theme", "#theme-settings"], ["data", "#data-settings"], ["ai", ".ai-settings-panel"], ["finance", "#financial-settings"], ["help", ".settings-help"]]) await page.locator(selector).screenshot({ path: path.join(screenshots, `${name}-${theme}-${locale}-${width}.png`), animations: "disabled" });
     }

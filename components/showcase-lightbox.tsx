@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useLanguage } from "./language-provider";
 import { ShowcaseImage } from "./showcase-image";
 import { ShowcaseIcon } from "./showcase-icon";
-import { UiText } from "./ui-text";
 
 type Image = { id: string; path: string; rotation: number };
 type Props = { cardTitle: string; images: Image[]; activeIndex: number; rotation: number; onSelect: (index: number) => void };
@@ -55,7 +54,7 @@ export function ShowcaseLightbox({ cardTitle, images, activeIndex, rotation, onS
     if (event.key === "0") { event.preventDefault(); changeZoom(1); }
   }
   return <>
-    <button type="button" className="showcase-tool showcase-expand" onClick={() => { changeZoom(1); dialog.current?.showModal(); setOpen(true); }}><ShowcaseIcon name="expand" /><UiText text="查看大图" /></button>
+    <button type="button" className="showcase-tool showcase-expand" aria-label={t("查看大图")} title={t("查看大图")} onClick={() => { changeZoom(1); dialog.current?.showModal(); setOpen(true); }}><ShowcaseIcon name="expand" /></button>
     <dialog ref={dialog} className="showcase-lightbox" aria-label={t("卡片大图")} onClose={() => setOpen(false)} onKeyDown={keyDown}>
       <div className="showcase-lightbox-head"><span className="showcase-lightbox-title">{cardTitle}</span><button type="button" className="showcase-tool" onClick={() => dialog.current?.close()} aria-label={t("关闭大图")}><ShowcaseIcon name="close" /></button></div>
       <div ref={viewport} className="showcase-lightbox-viewport" aria-label={t("大图浏览区域")}>

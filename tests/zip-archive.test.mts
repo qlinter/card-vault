@@ -6,6 +6,7 @@ import test from "node:test";
 import { createRequire } from "node:module";
 const { Open } = createRequire(import.meta.url)("unzipper");
 import { createZipArchive } from "../lib/zip-archive.ts";
+import { writeStreamingZip } from "../lib/streaming-zip.js";
 
 test("ZIP archive contains nested static share files", async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "card-vault-zip-test-"));
@@ -32,6 +33,12 @@ test("ZIP archive contains nested static share files", async (t) => {
   ]);
   assert.equal(extracted.files.length, expected.size);
   for (const entry of extracted.files) assert.deepEqual(await entry.buffer(), expected.get(entry.path));
+  const orderedZip = path.join(root, "ordered.zip");
+  await writeStreamingZip(orderedZip, [
+    { name: "02-first.webp", path: path.join(source, "assets", "卡片.bin") },
+    { name: "01-second.html", path: path.join(source, "index.html") }
+  ]);
+  assert.deepEqual((await Open.file(orderedZip)).files.map((entry: { path: string }) => entry.path), ["02-first.webp", "01-second.html"]);
   await assert.rejects(createZipArchive(source, zipPath), /EEXIST/);
   assert.deepEqual(fs.readFileSync(zipPath), archive);
 });

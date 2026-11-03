@@ -141,10 +141,30 @@ test("editing a historical transaction keeps amounts omitted from the simplified
   const editor = record.locator("form.financial-form");
   await expect(editor.locator('[name="secondaryAmount"]')).toHaveCount(0);
   await editor.locator('[name="currency"]').selectOption("USD");
+  // Delay a frame until after the correction, making stale failure restoration observable.
+  await page.evaluate(() => {
+    const original = window.requestAnimationFrame.bind(window), cancel = window.cancelAnimationFrame.bind(window);
+    const held = new Map();
+    let next = -1000;
+    window.requestAnimationFrame = callback => { held.set(--next, callback); return next; };
+    window.cancelAnimationFrame = id => { if (!held.delete(id)) cancel(id); };
+    window.releaseFinancialFrames = () => {
+      window.requestAnimationFrame = original;
+      window.cancelAnimationFrame = cancel;
+      for (const callback of held.values()) original(callback);
+      held.clear();
+      delete window.releaseFinancialFrames;
+    };
+  });
   await editor.getByRole("button", { name: "保存修改", exact: true }).click();
   await expect(editor.getByRole("alert")).toContainText("不能直接更改币种");
   await editor.locator('[name="currency"]').selectOption("CNY");
   await editor.locator('[name="notes"]').fill("Keep historical amounts");
+  await page.evaluate(async () => {
+    window.releaseFinancialFrames();
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+  await expect(editor.locator('[name="currency"]')).toHaveValue("CNY");
   await editor.getByRole("button", { name: "保存修改", exact: true }).click();
   await expect.poll(() => fixtureDb(db => db.prepare("SELECT notes FROM CardTransaction WHERE id='historical-payment'").get().notes)).toBe("Keep historical amounts");
   const saved = fixtureDb(db => db.prepare("SELECT amountMinor,currency,paymentsJson FROM CardTransaction WHERE id='historical-payment'").get());

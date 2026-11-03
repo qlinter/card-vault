@@ -1,38 +1,10 @@
 "use client";
 
 import { UiText } from "@/components/ui-text";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { errorMessage } from "@/lib/feedback-messages";
 
-export type ShareThemeCard = {
-  id: string;
-  playerName: string;
-  cardTitle: string;
-  sport: string;
-  team: string | null;
-  year: string | null;
-  brand: string | null;
-  productLine: string | null;
-  subsetName: string | null;
-  parallel: string | null;
-  cardNumber: string | null;
-  serialNumber: string | null;
-  serialRange: string | null;
-  isRookie: boolean;
-  isAutograph: boolean;
-  autoType: string | null;
-  isPatch: boolean;
-  patchType: string | null;
-  gradingCompany: string | null;
-  grade: string | null;
-  certNumber: string | null;
-  publicDescription: string | null;
-};
-
-export const shareThemeFields = ["title", "subtitle", "description", "themeNarrative", "themeHighlights", "groupNotes"] as const;
-
-export type ShareThemeField = (typeof shareThemeFields)[number];
-export type ShareThemeValues = Record<ShareThemeField, string>;
+import { type ShareThemeCard, type ShareThemeField, type ShareThemeValues } from "@/lib/share-theme-domain";
 
 type ShareThemeGeneratorProps = {
   cards: ShareThemeCard[];
@@ -61,6 +33,8 @@ export function ShareThemeGenerator({ cards, currentValues, onApplySuggestion }:
   const [overwrite, setOverwrite] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const activeRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => { activeRequest.current?.abort(); }, []);
 
   async function generateTheme() {
     if (cards.length === 0) {
@@ -68,16 +42,21 @@ export function ShareThemeGenerator({ cards, currentValues, onApplySuggestion }:
       return;
     }
 
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     setLoading(true);
     setStatus("AI 正在生成分享集主题...");
 
     try {
       const response = await fetch("/api/ai/share-theme", {
+        signal: controller.signal,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ current: currentValues, cards })
       });
       const data = (await response.json()) as { suggestion?: Partial<Record<ShareThemeField, unknown>>; error?: string };
+      if (controller.signal.aborted) return;
 
       if (!response.ok || data.error) {
         throw new Error(data.error || `AI 主题生成失败：${response.status}`);
@@ -92,6 +71,7 @@ export function ShareThemeGenerator({ cards, currentValues, onApplySuggestion }:
           : "AI 已生成主题；当前字段已有内容，未覆盖。"
       );
     } catch (error) {
+      if (controller.signal.aborted) return;
       const detail = errorMessage(error, "");
       setStatus(
         detail === "Failed to fetch"
@@ -99,7 +79,7 @@ export function ShareThemeGenerator({ cards, currentValues, onApplySuggestion }:
           : detail || "AI 主题生成失败，请稍后重试。"
       );
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted && activeRequest.current === controller) setLoading(false);
     }
   }
 

@@ -29,7 +29,7 @@ function removeLocalDraft(key: string): boolean {
   }
 }
 
-export function useShareDraftPersistence({ draftId, cards, error, initialSnapshot, currentSnapshot, applySnapshot, resetHistory }: { draftId: string; cards: SharePickerCard[]; error?: string; initialSnapshot: ShareEditorSnapshot; currentSnapshot: ShareEditorSnapshot; applySnapshot: (snapshot: ShareEditorSnapshot) => void; resetHistory: (snapshot: ShareEditorSnapshot) => void }) {
+export function useShareDraftPersistence({ draftId, cards, error, baseVersion, onRestoreVersion, initialSnapshot, currentSnapshot, applySnapshot, resetHistory }: { draftId: string; cards: SharePickerCard[]; error?: string; baseVersion?: string; onRestoreVersion?: (version: string) => void; initialSnapshot: ShareEditorSnapshot; currentSnapshot: ShareEditorSnapshot; applySnapshot: (snapshot: ShareEditorSnapshot) => void; resetHistory: (snapshot: ShareEditorSnapshot) => void }) {
   const draftStorageKey = shareDraftStorageKey(draftId);
   const submittedStorageKey = `${draftStorageKey}:submitted`;
   const [recoverableDraft, setRecoverableDraft] = useState<ShareEditorDraft | null>(null);
@@ -66,15 +66,16 @@ export function useShareDraftPersistence({ draftId, cards, error, initialSnapsho
     if (!draftPersistenceEnabled || recoverableDraft) return;
     const timeout = window.setTimeout(() => {
       if (submittedSnapshot.current === currentSnapshot) return;
-      const saved = writeLocalDraft(draftStorageKey, JSON.stringify({ version: shareEditorDraftVersion, savedAt: new Date().toISOString(), snapshot: currentSnapshot } satisfies ShareEditorDraft));
+      const saved = writeLocalDraft(draftStorageKey, JSON.stringify({ version: shareEditorDraftVersion, baseVersion, savedAt: new Date().toISOString(), snapshot: currentSnapshot } satisfies ShareEditorDraft));
       setDraftStatus(saved ? "草稿已自动保存到本机" : "无法将草稿自动保存到本机");
       if (!saved) setDraftPersistenceEnabled(false);
     }, 500);
     return () => window.clearTimeout(timeout);
-  }, [currentSnapshot, draftPersistenceEnabled, draftStorageKey, recoverableDraft]);
+  }, [baseVersion, currentSnapshot, draftPersistenceEnabled, draftStorageKey, recoverableDraft]);
 
   function restoreDraft() {
     if (!recoverableDraft) return;
+    onRestoreVersion?.(recoverableDraft.baseVersion ?? "");
     applySnapshot(recoverableDraft.snapshot); resetHistory(initialSnapshot); setRecoverableDraft(null); setDraftPersistenceEnabled(true); setDraftStatus("已恢复本机草稿");
   }
 
@@ -88,7 +89,7 @@ export function useShareDraftPersistence({ draftId, cards, error, initialSnapsho
   function markSubmitted() {
     submittedSnapshot.current = currentSnapshot;
     const token = crypto.randomUUID();
-    const draft = JSON.stringify({ version: shareEditorDraftVersion, savedAt: new Date().toISOString(), snapshot: currentSnapshot } satisfies ShareEditorDraft);
+    const draft = JSON.stringify({ version: shareEditorDraftVersion, baseVersion, savedAt: new Date().toISOString(), snapshot: currentSnapshot } satisfies ShareEditorDraft);
     writeLocalDraft(draftStorageKey, draft);
     writeLocalDraft(submittedStorageKey, JSON.stringify({ token, draft }));
     return token;

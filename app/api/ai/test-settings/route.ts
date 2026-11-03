@@ -6,10 +6,12 @@ import {
 } from "@/lib/ai-settings";
 import { AiUpstreamError, requestAiChat } from "@/lib/ai-chat-client";
 import { errorMessage } from "@/lib/feedback-messages";
+import type { AiRouteDiagnostic } from "@/lib/ai-fetch";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  let route: AiRouteDiagnostic | undefined;
   try {
     const payload = (await request.json().catch(() => ({}))) as AiSettingsDraft;
     const settings = ensureCompleteAiSettings(getActiveAiSettingsFromDraft(payload));
@@ -19,12 +21,14 @@ export async function POST(request: NextRequest) {
       maxTokens: 8,
       temperature: 0,
       operation: "连接测试",
-      timeoutMs: 30000
+      timeoutMs: 30000,
+      signal: request.signal,
+      onRoute: value => { route = value; }
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, route, capability: "text" });
   } catch (error) {
     const message = errorMessage(error, "AI 设置测试失败。");
-    return NextResponse.json({ error: message }, { status: error instanceof AiUpstreamError ? 502 : 400 });
+    return NextResponse.json({ error: message, route }, { status: error instanceof AiUpstreamError ? 502 : 400 });
   }
 }

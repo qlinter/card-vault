@@ -1,5 +1,5 @@
 import type { ShareCardDraft, SharePickerCard } from "@/components/share-card-picker";
-import type { ShareThemeField, ShareThemeValues } from "@/components/share-theme-generator";
+import type { ShareThemeField, ShareThemeValues } from "@/lib/share-theme-domain";
 import type { SharePresentation } from "@/lib/share-presentation";
 import type { ShareGalleryTemplateId } from "@/lib/share-templates";
 import type { ShareSectionDraft } from "@/lib/share-sections";

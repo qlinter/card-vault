@@ -219,7 +219,7 @@ export function FilterBar({
             {<UiText text={"清空条件"} />}
           </a>
           <a href={portfolioHref} className="scope-navigation-link filter-portfolio-link">
-            <UiText text={portfolioScope.isFiltered ? "查看筛选组合数据" : "查看组合数据"} />
+            <UiText text={portfolioScope.isFiltered ? "查看筛选组合统计" : "查看组合统计"} />
           </a>
         </div>
         <div className="filter-display-actions">{!exportMode ? <a className="scope-navigation-link" href={buildQueryHref("/", { ...query, export: "1" })}><UiText text="导出" /></a> : null}<a href="/cards/new" className="btn btn-primary filter-add-card">

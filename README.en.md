@@ -8,9 +8,9 @@ Card Vault is a local-first Windows sports-card collection application built wit
 
 Source version: `1.5.1` (2026-11-02; reviewed and verified on 2026-11-03). This update includes AI defaults and proxy settings, card image downloads, Statistics labels, save reliability and code organization. See the [v1.5.1 release notes](./docs/release-v1.5.1.md).
 
-This delivery updates source only; v1.5.1 Windows packages have not been built or published. Expected filenames are `card-vault-1.5.1-setup.exe` and `card-vault-1.5.1-portable.zip`. Historical distribution and verification facts remain in the [v1.5.0 release notes](./docs/release-v1.5.0.md).
+Windows x64 installer and portable packages have been built and verified: [GitHub v1.5.1 downloads](https://github.com/qlinter/card-vault/releases/tag/v1.5.1). Files are `card-vault-1.5.1-setup.exe` and `card-vault-1.5.1-portable.zip`, with SHA-256 checksums and a build manifest. This release is unsigned; Windows may show Unknown Publisher or SmartScreen prompts. Historical distribution facts remain in each version's release notes.
 
-Full source release checks passed on 2026-11-03: 384 module tests, 177 UI regressions, the production build and every local business flow. Dependency auditing found no high or critical advisories; 31 moderate findings and their assessment remain in the [review record](./docs/assessment-2026-11-03.md).
+The full Windows release workflow passed on 2026-11-03: 384 module tests, 177 UI regressions, the production build, every local business flow, packaged business and health checks, actual desktop startup and artifact verification. Dependency auditing found no high or critical advisories; 31 moderate findings and their assessment remain in the [review record](./docs/assessment-2026-11-03.md).
 
 ## Latest version: v1.5.1
 

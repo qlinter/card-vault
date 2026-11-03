@@ -62,4 +62,4 @@ Finalization fixes saving and draft recovery, removes unused components and styl
 
 ## v1.5.1 completed
 
-Official OpenAI defaults, card image exports, Statistics labels and concise Settings; entry deduplication, card/financial/share version guards, credential preservation and proxy compatibility. Existing modules have been reorganized; feature expansion is deferred. Scope and source release checks: [release notes](./release-v1.5.1.md).
+Official OpenAI defaults, card image exports, Statistics labels and concise Settings; entry deduplication, card/financial/share version guards, credential preservation and proxy compatibility. Existing modules have been reorganized and Windows distribution checks passed; feature expansion is deferred. Scope, downloads and verification: [release notes](./release-v1.5.1.md).

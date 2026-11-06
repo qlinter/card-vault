@@ -100,6 +100,73 @@ async function verifyCardWriteSafety({ baseUrl, dbPath, dataDir }) {
   const beforeStatusChange = await fetchPage(baseUrl, editRoute);
   database(db => db.prepare("UPDATE Card SET collectionStatus='pending_grading' WHERE id=?").run(id));
   assert.ok((await post(editRoute, form(beforeStatusChange, {}, false))).text.includes("未覆盖最新内容"), "Status changes must invalidate old editors");
+  const invalidImagePage = await fetchPage(baseUrl, "/cards/new");
+  const invalidImageForm = form(invalidImagePage, {}, false);
+  invalidImageForm.append("images", new Blob([Buffer.from([137,80,78,71,13,10,26,10])], { type: "image/png" }), "broken.png");
+  const beforeInvalid = counts(), filesBeforeInvalid = fs.readdirSync(path.join(dataDir, "uploads")).sort();
+  const invalidImage = await post("/cards/new", invalidImageForm);
+  assert.equal(invalidImage.status, 200);
+  assert.ok(invalidImage.text.includes("无法解码"));
+  assert.deepEqual(counts(), beforeInvalid);
+  assert.deepEqual(fs.readdirSync(path.join(dataDir, "uploads")).sort(), filesBeforeInvalid);
+  cardId(await post("/cards/new", form(invalidImagePage)));
+
+  database(db => {
+    const insert = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,certNumber,year,brand,productLine,cardNumber,parallel,createdAt) VALUES(?,'Certificate Player',?,'Basketball',?,'2024','Brand','Line','42','Gold',?)");
+    insert.run("certificate-old", "Old exact certificate", "EXACT-001", "2020-01-01T00:00:00Z");
+    for (let i=0; i<41; i++) insert.run(`certificate-new-${i}`, `Recent ${i}`, null, "2026-01-01T00:00:00Z");
+  });
+  const duplicateQuery = async (values, excludeId) => {
+    const response = await fetchTestServer(baseUrl + "/api/card-entry/duplicates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ values, excludeId }) });
+    assert.equal(response.status, 200); return (await response.json()).candidates;
+  };
+  const duplicateValues = { playerName: "Certificate Player", certNumber: "EXACT-001", year: "2024", brand: "Brand", productLine: "Line", cardNumber: "42", parallel: "Gold" };
+  for (const values of [duplicateValues, { certNumber: "EXACT-001" }, { ...duplicateValues, playerName: "Different subject" }]) {
+    const candidates = await duplicateQuery(values);
+    assert.equal(candidates[0]?.id, "certificate-old");
+    assert.equal(candidates[0].level, "high");
+    assert.equal(new Set(candidates.map(row => row.id)).size, candidates.length);
+    assert.ok(candidates.length <= 5);
+  }
+  assert.ok(!(await duplicateQuery(duplicateValues, "certificate-old")).some(row => row.id === "certificate-old"));
+  database(db => db.prepare("DELETE FROM Card WHERE playerName='Certificate Player'").run());
+
+  const deleteRoute = `/cards/${id}/delete`;
+  const deleteBody = html => {
+    const body = new FormData();
+    const fields = [...html.matchAll(/<input type="hidden" name="(\$ACTION_[^"]+)"(?: value="([^"]*)")?\/>/g)];
+    assert.ok(fields.length);
+    for (const field of fields) body.append(field[1], decodeHtmlAttribute(field[2]));
+    return body;
+  };
+  const dependentState = () => database(db => JSON.stringify(Object.fromEntries(["Card", "CardImage", "CardTransaction", "CardExpense", "CardValuation", "ShareCollectionItem", "ScoutWishCard"].map(table => [table, db.prepare(`SELECT * FROM ${table} WHERE ${table === "Card" ? "id" : "cardId"}=?`).all(id)]))));
+  const mediaBeforeDelete = fs.readdirSync(path.join(dataDir, "uploads")).sort();
+  const mutations = [
+    db => db.prepare("UPDATE Card SET notes='Changed after confirmation' WHERE id=?").run(id),
+    db => db.prepare("UPDATE CardImage SET rotation=180 WHERE cardId=?").run(id),
+    db => db.prepare("UPDATE CardTransaction SET amountMinor=amountMinor+1 WHERE cardId=?").run(id),
+    db => db.prepare("INSERT INTO CardExpense(id,cardId,kind,amountMinor,currency,occurredAt,provenance) VALUES('delete-expense',?,'grading',100,'CNY','2026-01-01T00:00:00Z','test')").run(id),
+    db => db.prepare("UPDATE CardValuation SET amountMinor=amountMinor+1 WHERE cardId=?").run(id),
+    db => { db.prepare("INSERT INTO ShareCollection(id,title,slug) VALUES('delete-share','Delete guard','delete-guard')").run(); db.prepare("INSERT INTO ShareCollectionItem(id,shareCollectionId,cardId) VALUES('delete-share-item','delete-share',?)").run(id); },
+    db => { db.prepare("INSERT INTO CollectionPlan(id,title) VALUES('delete-wish','Delete guard')").run(); db.prepare("INSERT INTO ScoutWishCard(planId,cardId) VALUES('delete-wish',?)").run(id); }
+  ];
+  for (const mutate of mutations) {
+    const confirmation = await fetchPage(baseUrl, deleteRoute);
+    database(mutate);
+    const preserved = dependentState();
+    const rejected = await post(deleteRoute, deleteBody(confirmation));
+    assert.equal(rejected.status, 303);
+    assert.ok(decodeURIComponent(rejected.location).includes("未执行删除"));
+    assert.deepEqual(dependentState(), preserved, "A stale confirmation must preserve every dependent record");
+    assert.deepEqual(fs.readdirSync(path.join(dataDir, "uploads")).sort(), mediaBeforeDelete);
+  }
+  const imagePaths = database(db => db.prepare("SELECT path FROM CardImage WHERE cardId=?").all(id).map(row => path.join(dataDir, "uploads", path.basename(row.path))));
+  const freshDelete = await post(deleteRoute, deleteBody(await fetchPage(baseUrl, deleteRoute)));
+  assert.equal(freshDelete.location, "/?success=deleted");
+  assert.ok(Object.values(JSON.parse(dependentState())).every(rows => rows.length === 0));
+  assert.ok(imagePaths.every(file => !fs.existsSync(file)));
+  database(db => { db.prepare("DELETE FROM ShareCollection WHERE id='delete-share'").run(); db.prepare("DELETE FROM CollectionPlan WHERE id='delete-wish'").run(); });
+  console.log("Patch safety passed: invalid image rollback/retry, old exact certificates, stale deletion of archives/media/financial facts/share/wish references and fresh confirmed deletion.");
   console.log("Card write safety passed: concurrent/sequential retries, same draft across pages, legitimate copies, validation rollback, stale/concurrent edits, image/status conflicts and upload cleanup.");
 }
 

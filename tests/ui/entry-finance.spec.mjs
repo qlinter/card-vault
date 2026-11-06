@@ -50,7 +50,7 @@ test("entry saves supplementary finance and sale links atomically after draft re
   await expect(page.locator('[name$=".amountUnknown"]')).toHaveCount(0);
   await expect(page.locator('.entry-financial-record').first().locator('[name$=".notes"]')).toHaveValue("sale note");
   await page.screenshot({path:"logs/entry-refinement-20260918/v134-entry-finance.png",fullPage:true});
-  await page.locator('.card-entry-form [name="images"]').setInputFiles({name:"finance.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=","base64")});
+  await page.locator('.card-entry-form [name="images"]').setInputFiles({name:"finance.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=","base64")});
   await page.getByRole("button",{name:"保存并查看",exact:true}).click();
   await expect(page.locator(".note-error")).toBeVisible();
   expect(fixture(db=>db.prepare("SELECT COUNT(*) AS count FROM Card WHERE cardTitle=?").get(title).count)).toBe(0);

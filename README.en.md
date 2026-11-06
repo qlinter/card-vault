@@ -6,9 +6,11 @@ Card Vault is a local-first Windows sports-card collection application built wit
 
 ## Current version
 
-Source version: `1.5.2`, finalized. Collection Recaps, Immersive Viewing, the AI deletion fix and verification results are maintained in the [v1.5.2 version notes](./docs/release-v1.5.2.md).
+Source version: `1.5.2`. The 2026-11-07 update within this version adds deletion conflict protection, fixes missed certificates and damaged-image validation, and shows the no-backup status. Features, verification and delivery status are maintained in the [v1.5.2 version notes](./docs/release-v1.5.2.md).
 
 The Windows x64 installer `card-vault-1.5.2-setup.exe` and portable archive `card-vault-1.5.2-portable.zip` have been built and passed full release verification. The [download page](https://github.com/qlinter/card-vault/releases/tag/v1.5.2) also provides SHA-256 checksums and the build manifest. These files are unsigned; Windows may display Unknown Publisher or SmartScreen prompts.
+
+The 2026-11-07 update has rebuilt and verified the installer and portable archive under the same version. See the version notes for the updated checksums and delivery record.
 
 ## Main capabilities
 

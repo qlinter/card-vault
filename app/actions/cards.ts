@@ -22,7 +22,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { errorMessage } from "@/lib/feedback-messages";
 import { normalizeReturnTo } from "@/lib/query-params";
-import { assertCardEditVersion, cardEditConflictMessage, cardEditVersions } from "@/lib/card-write-guards";
+import { assertCardDeleteVersion, cardDeleteConflictMessage, cardDeleteInclude, assertCardEditVersion, cardEditConflictMessage, cardEditVersions } from "@/lib/card-write-guards";
 
 export type CreateCardFormState = {
   error?: string;
@@ -178,21 +178,18 @@ export async function updateCardFormAction(cardId: string, _previousState: Creat
   redirect(redirectPath);
 }
 
-export async function deleteCardAction(cardId: string): Promise<void> {
+export async function deleteCardAction(cardId: string, expectedVersion: string): Promise<void> {
   let redirectPath = "/?error=unknown";
 
   try {
-    const existing = await prisma.card.findUnique({
-      where: { id: cardId },
-      include: { images: true }
+    const images = await prisma.$transaction(async transaction => {
+      const existing = await transaction.card.findUnique({ where: { id: cardId }, include: cardDeleteInclude });
+      if (!existing) throw new Error("卡片不存在或已删除。");
+      assertCardDeleteVersion(existing, expectedVersion);
+      await transaction.card.delete({ where: { id: cardId } });
+      return existing.images;
     });
-
-    if (!existing) {
-      throw new Error("卡片不存在或已删除。");
-    }
-
-    await prisma.card.delete({ where: { id: cardId } });
-    await Promise.all(existing.images.map((image) => removeCardImageIfExists(image.path)));
+    await Promise.all(images.map((image) => removeCardImageIfExists(image.path)));
 
     revalidatePath("/");
     revalidatePath("/showcase");
@@ -200,7 +197,7 @@ export async function deleteCardAction(cardId: string): Promise<void> {
     redirectPath = "/?success=deleted";
   } catch (error) {
     const message = errorMessage(error, "删除失败，请稍后重试。");
-    redirectPath = `/?error=${encodeURIComponent(message)}`;
+    redirectPath = `${message === cardDeleteConflictMessage ? `/cards/${cardId}` : "/"}?error=${encodeURIComponent(message)}`;
   }
 
   redirect(redirectPath);

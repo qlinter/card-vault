@@ -127,7 +127,7 @@ test("failed edit retains fields, choices and newly selected images", async ({ p
   await page.locator(".card-optional-fields").filter({ has: page.locator('[name="gradingLink"]') }).locator("summary").click();
   await page.locator(".card-optional-fields").filter({ has: page.locator('[name="isRookie"]') }).locator("summary").click();
   await page.locator('[name="playerName"]').fill("输入保留测试"); await page.locator('[name="gradingLink"]').fill("ftp://example.test/cert"); await page.locator('[name="isRookie"]').check();
-  await page.locator('[name="images"]').setInputFiles({ name: "selected.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j9wAAAABJRU5ErkJggg==", "base64") });
+  await page.locator('[name="images"]').setInputFiles({ name: "selected.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") });
   await page.getByRole("button", { name: "保存修改", exact: true }).click();
   await expect(page.locator(".note-error")).toContainText("http 或 https"); await expect(page.locator('[name="playerName"]')).toHaveValue("输入保留测试"); await expect(page.locator('[name="isRookie"]')).toBeChecked(); expect(await page.locator('[name="images"]').evaluate(input => input.files.length)).toBe(1);
   expect(fixture(db => db.prepare("SELECT playerName FROM Card WHERE id='management-ui'").get().playerName)).toBe("卡片数量");

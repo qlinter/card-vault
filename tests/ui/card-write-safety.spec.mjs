@@ -20,7 +20,7 @@ for (const locale of ["zh", "en"]) test(`stale editors preserve inputs and files
     const save = locale === "en" ? "Save Changes" : "保存修改";
     await stale.locator('[name="playerName"]').fill("Unsaved player");
     await stale.locator('[name="notes"]').fill("Unsaved note");
-    await stale.locator('[name="images"]').setInputFiles({ name: "unsaved.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j9wAAAABJRU5ErkJggg==", "base64") });
+    await stale.locator('[name="images"]').setInputFiles({ name: "unsaved.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") });
     await first.locator('[name="cardTitle"]').fill("Latest saved title");
     await first.getByRole("button", { name: save, exact: true }).click();
     await expect(page).toHaveURL(/\/cards\/write-ui\?success=updated/);
@@ -64,4 +64,22 @@ test("a failed draft sync preserves a new entry and cannot commit under a differ
   await expect(page).toHaveURL(/\/cards\/[^/]+\?success=created/);
   expect(writes).toBe(1);
   expect(fixture(db => db.prepare("SELECT count(*) n FROM Card WHERE playerName='Write Retry Player'").get().n)).toBe(1);
+});
+
+for (const locale of ["zh", "en"]) test(`stale deletion keeps updated archives and permits a fresh confirmation (${locale})`, async ({ page, context, baseURL }) => {
+  if (locale === "en") await context.addCookies([{ name: "card_vault_ui_locale", value: "en", url: baseURL }]);
+  // This fixture shares its image with other tests; remove only the reference here.
+  fixture(db => db.prepare("DELETE FROM CardImage WHERE cardId='write-ui'").run());
+  await page.goto("/cards/write-ui/delete", { waitUntil: "networkidle" });
+  fixture(db => db.prepare("UPDATE Card SET cardTitle='Changed after opening confirmation' WHERE id='write-ui'").run());
+  const button = locale === "en" ? "Confirm Deletion" : "确认删除";
+  await page.getByRole("button", { name: button, exact: true }).click();
+  await expect(page).toHaveURL(/\/cards\/write-ui\?error=/);
+  await expect(page.locator(".note-error")).toContainText(locale === "en" ? "Nothing was deleted" : "未执行删除");
+  expect(fixture(db => db.prepare("SELECT cardTitle FROM Card WHERE id='write-ui'").get()).cardTitle).toBe("Changed after opening confirmation");
+  await page.goto("/cards/write-ui/delete", { waitUntil: "networkidle" });
+  await expect(page.getByText("Changed after opening confirmation", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: button, exact: true }).click();
+  await expect(page).toHaveURL(/success=deleted/);
+  expect(fixture(db => db.prepare("SELECT id FROM Card WHERE id='write-ui'").get())).toBeUndefined();
 });

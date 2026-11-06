@@ -15,6 +15,7 @@ const restoreMessageKey = "card-vault:restore-completed";
 export function BackupSettings() {
   const [backupPath, setBackupPath] = useState("正在读取...");
   const [lastBackup, setLastBackup] = useState<Awaited<ReturnType<NonNullable<Window["cardVaultDesktop"]>["getBackupSettings"]>>["lastBackup"]>(null);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [busyAction, setBusyAction] = useState<"choose" | "backup" | "restore" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const { progress, setProgress, activeStorageOperation } = useDesktopStorageProgress(["backup", "restore"]);
@@ -37,6 +38,7 @@ export function BackupSettings() {
         if (mounted) {
           setBackupPath(settings.path);
           setLastBackup(settings.lastBackup);
+          setSettingsLoaded(true);
         }
       } catch {
         if (mounted) {
@@ -83,6 +85,7 @@ export function BackupSettings() {
       setBackupPath(result.backupRoot);
       setMessage(`备份完成：${result.backupPath}${result.metadataWarning ? ` · ${result.metadataWarning}` : ""}`);
       setLastBackup((await api.getBackupSettings()).lastBackup);
+      setSettingsLoaded(true);
     } catch (error) {
       setMessage(`备份失败：${errorMessage(error, "请稍后重试。")}`);
     } finally {
@@ -144,7 +147,7 @@ export function BackupSettings() {
       {lastBackup ? <p className="muted" role="status">
           <UiText text="最近成功备份：{0}，{1}MB，{2} 张图片。" values={[new Date(lastBackup.createdAt).toLocaleString(), (lastBackup.bytes / 1024 / 1024).toFixed(1), lastBackup.imageCount]} />
           {!lastBackup.available ? <UiText text="备份文件当前不可用，请检查路径或重新备份。" /> : Date.now() - new Date(lastBackup.createdAt).getTime() > 7 * 86400000 ? <UiText text="距上次备份已超过 7 天，建议重新备份。" /> : <UiText text="创建时已完成完整性校验。" />}
-      </p> : null}
+      </p> : settingsLoaded ? <p className="muted" role="status"><UiText text="当前收藏库尚无成功备份记录。" /></p> : null}
       <OperationProgress progress={progress} />
       {message ? <p className="muted backup-message"><UiText text={message} /></p> : null}
     </section>

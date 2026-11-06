@@ -65,7 +65,7 @@ async function expectUniformButtons(page) {
   }))])).toHaveLength(1);
 }
 
-test("backup offers manual actions without empty reminders and import selections retain their state", async ({ page }) => {
+test("backup shows its empty state and import selections retain their state", async ({ page }) => {
   await mockDesktop(page, true);
   await page.setViewportSize({ width: 1100, height: 760 });
   await page.goto("/settings#data-settings", { waitUntil: "networkidle" });
@@ -74,8 +74,8 @@ test("backup offers manual actions without empty reminders and import selections
   const buttonColors = await backup.getByRole("button").evaluateAll(buttons => buttons.map(button => { const style = getComputedStyle(button); return [style.backgroundColor, style.color, style.borderColor]; }));
   expect(buttonColors[1]).toEqual(buttonColors[0]);
   expect(buttonColors[2]).toEqual(buttonColors[0]);
-  await expect(backup.locator('input, select, [role="status"]')).toHaveCount(0);
-  await expect(backup).not.toContainText("当前收藏库尚无成功备份记录");
+  await expect(backup.locator("input, select")).toHaveCount(0);
+  await expect(backup.getByRole("status")).toHaveText("当前收藏库尚无成功备份记录。");
   await expect(backup).not.toContainText("自动备份");
   await loadMapping(page);
   const mapping = page.locator(".import-mapping-grid select");

@@ -1,3 +1,6 @@
+import sharp from "sharp";
+
+export const maxDecodedImagePixels = 80_000_000;
 export const supportedImageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 import { maxStoredImageBytes } from "./card-image-limits.js";
 export { maxStoredImageBytes } from "./card-image-limits.js";
@@ -49,15 +52,16 @@ export async function prepareImageUpload(
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  if (file.type === "image/jpeg" && hasJpegSignature(buffer)) {
-    return { buffer, extension: "jpg" };
-  }
-  if (file.type === "image/png" && hasPngSignature(buffer)) {
-    return { buffer, extension: "png" };
-  }
-  if (file.type === "image/webp" && hasWebpSignature(buffer)) {
-    return { buffer, extension: "webp" };
-  }
+  const extension = file.type === "image/jpeg" && hasJpegSignature(buffer) ? "jpg"
+    : file.type === "image/png" && hasPngSignature(buffer) ? "png"
+    : file.type === "image/webp" && hasWebpSignature(buffer) ? "webp" : null;
+  if (!extension) throw new Error(`${label}的实际文件内容与图片格式不一致。`);
 
-  throw new Error(`${label}的实际文件内容与图片格式不一致。`);
+  try {
+    // Decode all frames, not just metadata. Keep the original bytes after validation.
+    await sharp(buffer, { failOn: "warning", limitInputPixels: maxDecodedImagePixels, animated: true }).stats();
+  } catch {
+    throw new Error(`${label}无法解码，文件可能已损坏或像素尺寸过大。`);
+  }
+  return { buffer, extension };
 }

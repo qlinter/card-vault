@@ -16,18 +16,21 @@ export async function findCardEntryDuplicates(
   const certNumber = values.certNumber.trim();
   if (!playerName && !certNumber) return [];
 
-  const cards = await prisma.card.findMany({
-    where: {
-      id: excludeId ? { not: excludeId } : undefined,
-      OR: [
-        ...(playerName ? [{ playerName: { contains: playerName } }] : []),
-        ...(certNumber ? [{ certNumber }] : [])
-      ]
-    },
-    orderBy: { createdAt: "desc" },
-    take: 40,
-    include: { images: { take: 1, orderBy: { createdAt: "asc" } } }
-  });
+  // Exact certificates must not compete with the recent similar-card window.
+  const [certificates, recent] = await Promise.all([
+    certNumber ? prisma.card.findMany({
+      where: { certNumber, id: excludeId ? { not: excludeId } : undefined },
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 5,
+      include: { images: { take: 1, orderBy: { createdAt: "asc" } } }
+    }) : Promise.resolve([]),
+    playerName ? prisma.card.findMany({
+      where: { playerName: { contains: playerName }, id: excludeId ? { not: excludeId } : undefined },
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 40,
+      include: { images: { take: 1, orderBy: { createdAt: "asc" } } }
+    }) : Promise.resolve([])
+  ]);
+  const certificateIds = new Set(certificates.map(card => card.id));
+  const cards = [...new Map([...certificates, ...recent].map(card => [card.id, card])).values()];
 
   return cards.flatMap((card) => {
     const result = scoreCardEntryDuplicate(values, card);
@@ -41,5 +44,5 @@ export async function findCardEntryDuplicates(
         ? card.images[0].path
         : undefined
     }];
-  }).sort((left, right) => right.score - left.score).slice(0, 5);
+  }).sort((left, right) => Number(certificateIds.has(right.id)) - Number(certificateIds.has(left.id)) || right.score - left.score).slice(0, 5);
 }

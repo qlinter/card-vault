@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cardIdForSubmission, cardEditVersions, assertCardEditVersion, cardEditConflictMessage } from "../lib/card-write-guards.ts";
+import { cardIdForSubmission, cardEditVersions, assertCardEditVersion, cardEditConflictMessage, cardDeleteVersion, assertCardDeleteVersion, cardDeleteConflictMessage } from "../lib/card-write-guards.ts";
 import { buildCardData } from "../lib/card-entry-domain.ts";
 import { emptyCardFormValues } from "../lib/card-form-values.ts";
 
@@ -29,4 +29,19 @@ test("archive checks detect changed details, images and status without invalidat
   ]) assert.throws(() => assertCardEditVersion(changed, before.version), { message: cardEditConflictMessage });
   assert.equal(cardEditVersions({ ...original, collectionStatus: "sold" }).archiveVersion, before.archiveVersion);
   assert.notEqual(cardEditVersions({ ...original, notes: "New notes" }).archiveVersion, before.archiveVersion);
+});
+
+test("delete confirmations ignore relation order but reject missing versions and same-timestamp financial changes", () => {
+  const card = {
+    ...archive(), tracking: null, transactions: [], expenses: [], shareItems: [],
+    images: [...archive().images, { ...archive().images[0], id: "other", path: "/media/two.png" }],
+    acquiredWishes: [{ planId: "wish-b", cardId: "card" }, { planId: "wish-a", cardId: "card" }],
+    valuations: [{ id: "valuation", cardId: "card", amountMinor: 9007199254740993n, currency: "CNY", valuedAt: new Date(0), source: "test", notes: null, provenance: "test", externalKey: null, createdAt: new Date(0), updatedAt: new Date(0) }]
+  };
+  const version = cardDeleteVersion(card);
+  assert.doesNotThrow(() => assertCardDeleteVersion({ ...card, images: [...card.images].reverse(), acquiredWishes: [...card.acquiredWishes].reverse() }, version));
+  assert.throws(() => assertCardDeleteVersion(card, ""), { message: cardDeleteConflictMessage });
+  assert.throws(() => assertCardDeleteVersion({ ...card, valuations: [{ ...card.valuations[0], amountMinor: 9007199254740994n }] }, version), { message: cardDeleteConflictMessage });
+  assert.throws(() => assertCardDeleteVersion({ ...card, acquiredWishes: [] }, version), { message: cardDeleteConflictMessage });
+  assert.throws(() => assertCardDeleteVersion({ ...card, holdingQuantity: 2 }, version), { message: cardDeleteConflictMessage });
 });

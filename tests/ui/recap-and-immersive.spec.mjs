@@ -173,7 +173,18 @@ test("immersive failures stay recoverable and interval starts after load, not be
 });
 
 test("immersive index is bounded across 500-card batches and deleted active cards can be skipped", async ({ page }) => {
-  fixture(db => { const insert = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES(?,?,?,'Basketball')"); for (let index = 0; index < 503; index++) insert.run(`recap-fixture-batch-${String(index).padStart(4, "0")}`, "SessionFixture", `Batch Card ${index}`); });
+  fixture(db => {
+    // Bulk fixture setup should not spend the test timeout on 503 disk commits.
+    db.exec("BEGIN");
+    try {
+      const insert = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES(?,?,?,'Basketball')");
+      for (let index = 0; index < 503; index++) insert.run(`recap-fixture-batch-${String(index).padStart(4, "0")}`, "SessionFixture", `Batch Card ${index}`);
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+  });
   const first = await (await page.request.get("/api/immersive?q=SessionFixture")).json(); expect(first.ids).toHaveLength(500); expect(first.nextCursor).toBeTruthy(); expect(JSON.stringify(first)).not.toContain("images");
   const second = await (await page.request.get(`/api/immersive?q=SessionFixture&cursor=${first.nextCursor}`)).json(); expect(second.ids).toHaveLength(3); expect(second.nextCursor).toBeNull(); expect(new Set([...first.ids, ...second.ids]).size).toBe(503);
   await page.goto("/showcase?q=RecapFixture"); await page.getByRole("button", { name: "浏览", exact: true }).click(); const stage = page.locator(".immersive-stage"); await expect(stage).toHaveAttribute("data-card-id", "recap-fixture-a");

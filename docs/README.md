@@ -5,7 +5,7 @@
 <a id="current-release"></a>
 ## 当前版本
 
-[v1.5.2 版本说明](./release-v1.5.2.md)包含最终功能、结构审查、数据边界、依赖审计、定版验证及分发校验值。经用户确认，安装包和便携包已生成并通过完整发布验证；[下载入口](https://github.com/qlinter/card-vault/releases/tag/v1.5.2)提供分发文件与构建记录。
+[v1.5.2 版本说明](./release-v1.5.2.md)包含原有功能、2026-11-07 版本内更新、结构审查、数据边界、验证和分发校验值。2026-11-07 版本内更新已通过完整分发验证；[下载入口](https://github.com/qlinter/card-vault/releases/tag/v1.5.2)提供分发文件与构建记录。
 
 ## 当前规则
 

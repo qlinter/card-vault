@@ -2,6 +2,7 @@ import { UiText } from "@/components/ui-text";
 import { deleteCardAction } from "@/app/actions/cards";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { cardDeleteInclude, cardDeleteVersion } from "@/lib/card-write-guards";
 
 type DeleteProps = {
   params: Promise<{ id: string }>;
@@ -9,7 +10,7 @@ type DeleteProps = {
 
 export default async function DeleteCardPage({ params }: DeleteProps) {
   const { id } = await params;
-  const card = await prisma.card.findUnique({ where: { id } });
+  const card = await prisma.card.findUnique({ where: { id }, include: cardDeleteInclude });
 
   if (!card) {
     notFound();
@@ -23,7 +24,7 @@ export default async function DeleteCardPage({ params }: DeleteProps) {
         </p>
         <p className="muted"><UiText text={"删除后无法恢复，请再次确认。"} /></p>
 
-        <form action={deleteCardAction.bind(null, id)} style={{ display: "flex", gap: "0.7rem", marginTop: "1rem" }}>
+        <form action={deleteCardAction.bind(null, id, cardDeleteVersion(card))} style={{ display: "flex", gap: "0.7rem", marginTop: "1rem" }}>
           <button type="submit" className="btn btn-danger"><UiText text={"确认删除"} /></button>
           <a href={`/cards/${id}`} className="btn btn-secondary"><UiText text={"返回详情"} /></a>
         </form>

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { withUiDatabase as fixture } from "./database-fixture.mjs";
 
 test.afterEach(async ({ page, request, baseURL }) => {
   const draftId = new URL(page.url()).searchParams.get("draft");
@@ -75,7 +76,7 @@ test("AI suggestions and restored drafts visibly select matching attributes", as
   await page.route("**/api/ai/recognize-card", route => route.fulfill({ json: { suggestion: { serialRange: "/25", autoType: "on-card", patchType: "logo patch" } } }));
   await page.goto("/cards/new", { waitUntil: "networkidle" });
   await page.locator(".entry-ai-tools > summary").click();
-  await page.getByLabel("识别图片", { exact: true }).setInputFiles({ name: "front.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") });
+  await page.getByLabel("识别图片", { exact: true }).setInputFiles({ name: "front.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") });
   await page.getByRole("button", { name: "识别并填入", exact: true }).click();
   const numbered = page.locator('[name="isSerialNumbered"]');
   await expect(page.locator('[name="serialRange"]')).toHaveValue("/25");
@@ -103,10 +104,32 @@ test("changing recognition images clears previous inferred attributes", async ({
   for (const name of ["isSerialNumbered", "isAutograph", "isPatch"]) await expect(page.locator(`[name="${name}"]`)).toBeChecked();
   await expect(page).toHaveURL(/draft=/);
   const clearedDraftSaved = page.waitForResponse(response => response.url().endsWith("/api/card-entry/drafts") && response.request().postDataJSON()?.values?.serialRange === "");
-  await page.getByLabel("识别图片", { exact: true }).setInputFiles({ name: "replacement.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") });
+  await page.getByLabel("识别图片", { exact: true }).setInputFiles({ name: "replacement.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") });
   for (const name of ["isSerialNumbered", "isAutograph", "isPatch"]) await expect(page.locator(`[name="${name}"]`)).not.toBeChecked();
   for (const name of ["serialRange", "autoType", "patchType"]) await expect(page.locator(`[name="${name}"]`)).toHaveValue("");
   expect((await clearedDraftSaved).ok()).toBeTruthy();
   await page.reload({ waitUntil: "networkidle" });
   for (const name of ["isSerialNumbered", "isAutograph", "isPatch"]) await expect(page.locator(`[name="${name}"]`)).not.toBeChecked();
+});
+
+test("a certificate alone finds an older exact match beyond forty recent cards", async ({ page }) => {
+  fixture(db => {
+    const insert = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,certNumber,createdAt) VALUES(?,'Certificate UI Player',?,'Basketball',?,?)");
+    insert.run("certificate-ui-old", "Old exact certificate", "UI-CERT-001", "2020-01-01T00:00:00Z");
+    for (let i = 0; i < 41; i++) insert.run(`certificate-ui-${i}`, `Recent ${i}`, null, "2026-01-01T00:00:00Z");
+  });
+  try {
+    await page.goto("/cards/new", { waitUntil: "networkidle" });
+    await page.getByText("评级信息（可选）", { exact: true }).click();
+    await page.locator('[name="certNumber"]').fill("UI-CERT-001");
+    const match = page.locator('.entry-duplicate-panel a[href="/cards/certificate-ui-old"]');
+    await expect(page.locator('[name="playerName"]')).toHaveValue("");
+    await expect(match).toContainText("Old exact certificate");
+    await page.locator('[name="playerName"]').fill("Certificate UI Player");
+    await expect(match).toBeVisible();
+    await page.locator('[name="certNumber"]').fill("");
+    await expect(page.locator(".entry-duplicate-panel")).toHaveCount(0);
+  } finally {
+    fixture(db => db.prepare("DELETE FROM Card WHERE playerName='Certificate UI Player'").run());
+  }
 });

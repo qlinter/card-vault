@@ -1,4 +1,6 @@
 const exactTranslations: Record<string, string> = {
+  "当前收藏库尚无成功备份记录。": "This collection has no successful backup yet.",
+  "卡片资料、图片、财务或关联记录已发生变化，未执行删除。请核对最新内容后重新确认。": "The card, images, financial history or related records have changed. Nothing was deleted. Review the latest content and confirm again.",
   "组合总览": "Portfolio Overview",
   "购入张数": "Cards Purchased",
   "标题限 100 字。": "Titles are limited to 100 characters.",
@@ -1074,6 +1076,7 @@ const exactTranslations: Record<string, string> = {
 };
 
 const phraseTranslations: Array<[string | RegExp, string]> = [
+  ["无法解码，文件可能已损坏或像素尺寸过大。", " could not be decoded. The file may be damaged or exceed the pixel limit."],
   [/第 (\d+) 张现有图片/g, "Existing image $1"],
   [/第 (\d+) 张新增图片/g, "New image $1"],
   [/队列第 (\d+) 张图片/g, "Queued image $1"],

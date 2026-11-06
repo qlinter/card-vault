@@ -56,7 +56,7 @@ test("awaiting-grading entry saves its physical purchase and restores its status
   await page.locator('[name="initialQuantity"]').fill("3");
   await page.locator('[name="purchaseDate"]').fill("2026-01-01");
   await page.locator('[name="purchasePrice"]').fill("300");
-  await page.locator('[data-card-entry-form="true"] input[name="images"]').setInputFiles({ name: "card.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") });
+  await page.locator('[data-card-entry-form="true"] input[name="images"]').setInputFiles({ name: "card.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") });
   await page.getByRole("button", { name: "保存并查看", exact: true }).click();
   await expect(page).toHaveURL(/\/cards\/[^/?]+\?success=/);
   const saved = fixture(db => db.prepare("SELECT id, collectionStatus, holdingQuantity FROM Card WHERE cardTitle='Collection status test'").get());

@@ -25,7 +25,7 @@ export function CardEntryDuplicatePanel() {
         values.parallel,
         values.certNumber
       ].filter((value) => value.trim()).length;
-      if (!values.playerName.trim() || identityCount < 1) {
+      if (!values.certNumber.trim() && (!values.playerName.trim() || identityCount < 1)) {
         setCandidates([]);
         return;
       }

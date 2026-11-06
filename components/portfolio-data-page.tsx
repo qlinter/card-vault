@@ -20,7 +20,6 @@ import type { DataWorkspace } from "@/lib/portfolio-workspace-types";
 import { normalizePortfolioWorkspaceState } from "@/lib/portfolio-workspace-state";
 import { buildQueryHref, toScalar } from "@/lib/query-params";
 import styles from "@/components/portfolio-data.module.css";
-import { ensurePortfolioReady } from "@/lib/portfolio-ready";
 
 type State = Record<string, string | undefined>;
 type Loaded = { result: PortfolioSnapshotResult; workspace: DataWorkspace };
@@ -42,13 +41,13 @@ async function DataBody({ pending, query, state }: { pending: Promise<Loaded>; q
   const listState = { ...state, page: undefined, search: undefined, dimension: undefined, item: undefined, closed: undefined, issue: undefined, order: undefined };
   const qualityHref = dataHref(query, listState, { tab: "details", kind: "quality" });
   return <>
+    <header className={styles.overviewHeading}><h2><UiText text="组合总览" /></h2><PortfolioAnalysisButton cardCount={result.snapshot.cardCount} query={query} scope={result.snapshot.scope} /></header>
     <PortfolioOverview result={result} workspace={workspace} returnTo={returnTo} detailsHref={dataHref(query, listState, { tab: "details", kind: "holdings" })} qualityHref={qualityHref} />
     <HomeOverview scope={buildQueryHref("/", query).slice(1)} reviewHref={qualityHref} qualityCount={workspace.qualityCount} />
   </>;
 }
 export default async function PortfolioPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = Object.fromEntries(Object.entries(await searchParams).map(([key, value]) => [key, toScalar(value)]));
-  ensurePortfolioReady();
   const query = normalizePortfolioFilterInput(params);
   const state = normalizePortfolioWorkspaceState(params);
   if (state.kind === "quality") for (const key of ["detailStatus", "issue", "search", "order", "page", "dimension", "item", "closed"]) delete state[key];
@@ -61,16 +60,14 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
     {params.success ? <p role="status" className="note-ok"><UiText text={params.success} /></p> : null}
     {params.error ? <p role="alert" className="note-error"><UiText text={params.error} /></p> : null}
     <header className={styles.toolbar}>
-      <h2 id="portfolio-current-title"><UiText text="当前范围" /> · <span><UiText text={scope.isFiltered ? "已筛选" : "全部收藏"} /></span></h2>
-      <div className={styles.tools}><Link href={homeHref} className="scope-navigation-link"><UiText text={scope.isFiltered ? "返回筛选结果" : "查看卡片"} /></Link><Suspense><Analysis pending={pending} query={query} /></Suspense></div>
+      <p id="portfolio-current-title" className={styles.scopeStatus}><UiText text="当前范围" /> · <span><UiText text={scope.isFiltered ? "已筛选" : "全部收藏"} /></span></p>
+      <div className={styles.pageActions}>
+        <Link href={buildQueryHref("/portfolio/recap", query)} className={`btn btn-secondary ${styles.pageAction}`}><UiText text="收藏回顾" /></Link>
+        <Link href={homeHref} className={`btn btn-secondary ${styles.pageAction}`}><UiText text={scope.isFiltered ? "返回筛选结果" : "查看卡片"} /></Link>
+      </div>
       {scope.criteria.length ? <div className={styles.scope}>{scope.criteria.map(item => <Link key={item.field} href={dataHref({ ...query, [item.field]: undefined }, state, { page: undefined })}><PortfolioCriterion item={item} /> ×</Link>)}<Link href="/portfolio"><UiText text="清空条件" /></Link></div> : null}
     </header>
-    <PortfolioDataTabs query={query} state={state} />
+    <div className={styles.navigation}><PortfolioDataTabs query={query} state={state} /></div>
     <Suspense fallback={<div className={styles.panel} role="status"><UiText text="正在计算数据…" /></div>}><DataBody pending={pending} query={query} state={state} /></Suspense>
   </div>;
-}
-async function Analysis({ pending, query }: { pending: Promise<Loaded>; query: PortfolioFilterInput }) {
-  let loaded;
-  try { loaded = await pending; } catch { return null; }
-  return <PortfolioAnalysisButton cardCount={loaded.result.snapshot.cardCount} query={query} scope={loaded.result.snapshot.scope} />;
 }

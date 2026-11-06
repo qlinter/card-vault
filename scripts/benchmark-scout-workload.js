@@ -1,7 +1,6 @@
 const fs = require("node:fs"), os = require("node:os"), path = require("node:path");
 const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
-const { resetScoutHistory } = require("./reset-scout-history");
 const { fetchTestServer: fetch, fileDatabaseUrl, findAvailablePort, initializeTestDatabase, removeTempRoot, startTestServer, stopServer, waitForServer } = require("./test-http-flow-utils");
 async function main() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "vault-scout-benchmark-")), dataDir = path.join(root, "data"), dbPath = path.join(dataDir, "dev.db");
@@ -19,7 +18,7 @@ async function main() {
     return { medianMs: samples.sort((a, b) => a-b)[1], bytes, rows: result.plans.length, count: result.count };
   }
   try {
-    initializeTestDatabase(env); resetScoutHistory(dbPath);
+    initializeTestDatabase(env);
     db = new DatabaseSync(dbPath);
     const wish = db.prepare("INSERT INTO CollectionPlan(id,title,playerName,notes) VALUES(?,?,?,?)");
     let seeded = 0;

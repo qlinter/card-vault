@@ -1,0 +1,51 @@
+/* Exhibition palettes stay local to the viewer and never recolor the artwork. */
+.immersive-viewer {
+  --gallery-bg: #121416; --gallery-panel: #1c1f22; --gallery-ink: #eeeae2;
+  --gallery-muted: #a7adaf; --gallery-secondary: #c5c7c3; --gallery-accent: #cbb68d;
+  --gallery-line: rgb(238 234 226 / .14); --gallery-line-strong: rgb(238 234 226 / .25);
+  --gallery-wall-lit: #333639; --gallery-wall-mid: #202326; --gallery-wall-edge: #121416;
+  --gallery-beam: rgb(248 231 193 / .23); --gallery-halo: rgb(240 231 210 / .07);
+  --gallery-floor-start: #17191b; --gallery-floor-end: #101214; --gallery-floor-glow: rgb(205 191 161 / .07);
+  --gallery-seam: rgb(0 0 0 / .12); --gallery-sheen: rgb(255 255 255 / .025);
+  --gallery-hover: rgb(255 255 255 / .045); --gallery-control-bg: #25292c;
+  --gallery-play-ink: #202224; --gallery-toolbar-shade: rgb(0 0 0 / .14);
+  --gallery-object-shadow: 0 22px 30px rgb(0 0 0 / .38); --gallery-contact-shadow: 0 3px 5px rgb(0 0 0 / .24);
+  --gallery-color-scheme: dark; --gallery-texture: none;
+}
+.immersive-viewer[data-gallery-scene=whitebox] {
+  --gallery-bg: #f0f0ec; --gallery-panel: #fbfbf8; --gallery-ink: #2a3032;
+  --gallery-muted: #626a67; --gallery-secondary: #505b5b; --gallery-accent: #68766f;
+  --gallery-line: rgb(42 48 50 / .14); --gallery-line-strong: rgb(42 48 50 / .25);
+  --gallery-wall-lit: #fdfdf9; --gallery-wall-mid: #f1f1ed; --gallery-wall-edge: #e8e9e5;
+  --gallery-beam: rgb(255 255 255 / .9); --gallery-halo: rgb(255 255 255 / .65);
+  --gallery-floor-start: #e1e3de; --gallery-floor-end: #d9ddd7; --gallery-floor-glow: rgb(255 255 255 / .6);
+  --gallery-seam: rgb(48 57 55 / .06); --gallery-sheen: rgb(255 255 255 / .5);
+  --gallery-hover: rgb(42 48 50 / .045); --gallery-control-bg: #efefea;
+  --gallery-play-ink: #ffffff; --gallery-toolbar-shade: rgb(255 255 255 / .24);
+  --gallery-object-shadow: 0 22px 30px rgb(38 44 39 / .16); --gallery-contact-shadow: 0 3px 5px rgb(38 44 39 / .12);
+  --gallery-color-scheme: light;
+}
+.immersive-viewer[data-gallery-scene=archive] {
+  --gallery-bg: #e7dcc7; --gallery-panel: #f5eddd; --gallery-ink: #493b2d;
+  --gallery-muted: #62523f; --gallery-secondary: #514536; --gallery-accent: #705030;
+  --gallery-line: rgb(73 59 45 / .16); --gallery-line-strong: rgb(73 59 45 / .26);
+  --gallery-wall-lit: #f7edda; --gallery-wall-mid: #e9ddc6; --gallery-wall-edge: #dccdaf;
+  --gallery-beam: rgb(255 251 235 / .8); --gallery-halo: rgb(255 245 218 / .5);
+  --gallery-floor-start: #e0d1b6; --gallery-floor-end: #d8c9ae; --gallery-floor-glow: rgb(255 236 194 / .3);
+  --gallery-seam: rgb(90 64 37 / .07); --gallery-sheen: rgb(255 250 228 / .35);
+  --gallery-hover: rgb(105 77 45 / .06); --gallery-control-bg: #ece2ce;
+  --gallery-play-ink: #fff9ee; --gallery-toolbar-shade: rgb(107 84 51 / .04);
+  --gallery-object-shadow: 0 22px 30px rgb(76 53 28 / .19); --gallery-contact-shadow: 0 3px 5px rgb(76 53 28 / .12);
+  --gallery-color-scheme: light; --gallery-texture: repeating-linear-gradient(0deg, transparent 0 3px, rgb(94 73 44 / .018) 3px 4px);
+}
+.immersive-viewer[data-gallery-scene=moonlight] {
+  --gallery-bg: #101b28; --gallery-panel: #182838; --gallery-ink: #e6edf0;
+  --gallery-muted: #a0b1bd; --gallery-secondary: #c0d0db; --gallery-accent: #abc5d5;
+  --gallery-line: rgb(213 233 245 / .15); --gallery-line-strong: rgb(213 233 245 / .26);
+  --gallery-wall-lit: #293f53; --gallery-wall-mid: #1a2c3d; --gallery-wall-edge: #0d1826;
+  --gallery-beam: rgb(188 219 246 / .23); --gallery-halo: rgb(192 222 247 / .075);
+  --gallery-floor-start: #112131; --gallery-floor-end: #0a1521; --gallery-floor-glow: rgb(174 209 238 / .08);
+  --gallery-seam: rgb(0 0 0 / .14); --gallery-sheen: rgb(193 225 246 / .025);
+  --gallery-hover: rgb(193 225 246 / .06); --gallery-control-bg: #23384b;
+  --gallery-play-ink: #142334; --gallery-toolbar-shade: rgb(2 10 19 / .14);
+}

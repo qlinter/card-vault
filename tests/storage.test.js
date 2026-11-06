@@ -5,7 +5,7 @@ const path = require("node:path");
 const test = require("node:test");
 const { DatabaseSync } = require("node:sqlite");
 const { createStorageManager } = require("../electron/storage");
-const { initializeDatabase } = require("../scripts/database-schema");
+const { initializeDatabase, schemaVersion } = require("../scripts/database-schema");
 
 function createTestManager(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "card-vault-storage-test-"));
@@ -390,7 +390,7 @@ test("current-version backup restores after creating a safety backup", (t) => {
   assert.equal(card.playerName, "Before Backup");
   assert.equal(valuation.amountMinor, 12345);
   assert.equal(valuation.source, "个人估计");
-  assert.equal(restored.schemaVersion, "1.3.0");
+  assert.equal(restored.schemaVersion, schemaVersion);
   assert.ok(restored.safetyBackupPath);
   assert.equal(fs.existsSync(path.join(restored.safetyBackupPath, "dev.db")), true);
   assert.equal(restored.health.integrity, "ok");

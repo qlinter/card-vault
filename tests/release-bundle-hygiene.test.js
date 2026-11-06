@@ -30,10 +30,10 @@ test("release bundle rejects Prisma temporary engines and source maps", () => {
   for (const name of ["benchmark-dense-history.js", "benchmark-portfolio-history.mts", "check-docs.js", "start-ui-test-server.js", "ui-test-clock.js", "test-live-ai.js", "test-storage-photos.js", "test-windows-installation.js", "test-improvements.js", "test-showcase-flow.js", "test-packaged-desktop.js", "test-packaged-desktop-utils.js"]) {
     assert.equal(isForbiddenPackagedEntry("resources/app/scripts/" + name), true);
   }
-  for (const name of ["init-db.js", "database-schema.js", "reset-history.js", "reset-scout-history.js", "reset-portfolio-history.js"]) {
+  for (const name of ["init-db.js", "database-schema.js"]) {
     assert.equal(isForbiddenPackagedEntry("resources/app/scripts/" + name), false);
   }
-  for (const name of ["test-card-flow.js", "test-memory-sampler.js", "release-win.js", "release-runtime-files.js"]) {
+  for (const name of ["test-card-flow.js", "test-memory-sampler.js", "release-win.js", "release-runtime-files.js", "reset-history.js", "reset-scout-history.js", "reset-portfolio-history.js", "valuation-source-schema.js"]) {
     assert.equal(isForbiddenPackagedEntry("resources/app/scripts/" + name), true);
   }
 });

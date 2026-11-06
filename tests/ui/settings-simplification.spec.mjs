@@ -76,8 +76,8 @@ test('AI fields are directly visible and preserve drafts and saved keys across p
   await page.getByLabel('Model *', { exact: true }).fill('vision-new');
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.__savedAiDraft?.customProviders.length)).toBe(2);
-  page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: '删除当前配置', exact: true }).click();
+  await page.getByRole('button', { name: '确认删除', exact: true }).click();
   await page.getByRole('button', { name: '保存设置', exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.__savedAiDraft?.customProviders.map(item => item.id))).toEqual(['local']);
 });

@@ -6,11 +6,11 @@ Card Vault 的 Windows 代码签名是可选增强。`npm run release:win` 在�
 
 ## 执行前提
 
-当前使用 Electron 42，`package:win` 会先调用 Electron 官方安装器准备并校验二进制，再执行打包，适用于全新检出后延迟下载的依赖。
+Electron 版本以锁文件为准。`package:win` 会先准备并校验 Electron 二进制，再执行打包。
 
-当前源码版本为 v1.5.1，实际验收及交付范围见 [v1.5.1 发布说明](./release-v1.5.1.md)。`npm run release:win` 执行完整源码门槛、包内业务、实际桌面启动及产物校验；`npm run check:release` 本身不生成安装文件。历史分发事实保留在各版本发布说明中。
+安装包、便携包、Git 更新与 GitHub 同步须先由用户明确确认。当前交付状态以[版本说明](README.md#current-release)为准。`npm run check:release` 本身不生成安装文件；完整发布流程由 `npm run release:win` 执行。
 
-运行脚本白名单由 `scripts/release-runtime-files.js` 统一维护，构建配置与产物检查共用。安装包只包含初始化、存储、缩略图及授权历史清理所需的脚本；测试、基准、发布工具、固定测试时钟及源码映射全部排除。业务冒烟脚本从源码侧使用包内 Electron 的 Node 运行时启动，服务与初始化路径明确指向包内应用，避免为测试交付整套开发工具。
+运行脚本白名单由 `scripts/release-runtime-files.js` 统一维护，构建配置与产物检查共用。安装包只包含初始化、存储、缩略图所需的脚本；测试、基准、发布工具、固定测试时钟及源码映射全部排除。业务冒烟脚本从源码侧使用包内 Electron 的 Node 运行时启动，服务与初始化路径明确指向包内应用，避免为测试交付整套开发工具。
 
 ## 无证书发布
 

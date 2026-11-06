@@ -1,0 +1,62 @@
+.recap-page, .recap-content { display: grid; gap: 14px; }
+.page.recap-page { padding-bottom: 48px; animation:none; }
+.recap-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.recap-return { margin-left: auto; }
+.recap-page > .sr-only { margin: 0; }
+.recap-panel { padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--panel-radius); display: grid; gap: 14px; }
+.recap-panel h2, .recap-panel p { margin: 0; }
+.recap-panel h2 { font-size: var(--text-lg); }
+.recap-panel label { display: grid; gap: 8px; font-size: var(--text-sm); }
+.recap-filters { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; }
+.recap-filters[aria-busy=true] { cursor:progress; }
+.recap-filters input[type=number] { width: 115px; }
+.recap-muted, .recap-actions > span, .recap-representatives small { color: var(--muted-ink); font-size: var(--text-sm); line-height: 1.7; }
+.recap-title-label input { font-size: var(--text-title); font-weight: var(--weight-bold); width: 100%; border: 0; border-radius: 0; background: transparent; box-shadow: none; padding: 0; }
+.recap-title-label input:focus-visible { outline: 2px solid var(--muted-ink); outline-offset: 4px; }
+.recap-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; padding: 4px 0; }
+.recap-panel > .btn { justify-self: start; }
+.recap-panel button:not(.btn) { min-height: var(--control-height-compact); background: var(--surface-soft); color: var(--ink); border: 1px solid var(--line-strong); border-radius: var(--control-radius); padding: .3rem .65rem; font: inherit; cursor: pointer; }
+.recap-panel button:disabled { cursor: default; opacity: .6; }
+.recap-panel .recap-picker button[aria-pressed=true] { opacity: 1; }
+.recap-panel button:focus-visible, .recap-panel a:focus-visible { outline: 2px solid var(--muted-ink); outline-offset: 3px; }
+.recap-stats > div { display: grid; gap: 4px; text-align: center; }
+.recap-stats strong { font-size: var(--text-metric); font-weight: var(--weight-bold); font-variant-numeric: tabular-nums; }
+.recap-stats span { font-size: var(--text-xs); color: var(--muted-ink); }
+.recap-months { display: grid; gap: 6px; align-items: end; min-height: 105px; }
+.recap-months a, .recap-chart-column { display: grid; justify-items: center; align-content: end; gap: 4px; padding: 6px 0; text-decoration: none; color: var(--ink); border-radius: 6px; font-size: var(--text-xs); }
+.recap-months .is-active, .recap-months a:hover { background: var(--surface-soft); }
+.recap-bar { display: block; width: 70%; max-width: 32px; border-radius: 4px; background: var(--muted-ink); opacity: .65; }
+.recap-topics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; padding: 0; }
+.recap-topics ol { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 6px; }
+.recap-topics li { display: flex; justify-content: space-between; gap: 12px; font-size: var(--text-base); }
+.recap-topics li span { overflow-wrap: anywhere; }
+.recap-representatives, .recap-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.recap-representatives article, .recap-picker button { display: grid; gap: 8px; min-width: 0; align-content: start; }
+.recap-representatives article > span, .recap-picker button > span { font-size: var(--text-sm); overflow-wrap: anywhere; }
+.recap-image { height: 190px; position: relative; background: var(--surface-soft); border-radius: 12px; }
+.recap-inline-picker { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+.recap-inline-picker form { justify-content: flex-start; align-items: end; }
+.recap-representatives article > div:last-child { display: flex; gap: 6px; }
+.recap-picker button { text-align: left; background: var(--surface-soft); padding: 12px; border-radius: 12px; }
+.recap-picker button[aria-pressed=true] { border-color: var(--muted-ink); opacity: .65; }
+.recap-picker-image { position: relative; height: 150px; display: block; }
+.recap-actions > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.recap-check { display: flex !important; align-items: center; }
+.recap-story-header { display:flex; align-items:center; flex-wrap:wrap; gap:12px 20px; }
+.recap-story-header .recap-title-label { flex:1; min-width: min(100%, 300px); }
+.recap-panel .recap-image-actions .recap-privacy { display:inline-flex; align-items:center; gap:7px; min-height:32px; padding:4px 6px; border:0; background:transparent; border-radius:var(--control-radius); font-size:var(--text-sm); font-weight:var(--weight-medium); color:var(--muted-ink); white-space:nowrap; }
+.recap-panel .recap-image-actions .recap-privacy:hover { background:var(--surface-soft); color:var(--ink); }
+.recap-privacy-track { display:block; position:relative; width:26px; height:15px; border-radius:10px; background:var(--line-strong); transition:background .15s; }
+.recap-privacy-track::after { content:""; position:absolute; width:11px; height:11px; top:2px; left:2px; border-radius:50%; background:var(--surface); transition:transform .15s; box-shadow:0 1px 2px #0002; }
+.recap-privacy[aria-checked=true] .recap-privacy-track { background:var(--teal); }
+.recap-privacy[aria-checked=true] .recap-privacy-track::after { transform:translateX(11px); }
+@media(prefers-reduced-motion:reduce) { .recap-privacy-track, .recap-privacy-track::after { transition:none; } }
+@media(max-width: 700px) {
+  .recap-panel { padding: 16px; }
+  .recap-topics { grid-template-columns: 1fr; }
+  .recap-stats, .recap-representatives, .recap-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .recap-months { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .recap-image { height: 200px; }
+}
+
+.recap-image-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }

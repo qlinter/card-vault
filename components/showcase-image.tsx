@@ -5,14 +5,15 @@ import { fitShowcaseImage } from "@/lib/showcase-presentation";
 import { UiText } from "./ui-text";
 import { ShowcaseIcon } from "./showcase-icon";
 
-type ShowcaseImageProps = { src?: string; alt: string; rotation?: number; eager?: boolean; priority?: boolean; shadow?: boolean };
+type ShowcaseImageProps = { src?: string; alt: string; rotation?: number; eager?: boolean; priority?: boolean; shadow?: boolean; onStatus?: (status: "loaded" | "error") => void };
 
 /** The reserved frame fits the actual image bounds, including quarter-turn rotations. */
-export function ShowcaseImage({ src, alt, rotation = 0, eager = false, priority = false, shadow = true }: ShowcaseImageProps) {
+export function ShowcaseImage({ src, alt, rotation = 0, eager = false, priority = false, shadow = true, onStatus }: ShowcaseImageProps) {
   const frame = useRef<HTMLSpanElement>(null);
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
   const [natural, setNatural] = useState({ width: 0, height: 0 });
   const [failed, setFailed] = useState(false);
+  useEffect(() => { if (failed || !src) onStatus?.("error"); else if (natural.width) onStatus?.("loaded"); }, [failed, natural.width, src, onStatus]);
   const imageRef = useCallback((image: HTMLImageElement | null) => {
     // Local or cached files can finish before React hydrates its load/error handlers.
     if (!image?.complete) return;

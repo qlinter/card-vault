@@ -3,8 +3,8 @@
   align-items: center;
   min-height: var(--control-height);
   color: var(--teal);
-  font-size: 0.875rem;
-  font-weight: 400;
+  font-size: var(--text-base);
+  font-weight: var(--weight-regular);
   white-space: nowrap;
   text-decoration: none;
 }
@@ -68,15 +68,15 @@
 
 .card-title {
   margin: 0;
-  font-weight: 800;
-  font-size: 1rem;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-md);
   overflow-wrap: anywhere;
 }
 
 .card-sub {
   margin: 0.3rem 0;
   color: var(--theme-muted, #5b6575);
-  font-size: 0.92rem;
+  font-size: var(--text-base);
 }
 
 .tags {
@@ -88,7 +88,7 @@
 .tag {
   padding: 0.18rem 0.5rem;
   border-radius: 8px;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   background: rgba(62, 168, 168, 0.12);
   color: var(--theme-link, #145e5e);
 }
@@ -101,13 +101,14 @@ summary.btn {
   justify-content: center;
   gap: 0.35rem;
   min-height: var(--control-height);
-  border: 1px solid transparent;
-  border-radius: 10px;
-  padding: 0.55rem 0.9rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: var(--control-radius);
+  padding: .45rem .8rem;
   font-family: inherit;
-  font-size: .875rem;
-  font-weight: 700;
-  line-height: 1.2;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-control);
   text-decoration: none;
   cursor: pointer;
   transition:
@@ -118,6 +119,8 @@ summary.btn {
     transform 120ms ease,
     opacity 160ms ease;
 }
+
+.btn, .btn-secondary { background: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.06); color: var(--ink); border-color: var(--line-strong); }
 
 a.btn:hover,
 button.btn:hover:not(:disabled) {
@@ -139,24 +142,20 @@ button.btn[aria-disabled="true"] {
 }
 
 .btn-primary {
-  background: var(--accent);
+  background: #c74616;
   color: #fff;
   border-color: rgba(139, 47, 16, 0.18);
   box-shadow: 0 8px 18px rgba(217, 83, 30, 0.2);
 }
 
 .btn-primary:hover {
-  background: #c74616;
+  background: #b83e14;
   box-shadow: 0 10px 22px rgba(217, 83, 30, 0.28);
 }
 
-.btn-secondary {
-  background: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.06);
-  color: var(--ink);
-  border-color: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.12);
-}
 
-.btn-secondary:hover {
+
+.btn:not(.btn-primary):not(.btn-danger):hover {
   background: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.1);
   border-color: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.18);
 }
@@ -183,17 +182,18 @@ label.field {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  font-weight: 700;
+  font-weight: var(--weight-medium);
+  font-size: var(--text-sm);
   color: var(--theme-text, #32404f);
 }
 
 label.field span {
-  font-size: 0.9rem;
+  font-size: inherit;
 }
 
 label.field small {
   color: var(--muted-ink);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   line-height: 1.55;
 }
 
@@ -202,12 +202,21 @@ select,
 textarea {
   border: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.16);
   border-radius: 8px;
-  padding: 0.62rem 0.72rem;
+  padding: .45rem .65rem;
   font: inherit;
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-control);
   background: var(--theme-surface, #fff);
   color: var(--ink);
   min-width: 0;
 }
+
+:where(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=hidden]), select) { min-height: var(--control-height); }
+input:is([type=checkbox], [type=radio]) { flex-shrink: 0; width: var(--control-size-check); height: var(--control-size-check); min-height: 0; padding: 0; margin: 0; vertical-align: middle; accent-color: var(--teal); }
+input[type=file] { padding: 4px; }
+input[type=file]::file-selector-button { min-height: 30px; margin-right: .65rem; padding: .25rem .65rem; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-soft); color: var(--ink); font: inherit; cursor: pointer; }
 
 select:not([multiple]) {
   -webkit-appearance: none;
@@ -239,13 +248,13 @@ textarea {
 .note-error {
   margin: 0 0 0.75rem;
   color: var(--theme-negative, #b12026);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 
 .note-ok {
   margin: 0 0 0.75rem;
   color: var(--theme-positive, #0f7a4d);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 
 .details {
@@ -307,7 +316,7 @@ textarea {
 .card-image-edit-item figcaption {
   overflow: hidden;
   color: var(--muted-ink);
-  font-size: 0.76rem;
+  font-size: var(--text-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -320,9 +329,9 @@ textarea {
 
 .card-image-rotation-actions .btn {
   min-width: 0;
-  min-height: 34px;
+  min-height: var(--control-height-compact);
   padding: 0.35rem;
-  font-size: 1.05rem;
+  font-size: var(--text-md);
 }
 
 .info-grid {
@@ -340,12 +349,12 @@ textarea {
 
 .info-item strong {
   display: block;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--theme-text, #4a5769);
 }
 
 .info-item span {
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 
 .form-section-heading {
@@ -392,7 +401,7 @@ textarea {
   padding: 0.3rem 0.58rem;
   border-radius: 999px;
   background: var(--surface-soft);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 
 .financial-add-trigger { white-space: nowrap; }
@@ -414,8 +423,8 @@ textarea {
   color: var(--muted-ink);
   padding: 0.42rem 0.72rem;
   font: inherit;
-  font-size: 0.86rem;
-  font-weight: 800;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   cursor: pointer;
 }
 
@@ -445,8 +454,8 @@ textarea {
   border: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.07);
 }
 
-.financial-key-metrics span { color: var(--muted-ink); font-size: 0.84rem; }
-.financial-key-metrics strong { font-size: clamp(1rem, 2vw, 1.25rem); font-variant-numeric: tabular-nums; }
+.financial-key-metrics span { color: var(--muted-ink); font-size: var(--text-sm); }
+.financial-key-metrics strong { font-size: var(--text-metric); font-variant-numeric: tabular-nums; }
 .is-positive { color: var(--theme-positive, #137353); }
 .is-negative { color: var(--theme-negative, #b13a27); }
 .is-neutral { color: var(--theme-blue, #40577b); }
@@ -470,7 +479,7 @@ textarea {
   gap: 1rem;
   padding: 0.72rem 0.82rem;
   cursor: pointer;
-  font-weight: 800;
+  font-weight: var(--weight-bold);
 }
 
 .financial-breakdown > div { display: grid; gap: 0.45rem; padding: 0 0.82rem 0.82rem; }
@@ -493,13 +502,13 @@ textarea {
   min-width: 0;
 }
 
-.financial-chart-card h3 { margin: 0; font-size: 0.98rem; }
+.financial-chart-card h3 { margin: 0; font-size: var(--text-md); }
 .financial-chart-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 0.8rem; }
-.financial-chart-heading > span { color: var(--muted-ink); font-size: 0.8rem; }
-.financial-chart-heading > strong { font-size: 0.92rem; }
+.financial-chart-heading > span { color: var(--muted-ink); font-size: var(--text-sm); }
+.financial-chart-heading > strong { font-size: var(--text-base); }
 .position-trend-chart svg { display: block; width: 100%; height: auto; margin-top: 0.4rem; overflow: visible; }
 .chart-grid-line { stroke: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.1); stroke-width: 1; }
-.chart-axis-label { fill: var(--muted-ink); font-size: 11px; }
+.chart-axis-label { fill: var(--muted-ink); font-size: var(--text-xs); }
 .chart-cost-line { fill: none; stroke: var(--theme-orange, #d9531e); stroke-width: 3; stroke-linejoin: round; }
 .chart-value-line { fill: none; stroke: var(--theme-blue, #485b94); stroke-width: 2.5; stroke-dasharray: 7 5; }
 .chart-value-point { fill: var(--surface); stroke: var(--theme-blue, #485b94); stroke-width: 3; }
@@ -510,7 +519,7 @@ textarea {
 .chart-event-sale_expense { stroke: var(--theme-negative, #b13a27); }
 .chart-event-valuation { stroke: var(--theme-blue, #485b94); }
 
-.financial-chart-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem; font-size: 0.78rem; }
+.financial-chart-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem; font-size: var(--text-xs); }
 .financial-chart-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
 .financial-chart-legend i { width: 1.35rem; height: 3px; display: inline-block; border-radius: 999px; }
 .financial-chart-legend .legend-cost { background: var(--theme-orange, #d9531e); }
@@ -520,7 +529,7 @@ textarea {
 .cost-composition-bar { display: flex; height: 14px; margin: 0.8rem 0; overflow: hidden; border-radius: 999px; background: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.08); }
 .cost-composition-bar > span { min-width: 2px; }
 .cost-composition-list { display: grid; gap: 0.42rem; }
-.cost-composition-list > div { display: flex; justify-content: space-between; gap: 0.8rem; font-size: 0.82rem; }
+.cost-composition-list > div { display: flex; justify-content: space-between; gap: 0.8rem; font-size: var(--text-sm); }
 .cost-composition-list span { display: inline-flex; align-items: center; gap: 0.38rem; }
 .cost-composition-list i { width: 0.62rem; height: 0.62rem; display: inline-block; border-radius: 2px; }
 .is-purchase { background: var(--theme-orange, #d9531e); }
@@ -528,7 +537,7 @@ textarea {
 .is-grading-expense { background: var(--theme-link, #3ea8a8); }
 .profit-chart-card { display: grid; gap: 0.7rem; }
 .profit-bar-list { display: grid; gap: 0.55rem; }
-.profit-bar-row { display: grid; grid-template-columns: 5.2rem minmax(70px, 1fr) auto; align-items: center; gap: 0.5rem; font-size: 0.78rem; }
+.profit-bar-row { display: grid; grid-template-columns: 5.2rem minmax(70px, 1fr) auto; align-items: center; gap: 0.5rem; font-size: var(--text-xs); }
 .profit-bar-track { position: relative; height: 8px; border-radius: 999px; background: linear-gradient(90deg, transparent 49.5%, rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.2) 49.5% 50.5%, transparent 50.5%); }
 .profit-bar-track i { position: absolute; top: 1px; height: 6px; border-radius: 999px; }
 .profit-bar-track i.is-positive { left: 50%; background: var(--theme-positive, #198754); }
@@ -555,7 +564,7 @@ textarea {
   border-bottom: 1px solid rgba(217, 83, 30, 0.12);
 }
 
-.financial-add-record-heading strong { font-size: 1rem; }
+.financial-add-record-heading strong { font-size: var(--text-md); }
 .financial-record-composer { padding: 0.85rem; }
 .financial-record-tabs { margin-bottom: 0.15rem; }
 
@@ -566,7 +575,7 @@ textarea {
   padding: 0.85rem;
 }
 
-.financial-form .field-help { color: var(--muted-ink); font-size: 0.78rem; line-height: 1.4; }
+.financial-form .field-help { color: var(--muted-ink); font-size: var(--text-xs); line-height: 1.4; }
 
 .financial-form textarea {
   min-height: 70px;
@@ -591,7 +600,7 @@ textarea {
   padding: 0.82rem 0;
   border-top: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.1);
 }
-.financial-timeline-item > time { color: var(--muted-ink); font-size: 0.84rem; white-space: nowrap; }
+.financial-timeline-item > time { color: var(--muted-ink); font-size: var(--text-sm); white-space: nowrap; }
 .financial-record-description { display: grid; gap: 0.24rem; min-width: 0; }
 .financial-record-description > div { display: flex; align-items: center; gap: 0.5rem; }
 .financial-record-description small { color: var(--muted-ink); overflow-wrap: anywhere; }
@@ -603,7 +612,7 @@ textarea {
   text-align: center;
   padding: 0.32rem 0.5rem;
   border-radius: 999px;
-  font-weight: 800;
+  font-weight: var(--weight-bold);
   background: rgba(62, 168, 168, 0.14);
 }
 
@@ -611,7 +620,7 @@ textarea {
 .financial-kind-valuation { background: rgba(72, 91, 148, 0.13); }
 .financial-edit-trigger { justify-self: stretch; padding-inline: 0.6rem; }
 .financial-correction-body { grid-column: 1 / -1; min-width: 0; margin-top: 0.2rem; border-radius: 12px; background: var(--surface-soft); }
-.financial-record-context { display: flex; flex-wrap: wrap; gap: 0.65rem 1.2rem; padding: 0.85rem 0.85rem 0; color: var(--muted-ink); font-size: 0.82rem; }
+.financial-record-context { display: flex; flex-wrap: wrap; gap: 0.65rem 1.2rem; padding: 0.85rem 0.85rem 0; color: var(--muted-ink); font-size: var(--text-sm); }
 .financial-delete-form { display: flex; align-items: center; gap: 0.65rem; padding: 0 0.85rem 0.85rem; }
 .financial-delete-form small { color: var(--muted-ink); }
 .financial-empty { padding: 1rem 0; text-align: center; }
@@ -629,7 +638,7 @@ textarea {
 .valuation-coverage {
   display: block;
   margin-top: 0.55rem;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   letter-spacing: 0.01em;
 }
 

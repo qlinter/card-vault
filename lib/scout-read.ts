@@ -4,12 +4,10 @@ import { prisma } from "./prisma";
 import { matchesSearch, searchTerms } from "./search-terms";
 import { scoutIdentity } from "./scout-identity";
 import { serializeScoutData } from "./scout-serialization";
-import { ensureScoutReady } from "./scout-ready";
 
 const pageSize = 20;
 const fold = (column: Prisma.Sql) => Prisma.sql`replace(replace(lower(${column}),'K','k'),'İ','i'||char(775))`;
 export async function loadScout(options: { search?: string; page?: number } = {}) {
-  ensureScoutReady();
   const search = options.search ?? "";
   const casedUnicode = [...search].some(char => char.codePointAt(0)! > 127 && char.toUpperCase() !== char.toLowerCase());
   return prisma.$transaction(async tx => {

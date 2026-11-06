@@ -3,7 +3,7 @@
 import { AiProxySettings } from "./ai-proxy-settings";
 
 import { UiText, UiElement } from "@/components/ui-text";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useAiSettingsRequests } from "./use-ai-settings-requests";
 import { useLanguage } from "./language-provider";
 import { DisclosureIcon } from "@/components/disclosure-icon";
@@ -66,6 +66,12 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const providerSelect = useRef<HTMLSelectElement>(null);
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  const cancelDeleteButton = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => { if (pendingDeleteId) cancelDeleteButton.current?.focus(); }, [pendingDeleteId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,6 +133,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   }
 
   function handleProviderChange(value: string) {
+    setPendingDeleteId(null);
     setMessage(null);
     if (value.startsWith("custom:")) {
       const activeCustomId = value.slice("custom:".length);
@@ -137,6 +144,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   }
 
   function addCustomProvider() {
+    setPendingDeleteId(null);
     setSettings((current) => {
       const id = createCustomId(new Set(current.customProviders.map((item) => item.id)));
       const next: PublicCustomProviderSettings = {
@@ -160,8 +168,10 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   }
 
   function deleteCurrentCustomProvider() {
-    if (!currentCustom || !window.confirm(t("确认删除自定义配置“{0}”吗？保存设置后删除生效。").replace("{0}", currentCustom.name))) return;
+    if (settings.provider !== "custom" || !currentCustom || pendingDeleteId !== currentCustom.id) return;
     const deletedId = currentCustom.id;
+    setPendingDeleteId(null);
+    providerSelect.current?.focus();
     setSettings((current) => {
       const customProviders = current.customProviders.filter((item) => item.id !== deletedId);
       const nextActive = customProviders[0];
@@ -185,6 +195,19 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
     setMessage("自定义配置已从当前草稿移除，请点击“保存设置”确认删除。");
   }
 
+  function cancelDelete() {
+    setPendingDeleteId(null);
+    deleteButton.current?.focus();
+  }
+
+  function handleDeleteKey(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      cancelDelete();
+    }
+  }
+
   function updateCurrentCustom(patch: Partial<PublicCustomProviderSettings>) {
     if (!currentCustom) return;
     setSettings((current) => ({
@@ -199,6 +222,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
       return;
     }
     setIsSaving(true);
+    setPendingDeleteId(null);
     setMessage(null);
     try {
       const saved = await window.cardVaultDesktop.saveAiSettings(buildDraftPayload());
@@ -247,23 +271,31 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   return (
     <section className="panel settings-section ai-settings-panel">
       <UiElement as="button" uiAttributes={["aria-label"]} type="button" className="ai-settings-toggle"
-        onClick={() => setIsOpen(value => !value)} aria-expanded={isOpen} aria-label={isOpen ? "收起 AI" : "展开 AI"}>
+        onClick={() => { setPendingDeleteId(null); setIsOpen(value => !value); }} aria-expanded={isOpen} aria-label={isOpen ? "收起 AI" : "展开 AI"}>
         <span><strong>AI</strong></span><DisclosureIcon expanded={isOpen} />
       </UiElement>
 
       {isOpen ? <fieldset className="ai-settings-fields" disabled={isSaving}>
         <div className="ai-provider-picker">
           <label className="field"><span><UiText text="当前服务" /></span>
-            <select title={settings.provider === "custom" ? currentCustom?.name : providerName(settings.provider)} value={selectedProviderValue} onChange={event => handleProviderChange(event.target.value)} disabled={!isDesktop}>
+            <select ref={providerSelect} title={settings.provider === "custom" ? currentCustom?.name : providerName(settings.provider)} value={selectedProviderValue} onChange={event => handleProviderChange(event.target.value)} disabled={!isDesktop}>
               {Object.entries(builtInAiProviders).map(([id, provider]) => <option key={id} value={id}>{provider.name}</option>)}
               {settings.customProviders.map(item => <option key={item.id} value={"custom:" + item.id}>{item.name || <UiText text="未命名配置" />}</option>)}
             </select>
           </label>
           <div className="ai-provider-actions">
             <button type="button" className="btn btn-secondary" onClick={addCustomProvider} disabled={!isDesktop}><UiText text="新增自定义 AI" /></button>
-            {settings.provider === "custom" && currentCustom ? <button type="button" className="btn btn-secondary" onClick={deleteCurrentCustomProvider} disabled={!isDesktop}><UiText text="删除当前配置" /></button> : null}
+            {settings.provider === "custom" && currentCustom ? <button ref={deleteButton} type="button" className="btn btn-secondary" onClick={() => setPendingDeleteId(currentCustom.id)} disabled={!isDesktop}><UiText text="删除当前配置" /></button> : null}
           </div>
         </div>
+
+        {settings.provider === "custom" && currentCustom && pendingDeleteId === currentCustom.id ? <div className="ai-delete-confirmation" role="group" aria-label={t("删除自定义配置确认")}>
+          <p>{t("确认删除自定义配置“{0}”吗？保存设置后删除生效。").replace("{0}", currentCustom.name)}</p>
+          <div className="ai-provider-actions">
+            <button type="button" className="btn btn-secondary" onClick={deleteCurrentCustomProvider} onKeyDown={handleDeleteKey}><UiText text="确认删除" /></button>
+            <button ref={cancelDeleteButton} type="button" className="btn btn-secondary" onClick={cancelDelete} onKeyDown={handleDeleteKey}><UiText text="取消" /></button>
+          </div>
+        </div> : null}
 
         <div className="form-grid ai-common-fields">
           {settings.provider === "custom" && currentCustom ? <label className="field full"><span><UiText text="显示名称 *" /></span><UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.name} onChange={event => updateCurrentCustom({ name: event.target.value })} placeholder="例如 OpenRouter、DeepSeek 或本地模型" disabled={!isDesktop} /></label> : null}

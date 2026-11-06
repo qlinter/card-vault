@@ -8,75 +8,111 @@ const docsDir = path.join(rootDir, "docs");
 const markdownFiles = [
   path.join(rootDir, "README.md"),
   path.join(rootDir, "README.en.md"),
-  ...fs.readdirSync(docsDir)
-    .filter((name) => name.endsWith(".md"))
-    .map((name) => path.join(docsDir, name))
+  ...fs.readdirSync(docsDir, { recursive: true })
+    .filter(name => name.endsWith(".md"))
+    .map(name => path.join(docsDir, name))
 ];
-const removedSpecNames = ["share-editor-2.0.md", "share-gallery-3.0.md"];
 
-for (const filePath of markdownFiles) {
-  const source = fs.readFileSync(filePath, "utf8");
-  for (const removedName of removedSpecNames) {
-    assert.equal(
-      source.includes(removedName),
-      false,
-      `${path.relative(rootDir, filePath)} still references removed specification ${removedName}`
-    );
+// Examples inside fenced code blocks are not rendered links or headings.
+function withoutFences(source) {
+  let fence = null;
+  return source.split(/\r?\n/).map(line => {
+    const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+    if (fence) {
+      if (marker?.[0] === fence[0] && marker.length >= fence.length && !line.trim().slice(marker.length)) fence = null;
+      return "";
+    }
+    if (marker) { fence = marker; return ""; }
+    return line;
+  }).join("\n");
+}
+
+function anchorsIn(source) {
+  const anchors = new Set([...source.matchAll(/<a\s+id=["']([^"']+)["']/g)].map(match => match[1]));
+  const headings = new Set();
+  for (const match of source.matchAll(/^#{1,6}\s+(.+?)(?:\s+#+)?\s*$/gm)) {
+    const base = match[1].replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/<[^>]+>/g, "")
+      .toLowerCase().replace(/[^\p{L}\p{N}\p{M}\s_-]/gu, "").replace(/\s/g, "-");
+    let anchor = base;
+    let suffix = 0;
+    while (headings.has(anchor)) anchor = `${base}-${++suffix}`;
+    headings.add(anchor);
+    anchors.add(anchor);
   }
+  return anchors;
+}
 
-  for (const match of source.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
-    const rawTarget = match[1].trim().replace(/^<|>$/g, "");
-    if (!rawTarget || rawTarget.startsWith("#") || /^[a-z][a-z\d+.-]*:/i.test(rawTarget)) continue;
-    const targetWithoutAnchor = rawTarget.split("#", 1)[0];
-    const resolved = path.resolve(path.dirname(filePath), decodeURI(targetWithoutAnchor));
-    assert.ok(
-      fs.existsSync(resolved),
-      `${path.relative(rootDir, filePath)} contains a broken local link: ${rawTarget}`
-    );
+const documents = new Map(markdownFiles.map(file => {
+  const source = withoutFences(fs.readFileSync(file, "utf8"));
+  return [file, { source, anchors: anchorsIn(source), targets: new Set() }];
+}));
+let localLinks = 0;
+for (const [file, document] of documents) {
+  for (const match of document.source.matchAll(/\[[^\]]*\]\((<[^>]+>|[^)]+)\)/g)) {
+    const rawTarget = match[1].trim().replace(/^<([^>]+)>$/, "$1");
+    if (!rawTarget || /^[a-z][a-z\d+.-]*:/i.test(rawTarget) || rawTarget.startsWith("//")) continue;
+    const hash = rawTarget.indexOf("#");
+    const target = hash < 0 ? rawTarget : rawTarget.slice(0, hash);
+    const fragment = hash < 0 ? "" : decodeURIComponent(rawTarget.slice(hash + 1));
+    const resolved = target ? path.resolve(path.dirname(file), decodeURIComponent(target)) : file;
+    const description = `${path.relative(rootDir, file)}: ${rawTarget}`;
+    assert.ok(fs.existsSync(resolved), `Broken local link in ${description}`);
+    document.targets.add(resolved);
+    localLinks++;
+    if (fragment && resolved.endsWith(".md")) {
+      const anchors = documents.get(resolved)?.anchors ?? anchorsIn(withoutFences(fs.readFileSync(resolved, "utf8")));
+      assert.ok(anchors.has(fragment), `Missing Markdown anchor in ${description}`);
+    }
   }
 }
 
-const docsIndex = fs.readFileSync(path.join(docsDir, "README.md"), "utf8");
-for (const requiredSpec of [
-  `release-v${currentVersion}.md`,
-  "version-history-sources.md",
-  "data-center-guide.md",
-  "release-v1.3.0.md",
-  "share-gallery.md",
-  "financial-history-model.md",
-  "data-backup-guide.md",
-  "cloudflare-drop-publishing.md",
-  "windows-code-signing.md",
-  "product-roadmap.md",
-  "product-roadmap.en.md"
-]) {
-  assert.ok(docsIndex.includes(requiredSpec), `docs/README.md does not index ${requiredSpec}`);
+const currentRelease = path.join(docsDir, `release-v${currentVersion}.md`);
+const historyIndex = path.join(docsDir, "history", "README.md");
+const releaseArchive = path.join(docsDir, "history", "releases.md");
+for (const file of [currentRelease, historyIndex, releaseArchive, path.join(docsDir, "history", "development.md")]) {
+  assert.ok(documents.has(file), `Missing documentation: ${path.relative(rootDir, file)}`);
 }
 
-const roadmap = fs.readFileSync(path.join(docsDir, "product-roadmap.md"), "utf8");
-for (const filePath of markdownFiles.filter(file => path.dirname(file) === docsDir && path.basename(file) !== "README.md")) {
-  assert.ok(docsIndex.includes(`./${path.basename(filePath)}`), `docs/README.md does not index ${path.basename(filePath)}`);
+// Each directory owns its index; nested indexes must themselves be discoverable.
+for (const file of markdownFiles.filter(file => file.startsWith(docsDir + path.sep))) {
+  if (file === path.join(docsDir, "README.md")) continue;
+  const index = path.join(path.basename(file) === "README.md" ? path.dirname(path.dirname(file)) : path.dirname(file), "README.md");
+  assert.ok(documents.get(index)?.targets.has(file), `${path.relative(rootDir, index)} does not index ${path.relative(rootDir, file)}`);
 }
-const historyVersions = file => [...fs.readFileSync(path.join(rootDir, file), "utf8").matchAll(/^\| `(\d+\.\d+\.\d+)` \|/gm)].map(match => match[1]);
-const history = historyVersions("README.md");
-assert.deepEqual(history, historyVersions("README.en.md"), "README histories must contain the same versions in the same order");
-assert.equal(new Set(history).size, history.length, "README history contains duplicate versions");
-for (const [file, pattern] of [["README.md", /全部 (\d+) 个历史版本/], ["README.en.md", /All (\d+) earlier versions/]]) {
-  const declaredCount = fs.readFileSync(path.join(rootDir, file), "utf8").match(pattern)?.[1];
-  assert.equal(Number(declaredCount), history.length, `${file} historical version count is stale`);
+for (const name of ["README.md", "README.en.md"]) {
+  const document = documents.get(path.join(rootDir, name));
+  for (const target of [currentRelease, historyIndex, path.join(docsDir, "README.md")]) {
+    assert.ok(document.targets.has(target), `${name} must link to ${path.relative(rootDir, target)}`);
+  }
+  assert.doesNotMatch(document.source, /^\| `\d+\.\d+\.\d+` \|/m, `${name} must link to the shared history instead of duplicating it`);
 }
-for (const file of ["share-gallery.md", "cloudflare-drop-publishing.md", "data-backup-guide.md", "financial-history-model.md", "app-themes.md"]) {
-  const version = fs.readFileSync(path.join(docsDir, file), "utf8").match(/(?:源码版本|产品版本)：`([^`]+)`/)?.[1];
-  assert.equal(version, currentVersion, `${file} applicable product version is stale`);
-}
-const recoveredVersions = [...Array.from({ length: 20 }, (_, index) => `1.0.${index}`), "1.1.0", "1.1.1", "1.2.0", "1.2.1", "1.3.0"];
-for (const version of recoveredVersions) assert.ok(history.includes(version), `README history lost version ${version}`);
-for (const file of fs.readdirSync(docsDir)) {
-  const version = /^release-v(\d+\.\d+\.\d+)\.md$/.exec(file)?.[1];
-  if (version && version !== currentVersion) assert.ok(history.includes(version), `README history omits release ${version}`);
-}
-const roadmapEn = fs.readFileSync(path.join(docsDir, "product-roadmap.en.md"), "utf8");
-assert.ok(roadmap.includes("已完成：分享展馆"), "Chinese roadmap does not mark Share Gallery complete");
-assert.ok(roadmapEn.includes("Completed — Share Gallery"), "English roadmap does not mark Share Gallery complete");
 
-process.stdout.write(`Documentation check passed: ${markdownFiles.length} Markdown files, local links and required documentation entries are valid.\n`);
+const historySource = documents.get(historyIndex).source;
+const history = [...historySource.matchAll(/^\| `(\d+\.\d+\.\d+)` \| (.+?) \| (.+?) \| (.+?) \|$/gm)].map(match => match[1]);
+assert.equal(new Set(history).size, history.length, "History contains duplicate versions");
+const recoveredVersions = [
+  ...Array.from({ length: 20 }, (_, index) => `1.0.${index}`),
+  "1.1.0", "1.1.1", "1.2.0", "1.2.1",
+  ...Array.from({ length: 7 }, (_, index) => `1.3.${index}`),
+  "1.4.0", "1.4.1", "1.4.2", "1.5.0", "1.5.1"
+];
+for (const version of recoveredVersions) assert.ok(history.includes(version), `History lost bilingual entry ${version}`);
+function compareVersions(left, right) {
+  const parts = right.split(".").map(Number);
+  return left.split(".").map(Number).reduce((result, part, index) => result || part - parts[index], 0);
+}
+assert.deepEqual(history, [...history].sort((left, right) => compareVersions(right, left)), "History must be newest first");
+assert.ok(history.every(version => compareVersions(version, currentVersion) < 0), "Current or future versions belong in their own release notes");
+const archivedVersions = [...documents.get(releaseArchive).source.matchAll(/<a id="release-v(\d+)-(\d+)-(\d+)">/g)]
+  .map(match => match.slice(1).join("."));
+assert.equal(new Set(archivedVersions).size, archivedVersions.length, "Duplicate release archive entries");
+for (const version of archivedVersions) assert.ok(history.includes(version), `History omits archived release ${version}`);
+for (const version of history.filter(version => compareVersions(version, "1.0.14") >= 0)) {
+  assert.ok(archivedVersions.includes(version), `Missing detailed archive for ${version}`);
+}
+for (const file of markdownFiles.filter(file => path.dirname(file) === docsDir)) {
+  const version = /^release-v(\d+\.\d+\.\d+)\.md$/.exec(path.basename(file))?.[1];
+  if (version) assert.equal(version, currentVersion, `Move completed release ${version} into the history archive`);
+}
+
+process.stdout.write(`Documentation check passed: ${markdownFiles.length} Markdown files, ${localLinks} local links, anchors and indexes; ${history.length} bilingual historical versions.\n`);

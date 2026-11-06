@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-test("retired scout drafts and navigation are removed while independent entry works in both languages", async ({ page, context }) => {
+test("unused scout storage is ignored without deletion and independent entry works in both languages", async ({ page, context }) => {
   await page.addInitScript(() => {
     localStorage.setItem("card-vault:scout:2:old:drafts", '{"old":true}');
     sessionStorage.setItem("card-vault:scout-scroll:old", "malformed");
@@ -7,7 +7,8 @@ test("retired scout drafts and navigation are removed while independent entry wo
   await page.goto("/collection?tab=wishlist&watch=removed&wish=removed", { waitUntil: "networkidle" });
   await expect(page.locator(".scout-query")).toBeVisible();
   await expect(page.getByRole("button", { name: "新增心愿", exact: true })).toBeEnabled();
-  expect(await page.evaluate(() => [...Object.keys(localStorage), ...Object.keys(sessionStorage)].filter(key => key.startsWith("card-vault:scout:2:") || key.startsWith("card-vault:scout-scroll:")))).toEqual([]);
+  expect(await page.evaluate(() => localStorage.getItem("card-vault:scout:2:old:drafts"))).toBe('{"old":true}');
+  expect(await page.evaluate(() => sessionStorage.getItem("card-vault:scout-scroll:old"))).toBe("malformed");
   await context.addCookies([{ name: "card_vault_ui_locale", value: "en", url: "http://127.0.0.1:3360" }]);
   await page.reload({ waitUntil: "networkidle" });
   await page.getByRole("button", { name: "New wish", exact: true }).click();

@@ -1,6 +1,6 @@
 {
   "name": "card-vault",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "private": true,
   "packageManager": "npm@11.9.0",
   "engines": {
@@ -24,7 +24,7 @@
     "test:security": "node scripts/test-local-session-flow.js",
     "test:ui": "playwright test",
     "test:ui:update": "playwright test --update-snapshots",
-    "check:release": "npm run prisma:generate && npm run check:encoding && npm run check:docs && npm run check:metadata && npm run check:architecture && npm run lint && npm run typecheck && npm run test:coverage && next build --webpack && npm run test:security && npm run test:card && npm run test:share && npm run test:showcase && npm run test:management && npm run test:scout && npm run test:export && npm run test:desktop && npm run test:proxy:pac && npm run test:ui",
+    "check:release": "npm run prisma:generate && npm run check:encoding && npm run check:docs && npm run check:metadata && npm run check:architecture && npm run lint && npm run typecheck && npm run test:coverage && next build --webpack && npm run test:security && npm run test:card && npm run test:share && npm run test:showcase && npm run test:management && npm run test:scout && npm run test:export && npm run test:desktop && npm run test:desktop:ai && npm run test:desktop:collection && npm run test:proxy:pac && npm run test:ui",
     "audit:prod": "npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org",
     "typecheck": "tsc --noEmit",
     "clean:cache": "node scripts/clean-cache.js",
@@ -42,6 +42,7 @@
     "prisma:generate": "prisma generate",
     "test:management": "node scripts/test-management-flow.js",
     "test:desktop": "node scripts/test-desktop-startup.js",
+    "test:desktop:ai": "node scripts/test-ai-settings-desktop.js --development",
     "test:proxy:pac": "node scripts/test-proxy-pac.js",
     "test:desktop:launcher": "node scripts/test-desktop-launcher.js",
     "test:desktop:runtime": "node scripts/test-packaged-desktop.js --development",
@@ -55,7 +56,8 @@
     "benchmark:portfolio-history": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/benchmark-portfolio-history.mts",
     "benchmark:portfolio-workload": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/benchmark-portfolio-workload.mts",
     "test:scout": "node scripts/test-scout-flow.js",
-    "test:showcase": "node scripts/test-showcase-flow.js"
+    "test:showcase": "node scripts/test-showcase-flow.js",
+    "test:desktop:collection": "node scripts/test-collection-desktop.js --development"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

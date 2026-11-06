@@ -5,6 +5,7 @@ import { UiText, UiElement } from "@/components/ui-text";
 import { ShowcaseGroupFilter } from "@/components/showcase-group-filter";
 import { ShowcaseImage } from "@/components/showcase-image";
 import { ShowcaseIcon } from "@/components/showcase-icon";
+import { StartImmersive } from "@/components/immersive-viewer";
 import { prisma } from "@/lib/prisma";
 import { buildShowcaseCardHref, buildShowcaseHref, compareShowcaseGroupNames, normalizeGroupName, parseShowcasePage, SHOWCASE_PAGE_SIZE, toShowcaseWhere } from "@/lib/showcase";
 import { showcaseFacts } from "@/lib/showcase-presentation";
@@ -46,10 +47,11 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
   return <CollectionViewProvider scope="showcase"><div className="page showcase-page showcase-backdrop">
     <h1 className="sr-only"><UiText text="展示" /></h1>
     <header className="showcase-heading">
-      <Link className="scope-navigation-link showcase-shares" href="/shares"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="6" width="14" height="16" rx="2" /><path d="M7 6V2h14v16h-4" /></svg><UiText text="分享集" /></Link>
+      <StartImmersive source={query} disabled={!totalCount} appearance="showcase" />
+      <Link className="showcase-action showcase-shares" href="/shares"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="6" width="14" height="16" rx="2" /><path d="M7 6V2h14v16h-4" /></svg><UiText text="分享集" /></Link>
       <form className="showcase-search" method="get" role="search">
         <ShowcaseIcon name="search" />
-        <UiElement as="input" uiAttributes={["placeholder", "aria-label"]} name="q" defaultValue={query.q ?? ""} placeholder="搜索收藏" aria-label="搜索卡片主体、Team、系列、年份、标签..." className="showcase-search-input" />
+        <UiElement as="input" uiAttributes={["aria-label"]} name="q" defaultValue={query.q ?? ""} aria-label="搜索卡片主体、Team、系列、年份、标签..." className="showcase-search-input" />
         {query.group ? <input type="hidden" name="group" value={query.group} /> : null}
         <button className="showcase-tool" type="submit"><UiText text="搜索" /></button>
         {filtered ? <Link className="showcase-tool" href="/showcase"><UiText text="清空" /></Link> : null}

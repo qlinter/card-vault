@@ -61,7 +61,7 @@ html[data-app-theme]:not([data-app-theme="classic"]) .share-list-actions .btn-da
 .theme-option { position: relative; display: grid; align-content: start; min-width: 0; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); cursor: pointer; }
 .theme-option:has(input:checked) { border-color: var(--teal); box-shadow: 0 0 0 2px var(--teal); }
 .theme-option:has(input:focus-visible) { outline: 3px solid var(--ink); outline-offset: 4px; }
-.theme-option input { position: absolute; z-index: 1; top: .6rem; right: .6rem; width: 18px; height: 18px; margin: 0; accent-color: var(--teal); }
+.theme-option input { position: absolute; z-index: 1; top: .6rem; right: .6rem; width: var(--control-size-check); height: var(--control-size-check); margin: 0; accent-color: var(--teal); }
 .theme-preview { display: grid; place-items: center; aspect-ratio: 1.85; background-size: cover; background-position: center; }
 .theme-preview-window { display: grid; gap: 9px; width: 69%; padding: 12px; background: rgb(255 255 255 / .82); border: 1px solid rgb(255 255 255 / .45); border-radius: 6px; box-shadow: 0 7px 15px rgb(0 0 0 / .12); }
 .theme-preview-window > i { display: block; height: 5px; width: 45%; background: #d9531e; border-radius: 2px; }
@@ -76,6 +76,6 @@ html[data-app-theme]:not([data-app-theme="classic"]) .share-list-actions .btn-da
 .theme-preview-archive > i { background: #886034; }
 .theme-preview-archive b { background: #e5d7bf; }
 .theme-option-copy { display: grid; gap: .45rem; padding: .9rem; }
-.theme-option-copy strong { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; font-size: .95rem; }
+.theme-option-copy strong { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; font-size: var(--text-md); }
 @media (max-width: 900px) { .theme-options { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 480px) { .theme-options { grid-template-columns: minmax(0, 1fr); } .theme-preview { aspect-ratio: 2.2; } }

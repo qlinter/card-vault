@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useLanguage } from "@/components/language-provider";
 
-import { userGuideSections as sections } from "@/lib/user-guide-content";
+import { galleryKeyboardShortcuts, userGuideSections as sections } from "@/lib/user-guide-content";
 
 export function UserGuide({ embedded = false }: { embedded?: boolean }) {
   const { locale } = useLanguage();
@@ -13,6 +13,10 @@ export function UserGuide({ embedded = false }: { embedded?: boolean }) {
     {sections.map(section => <section className="panel user-guide-section" id={section.id} key={section.id}>
       <h2>{l(section.zh, section.en)}</h2>
       {section.items.map(([zh, en]) => <p key={en}>{l(zh, en)}</p>)}
+      {section.id === "showcase" ? <div className="user-guide-shortcuts" aria-labelledby="gallery-shortcuts-title">
+        <h3 id="gallery-shortcuts-title">{l("浏览键盘操作", "Gallery keyboard shortcuts")}</h3>
+        <dl>{galleryKeyboardShortcuts.map(shortcut => <div key={shortcut.keys}><dt><kbd>{shortcut.keys === "Space" ? l("空格", "Space") : shortcut.keys}</kbd></dt><dd>{l(shortcut.zh, shortcut.en)}</dd></div>)}</dl>
+      </div> : null}
       {section.id === "finance" ? <Link href="/settings/finance-rules">{l("详细财务计算规则", "Detailed financial calculation rules")}</Link> : null}
     </section>)}
   </div>;

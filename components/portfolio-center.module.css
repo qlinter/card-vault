@@ -1,7 +1,7 @@
 .sectionHeader > div > span {
   color: var(--teal);
-  font-size: 0.72rem;
-  font-weight: 850;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
   letter-spacing: 0.12em;
 }
 
@@ -24,27 +24,28 @@
 
 .sectionHeader h2 {
   margin: 0.2rem 0 0;
-  font-size: 1.35rem;
+  font-size: var(--text-lg);
 }
 
 .sectionHeader p {
   max-width: 56ch;
   margin: 0;
   color: var(--muted-ink);
-  font-size: 0.88rem;
+  font-size: var(--text-base);
   text-align: right;
 }
 
 .rangeSelect {
   min-width: 128px;
-  padding: 0.5rem 2.25rem 0.5rem 0.7rem;
+  padding: .45rem 2.25rem .45rem .65rem;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   color: var(--ink);
   background-color: var(--theme-surface, #fff);
   font: inherit;
-  font-size: 0.82rem;
-  font-weight: 750;
+  font-size: var(--text-base);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-control);
 }
 
 .trendControls { display:flex; align-items:center; flex-wrap:wrap; gap:.65rem; margin-left:auto; }
@@ -64,7 +65,7 @@
   border-radius: 7px;
   color: var(--muted-ink);
   background: transparent;
-  font-weight: 800;
+  font-weight: var(--weight-bold);
   cursor: pointer;
 }
 
@@ -99,7 +100,7 @@
 
 .chartCard h3 {
   margin: 0 0 0.65rem;
-  font-size: 0.9rem;
+  font-size: var(--text-md);
 }
 
 .chartWrap { min-width: 0; }
@@ -120,7 +121,7 @@
   gap: 0.75rem;
   margin-bottom: 0.25rem;
   color: var(--muted-ink);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
 }
 
 .legend span {
@@ -156,7 +157,7 @@
 
 .chart text {
   fill: var(--muted-ink);
-  font-size: 11px;
+  font-size: var(--text-xs);
 }
 
 .chartTooltip {
@@ -170,7 +171,7 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--theme-surface, #fff);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
 }
 
 .chartTooltip span {
@@ -222,7 +223,7 @@
 .legend button { display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .35rem; border:0; border-radius:4px; background:transparent; color:inherit; font:inherit; cursor:pointer; }
 .neutral { color:var(--muted-ink); }
 .legend button[aria-pressed=false] { opacity:.4; text-decoration:line-through; }
-.chartData { margin-top:.6rem; overflow:auto; font-size:.76rem; }
+.chartData { margin-top:.6rem; overflow:auto; font-size:var(--text-xs); }
 .chartData summary { cursor:pointer; }
 .chartData table { width:100%; border-collapse:collapse; margin-top:.5rem; }
 .chartData td,.chartData th { padding:.4rem; text-align:right; font-variant-numeric:tabular-nums; border-bottom:1px solid var(--line); }
@@ -252,8 +253,8 @@
 
 .structureComparison > header span {
   color: var(--teal);
-  font-size: 0.68rem;
-  font-weight: 850;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
   letter-spacing: 0.12em;
 }
 
@@ -275,7 +276,7 @@
 
 .structureComparisonGrid h4 {
   margin-bottom: 0.45rem;
-  font-size: 0.85rem;
+  font-size: var(--text-base);
 }
 
 .structureComparisonGrid article > div {
@@ -284,7 +285,7 @@
   gap: 0.12rem 0.45rem;
   padding: 0.4rem 0;
   border-top: 1px solid var(--line);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
 }
 
 .structureComparisonGrid article > div > span {

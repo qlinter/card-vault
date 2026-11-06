@@ -17,12 +17,6 @@ export function useScoutState<T>(identity: string, name: string, initial: T, ses
   const setters = useRef(new Map<keyof T, Dispatch<SetStateAction<T[keyof T]>>>());
   useEffect(() => {
     let restored = initialRef.current, readable = true;
-    for (const name of ["localStorage", "sessionStorage"] as const) {
-      try {
-        const storage = window[name];
-        for (const oldKey of Object.keys(storage)) if (oldKey.startsWith("card-vault:scout:2:") || oldKey.startsWith("card-vault:scout-scroll:")) storage.removeItem(oldKey);
-      } catch { /* Each storage surface can be unavailable independently. */ }
-    }
     try {
       const raw = (session ? window.sessionStorage : window.localStorage).getItem(key);
       if (raw && raw.length < 2000000) { const parsed: unknown = JSON.parse(raw); if (validRef.current(parsed)) restored = parsed as T; }

@@ -169,6 +169,8 @@ async function main() {
     smokeTestPackagedRuntime(executablePath);
     verifyPackagedHealthEndpoint(executablePath);
     run("node", ["scripts/test-packaged-desktop.js", executablePath], { timeout: 180000 });
+    run("node", ["scripts/test-ai-settings-desktop.js", executablePath], { timeout: 180000 });
+    run("node", ["scripts/test-collection-desktop.js", executablePath], { timeout: 180000 });
   }
   removeArtifact(path.join(unpackedDir, "resources", "app", "logs"));
   createPortableZip();

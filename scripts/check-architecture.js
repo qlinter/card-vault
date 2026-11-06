@@ -46,7 +46,13 @@ for (const [file, source] of sources) {
     prologue.add(statement.expression.text);
   }
   directives.set(file, prologue);
-  graph.set(file, specifiers(file, source).map(specifier => resolve(file, specifier)).filter(Boolean));
+  const imports = specifiers(file, source);
+  for (const specifier of imports.filter(value => value.startsWith(".") || value.startsWith("@/"))) {
+    const base = specifier.startsWith("@/") ? specifier.slice(2) : path.posix.join(path.posix.dirname(file), specifier);
+    assert.ok(resolve(file, specifier) || [base, `${base}.json`, `${base}.d.ts`].some(candidate => fs.existsSync(path.join(root, candidate))),
+      `Missing local dependency: ${file} -> ${specifier}`);
+  }
+  graph.set(file, imports.map(specifier => resolve(file, specifier)).filter(Boolean));
   // Transpilation removes type-only imports, including older implicit type imports.
   const emitted = ts.transpileModule(source, { fileName: file, compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.Preserve } }).outputText;
   runtimeImports.set(file, specifiers(file, emitted));

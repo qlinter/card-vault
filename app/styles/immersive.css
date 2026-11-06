@@ -1,0 +1,147 @@
+/* A self-contained exhibition palette, independent of the application's chrome. */
+.immersive-viewer {
+  --gallery-font-ui: var(--text-base); --gallery-font-meta: var(--text-xs);
+  --ink: var(--gallery-ink); --slate: var(--gallery-secondary); --muted-ink: var(--gallery-muted);
+  --surface: var(--gallery-panel); --surface-soft: var(--gallery-control-bg); --teal: var(--gallery-accent);
+  --line: var(--gallery-line); --line-strong: var(--gallery-line-strong);
+  position: fixed; inset: 0; width: 100vw; max-width: none; height: 100dvh; max-height: none;
+  margin: 0; padding: 0; border: 0; overflow: hidden; color: var(--gallery-ink);
+  background: var(--gallery-bg); color-scheme: var(--gallery-color-scheme); font-size: var(--gallery-font-ui); line-height: 1.6; font-family: var(--font-ui);
+}
+.immersive-viewer[open] { display: block; }
+.immersive-surface { position: relative; display: grid; grid-template-rows: 88px minmax(0, 1fr) 96px; width: 100%; height: 100%; overflow: hidden; background: var(--gallery-bg); }
+.immersive-surface:fullscreen { width: 100vw; height: 100dvh; max-width: none; max-height: none; }
+.immersive-surface::backdrop { background: var(--gallery-bg); }
+.immersive-viewer::backdrop { background: var(--gallery-bg); }
+.immersive-viewer:focus { outline: none; }
+.gallery-architecture { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.gallery-architecture::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 42% 36%, var(--gallery-wall-lit) 0%, var(--gallery-wall-mid) 38%, var(--gallery-wall-edge) 80%); }
+.gallery-architecture::after { content: ""; position: absolute; inset: 0 0 16%; background-image: var(--gallery-texture); }
+.gallery-spotlight { position: absolute; inset: 0; opacity: var(--gallery-light, .65); background: radial-gradient(ellipse 47% 90% at 35% -14%, var(--gallery-beam), transparent 75%), radial-gradient(ellipse 34% 48% at 41% 43%, var(--gallery-halo), transparent 100%); }
+.gallery-floor { position: absolute; inset: 84% 0 0; background: linear-gradient(180deg, var(--gallery-floor-start), var(--gallery-floor-end)); border-top: 1px solid var(--gallery-line); box-shadow: 0 -12px 70px rgb(0 0 0 / .11); }
+.gallery-floor::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 37% 0%, var(--gallery-floor-glow), transparent 60%); }
+.gallery-wall-seam { position: absolute; inset: 0 auto 16% 67%; border-left: 1px solid var(--gallery-seam); box-shadow: 1px 0 var(--gallery-sheen); }
+.immersive-top, .immersive-controls { position: relative; z-index: 2; display: grid; align-items: center; padding-inline: clamp(28px, 4vw, 72px); transition: opacity 420ms ease; }
+.immersive-top { grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr); }
+.gallery-wordmark { justify-self: start; font-size: var(--gallery-font-ui); letter-spacing: .16em; font-weight: var(--weight-medium); }
+.gallery-collection-heading { color: var(--gallery-secondary); font-size: var(--gallery-font-meta); letter-spacing: .04em; max-width: 36vw; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.gallery-window-actions { display: flex; justify-self: end; gap: 8px; }
+.immersive-viewer button { font: inherit; cursor: pointer; }
+.immersive-viewer button:disabled { opacity: .28; cursor: default; }
+.immersive-viewer button:focus-visible, .immersive-viewer summary:focus-visible, .immersive-viewer input:focus-visible, .immersive-viewer select:focus-visible { outline: 2px solid var(--gallery-accent); outline-offset: 4px; }
+.immersive-viewer .gallery-icon-button { display: inline-grid; place-items: center; width: 38px; height: 38px; min-width: 38px; padding: 0; border: 1px solid transparent; border-radius: 50%; color: var(--gallery-secondary); background: transparent; line-height: 1; }
+.immersive-viewer .gallery-icon-button:not(:disabled):hover, .immersive-viewer .gallery-icon-button[aria-expanded=true] { color: var(--gallery-ink); border-color: var(--gallery-line); background: var(--gallery-hover); }
+.gallery-icon-button .showcase-icon { width: 17px; height: 17px; }
+.immersive-composition { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(240px, .8fr); gap: clamp(40px, 5vw, 88px); align-items: center; min-width: 0; min-height: 0; width: min(1360px, 90%); margin-inline: auto; }
+.immersive-stage { position: relative; align-self: stretch; min-width: 0; min-height: 0; }
+.gallery-work-halo { position: absolute; inset: 5% 8% 6%; background: radial-gradient(ellipse, var(--gallery-halo), transparent 68%); opacity: var(--gallery-light, .65); pointer-events: none; }
+.gallery-art-viewport { position: absolute; inset: 2% 1% 5%; display: flex; align-items: flex-start; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--gallery-muted) transparent; transform: scale(var(--gallery-art-scale, .92)); }
+.immersive-art { flex: 0 0 auto; width: 100%; height: 100%; min-width: 0; min-height: 0; margin: auto; transition: opacity 240ms ease; }
+.gallery-image-reveal { width: 100%; height: 100%; }
+.immersive-viewer[data-ready=true] .gallery-image-reveal { animation: gallery-image-arrive 820ms cubic-bezier(.2, .65, .3, 1) both; }
+.immersive-viewer[data-ready=true][data-gallery-settings=false] .immersive-caption { animation: gallery-label-arrive 680ms ease both; }
+@keyframes gallery-image-arrive { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes gallery-label-arrive { from { opacity: 0; } to { opacity: 1; } }
+.immersive-art .showcase-media-image { filter: drop-shadow(var(--gallery-object-shadow)) drop-shadow(var(--gallery-contact-shadow)); }
+.immersive-viewer[data-ready=false] .immersive-art { opacity: .25; }
+.gallery-art-baseline { position: absolute; left: 22%; right: 22%; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--gallery-accent) 16%, transparent), transparent); }
+.immersive-caption { min-width: 0; width: 100%; max-width: 370px; justify-self: start; margin: 0; padding: 26px 0 20px; border-top: 1px solid var(--gallery-line); transition: opacity 240ms ease; }
+.immersive-viewer[data-ready=false] .immersive-caption { opacity: .35; }
+.immersive-viewer[data-gallery-settings=true] .immersive-caption { opacity: 0; pointer-events: none; }
+.gallery-work-year { margin: 0 0 12px; color: var(--gallery-accent); font-size: var(--gallery-font-ui); letter-spacing: .12em; font-variant-numeric: tabular-nums; }
+.immersive-caption h1 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin: 0; font-family: var(--font-exhibit); font-size: var(--text-exhibit-title); font-weight: var(--weight-regular); letter-spacing: -.015em; line-height: 1.25; overflow-wrap: anywhere; }
+.gallery-work-title { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin: 18px 0 0; color: var(--gallery-secondary); font-size: var(--gallery-font-ui); line-height: 1.8; overflow-wrap: anywhere; }
+.gallery-work-facts { display: grid; gap: 11px; margin: 28px 0 0; font-size: var(--gallery-font-ui); line-height: 1.6; }
+.gallery-work-facts > div { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 12px; align-items: baseline; }
+.gallery-work-facts dt { color: var(--gallery-muted); font-size: var(--gallery-font-meta); letter-spacing: .04em; }
+.gallery-work-facts dd { margin: 0; color: var(--gallery-secondary); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.gallery-current-status { margin: 22px 0 0; color: var(--gallery-muted); font-size: var(--gallery-font-meta); }
+.immersive-controls { grid-template-columns: minmax(140px, 1fr) auto minmax(140px, 1fr); gap: 20px; border-top: 1px solid var(--gallery-line); background: linear-gradient(180deg, transparent, var(--gallery-toolbar-shade)); }
+.gallery-position { display: flex; align-items: baseline; gap: 10px; font-size: var(--gallery-font-ui); font-variant-numeric: tabular-nums; justify-self: start; }
+.gallery-position strong { font-weight: var(--weight-regular); color: var(--gallery-ink); }
+.gallery-position i, .gallery-image-pagination i { color: var(--gallery-muted); font-style: normal; }
+.gallery-position > span { color: var(--gallery-muted); }
+.immersive-transport { display: flex; align-items: center; gap: 16px; justify-self: center; }
+.immersive-viewer .gallery-play-button { display: grid; place-items: center; width: 46px; height: 46px; padding: 0; border: 1px solid var(--gallery-accent); border-radius: 50%; background: var(--gallery-accent); color: var(--gallery-play-ink); }
+.gallery-play-button .showcase-icon { width: 19px; height: 19px; }
+.gallery-image-tools { display: flex; align-items: center; justify-self: end; gap: 2px; }
+.immersive-viewer .gallery-image-tools .gallery-icon-button { width: 32px; height: 32px; min-width: 32px; }
+.gallery-zoom-value { min-width: 47px; height: 32px; padding: 0 3px; border: 0; color: var(--gallery-secondary); background: transparent; font-size: var(--gallery-font-meta) !important; font-variant-numeric: tabular-nums; }
+.gallery-image-pagination { display: flex; align-items: center; gap: 2px; padding-right: 10px; margin-right: 8px; border-right: 1px solid var(--gallery-line); }
+.gallery-image-pagination > span { display: flex; gap: 5px; font-size: var(--gallery-font-meta); font-variant-numeric: tabular-nums; }
+.immersive-viewer.is-idle .immersive-top, .immersive-viewer.is-idle .immersive-controls { opacity: 0; pointer-events: none; }
+.immersive-viewer.is-idle { cursor: none; }
+.gallery-loading { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 24px; align-items: center; justify-content: center; color: var(--gallery-muted); font-size: var(--gallery-font-ui); letter-spacing: .1em; text-align: center; }
+.gallery-loading > span { width: 32px; border-top: 1px solid var(--gallery-accent); }
+.immersive-failure { position: absolute; z-index: 3; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(380px, 94%); padding: 24px; border: 1px solid var(--gallery-line); border-radius: 10px; background: var(--gallery-panel); box-shadow: 0 20px 60px rgb(0 0 0 / .28); }
+.immersive-failure p { margin: 0 0 20px; color: var(--gallery-ink); font-size: var(--gallery-font-ui); line-height: 1.8; }
+.immersive-failure > div { display: flex; gap: 10px; }
+.immersive-failure button, .gallery-notice button { padding: 7px 16px; border: 1px solid var(--gallery-line); border-radius: 5px; background: var(--gallery-control-bg); color: var(--gallery-ink); font-size: var(--gallery-font-ui); }
+.gallery-notice { position: absolute; z-index: 6; bottom: 108px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; max-width: 90%; padding: 16px; background: var(--gallery-panel); border: 1px solid var(--gallery-line); color: var(--gallery-ink); font-size: var(--gallery-font-ui); line-height: 1.8; }
+.immersive-settings { position: absolute; z-index: 5; inset: 0 0 0 auto; display: grid; grid-template-rows: 86px minmax(0, 1fr) auto; width: min(360px, 96vw); background: linear-gradient(145deg, color-mix(in srgb, var(--gallery-panel) 94%, var(--gallery-accent)), var(--gallery-panel) 45%); border-left: 1px solid var(--gallery-line); box-shadow: -24px 0 80px rgb(0 0 0 / .24); }
+.immersive-settings[hidden] { display: none; }
+.immersive-settings-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px 28px 24px 32px; border-bottom: 1px solid var(--gallery-line); }
+.immersive-settings-heading h2 { margin: 0; padding-left: 14px; border-left: 2px solid var(--gallery-accent); font-family: var(--font-exhibit); font-size: var(--text-xl); font-weight: var(--weight-regular); letter-spacing: .09em; line-height: 1.2; }
+.immersive-settings-body { overflow-y: auto; overscroll-behavior: contain; padding: 26px 32px 8px; scrollbar-width: thin; scrollbar-color: var(--gallery-line-strong) transparent; }
+.gallery-settings-footer { padding: 18px 32px 24px; border-top: 1px solid var(--gallery-line); }
+.gallery-settings-footer p { margin: 0 0 12px; color: var(--gallery-secondary); font-size: var(--gallery-font-meta); line-height: 1.6; }
+.gallery-settings-footer button { width: 100%; min-height: 40px; border: 1px solid var(--gallery-line-strong); border-radius: 2px; color: var(--gallery-ink); background: transparent; letter-spacing: .12em; transition: background-color 180ms ease, border-color 180ms ease; font-weight: var(--weight-medium); font-size: var(--text-base); }
+.gallery-settings-footer button:hover { background: var(--gallery-hover); }
+.gallery-settings-section { display: grid; gap: 22px; padding-bottom: 28px; }
+.gallery-settings-section + .gallery-settings-section { border-top: 1px solid var(--gallery-line); padding-top: 26px; }
+.gallery-settings-section h3 { margin: 0; color: var(--gallery-accent); font-size: var(--text-sm); font-weight: var(--weight-regular); letter-spacing: .12em; }
+.gallery-range { display: grid; gap: 15px; color: var(--gallery-muted); font-size: var(--text-sm); letter-spacing: .04em; }
+.gallery-range > span { display: flex; justify-content: space-between; gap: 20px; align-items: baseline; }
+.gallery-range output { min-width: 40px; text-align: right; color: var(--gallery-muted); font-size: var(--gallery-font-meta); font-variant-numeric: tabular-nums; }
+.immersive-viewer .gallery-range input[type=range] { appearance: none; width: 100%; height: 16px; min-height: 0; margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.gallery-range input::-webkit-slider-runnable-track { height: 1px; background: var(--gallery-line-strong); }
+.gallery-range input::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; margin-top: -4.5px; border: 2px solid var(--gallery-panel); border-radius: 50%; background: var(--gallery-accent); box-shadow: 0 0 0 1px var(--gallery-accent); }
+.gallery-range input::-moz-range-track { height: 1px; background: var(--gallery-line-strong); }
+.gallery-range input::-moz-range-thumb { width: 6px; height: 6px; border: 2px solid var(--gallery-panel); border-radius: 50%; background: var(--gallery-accent); box-shadow: 0 0 0 1px var(--gallery-accent); }
+.gallery-setting-check { display: flex; align-items: center; justify-content: space-between; gap: 20px; color: var(--gallery-muted); font-size: var(--text-sm); letter-spacing: .04em; }
+.immersive-viewer .gallery-setting-check input { appearance: none; position: relative; flex-shrink: 0; width: var(--control-size-check); height: var(--control-size-check); min-height: 0; margin: 0; padding: 0; border: 1px solid var(--gallery-line-strong); border-radius: 1px; background: transparent; cursor: pointer; }
+.gallery-setting-check input:checked::after { content: ""; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid var(--gallery-accent); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
+.gallery-setting-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; }
+.gallery-setting-field, .gallery-setting-fields label { display: grid; gap: 6px; min-width: 0; font-size: var(--text-sm); letter-spacing: .04em; color: var(--gallery-muted); }
+.immersive-viewer .gallery-setting-field select, .immersive-viewer .gallery-setting-fields :is(select, input[type=number]) { width: 100%; min-width: 0; height: var(--control-height); min-height: var(--control-height); padding: 8px 4px 8px 0; border: 0; border-bottom: 1px solid var(--gallery-line-strong); border-radius: 0; color: var(--gallery-ink); appearance: auto; background: transparent; font-family: var(--font-ui); font-size: var(--text-base); line-height: 1.5; letter-spacing: .03em; transition: border-color 180ms ease; }
+.immersive-settings select:hover, .immersive-settings input[type=number]:hover { border-bottom-color: var(--gallery-accent); }
+.immersive-settings select:focus-visible, .immersive-settings input[type=number]:focus-visible { outline: 1px solid var(--gallery-accent); outline-offset: 4px; }
+@supports (appearance: base-select) {
+  .immersive-viewer .immersive-settings select, .immersive-viewer .immersive-settings .gallery-setting-fields select, .immersive-settings select::picker(select) { appearance: base-select; }
+  .immersive-settings select { justify-content: space-between; align-items: center; }
+  .immersive-settings select::picker-icon { content: ""; width: 7px; height: 7px; margin: 0 4px 3px 12px; border: solid var(--gallery-accent); border-width: 0 1px 1px 0; transform: rotate(45deg); }
+  .immersive-settings select:open::picker-icon { transform: rotate(225deg); margin-bottom: -3px; }
+  .immersive-settings select::picker(select) { padding: 8px; border: 1px solid var(--gallery-line-strong); border-radius: 2px; background: var(--gallery-panel); color: var(--gallery-ink); box-shadow: 0 18px 48px rgb(0 0 0 / .2); font-family: var(--font-ui); font-size: var(--text-base); }
+  .immersive-settings option { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 10px 12px; border-radius: 1px; color: var(--gallery-secondary); }
+  .immersive-settings option:hover, .immersive-settings option:focus-visible, .immersive-settings option:checked { background: var(--gallery-hover); color: var(--gallery-ink); }
+  .immersive-settings option::checkmark { color: var(--gallery-accent); font-size: var(--text-xs); }
+  .gallery-scene-select option::before { content: ""; flex: 0 0 20px; height: 24px; border: 1px solid var(--gallery-line-strong); border-radius: 1px; background: linear-gradient(135deg, #464744, #17191a); }
+  .gallery-scene-select option[value=whitebox]::before { background: linear-gradient(135deg, #fffef8, #d3d9d0); }
+  .gallery-scene-select option[value=archive]::before { background: linear-gradient(135deg, #f1e5cb, #bda37b); }
+  .gallery-scene-select option[value=moonlight]::before { background: linear-gradient(135deg, #4c6b83, #112031); }
+}
+.immersive-viewer[data-gallery-layout=focus] .immersive-composition { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 12px; }
+.immersive-viewer[data-gallery-layout=focus] .immersive-caption { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 6px 30px; align-items: baseline; justify-self: center; width: min(760px, 100%); max-width: none; padding: 14px 0 20px; border-top: 1px solid var(--gallery-line); }
+.immersive-viewer[data-gallery-layout=focus] .immersive-caption h1 { grid-column: 1; font-size: var(--text-exhibit-compact); -webkit-line-clamp: 2; }
+.immersive-viewer[data-gallery-layout=focus] .gallery-work-title { grid-column: 2; grid-row: 1 / span 2; margin: 0; font-size: var(--gallery-font-ui); -webkit-line-clamp: 2; }
+.immersive-viewer[data-gallery-layout=focus] .gallery-current-status { grid-column: 1; margin-top: 4px; }
+.immersive-viewer[data-gallery-layout=focus] :is(.gallery-work-facts, .gallery-work-year) { display: none; }
+.immersive-viewer[data-gallery-captions=false] .immersive-composition { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+@media(max-height: 800px) {
+  .immersive-surface { grid-template-rows: 74px minmax(0, 1fr) 78px; }
+  .gallery-work-facts { margin-top: 22px; gap: 8px; }
+}
+@media(max-width: 800px) {
+  .immersive-top { grid-template-columns: 1fr auto; padding-inline: 20px; }
+  .gallery-collection-heading { display: none; }
+  .immersive-composition { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 8px; width: 90%; }
+  .immersive-caption { max-width: none; padding-bottom: 14px; }
+  .immersive-caption h1 { font-size: var(--text-exhibit-compact); -webkit-line-clamp: 1; }
+  .gallery-work-title { margin-top: 8px; font-size: var(--gallery-font-meta); -webkit-line-clamp: 1; }
+  .gallery-work-facts, .gallery-work-year { display: none; }
+  .gallery-position { display: none; }
+  .immersive-controls { grid-template-columns: 1fr auto; padding-inline: 16px; gap: 8px; }
+  .immersive-transport { justify-self: start; gap: 3px; }
+  .gallery-image-pagination { margin-right: 0; padding-right: 0; }
+}
+@media(prefers-reduced-motion: reduce) { .immersive-viewer *, .immersive-viewer *::before, .immersive-viewer *::after { transition: none !important; animation: none !important; } }

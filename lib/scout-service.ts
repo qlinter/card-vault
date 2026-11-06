@@ -3,11 +3,9 @@ import { prisma } from "./prisma";
 import { scoutAmount } from "./scout-domain";
 import { optionalCardText, requiredCardText } from "./card-domain";
 import { normalizeCurrency } from "./financial-history";
-import { ensureScoutReady } from "./scout-ready";
 export { loadScout, type ScoutData } from "./scout-read";
 
 export async function mutateScout(body: Record<string, unknown>) {
-  ensureScoutReady();
   if (body.action === "wish") {
     const allowed = new Set(["action", "id", "title", "playerName", "budget", "currency", "notes"]);
     if (Object.keys(body).some(key => !allowed.has(key)) || Object.values(body).some(value => value !== undefined && typeof value !== "string")) throw new Error("心愿设置无效。");

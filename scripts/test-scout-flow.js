@@ -19,10 +19,12 @@ async function main() {
     db = new DatabaseSync(dbPath); db.exec("PRAGMA foreign_keys=ON");
     db.exec("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES('held','Jordan','Gold','Basketball'); INSERT INTO CollectionPlan(id,title) VALUES('old','History'); INSERT INTO ScoutWatch(id,title,queryJson) VALUES('old-watch','Keyword','{}'); INSERT INTO ScoutWishCard(planId,cardId) VALUES('old','held'); INSERT INTO ScoutWishWatch(planId,watchId) VALUES('old','old-watch')");
     server = startTestServer(port, env, output); await waitForServer(base, output, server, "Scout");
-    assert.deepEqual((await get()).plans, []);
+    assert.equal((await get()).plans[0].id, "old");
     assert.equal(db.prepare("SELECT count(*) n FROM Card").get().n, 1);
     const tables = ["ScoutWatch", "ScoutWishCard", "ScoutWishWatch", "ScoutWishDetails"];
-    for (const table of tables) assert.equal(db.prepare("SELECT count(*) n FROM " + table).get().n, 0);
+    for (const table of tables) assert.equal(db.prepare("SELECT count(*) n FROM " + table).get().n, table === "ScoutWishDetails" ? 0 : 1);
+    await post({ action: "wish-delete", id: "old" });
+    db.exec("DELETE FROM ScoutWatch WHERE id='old-watch'");
     const wish = { action: "wish", title: "Jordan 金签", playerName: "Player K", budget: "88.25", currency: "CNY", notes: "PSA 10" };
     const id = (await post(wish)).id;
     assert.equal((await get()).plans[0].budgetMinor, "8825");
@@ -44,7 +46,7 @@ async function main() {
     await post({ action: "wish-delete", id });
     assert.equal(db.prepare("SELECT count(*) n FROM CollectionPlan WHERE id=?").get(id).n, 0);
     assert.equal((await get()).count, 22);
-    console.log("Simple Scout HTTP flow passed: authorized history reset, independent wishes, exact budgets, bounded pages, Unicode search, retired APIs and no card bindings.");
+    console.log("Simple Scout HTTP flow passed: existing data preserved, explicit deletion, independent wishes, exact budgets, bounded pages, Unicode search, retired APIs and no new card bindings.");
   } catch (error) { console.error(output.join("")); throw error; }
   finally { db?.close(); stopServer(server); await removeTempRoot(root); }
 }

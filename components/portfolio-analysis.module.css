@@ -1,6 +1,7 @@
 .trigger {
+  min-height: var(--control-height-compact);
   padding: 0.3rem 0.62rem;
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   line-height: 1.2;
 }
 
@@ -40,8 +41,8 @@
 
 .modalHeader h2 {
   margin: 0.22rem 0 0;
-  font-family: "Manrope", "Segoe UI", sans-serif;
-  font-size: clamp(1.65rem, 3vw, 2.4rem);
+  font-family: var(--font-ui);
+  font-size: var(--text-2xl);
 }
 
 .modalHeader p {
@@ -51,12 +52,14 @@
 
 .kicker {
   color: var(--teal);
-  font-size: 0.72rem;
-  font-weight: 850;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
   letter-spacing: 0.16em;
 }
 
 .close {
+  display: grid;
+  place-items: center;
   width: 38px;
   height: 38px;
   flex: 0 0 auto;
@@ -65,7 +68,7 @@
   background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.82);
   color: var(--ink);
   cursor: pointer;
-  font: 400 1.55rem/1 "Manrope", sans-serif;
+  font: inherit;
 }
 
 .snapshotStrip {
@@ -89,12 +92,12 @@
 
 .snapshotStrip small {
   color: var(--muted-ink);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 
 .snapshotStrip strong {
   color: var(--ink);
-  font-size: 1.05rem;
+  font-size: var(--text-md);
 }
 
 .financialOverview {
@@ -122,13 +125,13 @@
 }
 
 .financialOverview header strong {
-  font-size: 1rem;
+  font-size: var(--text-md);
   letter-spacing: 0.08em;
 }
 
 .financialOverview header span {
   color: var(--muted-ink);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 
 .financialOverview dl {
@@ -146,14 +149,14 @@
 
 .financialOverview dt {
   color: var(--muted-ink);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
 }
 
 .financialOverview dd {
   margin: 0;
   color: var(--ink);
-  font-size: 0.88rem;
-  font-weight: 750;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
   overflow-wrap: anywhere;
 }
 
@@ -173,7 +176,7 @@
   flex-wrap: wrap;
   margin: 0.65rem 1.4rem 0;
   color: var(--muted-ink);
-  font-size: 0.76rem;
+  font-size: var(--text-xs);
 }
 
 .dataFreshness strong {
@@ -190,7 +193,7 @@
   border-left: 3px solid var(--cyan);
   color: var(--theme-text, #405064);
   background: rgba(62, 168, 168, 0.08);
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   line-height: 1.55;
 }
 
@@ -244,7 +247,7 @@
   border-radius: 12px;
   background: rgba(214, 160, 70, 0.1);
   color: var(--muted-ink);
-  font-size: 0.88rem;
+  font-size: var(--text-base);
 }
 
 .fallbackNotice strong {
@@ -273,22 +276,22 @@
 }
 
 .score strong {
-  font-size: 2rem;
+  font-size: var(--text-metric-large);
   line-height: 1;
 }
 
 .score span {
   margin-top: 0.25rem;
   color: rgba(255, 255, 255, 0.68);
-  font-size: 0.68rem;
+  font-size: var(--text-xs);
 }
 
 .positioning {
   display: inline-block;
   margin-bottom: 0.45rem;
   color: #7ed1cf;
-  font-size: 0.78rem;
-  font-weight: 850;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
   letter-spacing: 0.08em;
 }
 
@@ -311,8 +314,8 @@
 
 .dimensionsIntro span {
   color: var(--teal);
-  font-size: 0.68rem;
-  font-weight: 850;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
   letter-spacing: 0.12em;
 }
 
@@ -320,13 +323,13 @@
 .dimension h3,
 .actions h3 {
   margin: 0;
-  font-size: 0.96rem;
+  font-size: var(--text-md);
 }
 
 .dimensionsIntro p {
   margin: 0;
   color: var(--muted-ink);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
 }
 
 .dimension {
@@ -352,7 +355,7 @@
 
 .dimensionHeader > div:first-child span {
   color: var(--muted-ink);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 
 .dimensionScore {
@@ -364,7 +367,7 @@
 
 .dimensionScore strong {
   color: var(--teal);
-  font-size: 1.45rem;
+  font-size: var(--text-2xl);
   line-height: 1;
 }
 
@@ -374,14 +377,14 @@
 .confidence,
 .actions li small {
   color: var(--muted-ink);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
 }
 
 .dimensionSummary,
 .finding p {
   margin: 0.58rem 0 0;
   color: var(--theme-text, #4a5769);
-  font-size: 0.9rem;
+  font-size: var(--text-base);
   line-height: 1.68;
 }
 
@@ -391,7 +394,7 @@
   flex-wrap: wrap;
   margin-top: 0.45rem;
   color: var(--theme-muted, #607083);
-  font-size: 0.74rem;
+  font-size: var(--text-xs);
 }
 
 .dimensionFindings {
@@ -414,7 +417,7 @@
   gap: 0.6rem;
 }
 
-.empty { margin: 0.7rem 0 0; color: var(--muted-ink); font-size: 0.84rem; }
+.empty { margin: 0.7rem 0 0; color: var(--muted-ink); font-size: var(--text-sm); }
 .confidence { display: block; margin-top: 0.5rem; }
 
 .actions ol {
@@ -442,8 +445,8 @@
 
 .actions > div span {
   color: var(--teal);
-  font-size: 0.72rem;
-  font-weight: 850;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
   letter-spacing: 0.12em;
 }
 
@@ -458,7 +461,7 @@
   flex-wrap: wrap;
   padding-top: 0.3rem;
   color: var(--muted-ink);
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
 }
 
 .reportFooter :global(.btn) {

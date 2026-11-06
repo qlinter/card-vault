@@ -26,7 +26,7 @@
 .editor :global(.share-editor-history) small {
   flex-basis: auto;
   text-align: right;
-  font-size: .75rem;
+  font-size: var(--text-xs);
   line-height: 1.5;
 }
 
@@ -60,17 +60,17 @@
 
 .editor :global(.share-editor-v2-summary) small {
   color: var(--muted);
-  font-size: .75rem;
+  font-size: var(--text-xs);
   line-height: 1.5;
 }
 
 .editor :global(.share-editor-v2-summary) strong {
   overflow-wrap: anywhere;
-  font-size: .85rem;
+  font-size: var(--text-base);
   line-height: 1.5;
 }
 
-.editor :global(.share-section-head) h2 { margin: 0; font-size: 1rem; line-height: 1.4; }
+.editor :global(.share-section-head) h2 { margin: 0; font-size: var(--text-lg); line-height: 1.4; }
 
 .editor :global(.share-editor-v2-tabs) {
   display: grid;
@@ -133,8 +133,8 @@
   border-radius: 999px;
   color: var(--muted);
   background: rgba(var(--theme-neutral-rgb, 36, 48, 67), 0.08);
-  font-size: 0.74rem;
-  font-weight: 800;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
 }
 
 .editor :global(.share-template-options) {
@@ -250,9 +250,9 @@
 
 .editor :global(.share-template-copy) em {
   color: var(--teal);
-  font-size: 0.76rem;
+  font-size: var(--text-xs);
   font-style: normal;
-  font-weight: 900;
+  font-weight: var(--weight-bold);
 }
 
 .editor :global(.share-visual-controls) {
@@ -273,7 +273,7 @@
 .editor :global(.share-composition-controls) label {
   display: grid;
   gap: 0.35rem;
-  font-size: 0.84rem;
+  font-size: var(--text-sm);
 }
 
 .editor :global(.share-visual-controls) label {
@@ -281,7 +281,7 @@
   grid-template-columns: 150px minmax(0, 1fr);
   gap: 0.75rem;
   align-items: center;
-  font-size: 0.84rem;
+  font-size: var(--text-sm);
 }
 
 .editor :global(.share-visual-controls) input[type="range"] {
@@ -316,7 +316,7 @@
 
 .editor :global(.share-section-card-assignment) summary {
   cursor: pointer;
-  font-weight: 800;
+  font-weight: var(--weight-bold);
 }
 
 .editor :global(.share-section-card-options) {

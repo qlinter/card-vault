@@ -2,12 +2,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 const { createManagementSchema, managementTables } = require("./management-schema");
-const { createScoutSchema, createWishCardSchema, createWishProgressSchema, scoutTables, scoutSchemaNeedsCleanup, cleanupScoutSchema } = require("./scout-schema");
-const { createDatabaseSnapshot } = require("../electron/storage/database-snapshot");
-const { randomUUID } = require("node:crypto");
+const { createScoutSchema, scoutTables } = require("./scout-schema");
 
-const schemaVersion = "1.3.0";
-const { normalizeValuationSourceSchema } = require("./valuation-source-schema");
+const schemaVersion = "1.5.2";
+const { valuationSources } = require("../lib/valuation-sources");
 const requiredSchema = {
   Card: [
     "id", "playerName", "cardTitle", "sport", "team", "year", "brand", "productLine", "subsetName",
@@ -69,19 +67,13 @@ function currentSchemaObjects() {
   return requiredObjects;
 }
 
-function validateCurrentSchema(db, options = {}) {
-  const names = applicationTableNames(db);
-  const preScout = options.allowPreScout && !names.some(name => name in scoutTables);
-  const preMultiCard = options.allowPreScout && !preScout && !names.includes("ScoutWishCard");
-  const expected = preScout ? Object.fromEntries(Object.entries(requiredSchema).filter(([name]) => !(name in scoutTables))) : preMultiCard ? Object.fromEntries(Object.entries(requiredSchema).filter(([name]) => name !== "ScoutWishCard")) : requiredSchema;
-  const compatible = options.allowPreScout ? { ...expected, ...(expected.ScoutWishDetails ? { ScoutWishDetails: expected.ScoutWishDetails.filter(column => column !== "targetCount") } : {}) } : expected;
-  const issues = schemaIssues(db, compatible);
+function validateCurrentSchema(db) {
+  const issues = schemaIssues(db, requiredSchema);
+  const valuationSql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='CardValuation'").get()?.sql ?? "";
+  const sources = valuationSql.match(/CHECK\s*\(\s*source\s+IN\s*\(([^)]*)\)\s*\)/i)?.[1].match(/'([^']*)'/g)?.map(value => value.slice(1, -1)) ?? [];
+  if (sources.length !== valuationSources.length || valuationSources.some(value => !sources.includes(value))) issues.push("估值来源约束不是当前格式");
   const objects = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type IN ('index', 'trigger')").all().map(row => row.name));
   for (const object of currentSchemaObjects()) {
-    if (preScout && object.name.startsWith("Scout")) continue;
-    if (preMultiCard && object.name.startsWith("ScoutWishCard_")) continue;
-    if (preMultiCard && object.name === "Scout_progress_delete") continue;
-    if (options.allowPreScout && object.name === "Scout_progress_delete" && (!names.includes("ScoutWishDetails") || !db.prepare("PRAGMA table_info(ScoutWishDetails)").all().some(row => row.name === "targetCount"))) continue;
     if (!objects.has(object.name)) issues.push(`缺少${object.type === "trigger" ? "触发器" : "索引"} ${object.name}`);
   }
   if (issues.length > 0) {
@@ -277,10 +269,10 @@ function createCurrentSchema(db) {
 }
 
 // Existing databases are validated without DDL, backfills or schema snapshots.
-function validateDatabase(dbPath, options = {}) {
+function validateDatabase(dbPath) {
   const db = new DatabaseSync(dbPath, { readOnly: true });
   try {
-    validateCurrentSchema(db, options);
+    validateCurrentSchema(db);
     if (!db.prepare("SELECT 1 FROM DataRevision WHERE id=1").get() || db.prepare("SELECT 1 FROM Card LEFT JOIN CardTracking ON CardTracking.cardId=Card.id WHERE CardTracking.cardId IS NULL LIMIT 1").get()) {
       throw new Error("数据库当前格式的索引或状态记录不完整，未自动回填。请使用完整的当前格式数据。");
     }
@@ -289,38 +281,6 @@ function validateDatabase(dbPath, options = {}) {
     if (db.prepare("PRAGMA foreign_key_check").all().length) throw new Error("数据库关联完整性检查失败。");
     return { dbPath, schemaVersion };
   } finally { db.close(); }
-}
-
-// Only the complete 1.3 collection format may receive this additive extension.
-// Partial or damaged schemas are rejected before any write takes place.
-function upgradeScoutSchema(dbPath, options = {}) {
-  validateDatabase(dbPath, { allowPreScout: true });
-  const db = new DatabaseSync(dbPath);
-  let transaction = false;
-  try {
-    db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; BEGIN IMMEDIATE");
-    transaction = true;
-    const hasScout = applicationTableNames(db).includes("ScoutWatch");
-    const hasWishCards = applicationTableNames(db).includes("ScoutWishCard");
-    const hasTargetCount = hasScout && db.prepare("PRAGMA table_info(ScoutWishDetails)").all().some(row => row.name === "targetCount");
-    if (hasScout && hasWishCards && hasTargetCount && !scoutSchemaNeedsCleanup(db)) { db.exec("COMMIT"); transaction = false; return { changed: false, backupPath: null }; }
-    validateCurrentSchema(db, { allowPreScout: true });
-    let backupPath = null;
-    if (options.backup !== false) {
-      const directory = path.join(path.dirname(dbPath), "schema-backups");
-      fs.mkdirSync(directory, { recursive: true });
-      backupPath = path.join(directory, `scout-${Date.now()}-${randomUUID()}.db`);
-      createDatabaseSnapshot(dbPath, backupPath);
-    }
-    if (hasScout) {
-      if (scoutSchemaNeedsCleanup(db)) cleanupScoutSchema(db);
-      if (!hasWishCards) createWishCardSchema(db);
-      createWishProgressSchema(db);
-    } else createScoutSchema(db);
-    validateCurrentSchema(db);
-    db.exec("COMMIT"); transaction = false;
-    return { changed: true, backupPath };
-  } finally { if (transaction) db.exec("ROLLBACK"); db.close(); }
 }
 
 function initializeDatabase(dbPath) {
@@ -338,9 +298,7 @@ function initializeDatabase(dbPath) {
       } catch (error) { db.exec("ROLLBACK;"); throw error; }
     }
   } finally { db.close(); }
-  const scoutUpdate = upgradeScoutSchema(dbPath);
-  const sourceUpdate = normalizeValuationSourceSchema(dbPath);
-  return { ...validateDatabase(dbPath), initialized, sourceUpdate, scoutUpdate };
+  return { ...validateDatabase(dbPath), initialized };
 }
 
-module.exports = { initializeDatabase, validateDatabase, schemaVersion, validateCurrentSchema, upgradeScoutSchema };
+module.exports = { initializeDatabase, validateDatabase, schemaVersion, validateCurrentSchema };

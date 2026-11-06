@@ -121,10 +121,11 @@ test('AI ignores late provider responses and confirms saves and custom deletion 
   await expect(page.getByRole('status')).toHaveText('AI settings saved.');
   await page.getByRole('button',{name:'Add Custom AI',exact:true}).click();
   await expect(page.getByLabel('Display Name *',{exact:true})).toHaveValue('Custom configuration 2');
-  let promptMessage;
-  page.once('dialog', async dialog => { promptMessage = dialog.message(); await dialog.dismiss(); });
   await page.getByRole('button',{name:'Delete Current Configuration',exact:true}).click();
-  expect(promptMessage).toContain('Delete custom configuration');
+  const confirmation = page.getByRole('group', { name: 'Confirm Custom Configuration Deletion', exact: true });
+  await expect(confirmation).toContainText('Delete custom configuration');
+  await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(confirmation).toHaveCount(0);
 });
 
 test('large share groups render in batches and preserve selection and overrides across search', async ({ page }) => {

@@ -1,21 +1,19 @@
 export const currentReleaseNotes = {
-  "date": "2026-11-02",
+  "date": "2026-11-06",
   "highlights": {
     "zh": [
-      "AI 默认服务改为 OpenAI 官方配置，预填官方 Endpoint 与 gpt-5.4-mini；MiniMax、DeepSeek 保持不变，已有 Azure 设置保留为自定义配置。",
-      "收藏与展示的单卡页面新增图片导出：单张原图、多张 ZIP；入口使用图标，展示页导出位于查看大图图标右侧。",
-      "主导航“数据”更名为“统计”，首页组合入口统一为“查看组合统计”和“查看筛选组合统计”。",
-      "同一次录入的重试、双击及并发提交只生成一份卡片、图片和初始财务记录；独立录入仍可收藏同款卡。",
-      "卡片、财务和分享编辑检查来源版本，冲突保留输入；财务删除和分享草稿同样受保护，草稿同步失败停止入库。",
-      "AI 支持按设备保存的自动、直连及手动 HTTP/HTTPS/SOCKS5 代理、认证、网段绕过与系统规则；无法解密时保留原凭据，设置操作按钮统一为灰色。"
+      "新增收藏回顾：从统计页进入，按年或月查看购入数量与录入档案，保留当前筛选范围。",
+      "回顾随期间与口径自动切换，支持临时调整代表卡片和标题并生成 PNG；不再保存历史，私密内容通过紧凑开关控制。",
+      "新增沉浸式赏卡：四种展馆风格与构图使用下拉选择，支持顺序/随机、1–3600 秒自定义间隔、首图/全部模式、缩放、旋转和展馆独立全屏；退出保留原页面。",
+      "修复删除自定义 AI 配置后输入和选项失效的问题，改用页面内确认并恢复焦点。",
+      "统一界面设计与回顾统计实现；沿用 v1.5.1 完整数据格式，移除早期结构升级、来源转换和历史自动清理。"
     ],
     "en": [
-      "OpenAI is the default built-in provider, with the official endpoint and gpt-5.4-mini prefilled. MiniMax and DeepSeek are unchanged; saved Azure settings remain as custom profiles.",
-      "Card pages export one original image or a ZIP of multiple images. Both actions use icons; Showcase export sits beside the full-image icon.",
-      "The Data navigation label becomes Statistics. Home links use View portfolio statistics and View filtered portfolio statistics.",
-      "Retries, double clicks and concurrent submissions of one entry create one card, image set and initial financial history. Separate entries still support identical cards.",
-      "Card, financial and share edits check their source version and retain input on conflict. Financial deletion and restored share drafts are protected; failed draft synchronization stops entry.",
-      "AI supports device-local Automatic, Direct and manual HTTP/HTTPS/SOCKS5 proxies, authentication, subnet bypass and system rules. Undecryptable credentials are preserved; Settings action buttons use gray."
+      "Collection Recaps open from Statistics, with yearly or monthly purchase quantities and entry records within the current filters.",
+      "Recaps update automatically with period and basis filters. Adjust representatives and titles temporarily, then generate a PNG. Saved history is removed; a compact switch controls private content.",
+      "Immersive Viewing offers dropdowns for four gallery styles and compositions, sequential/random order, custom 1–3600-second intervals, First/All image modes, zoom, rotation and gallery-only fullscreen. Exiting preserves the original page.",
+      "Custom AI profile deletion uses inline confirmation and restores focus, avoiding unresponsive inputs and selectors.",
+      "Unified interface design and recap calculations. Complete v1.5.1 data works directly; earlier schema upgrades, source conversions and automatic history resets are removed."
     ]
   }
 };

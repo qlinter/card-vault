@@ -1,10 +1,8 @@
 import { withUiDatabase as fixture } from './database-fixture.mjs';
 import { expect, test } from "@playwright/test";
-import reset from '../../scripts/reset-portfolio-history.js';
-import { uiDatabasePath } from './database-fixture.mjs';
 test.beforeEach(() => { fixture(db => {
   db.exec("PRAGMA user_version=1500301; INSERT INTO CollectionPlan(id,title,notes) VALUES('stage3b-wish','3B preserved wish','New simple wish'); INSERT INTO PortfolioSavedView(id,name,queryJson) VALUES('stage3b-view','3B old view','invalid'); INSERT INTO PortfolioSnapshotRecord(id,savedViewId,name,queryJson,snapshotJson) VALUES('stage3b-snapshot','stage3b-view','3B old snapshot','invalid','damaged')");
-}); reset.resetPortfolioHistory(uiDatabasePath); });
+}); });
 test.afterEach(() => fixture(db => db.exec("DELETE FROM CollectionPlan WHERE id='stage3b-wish'; DELETE FROM PortfolioSnapshotRecord WHERE id='stage3b-snapshot'; DELETE FROM PortfolioSavedView WHERE id='stage3b-view'")));
 
 for (const locale of ["zh","en"]) test("Data removes history and duplicate search while retaining inherited scope and AI analysis ("+locale+")", async ({ page,context }) => {
@@ -20,16 +18,19 @@ for (const locale of ["zh","en"]) test("Data removes history and duplicate searc
     await expect(page.getByRole("button",{name:/^(保存当前快照|Save Current Snapshot)$/})).toHaveCount(0);
     await expect(page.locator(".portfolio-page")).not.toContainText("3B old snapshot");
     await expect(page.locator(".portfolio-page").getByRole("alert")).toHaveCount(0);
-    const back=header.locator("a.scope-navigation-link");
+    const back=header.getByRole("link",{name:locale==="en"?"Back to results":"返回筛选结果",exact:true});
     const url=new URL(await back.getAttribute("href"),"http://localhost");
     expect(url.searchParams.get("q")).toBe("Jordan");expect(url.searchParams.get("sport")).toBe("Basketball");expect(url.searchParams.get("sort")).toBe("yearAsc");
+    const recap=new URL(await header.getByRole("link",{name:locale==="en"?"Collection Recap":"收藏回顾",exact:true}).getAttribute("href"),"http://localhost");
+    expect(recap.pathname).toBe("/portfolio/recap");expect(recap.searchParams.get("q")).toBe("Jordan");expect(recap.searchParams.get("sport")).toBe("Basketball");
   }
   fixture(db=>{
-    expect(db.prepare("SELECT count(*) n FROM PortfolioSnapshotRecord").get().n).toBe(0);
-    expect(db.prepare("SELECT count(*) n FROM PortfolioSavedView").get().n).toBe(0);
+    expect(db.prepare("SELECT count(*) n FROM PortfolioSnapshotRecord WHERE id='stage3b-snapshot'").get().n).toBe(1);
+    expect(db.prepare("SELECT count(*) n FROM PortfolioSavedView WHERE id='stage3b-view'").get().n).toBe(1);
     expect(db.prepare("SELECT title FROM CollectionPlan WHERE id='stage3b-wish'").get().title).toBe("3B preserved wish");
     expect({cards:db.prepare("SELECT count(*) n FROM Card").get().n,finance:db.prepare("SELECT count(*) n FROM CardTransaction").get().n}).toEqual(before);
   });
+  await page.getByRole("link", { name: locale === "en" ? "Overview" : "总览", exact: true }).click();
   await page.getByRole("button",{name:/^(组合分析|Portfolio Analysis)$/}).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByText("Stage 3B offline fixture",{exact:true})).toBeVisible();

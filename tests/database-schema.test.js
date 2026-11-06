@@ -107,6 +107,9 @@ for (const [label, change] of [
   ["missing tracking trigger", "DROP TRIGGER tracking_status_update;"],
   ["missing current index", "DROP INDEX CardReport_valueMinor_cardId_idx;"],
   ["missing revision state", "DELETE FROM DataRevision;"],
+  ["pre-target progress", "DROP TRIGGER Scout_progress_delete; ALTER TABLE ScoutWishDetails DROP COLUMN targetCount;"],
+  ["pre-multi-card targets", "DROP TABLE ScoutWishCard;"],
+  ["pre-scout watches", "DROP TABLE ScoutWatch;"],
   ["missing card tracking", "DELETE FROM CardTracking;"],
 ]) {
   test(`incomplete format is rejected without writes: ${label}`, t => {

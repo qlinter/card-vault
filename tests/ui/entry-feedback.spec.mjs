@@ -3,6 +3,30 @@ import { withUiDatabase as fixture } from './database-fixture.mjs';
 
 const image = 'tests/fixtures/ui-media/showcase-bg.webp';
 
+for (const [timezoneId, time] of [['Asia/Shanghai', '08:30:00'], ['America/Los_Angeles', '16:30:00']]) {
+  for (const locale of ['zh-CN', 'en']) test(`draft timestamps hydrate and use the browser timezone (${timezoneId}, ${locale})`, async ({ browser, baseURL }) => {
+    const timestamp = '2026-11-12T00:30:00.000Z';
+    fixture(db => db.prepare('INSERT INTO CardEntryDraft(id, valuesJson, createdAt, updatedAt) VALUES(?,?,?,?)')
+      .run('entry-feedback-timezone', JSON.stringify({ playerName: 'Entry Feedback Timezone' }), timestamp, timestamp));
+    const context = await browser.newContext({ timezoneId });
+    try {
+      await context.addCookies([{ name: 'card_vault_ui_locale', value: locale, url: baseURL }]);
+      const page = await context.newPage(), errors = [];
+      page.on('pageerror', error => errors.push(error.message));
+      const response = await page.goto(`${baseURL}/cards/new`, { waitUntil: 'networkidle' });
+      expect(await response.text()).toContain(`>${timestamp}</time>`);
+      await page.locator('.entry-draft-panel > summary').click();
+      const draftTime = page.locator('.entry-draft-item').filter({ hasText: 'Entry Feedback Timezone' }).locator('time');
+      await expect(draftTime).toHaveAttribute('datetime', timestamp);
+      await expect(draftTime).toContainText(time);
+      // Los Angeles is still on the previous calendar day for this instant.
+      const day = timezoneId === 'Asia/Shanghai' ? '12' : '11';
+      await expect(draftTime).toContainText(locale === 'en' ? `11/${day}/2026` : `2026/11/${day}`);
+      expect(errors).toEqual([]);
+    } finally { await context.close(); }
+  });
+}
+
 test('draft deletion recovers from network and non-JSON failures without losing the draft', async ({ page, context, baseURL }) => {
   fixture(db => db.prepare('INSERT INTO CardEntryDraft(id, valuesJson, createdAt, updatedAt) VALUES(?,?,?,?)')
     .run('entry-feedback-delete', JSON.stringify({ playerName: 'Entry Feedback Draft' }), new Date().toISOString(), new Date().toISOString()));

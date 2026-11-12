@@ -8,6 +8,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type FormEvent,
   type ReactNode
 } from "react";
@@ -52,11 +53,17 @@ const requiredEntryMessages: Record<string, string> = {
   sport: "请填写运动类型。"
 };
 
-function formatDraftTime(value: string, locale: string): string {
+const subscribeToClientTime = () => () => {};
+
+function DraftTime({ value }: { value: string }) {
+  const { locale } = useLanguage();
+  const hydrated = useSyncExternalStore(subscribeToClientTime, () => true, () => false);
   const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : date.toLocaleString(locale, { hour12: false });
+  if (Number.isNaN(date.getTime())) return null;
+  const timestamp = date.toISOString();
+  // SSR and the first client render share the serialized instant. Local time
+  // is only available after hydration, independently of the server's timezone.
+  return <time dateTime={timestamp}>{hydrated ? date.toLocaleString(locale, { hour12: false }) : timestamp}</time>;
 }
 
 export function CreateCardForm({
@@ -70,7 +77,6 @@ export function CreateCardForm({
   queueNavigation = {},
   queuePanel
 }: CreateCardFormProps) {
-  const { locale } = useLanguage();
   const deletingDraftRef = useRef(false);
   const [deletingDraft, setDeletingDraft] = useState(false);
   const initialState: CreateCardFormState = {
@@ -385,7 +391,7 @@ export function CreateCardForm({
               >
                 <a href={`/cards/new?draft=${encodeURIComponent(draft.id)}`}>
                   <strong>{draft.title}</strong>
-                  <span>{formatDraftTime(draft.updatedAt, locale)}</span>
+                  <span><DraftTime value={draft.updatedAt} /></span>
                 </a>
                 <UiElement as="button" uiMessages={{"aria-label": {text:"删除草稿 {0}",values:[draft.title],translateValues:[]}}}
                   type="button"

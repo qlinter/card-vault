@@ -731,8 +731,7 @@ form.card-entry-form { gap: 0.75rem; }
 .card-entry-form label.field { min-width: 0; gap: 0.3rem; }
 .card-entry-form label.field > span { font-size: var(--text-sm); line-height: 1.4; }
 .card-entry-form label.field > :is(input:not([type=checkbox]), select, textarea) { margin-top: auto; width: 100%; }
-.card-entry-form :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=hidden]), select) { height: var(--control-height); padding-block: 0.45rem; font-size: var(--text-base); }
-.card-entry-form input[type=file] { padding: 4px; }
+.card-entry-form :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=hidden]):not([type=file]), select) { height: var(--control-height); padding-block: 0.45rem; font-size: var(--text-base); }
 .card-entry-form textarea { min-height: 76px; font-size: var(--text-base); padding: 0.5rem 0.65rem; }
 .card-entry-form .card-numbered-option { justify-content: center; padding: 0; }
 .card-entry-form .card-attribute-options { padding-block: 0.25rem; }
@@ -743,6 +742,13 @@ form.card-entry-form { gap: 0.75rem; }
 .card-entry-form .card-finance-grid > .field:last-child { grid-column: span 2; }
 .card-entry-form .ai-recognition-grid { gap: 0.6rem; }
 .card-entry-form .ai-actions .btn { min-height: var(--control-height); }
+.entry-ai-primary { margin-bottom: 1rem; border-radius: var(--panel-radius); background: var(--surface-soft); }
+.card-entry-form .entry-ai-primary .ai-recognition-panel { padding: 1rem; border: 0; background: transparent; }
+.entry-ai-primary .btn.btn-soft { background: var(--surface); }
+.ai-recognition-heading { display: flex; align-items: center; gap: .5rem; margin: 0; font-size: var(--text-lg); font-weight: var(--weight-semibold); line-height: 1.3; }
+.ai-recognition-heading svg { width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+.card-form-error { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; margin: 1rem 0 .75rem; scroll-margin-block: 1rem; }
+.card-form-error:focus { outline: 2px solid var(--theme-negative, #b12026); outline-offset: 3px; }
 .card-entry-form .card-image-upload { padding-top: 0.65rem; border-top: 1px solid var(--line); }
 .card-entry-form .card-image-editor .gallery { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 .card-entry-form .card-form-actions { margin-top: 0; padding-top: 0.65rem; border-top: 1px solid var(--line); align-items: center; }

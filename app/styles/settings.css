@@ -8,7 +8,8 @@
 .settings-surface :is(.settings-disclosure-content, .financial-settings-body) { margin-top: 1rem; }
 .settings-surface :is(label.field, .management-section label) { min-width: 0; gap: .4rem; font-size: var(--text-sm); font-weight: var(--weight-medium); line-height: 1.5; }
 .settings-surface label.field > span { font-size: var(--text-sm); }
-.settings-surface :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=hidden]), select, textarea) { width: 100%; min-width: 0; max-width: 100%; min-height: var(--settings-control-height); border-radius: 8px; border-color: var(--line-strong); padding: .45rem .65rem; font-size: var(--text-base); font-weight: var(--weight-regular); line-height: 1.4; }
+.settings-surface :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=hidden]):not([type=file]), select, textarea) { width: 100%; min-width: 0; max-width: 100%; min-height: var(--settings-control-height); border-radius: 8px; border-color: var(--line-strong); padding: .45rem .65rem; font-size: var(--text-base); font-weight: var(--weight-regular); line-height: 1.4; }
+.settings-surface input[type=file] { width: 100%; min-width: 0; max-width: 100%; border-color: var(--line-strong); }
 .settings-surface select:not([multiple]) { height: var(--settings-control-height); padding-right: 2.25rem; background-position: right .75rem center; }
 .settings-surface textarea { min-height: 96px; resize: vertical; }
 .settings-surface :is(input[type=checkbox], input[type=radio]) { flex-shrink: 0; width: var(--control-size-check); height: var(--control-size-check); min-height: 0; margin: 0; padding: 0; }

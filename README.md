@@ -6,11 +6,9 @@ Card Vault 是本地优先的 Windows 球星卡收藏管理应用，基于 Next.
 
 ## 当前版本
 
-源码版本：`1.5.2`。2026-11-07 在本版本内补入删除冲突保护、证书号漏检与损坏图片修复，并补齐未备份状态。完整功能、验证和交付状态统一见 [v1.5.2 版本说明](./docs/release-v1.5.2.md)。
+当前版本：`1.5.3`。录入反馈、轻量界面和维护整理见 [v1.5.3 版本说明](./docs/release-v1.5.3.md)。
 
-Windows x64 安装包 `card-vault-1.5.2-setup.exe` 与便携包 `card-vault-1.5.2-portable.zip` 已生成并通过完整发布验证。[下载入口](https://github.com/qlinter/card-vault/releases/tag/v1.5.2)同时提供 SHA-256 校验清单与构建记录。文件未进行代码签名，Windows 可能显示“未知发布者”或 SmartScreen 提示。
-
-2026-11-07 版本内更新已重新生成并验证同版本安装包和便携包；本次产物校验值与交付记录见版本说明。
+在 [v1.5.3 下载页](https://github.com/qlinter/card-vault/releases/tag/v1.5.3)获取 Windows x64 安装包 `card-vault-1.5.3-setup.exe`、便携包 `card-vault-1.5.3-portable.zip`、SHA-256 校验文件和构建清单。本版未签名，Windows 可能提示未知发布者。
 
 ## 主要能力
 
@@ -32,7 +30,7 @@ npm run build
 npm run electron
 ```
 
-也可运行 `start-desktop.bat`。开发环境、检查命令与代码职责见[开发维护](./docs/development.md)；打包和签名见[Windows 分发](./docs/windows-code-signing.md)。执行数据库初始化前请确认使用的是预期的数据路径。
+也可运行 `start-desktop.bat`。开发环境、检查命令与代码职责见[开发维护](./docs/development.md)；打包和签名见[Windows 分发](docs/development.md#windows-distribution)。执行数据库初始化前请确认使用的是预期的数据路径。
 
 ## 文档
 

@@ -212,17 +212,17 @@ export function FilterBar({
 
       <div className="filter-actions" data-testid="home-filter-actions">
         <div className="filter-main-actions">
-          <button type="submit" className="btn btn-secondary">
+          <button type="submit" className="btn btn-secondary btn-quiet btn-soft">
             {<UiText text={"搜索 / 筛选"} />}
           </button>
-          <a href={exportMode ? "/?export=1" : "/"} className="btn btn-secondary">
+          <a href={exportMode ? "/?export=1" : "/"} className="btn btn-secondary btn-quiet">
             {<UiText text={"清空条件"} />}
           </a>
           <a href={portfolioHref} className="scope-navigation-link filter-portfolio-link">
             <UiText text={portfolioScope.isFiltered ? "查看筛选组合统计" : "查看组合统计"} />
           </a>
         </div>
-        <div className="filter-display-actions">{!exportMode ? <a className="scope-navigation-link" href={buildQueryHref("/", { ...query, export: "1" })}><UiText text="导出" /></a> : null}<a href="/cards/new" className="btn btn-primary filter-add-card">
+        <div className="filter-display-actions">{!exportMode ? <a className="scope-navigation-link" href={buildQueryHref("/", { ...query, export: "1" })}><UiText text="导出" /></a> : null}<a href="/cards/new" className="btn btn-secondary btn-quiet btn-soft filter-add-card">
           {<UiText text={"新增卡片"} />}
         </a><CollectionViewToggle /></div>
       </div>

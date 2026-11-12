@@ -1,6 +1,6 @@
 # 收藏、展示与回顾
 
-这里定义收藏展示、浏览展馆、收藏回顾和目标与寻卡的当前行为。日常操作也可在应用“设置 → 帮助与版本 → 使用说明”查看。统计与财务口径分别见[统计规则](./data-analysis-guide.md)和[财务模型](./financial-history-model.md)。
+这里定义收藏展示、浏览展馆、收藏回顾和目标与寻卡的当前行为。日常操作也可在应用“设置 → 帮助与版本 → 使用说明”查看。统计与财务口径分别见[统计规则](financial-history-model.md#data-analysis)和[财务模型](./financial-history-model.md)。
 
 - [展示与单卡大图](#showcase)
 - [浏览展馆](#viewing)

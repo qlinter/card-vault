@@ -6,11 +6,9 @@ Card Vault is a local-first Windows sports-card collection application built wit
 
 ## Current version
 
-Source version: `1.5.2`. The 2026-11-07 update within this version adds deletion conflict protection, fixes missed certificates and damaged-image validation, and shows the no-backup status. Features, verification and delivery status are maintained in the [v1.5.2 version notes](./docs/release-v1.5.2.md).
+Current version: `1.5.3`. See the [v1.5.3 version notes](./docs/release-v1.5.3.md) for entry feedback, lightweight controls and maintenance improvements.
 
-The Windows x64 installer `card-vault-1.5.2-setup.exe` and portable archive `card-vault-1.5.2-portable.zip` have been built and passed full release verification. The [download page](https://github.com/qlinter/card-vault/releases/tag/v1.5.2) also provides SHA-256 checksums and the build manifest. These files are unsigned; Windows may display Unknown Publisher or SmartScreen prompts.
-
-The 2026-11-07 update has rebuilt and verified the installer and portable archive under the same version. See the version notes for the updated checksums and delivery record.
+Download the Windows x64 installer `card-vault-1.5.3-setup.exe`, portable archive `card-vault-1.5.3-portable.zip`, SHA-256 checksums and build manifest from the [v1.5.3 release](https://github.com/qlinter/card-vault/releases/tag/v1.5.3). These binaries are unsigned; Windows may show an Unknown Publisher warning.
 
 ## Main capabilities
 
@@ -32,7 +30,7 @@ npm run build
 npm run electron
 ```
 
-Alternatively, run `start-desktop.bat`. See [Development and maintenance](./docs/development.md) for setup, checks and code responsibilities, and [Windows distribution](./docs/windows-code-signing.md) for packaging and signing. Confirm the intended data path before database initialization.
+Alternatively, run `start-desktop.bat`. See [Development and maintenance](./docs/development.md) for setup, checks and code responsibilities, and [Windows distribution](docs/development.md#windows-distribution) for packaging and signing. Confirm the intended data path before database initialization.
 
 ## Documentation
 

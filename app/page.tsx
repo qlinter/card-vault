@@ -59,7 +59,7 @@ export default async function Home({ searchParams }: HomeProps) {
       <header className="collection-summary">
         <h1><UiText text="收藏" /><span>{totalCount} <UiText text="项" /></span></h1>
         {valuationCurrencies.length ? <div className="collection-value"><HomeValuation compact amounts={valuationCurrencies.map(currency => formatMinorMoneyGrouped(valuationTotals.totals[currency], currency))} /><small className="valuation-coverage"><UiText text="估值覆盖" /> {coverage.valuedCount}/{coverage.eligibleCount}</small></div> : null}
-        <div className="collection-shortcuts"><a className="collection-scout-link" href="/collection?tab=wishlist"><UiText text="目标 & 寻卡" /></a></div>
+        <div className="collection-shortcuts"><a className="btn btn-secondary btn-quiet collection-scout-link" href="/collection?tab=wishlist"><UiText text="目标 & 寻卡" /></a></div>
       </header>
 
       {successMessage ? <p className="note-ok"><UiText text={successMessage} /></p> : null}

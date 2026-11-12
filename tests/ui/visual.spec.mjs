@@ -59,7 +59,10 @@ async function prepareTarget(page, target) {
     await page.getByRole("button", { name: /预览并保存|Preview & save/ }).click();
     await expect(page.locator(".share-editor-history small")).toHaveCount(0);
   }
-  if (target.name === "card-entry-descriptions") await page.locator(".card-optional-fields").filter({ has: page.locator('[name="tags"]') }).locator("summary").click();
+  if (target.name === "card-entry-descriptions") {
+    await page.locator(".card-optional-fields").filter({ has: page.locator('[name="tags"]') }).locator("summary").click();
+    await page.evaluate(() => window.scrollTo(0, 0));
+  }
   if (target.name === "home-export") await expect(page.locator(".collection-export button[name='format']").first()).toBeEnabled();
   if (target.name === "review") await expect(page.locator(".collection-follow-up-toggle small")).toHaveText(/^\d+$/);
 }

@@ -384,6 +384,8 @@ form.home-filter-form > .filters > * { min-width: 0; }
   align-items: end;
 }
 
+.ai-recognition-panel > .title-row { align-items: center; }
+
 .ai-checkbox-field { align-self: end; min-height: var(--control-height); justify-content: center; }
 
 .ai-existing-image-option {

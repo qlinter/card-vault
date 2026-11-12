@@ -81,13 +81,13 @@ test('entry AI emphasis and unified edit actions fit all themes and both languag
     await context.addCookies([{ name: 'card_vault_ui_locale', value: locale, url: 'http://127.0.0.1:3360' }, { name: 'card_vault_app_theme', value: theme, url: 'http://127.0.0.1:3360' }]);
     await page.setViewportSize({ width, height: 1000 });
     await page.goto('/cards/new', { waitUntil: 'networkidle' });
-    const summary = page.locator('.entry-ai-tools > summary');
-    await expect(summary).toHaveText(locale === 'en' ? 'AI Image Fill' : 'AI 识图填充');
-    await expect(summary).toHaveCSS('font-weight', '700');
-    await expect(summary).toHaveCSS('font-size', '16px');
+    const heading = page.locator('.entry-ai-primary h2');
+    await expect(heading).toHaveText(locale === 'en' ? 'AI Image Entry' : 'AI 识图录入');
+    await expect(heading).toHaveCSS('font-weight', '600');
+    await expect(heading).toHaveCSS('font-size', '18px');
     if (theme === 'classic' && width === 1100) await page.screenshot({ path: testInfo.outputPath(`entry-ai-${locale}.png`) });
-    await summary.click();
     await expect(page.locator('.ai-recognition-panel')).toBeVisible();
+    expect(await page.locator('.entry-ai-primary').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     await page.goto('/cards/editor-finance/edit', { waitUntil: 'networkidle' });
     const panel = page.locator('.entry-page > .financial-history');
     await expect(panel.locator('.financial-history-actions button')).toHaveText([locale === 'en' ? 'Add Financial Record' : '新增财务记录']);

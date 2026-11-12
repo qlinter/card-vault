@@ -13,7 +13,7 @@ import { CardArchiveFields } from "./card-archive-fields";
 import { CardGradingFields } from "./card-grading-fields";
 import { CardDescriptionFields } from "./card-description-fields";
 import type { CardFormProps } from "@/lib/card-form-types";
-import { pickCardField as pickValue, revealCardField, hasOptionalCardData } from "@/lib/card-form-display";
+import { CARD_ENTRY_ERROR_ID, focusCardField, pickCardField as pickValue, revealCardField, hasOptionalCardData } from "@/lib/card-form-display";
 import { OptionalCardFields } from "./optional-card-fields";
 import { encodeReturnTo } from "@/lib/query-params";
 
@@ -27,6 +27,7 @@ export function CardForm({
   mode,
   action,
   error,
+  errorField,
   card,
   values,
   returnTo,
@@ -99,20 +100,17 @@ export function CardForm({
     };
   }, [values, card]);
 
+  const recognitionPanel = <AiRecognitionPanel mode={mode} defaultImageUrls={defaultAiImageUrls} queueItemId={queueItemId} persistedRecognition={queueRecognition} />;
+
   return (
     <form ref={formRef} action={action} onSubmit={onSubmit} onInvalid={onInvalid} onInvalidCapture={event => { if (event.target instanceof HTMLElement) revealCardField(event.target); }} className={mode === "create" ? "panel card-entry-form" : "panel"} encType="multipart/form-data" data-card-entry-form={mode === "create" ? "true" : undefined}>
-      {error ? <p className="note-error"><UiText text={error} /></p> : null}
+      {mode === "edit" && error ? <p className="note-error" role="alert"><UiText text={error} /></p> : null}
       {mode === "edit" && returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       {mode === "edit" ? <input type="hidden" name="editVersion" value={editVersion ?? ""} /> : null}
       {mode === "create" && draftId ? <input type="hidden" name="draftId" value={draftId} /> : null}
       {mode === "create" && queueItemId ? <input type="hidden" name="queueItemId" value={queueItemId} /> : null}
 
-      <details className="entry-ai-tools" open={queueRecognition?.status === "review" || undefined}><summary><UiText text="AI 识图填充" /></summary><AiRecognitionPanel
-        mode={mode}
-        defaultImageUrls={defaultAiImageUrls}
-        queueItemId={queueItemId}
-        persistedRecognition={queueRecognition}
-      /></details>
+      {mode === "create" ? <section className="entry-ai-primary">{recognitionPanel}</section> : <details className="entry-ai-tools" open={queueRecognition?.status === "review" || undefined}><summary><UiText text="AI 识图填充" /></summary>{recognitionPanel}</details>}
 
       {mode === "create" ? <CardEntryDuplicatePanel /> : null}
 
@@ -171,6 +169,15 @@ export function CardForm({
 
       </div>
 
+      {mode === "create" && error ? <div id={CARD_ENTRY_ERROR_ID} className="note-error card-form-error" role="alert" tabIndex={-1}>
+        <span><UiText text={error} /></span>
+        {errorField ? <button type="button" className="btn btn-secondary" onClick={event => {
+          const field = event.currentTarget.form?.elements.namedItem(errorField);
+          if (field instanceof HTMLElement) {
+            focusCardField(field);
+          }
+        }}><UiText text="定位问题" /></button> : null}
+      </div> : null}
       <div className="card-form-actions">
         {mode === "create" ? (
           <>

@@ -383,7 +383,7 @@ npm run test:ui
 3. 结构显式选择档案、实物或估值口径，支持其他与完整清单；明细按持仓、出售复盘、问题及全部档案分类，搜索排序、20项分页和分类问题入口；编辑返回保留范围与页码。
 4. 趋势6／12／24个月或全部、曲线开关、数据表和金额／数量切换；同步URL范围；视图更新、快照单独查看和重命名、比较自动展开及百分点差额；主导航与页签共享400毫秒延迟提示，切换保留已有内容。
 
-总览、结构与明细复用现有分批核算，在同一遍计算收集轻量数据；趋势页才重建历史。旧长页面与拖拽布局模块已移除，冻结财务参考文件保持原样。功能规则见[数据分析板块](../data-analysis-guide.md)，验收记录见下文。
+总览、结构与明细复用现有分批核算，在同一遍计算收集轻量数据；趋势页才重建历史。旧长页面与拖拽布局模块已移除，冻结财务参考文件保持原样。功能规则见[数据分析板块](../financial-history-model.md#data-analysis)，验收记录见下文。
 
 <a id="development-v1-4-1--栏目名称"></a>
 #### 栏目名称
@@ -865,7 +865,7 @@ AI 默认展示当前服务、模型和密钥；Endpoint、自定义服务增删
 
 开始日期：2026-11-05；基于已发布的 v1.5.1。用户确认收藏回顾与沉浸式赏卡开发，产品版本已更新为 v1.5.2。本轮仅交付源码、文档和开发验证，等待用户人工检查。检查通过并获得明确授权后才允许打包或发布；自动化通过不构成授权。
 
-以下按开发顺序记录，早期保存回顾、单卡浏览和数据升级等方案已被后续需求替代；当前行为以[版本说明](../release-v1.5.2.md)和[源码定版审查](../release-v1.5.2.md#review)为准。
+以下按开发顺序记录，早期保存回顾、单卡浏览和数据升级等方案已被后续需求替代；当前行为以[版本说明](./releases.md#release-v1-5-2)和[源码定版审查](./releases.md#release-v1-5-2--review)为准。
 
 <a id="development-v1-5-2--ai-自定义配置删除后无法继续操作"></a>
 ### AI 自定义配置删除后无法继续操作
@@ -900,7 +900,7 @@ AI 默认展示当前服务、模型和密钥；Endpoint、自定义服务增删
 
 `npm run test:desktop:ai` 可单独执行桌面回归，已加入后续 `check:release`；完整 Windows 发布还会对包内实际程序执行同一回归。测试脚本从源码侧运行，不随安装包交付。
 
-上表记录 AI 修复阶段的定向结果。用户随后确认了两项功能开发；整版验证与待人工检查状态见[开发说明](../release-v1.5.2.md)。曾启动的打包已按用户要求停止并清理，现有安装版不会自动改变。
+上表记录 AI 修复阶段的定向结果。用户随后确认了两项功能开发；整版验证与待人工检查状态见[开发说明](./releases.md#release-v1-5-2)。曾启动的打包已按用户要求停止并清理，现有安装版不会自动改变。
 
 <a id="development-v1-5-2--收藏回顾与沉浸式赏卡"></a>
 ### 收藏回顾与沉浸式赏卡
@@ -1061,7 +1061,7 @@ AI 默认展示当前服务、模型和密钥；Endpoint、自定义服务增删
 <a id="development-v1-5-2--2026-11-06-源码整理与定版"></a>
 ### 2026-11-06 源码整理与定版
 
-按用户要求全面审查现有开发，不增加新功能。拆分回顾组件并共用统计定义，清除停用文案及样式；移除回顾保存表的运行时定义、早期 Scout／估值来源迁移、一次性历史清理和对应页面入口。以发布版 v1.5.1 空结构样本验证打开、恢复均不改数据库字节，保留主动操作与备份回滚。双语 README、应用内说明、指南和文档索引同步。最终结果统一记录于[源码定版审查](../release-v1.5.2.md#review)，不再在多份文档重复维护测试数字。用户确认前不打包，不执行 Git 或 GitHub 写入。
+按用户要求全面审查现有开发，不增加新功能。拆分回顾组件并共用统计定义，清除停用文案及样式；移除回顾保存表的运行时定义、早期 Scout／估值来源迁移、一次性历史清理和对应页面入口。以发布版 v1.5.1 空结构样本验证打开、恢复均不改数据库字节，保留主动操作与备份回滚。双语 README、应用内说明、指南和文档索引同步。最终结果统一记录于[源码定版审查](./releases.md#release-v1-5-2--review)，不再在多份文档重复维护测试数字。用户确认前不打包，不执行 Git 或 GitHub 写入。
 
 <a id="git-update-v1-4-0"></a>
 ## v1.4.0 Git 更新说明
@@ -1160,12 +1160,12 @@ GitHub `Quality`工作流会对`master`提交运行完整质量门槛。Windows�
 
 来源文件：product-roadmap.en.md。以下为当时记录，不代表当前功能、授权或发布状态。
 
-Updated 2026-11-06. Current source version: v1.5.2. See the [development notes](../release-v1.5.2.md).
+Updated 2026-11-06. Current source version: v1.5.2. See the [development notes](./releases.md#release-v1-5-2).
 
 <a id="product-roadmap-en--v152-source-finalization"></a>
 ### v1.5.2 source finalization
 
-Approved work adds Collection Recaps and Immersive Viewing: period/basis filters, temporary curation and automatic filtering, privacy-aware PNG exports and a fullscreen viewer that returns to the original page. It also fixes custom AI deletion focus problems. See the [feature guide](../collection-guide.md#recap). Source review and final checks are complete. Installers, portable packages, Git updates and GitHub synchronization require user confirmation. See the [source review](../release-v1.5.2.md#review).
+Approved work adds Collection Recaps and Immersive Viewing: period/basis filters, temporary curation and automatic filtering, privacy-aware PNG exports and a fullscreen viewer that returns to the original page. It also fixes custom AI deletion focus problems. See the [feature guide](../collection-guide.md#recap). Source review and final checks are complete. Installers, portable packages, Git updates and GitHub synchronization require user confirmation. See the [source review](./releases.md#release-v1-5-2--review).
 
 <a id="product-roadmap-en--completed-capabilities"></a>
 ### Completed capabilities
@@ -1204,7 +1204,7 @@ Three compact, equal Home panels follow filters; Collection overview combines di
 <a id="product-roadmap-en--v141-completed"></a>
 ### v1.4.1 completed
 
-v1.4.1 implements patched Next.js / Electron dependencies, Scout scroll recovery, debounced search, database pagination and workspace-local reference reuse. Data uses Overview, Trends, Structure and Details tabs with physical quantities, scoped drill-through, complete issue lists, interactive trends and fixed snapshots and historical comparison; see the [data analysis rules](../data-analysis-guide.md). Regression retains independent financial references and the existing data structure; the source version, specifications and release notes are synchronized; distribution files are generated separately.
+v1.4.1 implements patched Next.js / Electron dependencies, Scout scroll recovery, debounced search, database pagination and workspace-local reference reuse. Data uses Overview, Trends, Structure and Details tabs with physical quantities, scoped drill-through, complete issue lists, interactive trends and fixed snapshots and historical comparison; see the [data analysis rules](../financial-history-model.md#data-analysis). Regression retains independent financial references and the existing data structure; the source version, specifications and release notes are synchronized; distribution files are generated separately.
 
 <a id="product-roadmap-en--v142"></a>
 ### v1.4.2
@@ -1245,12 +1245,12 @@ Official OpenAI defaults, card image exports, Statistics labels and concise Sett
 
 来源文件：product-roadmap.md。以下为当时记录，不代表当前功能、授权或发布状态。
 
-更新日期：2026-11-06。当前源码版本为 v1.5.2；范围见[开发说明](../release-v1.5.2.md)。
+更新日期：2026-11-06。当前源码版本为 v1.5.2；范围见[开发说明](./releases.md#release-v1-5-2)。
 
 <a id="product-roadmap--v152-源码定版"></a>
 ### v1.5.2 源码定版
 
-用户已确认收藏回顾与沉浸式赏卡开发。支持期间与双口径回顾、代表卡片临时调整与自动筛选、私密范围受控的 PNG，以及可返回原页面的全屏播放器；修复 AI 自定义配置删除后的输入问题。使用规则见[功能指南](../collection-guide.md#recap)，源码审查与定版验证已完成。安装包、便携包、Git 更新及 GitHub 同步须经用户确认；清理记录见[源码审查](../release-v1.5.2.md#review)。
+用户已确认收藏回顾与沉浸式赏卡开发。支持期间与双口径回顾、代表卡片临时调整与自动筛选、私密范围受控的 PNG，以及可返回原页面的全屏播放器；修复 AI 自定义配置删除后的输入问题。使用规则见[功能指南](../collection-guide.md#recap)，源码审查与定版验证已完成。安装包、便携包、Git 更新及 GitHub 同步须经用户确认；清理记录见[源码审查](./releases.md#release-v1-5-2--review)。
 
 <a id="product-roadmap--已完成能力"></a>
 ### 已完成能力
@@ -1291,7 +1291,7 @@ v1.3.6 收录此前开发改动与结构整理，详见[发布说明](releases.m
 <a id="product-roadmap--v141-已完成"></a>
 ### v1.4.1 已完成
 
-v1.4.1 已实现 Next.js / Electron 安全依赖升级、寻卡异常滚动缓存恢复、搜索防抖、数据库分页和工作区关联索引复用；数据板块按总览、趋势、结构、明细四页签整理，增加实物数量、范围保留、完整问题明细、趋势交互及固定快照与历史比较，详见[数据分析规则](../data-analysis-guide.md)。回归保留财务独立对照，复用现有数据结构。本版源码版本、规范和发布说明已同步；新分发包单独生成。
+v1.4.1 已实现 Next.js / Electron 安全依赖升级、寻卡异常滚动缓存恢复、搜索防抖、数据库分页和工作区关联索引复用；数据板块按总览、趋势、结构、明细四页签整理，增加实物数量、范围保留、完整问题明细、趋势交互及固定快照与历史比较，详见[数据分析规则](../financial-history-model.md#data-analysis)。回归保留财务独立对照，复用现有数据结构。本版源码版本、规范和发布说明已同步；新分发包单独生成。
 
 <a id="product-roadmap--v142"></a>
 ### v1.4.2

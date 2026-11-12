@@ -90,6 +90,7 @@ export function AiRecognitionPanel({
   const [overwrite, setOverwrite] = useState(false);
   const [useExistingImages, setUseExistingImages] = useState(defaultImageUrls.length > 0);
   const [isPending, setIsPending] = useState(false);
+  const [messageIsError, setMessageIsError] = useState(false);
   const [message, setMessage] = useState<string | null>(() => {
     if (persistedRecognition?.status !== "review") return null;
     return persistedRecognition.lowConfidenceFields.length > 0
@@ -98,6 +99,7 @@ export function AiRecognitionPanel({
   });
 
   function handleImageSelectionChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setMessageIsError(false);
     activeRequest.current?.abort();
     clearRecognizedFields(event.currentTarget);
     const count = event.currentTarget.files?.length ?? 0;
@@ -110,11 +112,13 @@ export function AiRecognitionPanel({
     const files = Array.from(fileInputRef.current?.files ?? []);
 
     if (!useExistingImages && (files.length < 1 || files.length > 2)) {
+      setMessageIsError(true);
       setMessage("请选择 1 到 2 张图片用于 AI 识别，或使用已有默认图片。");
       return;
     }
 
     setIsPending(true);
+    setMessageIsError(false);
     setMessage(null);
     const controller = new AbortController();
     activeRequest.current = controller;
@@ -182,6 +186,7 @@ export function AiRecognitionPanel({
           : "AI 返回了建议，但当前表单没有可填入的空字段。") + confidenceNote
       );
     } catch (error) {
+      setMessageIsError(!controller.signal.aborted);
       const detail = controller.signal.aborted ? "已取消识别，可以重新开始。" : errorMessage(error, "请稍后重试。");
       setMessage(detail);
     } finally {
@@ -194,9 +199,12 @@ export function AiRecognitionPanel({
     <div className="ai-recognition-panel">
       <div className="title-row" style={{ marginBottom: "0.6rem" }}>
         <div>
-          <strong>{mode === "edit" ? <UiText text={"AI 识图填充"} /> : <UiText text={"AI 识图录入"} />}</strong>
+          {mode === "create" ? <h2 className="ai-recognition-heading">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 6.3L21 12l-6.3 2.7L12 21l-2.7-6.3L3 12l6.3-2.7L12 3Z" /></svg>
+            <UiText text="AI 识图录入" />
+          </h2> : <strong><UiText text="AI 识图填充" /></strong>}
         </div>
-        <Link href="/settings" className="btn btn-secondary"><UiText text={"AI 设置"} /></Link>
+        <Link href="/settings" className={mode === "create" ? "btn btn-secondary btn-quiet" : "btn btn-secondary"}><UiText text={"AI 设置"} /></Link>
       </div>
 
       <div className="ai-recognition-grid">
@@ -219,7 +227,7 @@ export function AiRecognitionPanel({
           <button
             ref={actionButtonRef}
             type="button"
-            className="btn btn-primary"
+            className={mode === "create" ? "btn btn-secondary btn-quiet btn-soft" : "btn btn-primary"}
             onClick={handleRecognize}
             disabled={isPending}
           >
@@ -237,7 +245,7 @@ export function AiRecognitionPanel({
       ) : null}
 
       {message ? (
-        <p className="muted" style={{ margin: "0.65rem 0 0" }}>
+        <p className={messageIsError ? "note-error" : "muted"} role={messageIsError ? "alert" : "status"} style={{ margin: "0.65rem 0 0" }}>
           <UiText text={message} />
         </p>
       ) : null}

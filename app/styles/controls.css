@@ -155,7 +155,7 @@ button.btn[aria-disabled="true"] {
 
 
 
-.btn:not(.btn-primary):not(.btn-danger):hover {
+.btn:not(.btn-primary):not(.btn-danger):hover:not(:disabled):not([aria-disabled="true"]) {
   background: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.1);
   border-color: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.18);
 }
@@ -170,6 +170,22 @@ button.btn[aria-disabled="true"] {
 .btn-danger:hover {
   background: #b9362e;
   box-shadow: 0 10px 22px rgba(208, 69, 58, 0.24);
+}
+
+.btn.btn-quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted-ink);
+  box-shadow: none;
+  transform: none;
+}
+.btn.btn-quiet.btn-soft { background: var(--surface-soft); color: var(--ink); }
+.btn.btn-quiet:not(.btn-primary):not(.btn-danger):hover:not(:disabled):not([aria-disabled="true"]) {
+  background: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.06);
+  border-color: transparent;
+  color: var(--ink);
+  box-shadow: none;
+  transform: none;
 }
 
 .form-grid {
@@ -215,8 +231,8 @@ textarea {
 
 :where(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=hidden]), select) { min-height: var(--control-height); }
 input:is([type=checkbox], [type=radio]) { flex-shrink: 0; width: var(--control-size-check); height: var(--control-size-check); min-height: 0; padding: 0; margin: 0; vertical-align: middle; accent-color: var(--teal); }
-input[type=file] { padding: 4px; }
-input[type=file]::file-selector-button { min-height: 30px; margin-right: .65rem; padding: .25rem .65rem; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-soft); color: var(--ink); font: inherit; cursor: pointer; }
+input[type=file] { --file-button-height: calc(var(--control-height) - 10px); height: var(--control-height); padding: 4px; line-height: var(--file-button-height); }
+input[type=file]::file-selector-button { box-sizing: border-box; height: var(--file-button-height); margin: 0 .65rem 0 0; padding: 0 .65rem; vertical-align: top; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-soft); color: var(--ink); font: inherit; line-height: var(--leading-control); cursor: pointer; }
 
 select:not([multiple]) {
   -webkit-appearance: none;
@@ -408,14 +424,12 @@ textarea {
 
 .financial-overview { margin-top: 1rem; }
 
-.financial-record-tabs,
 .financial-history-filters {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
 }
 
-.financial-record-tabs button,
 .financial-history-filters button {
   border: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.12);
   border-radius: 999px;
@@ -428,7 +442,6 @@ textarea {
   cursor: pointer;
 }
 
-.financial-record-tabs button[aria-selected="true"],
 .financial-history-filters button[aria-pressed="true"] {
   color: #fff;
   background: #182c3d;
@@ -566,7 +579,6 @@ textarea {
 
 .financial-add-record-heading strong { font-size: var(--text-md); }
 .financial-record-composer { padding: 0.85rem; }
-.financial-record-tabs { margin-bottom: 0.15rem; }
 
 .financial-form {
   display: grid;

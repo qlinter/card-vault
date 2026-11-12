@@ -142,7 +142,7 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages,
         <span>
           {mode === "create" ? queuedImages.length > 0 ? <UiText text={"队列已有 {0} 张图片，可追加至总计 5 张"} values={[queuedImages.length]} /> : <UiText text={"上传图片（1-5 张）*"} /> : <UiText text={"新增图片（可选，单张卡总计最多 5 张）"} />}
         </span>
-        <input ref={fileInput} name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={selectNewImages} />
+        <input ref={fileInput} name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple required={mode === "create" && queuedImages.length === 0} onChange={selectNewImages} />
         <small><UiText text="支持 JPG、PNG、WebP，单张最多 15MB，总计最多 5 张。" /></small>
         {selectionError ? <span role="alert" className="note-error"><UiText text={selectionError} /></span> : null}
       </label>

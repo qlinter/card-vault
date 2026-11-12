@@ -7,7 +7,7 @@ import type { DraftImage } from "./card-entry-draft-images.js";
 export type CardFieldSource = { card?: Card; values?: CardFormValues };
 export type QueuedCardImage = { id: string; url: string; side: "front" | "back"; originalName: string };
 export type CardFormProps = CardFieldSource & {
-  mode: "create" | "edit"; action: (formData: FormData) => void | Promise<void>; error?: string;
+  mode: "create" | "edit"; action: (formData: FormData) => void | Promise<void>; error?: string; errorField?: string;
   card?: Card & { images: CardImage[] }; returnTo?: string; formRef?: Ref<HTMLFormElement>; draftId?: string; draftImages?: DraftImage[];
   onSubmit?: FormEventHandler<HTMLFormElement>; onInvalid?: FormEventHandler<HTMLFormElement>; submitDisabled?: boolean;
   editVersion?: string;

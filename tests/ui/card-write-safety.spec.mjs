@@ -54,6 +54,9 @@ test("a failed draft sync preserves a new entry and cannot commit under a differ
   await imageInput.setInputFiles("tests/fixtures/ui-media/showcase-bg.webp");
   await page.getByRole("button", { name: "保存并查看", exact: true }).click();
   await expect(page.locator(".entry-draft-status")).toContainText("草稿保存暂不可用");
+  await expect(page.locator(".card-form-error")).toContainText("草稿保存暂不可用");
+  await expect(page.locator(".card-form-error")).toBeInViewport();
+  await expect(page.locator(".card-form-error")).toBeFocused();
   await page.waitForLoadState("networkidle");
   expect(writes).toBe(0);
   expect(fixture(db => db.prepare("SELECT count(*) n FROM Card WHERE playerName='Write Retry Player'").get().n)).toBe(0);

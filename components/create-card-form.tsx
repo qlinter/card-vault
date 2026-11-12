@@ -5,6 +5,7 @@ import {
   useActionState,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type FormEvent,
@@ -23,6 +24,8 @@ import type { CardEntryQueueItemSummary } from "@/lib/card-entry-queue-domain";
 import type { CardFormValues } from "@/lib/card-form-values";
 import type { DraftImage } from "@/lib/card-entry-draft-images.js";
 import { cardImageSelectionError } from "@/lib/card-image-limits.js";
+import { clearCardFieldError, focusCardField, isCardFormControl, markCardFieldInvalid } from "@/lib/card-form-display";
+import { useLanguage } from "./language-provider";
 
 type CreateCardFormProps = {
   submissionId: string;
@@ -42,11 +45,18 @@ type DraftSaveResponse = {
   error?: string;
 };
 
-function formatDraftTime(value: string): string {
+const requiredEntryMessages: Record<string, string> = {
+  images: "至少上传 1 张图片。",
+  playerName: "请填写卡片主体。",
+  cardTitle: "请填写卡片名称。",
+  sport: "请填写运动类型。"
+};
+
+function formatDraftTime(value: string, locale: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? ""
-    : date.toLocaleString("zh-CN", { hour12: false });
+    : date.toLocaleString(locale, { hour12: false });
 }
 
 export function CreateCardForm({
@@ -60,6 +70,9 @@ export function CreateCardForm({
   queueNavigation = {},
   queuePanel
 }: CreateCardFormProps) {
+  const { locale } = useLanguage();
+  const deletingDraftRef = useRef(false);
+  const [deletingDraft, setDeletingDraft] = useState(false);
   const initialState: CreateCardFormState = {
     error: undefined,
     values: initialValues,
@@ -87,6 +100,14 @@ export function CreateCardForm({
         : ""
   );
   const [drafts, setDrafts] = useState(recentDrafts);
+  const [formIssue, setFormIssue] = useState<{ message: string; field?: string } | null>(null);
+  const formError = isPending ? undefined : formIssue?.message ?? state.error;
+
+  useLayoutEffect(() => {
+    if (!formError) return;
+    const feedback = formRef.current?.querySelector<HTMLElement>(".card-form-error");
+    if (feedback) focusCardField(feedback);
+  }, [formError, formIssue, state]);
 
   const persistDraft = useCallback(async (
     values: CardFormValues,
@@ -195,7 +216,10 @@ export function CreateCardForm({
     if (!form) return;
     mountedRef.current = true;
 
-    function scheduleSave() {
+    function scheduleSave(event: Event) {
+      if (event.target instanceof HTMLElement && event.target.matches(":valid")) {
+        clearCardFieldError(event.target);
+      }
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
         const values = readCardFormValues(new FormData(form ?? undefined));
@@ -253,21 +277,31 @@ export function CreateCardForm({
   }, [isPending, navigateToQueueItem, queueNavigation.nextId, queueNavigation.previousId]);
 
   async function deleteDraft(id: string) {
-    const response = await fetch(
-      `/api/card-entry/drafts/${encodeURIComponent(id)}`,
-      { method: "DELETE" }
-    );
-    if (!response.ok) {
-      const result = (await response.json()) as { error?: string };
-      setDraftStatus(result.error || "草稿删除失败。");
-      return;
-    }
+    if (deletingDraftRef.current) return;
+    deletingDraftRef.current = true;
+    setDeletingDraft(true);
+    try {
+      const response = await fetch(
+        `/api/card-entry/drafts/${encodeURIComponent(id)}`,
+        { method: "DELETE" }
+      );
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({})) as { error?: string };
+        setDraftStatus(result.error || "草稿删除失败。");
+        return;
+      }
 
-    if (draftIdRef.current === id) {
-      window.location.assign("/cards/new");
-      return;
+      if (draftIdRef.current === id) {
+        window.location.assign("/cards/new");
+        return;
+      }
+      setDrafts((current) => current.filter((draft) => draft.id !== id));
+    } catch {
+      setDraftStatus("草稿删除失败，请重试。");
+    } finally {
+      deletingDraftRef.current = false;
+      if (mountedRef.current) setDeletingDraft(false);
     }
-    setDrafts((current) => current.filter((draft) => draft.id !== id));
   }
 
   async function prepareSubmit(event: FormEvent<HTMLFormElement>) {
@@ -278,12 +312,19 @@ export function CreateCardForm({
 
     event.preventDefault();
     if (preparingSubmitRef.current) return;
+    const form = event.currentTarget;
+    const values = readCardFormValues(new FormData(form));
+    for (const name of ["playerName", "cardTitle", "sport"] as const) {
+      if (!values[name].trim()) {
+        setFormIssue({ message: requiredEntryMessages[name], field: name });
+        return;
+      }
+    }
+    setFormIssue(null);
     preparingSubmitRef.current = true;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
-    const form = event.currentTarget;
     const submitter = (event.nativeEvent as SubmitEvent).submitter;
-    const values = readCardFormValues(new FormData(form));
     setDraftStatus("正在同步最新草稿...");
     saveChainRef.current = saveChainRef.current
       .catch(() => undefined)
@@ -304,9 +345,9 @@ export function CreateCardForm({
         input.value = draftIdRef.current;
       }
     } catch (error) {
-      setDraftStatus(
-        error instanceof Error ? error.message : "提交前草稿同步失败。"
-      );
+      const message = error instanceof Error ? error.message : "提交前草稿同步失败。";
+      setDraftStatus(message);
+      setFormIssue({ message });
       // A later retry must keep the same draft identity, including when this
       // page is opened elsewhere. Do not commit while draft preparation failed.
       return;
@@ -334,7 +375,6 @@ export function CreateCardForm({
           <a href="/cards/new" className="btn btn-secondary"><UiText text={"新建空白"} /></a>
         </div>
 
-        {drafts.length > 0 ? (
           <div className="entry-draft-list">
             {drafts.map((draft) => (
               <div
@@ -345,10 +385,11 @@ export function CreateCardForm({
               >
                 <a href={`/cards/new?draft=${encodeURIComponent(draft.id)}`}>
                   <strong>{draft.title}</strong>
-                  <span>{formatDraftTime(draft.updatedAt)}</span>
+                  <span>{formatDraftTime(draft.updatedAt, locale)}</span>
                 </a>
                 <UiElement as="button" uiMessages={{"aria-label": {text:"删除草稿 {0}",values:[draft.title],translateValues:[]}}}
                   type="button"
+                  disabled={deletingDraft}
                   onClick={() => deleteDraft(draft.id)}
 
                 >
@@ -357,9 +398,6 @@ export function CreateCardForm({
               </div>
             ))}
           </div>
-        ) : (
-          <p className="muted"><UiText text={"暂无草稿。开始填写后会自动创建。"} /></p>
-        )}
       </details> : null}
 
       <div className="entry-form-column">
@@ -384,18 +422,22 @@ export function CreateCardForm({
         <CardForm
           mode="create"
           action={formAction}
-          error={state.error}
+          error={formError}
+          errorField={formIssue?.field}
           values={state.values}
           formRef={formRef}
           draftId={draftId}
           draftImages={initialImages}
           onSubmit={prepareSubmit}
           onInvalid={(event) => {
+            event.preventDefault();
             const target = event.target;
             const firstInvalid = event.currentTarget.querySelector<HTMLElement>(":invalid");
-            if (target instanceof HTMLElement && target === firstInvalid) {
-              target.scrollIntoView({ behavior: "smooth", block: "center" });
-              target.focus({ preventScroll: true });
+            if (isCardFormControl(target) && target === firstInvalid) {
+              const message = target.validity.customError ? target.validationMessage
+                : target.validity.valueMissing ? requiredEntryMessages[target.name] ?? "请检查必填项。" : "请检查输入格式后再保存。";
+              markCardFieldInvalid(target);
+              setFormIssue({ message, field: target.name });
             }
           }}
           submitDisabled={isPending}

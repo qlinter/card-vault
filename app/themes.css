@@ -37,7 +37,7 @@ html[data-app-theme]:not([data-app-theme="classic"]) :is(.btn-primary, .btn-prim
   box-shadow: var(--shadow-soft);
 }
 html[data-app-theme]:not([data-app-theme="classic"]) .btn-primary:hover { background: var(--theme-accent-hover); }
-html[data-app-theme]:not([data-app-theme="classic"]) :is(.nav-links a.active, .financial-record-tabs button[aria-selected="true"], .financial-history-filters button[aria-pressed="true"]) {
+html[data-app-theme]:not([data-app-theme="classic"]) :is(.nav-links a.active, .financial-history-filters button[aria-pressed="true"]) {
   background: var(--accent);
   color: var(--theme-on-accent);
   border-color: var(--accent);

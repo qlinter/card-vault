@@ -75,7 +75,6 @@ test("entry types update attributes immediately within ordered sections", async 
 test("AI suggestions and restored drafts visibly select matching attributes", async ({ page }) => {
   await page.route("**/api/ai/recognize-card", route => route.fulfill({ json: { suggestion: { serialRange: "/25", autoType: "on-card", patchType: "logo patch" } } }));
   await page.goto("/cards/new", { waitUntil: "networkidle" });
-  await page.locator(".entry-ai-tools > summary").click();
   await page.getByLabel("识别图片", { exact: true }).setInputFiles({ name: "front.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") });
   await page.getByRole("button", { name: "识别并填入", exact: true }).click();
   const numbered = page.locator('[name="isSerialNumbered"]');
@@ -97,7 +96,6 @@ test("AI suggestions and restored drafts visibly select matching attributes", as
 test("changing recognition images clears previous inferred attributes", async ({ page }) => {
   await page.goto("/cards/new", { waitUntil: "networkidle" });
   await page.getByText("版本与卡片属性（可选）", { exact: true }).click();
-  await page.locator(".entry-ai-tools > summary").click();
   for (const [name, value] of [["serialRange", "/25"], ["autoType", "on-card"], ["patchType", "logo patch"]]) {
     await page.locator(`[name="${name}"]`).fill(value);
   }

@@ -5,21 +5,19 @@
 <a id="current-release"></a>
 ## 当前版本
 
-[v1.5.2 版本说明](./release-v1.5.2.md)包含原有功能、2026-11-07 版本内更新、结构审查、数据边界、验证和分发校验值。2026-11-07 版本内更新已通过完整分发验证；[下载入口](https://github.com/qlinter/card-vault/releases/tag/v1.5.2)提供分发文件与构建记录。
+[v1.5.3 版本说明](./release-v1.5.3.md)记录录入反馈、界面整理、验证与分发信息；安装包和便携包见 [GitHub 下载页](https://github.com/qlinter/card-vault/releases/tag/v1.5.3)，更早版本见[历史资料](./history/README.md)。
 
 ## 当前规则
 
 | 需要了解的内容 | 维护入口 |
 | --- | --- |
 | 展墙、单卡图片、浏览展馆、收藏回顾、目标与寻卡 | [收藏、展示与回顾](./collection-guide.md) |
-| 统计四页签、筛选范围、数量口径、活动与整理提醒 | [数据分析](./data-analysis-guide.md) |
 | 导入、导出、备份恢复、路径迁移、数据健康、当前数据格式 | [数据管理与备份](./data-guide.md) |
-| 交易、费用、持仓、估值、汇率与收益计算 | [财务与持仓模型](./financial-history-model.md) |
+| 交易、持仓、估值、汇率、统计四页签与整理提醒 | [统计与财务模型](./financial-history-model.md) |
 | 分享集编辑、展示协议、静态导出与 Cloudflare Drop 人工发布 | [分享展馆](./share-gallery.md) |
 | 字体、字级、控件、主题与扩展 | [设计规范](./design-system.md) |
 | 自动／直连／手动代理、认证及设备配置 | [AI 网络与代理](./ai-proxy-guide.md) |
-| 开发环境、代码职责、验证命令、文档维护规则 | [开发维护](./development.md) |
-| Windows 打包、签名、产物检查与工作流 | [Windows 分发](./windows-code-signing.md) |
+| 开发环境、代码职责、检查、文档维护及 Windows 分发 | [开发维护](./development.md) |
 
 应用内日常说明位于“设置 → 帮助与版本 → 使用说明”，中英文内容集中在 [user-guide-content.ts](../lib/user-guide-content.ts)，由 [UserGuide](../components/user-guide.tsx) 渲染。应用内只保留操作指引；这里维护统计口径、数据边界和工程约束。
 

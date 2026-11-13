@@ -10,6 +10,8 @@ Current version: `1.5.3`. See the [v1.5.3 version notes](./docs/release-v1.5.3.m
 
 Download the Windows x64 installer `card-vault-1.5.3-setup.exe`, portable archive `card-vault-1.5.3-portable.zip`, SHA-256 checksums and build manifest from the [v1.5.3 release](https://github.com/qlinter/card-vault/releases/tag/v1.5.3). These binaries are unsigned; Windows may show an Unknown Publisher warning.
 
+The downloads were revised on 2026-11-13 to include the draft timestamp timezone fix. See [v1.5.3-r1](https://github.com/qlinter/card-vault/tree/v1.5.3-r1) for the revised source. Download again if you have the initial binaries.
+
 ## Main capabilities
 
 - Collection management: search and filters, grid/list views, up to five images, drafts, templates, batch entry and AI suggestions requiring manual review.

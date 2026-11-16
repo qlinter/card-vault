@@ -2,8 +2,10 @@ const { spawn } = require("node:child_process");
 
 function createStorageWorkerBridge({ app, runtime, storage, logger }) {
 
-  function sendStorageProgress(sender, operation, progress) {
+  async function sendStorageProgress(sender, operation, progress) {
     if (!sender || sender.isDestroyed()) return;
+    try { await runtime.requireAccount({ sender, senderFrame: sender.mainFrame }); } catch { return; }
+    if (sender.isDestroyed()) return;
     sender.send("card-vault:storage-progress", {
       operation,
       percent: Math.max(0, Math.min(100, Math.round(progress.percent ?? 0))),

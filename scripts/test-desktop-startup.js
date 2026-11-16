@@ -6,6 +6,7 @@ const net = require("node:net");
 const http = require("node:http");
 const { createLocalServerRuntime } = require("../electron/local-server-runtime");
 const { removeTempRoot } = require("./test-http-flow-utils");
+const { authenticateTestServer } = require("./test-account-helpers");
 
 async function main() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "card-vault-desktop-start-"));
@@ -76,11 +77,12 @@ async function main() {
     const url = runtime.getServerUrl();
     assert.equal((await fetch(url + "/api/health")).status, 403);
     const cookie = runtime.getSessionCookie();
+    const accountCookie = await authenticateTestServer(url, `${cookie.name}=${cookie.value}`);
     const response = await fetch(url + "/api/health", { headers: { Cookie: `${cookie.name}=${cookie.value}` } });
     assert.equal(response.status, 200);
     assert.equal((await response.json()).app, "card-vault");
     const draft = { provider: "openai", openai: { endpoint: "http://model.invalid/v1/chat/completions", apiKey: "fixture-key", model: "fixture-model" }, proxy: { mode: "auto", noProxy: "" } };
-    const post = route => fetch(url + route, { method: "POST", headers: { Cookie: `${cookie.name}=${cookie.value}`, Origin: url, "Content-Type": "application/json" }, body: JSON.stringify(draft), signal: AbortSignal.timeout(10000) });
+    const post = route => fetch(url + route, { method: "POST", headers: { Cookie: accountCookie, Origin: url, "Content-Type": "application/json" }, body: JSON.stringify(draft), signal: AbortSignal.timeout(10000) });
     const models = await post("/api/ai/models");
     assert.equal(models.status, 200);
     assert.deepEqual(await models.json(), { models: ["fixture-model"] });
@@ -91,7 +93,7 @@ async function main() {
     assert.deepEqual(requests.map(request => request.path), ["/v1/models", "/v1/chat/completions"]);
     assert.ok(requests.every(request => request.auth === "Bearer fixture-key" && request.proxyAuth === undefined));
     const abort = new AbortController();
-    const slow = fetch(url + "/api/ai/test-settings", { method: "POST", headers: { Cookie: `${cookie.name}=${cookie.value}`, Origin: url, "Content-Type": "application/json" }, body: JSON.stringify({ ...draft, openai: { ...draft.openai, endpoint: "http://model.invalid/slow/v1/chat/completions" } }), signal: abort.signal });
+    const slow = fetch(url + "/api/ai/test-settings", { method: "POST", headers: { Cookie: accountCookie, Origin: url, "Content-Type": "application/json" }, body: JSON.stringify({ ...draft, openai: { ...draft.openai, endpoint: "http://model.invalid/slow/v1/chat/completions" } }), signal: abort.signal });
     await started;
     abort.abort();
     await assert.rejects(slow, { name: "AbortError" });

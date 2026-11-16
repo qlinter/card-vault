@@ -1184,7 +1184,7 @@ Approved work adds Collection Recaps and Immersive Viewing: period/basis filters
 <a id="product-roadmap-en--completed--share-gallery"></a>
 ### Completed — Share Gallery
 
-The current implementation retains independent styles and themes, sections, card overrides, shared rendering, a public-field allowlist, export checks and difference reports. Static packages and manual Drop publishing remain; this cleanup does not add hosted services. See the [gallery specification](../share-gallery.md).
+The current implementation retains independent styles and themes, sections, card overrides, shared rendering, a public-field allowlist, export checks and difference reports. Static packages and manual Drop publishing remain; this cleanup does not add hosted services. See the [gallery specification](../collection-guide.md#sharing).
 
 <a id="product-roadmap-en--historical-distribution-status"></a>
 ### Historical distribution status
@@ -1269,7 +1269,7 @@ Official OpenAI defaults, card image exports, Statistics labels and concise Sett
 <a id="product-roadmap--已完成分享展馆"></a>
 ### 已完成：分享展馆
 
-当前实现沿用独立展馆样式与主题、章节和单卡覆盖、统一渲染器、公开字段白名单、导出检查与差异报告。静态包和人工 Drop 流程保留；不因本轮清理增加托管服务。具体约束统一见[分享规范](../share-gallery.md)。
+当前实现沿用独立展馆样式与主题、章节和单卡覆盖、统一渲染器、公开字段白名单、导出检查与差异报告。静态包和人工 Drop 流程保留；不因本轮清理增加托管服务。具体约束统一见[分享规范](../collection-guide.md#sharing)。
 
 <a id="product-roadmap--历史分发状态"></a>
 ### 历史分发状态

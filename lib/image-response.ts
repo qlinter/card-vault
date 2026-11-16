@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
+import { accountStatus } from "./account-server";
 
 type ImageRouteContext = { params: Promise<{ filename: string }> };
 
@@ -19,6 +20,7 @@ function imageContentType(fileName: string): string {
 }
 
 export async function imageFileResponse(directory: string, fileName: string): Promise<NextResponse> {
+  if (!(await accountStatus()).authenticated) return NextResponse.json({ error: "login-required" }, { status: 401, headers: { "Cache-Control": "no-store" } });
   try {
     const safeName = path.basename(fileName);
     const fileBuffer = await readFile(path.join(directory, safeName));
@@ -26,7 +28,7 @@ export async function imageFileResponse(directory: string, fileName: string): Pr
     return new NextResponse(fileBuffer, {
       headers: {
         "Content-Type": imageContentType(safeName),
-        "Cache-Control": "public, max-age=31536000, immutable"
+        "Cache-Control": "no-store, private"
       }
     });
   } catch {

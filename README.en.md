@@ -6,14 +6,13 @@ Card Vault is a local-first Windows sports-card collection application built wit
 
 ## Current version
 
-Current version: `1.5.3`. See the [v1.5.3 version notes](./docs/release-v1.5.3.md) for entry feedback, lightweight controls and maintenance improvements.
+Current version: `1.6.0`. Local accounts, sign-in and recovery codes are described in the [v1.6.0 notes](./docs/release-v1.6.0.md).
 
-Download the Windows x64 installer `card-vault-1.5.3-setup.exe`, portable archive `card-vault-1.5.3-portable.zip`, SHA-256 checksums and build manifest from the [v1.5.3 release](https://github.com/qlinter/card-vault/releases/tag/v1.5.3). These binaries are unsigned; Windows may show an Unknown Publisher warning.
-
-The downloads were revised on 2026-11-13 to include the draft timestamp timezone fix. See [v1.5.3-r1](https://github.com/qlinter/card-vault/tree/v1.5.3-r1) for the revised source. Download again if you have the initial binaries.
+Download the Windows x64 installer `card-vault-1.6.0-setup.exe`, portable archive `card-vault-1.6.0-portable.zip`, SHA-256 checksums, build manifest and validation record from the [v1.6.0 release](https://github.com/qlinter/card-vault/releases/tag/v1.6.0). These binaries are unsigned; Windows may show an Unknown Publisher warning.
 
 ## Main capabilities
 
+- Local accounts: offline sign-in, sign-out, Windows screen-lock protection and recovery codes. Accounts stay separate from collection backups; access protection does not encrypt files.
 - Collection management: search and filters, grid/list views, up to five images, drafts, templates, batch entry and AI suggestions requiring manual review.
 - Finance and statistics: transactions, expenses, valuations, physical quantities, manual exchange rates, Overview/Trends/Structure/Details and Collection Recaps.
 - Viewing and sharing: full-image collection walls, detailed image viewing, four immersive gallery styles, editable share collections and static website exports.

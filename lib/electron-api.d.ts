@@ -24,6 +24,8 @@ type DesktopStorageProgress = {
 declare global {
   interface Window {
     cardVaultDesktop?: {
+      signOutAccount: () => Promise<void>;
+      onAccountLocked: (callback: () => void) => () => void;
       chooseStorageDirectory: () => Promise<{ path: string; changed: boolean; cancelled: boolean }>;
       getBackupSettings: () => Promise<{ path: string; lastBackup: { path: string; createdAt: string; bytes: number; fileCount: number; imageCount: number; verified: boolean; available: boolean } | null }>;
       chooseBackupDirectory: () => Promise<{ path: string; cancelled: boolean }>;

@@ -5,6 +5,7 @@ const path = require("node:path");
 const sharp = require("sharp");
 const { DatabaseSync } = require("node:sqlite");
 const { chromium } = require("@playwright/test");
+const { testAccountCookies } = require("./test-account-helpers");
 const { fileDatabaseUrl, findAvailablePort, initializeTestDatabase, removeTempRoot, startTestServer, stopServer, waitForServer } = require("./test-http-flow-utils");
 
 function cardSvg(width, height, color, name, number, slab = false) {
@@ -74,6 +75,7 @@ async function main() {
     await waitForServer(base, output, server, "Showcase");
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, locale: "zh-CN", reducedMotion: "reduce" });
+    await page.context().addCookies(testAccountCookies(base));
     page.on("pageerror", error => browserErrors.push(error.message));
     page.setDefaultTimeout(15_000);
     await page.goto(`${base}/showcase`, { waitUntil: "networkidle" });
@@ -87,6 +89,7 @@ async function main() {
     assert.deepEqual(selectedSubjectStyle, { background: "rgba(0, 0, 0, 0)", border: "rgba(0, 0, 0, 0)", shadow: "none" }, "selected subject only deepens the text");
     assert.match(await page.locator(".showcase-card-stage img").first().getAttribute("src"), /^\/thumbnails\//, "wall loads a compact image");
     const withoutJavaScript = await browser.newPage({ javaScriptEnabled: false, viewport: { width: 1440, height: 1000 } });
+    await withoutJavaScript.context().addCookies(testAccountCookies(base));
     await withoutJavaScript.goto(`${base}/showcase`, { waitUntil: "networkidle" });
     const firstPaint = await withoutJavaScript.locator(".showcase-card-stage img").first().evaluate(image => ({ loaded: image.complete && image.naturalWidth > 0, opacity: getComputedStyle(image).opacity, shadow: getComputedStyle(image).boxShadow }));
     assert.deepEqual(firstPaint, { loaded: true, opacity: "1", shadow: "none" }, "first wall image is visible without a shadow around its unfitted container");

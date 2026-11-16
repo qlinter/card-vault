@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { execFileSync, spawn, spawnSync } = require("node:child_process");
 const { DatabaseSync } = require("node:sqlite");
+const { accountTestEnvironment, authenticateTestServer, writeAccountStorageState } = require("./test-account-helpers");
 
 const rootDir = path.resolve(__dirname, "..");
 const runtimeRoot = path.join(rootDir, "tests", ".ui-test-runtime");
@@ -131,7 +132,7 @@ async function startUiTestServer() {
   fs.copyFileSync(path.join(rootDir, "public", "home-bg.webp"), path.join(uploadsDir, "ui-card-2.webp"));
   fs.copyFileSync(path.join(rootDir, "tests", "fixtures", "ui-media", "shares-bg.webp"), path.join(uploadsDir, "ui-card-3.webp"));
 
-  const env = {
+  const env = accountTestEnvironment({
     ...process.env,
     CARD_VAULT_DATA_DIR: dataDir,
     CARD_VAULT_STORAGE_CONFIG_PATH: path.join(runtimeRoot, "storage-config.json"),
@@ -139,7 +140,7 @@ async function startUiTestServer() {
     XDG_CACHE_HOME: path.join(runtimeRoot, "cache"),
     NODE_ENV: "production",
     UI_TEST_MODE: "1"
-  };
+  });
   const init = spawnSync(process.execPath, [path.join(rootDir, "scripts", "init-db.js")], {
     cwd: rootDir,
     env,
@@ -156,6 +157,9 @@ async function startUiTestServer() {
     windowsHide: true
   });
   await waitForHealth(server);
+  const baseUrl = `http://127.0.0.1:${port}`;
+  await authenticateTestServer(baseUrl);
+  writeAccountStorageState(baseUrl, path.join(runtimeRoot, "auth-state.json"));
   return {
     async close() {
       if (server.exitCode !== null || server.killed) return;

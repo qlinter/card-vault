@@ -242,7 +242,7 @@ test("management titles follow the locale and Settings owns the shared user guid
   await page.getByRole('link', { name: '使用说明', exact: true }).click();
   await expect(page).toHaveURL(/settings\/guide$/);
   await expect(page.locator("#plans")).toContainText("不与心愿或卡片建立关联");
-  await expect(page.locator(".user-guide-index a")).toHaveCount(9);
+  await expect(page.locator(".user-guide-index a")).toHaveCount(10);
   await page.getByRole("button", { name: "选择语言" }).click();
   await page.getByRole("menuitemradio", { name: "English" }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('User guide');
@@ -273,7 +273,7 @@ test("Settings groups data management and fits the minimum Windows window", asyn
   await page.setViewportSize({ width: 1100, height: 760 });
   await page.goto("/settings", { waitUntil: "networkidle" });
   await expect(page.locator(".nav-links").getByRole("link", { name: "统计", exact: true })).toHaveAttribute("href", "/portfolio");
-  await expect(page.locator(".settings-page > .settings-section")).toHaveText(["主题", "数据", "AI", "财务"]);
+  await expect(page.locator(".settings-groups > .settings-section")).toHaveText(["账户与安全", "主题", "数据", "AI", "财务"]);
   await expect(page.locator('.settings-help-toggle')).toHaveText(`帮助与版本v${productVersion}`);
   await page.getByRole("button", { name: "展开数据", exact: true }).click();
   await expect(page).toHaveURL(/settings$/);

@@ -8,7 +8,7 @@ for (const [timezoneId, time] of [['Asia/Shanghai', '08:30:00'], ['America/Los_A
     const timestamp = '2026-11-12T00:30:00.000Z';
     fixture(db => db.prepare('INSERT INTO CardEntryDraft(id, valuesJson, createdAt, updatedAt) VALUES(?,?,?,?)')
       .run('entry-feedback-timezone', JSON.stringify({ playerName: 'Entry Feedback Timezone' }), timestamp, timestamp));
-    const context = await browser.newContext({ timezoneId });
+    const context = await browser.newContext({ timezoneId, storageState: 'tests/.ui-test-runtime/auth-state.json' });
     try {
       await context.addCookies([{ name: 'card_vault_ui_locale', value: locale, url: baseURL }]);
       const page = await context.newPage(), errors = [];

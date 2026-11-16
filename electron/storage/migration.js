@@ -9,6 +9,7 @@ function createMigrationService({ config, inspectDataFolder, ensureDataLayout })
   function migrateTo(selectedPath, onProgress) {
     reportProgress(onProgress, 2, "正在检查新旧存储路径...");
     const targetDir = resolveSelectedDataDir(selectedPath);
+    config.validateDataDir(targetDir);
     const sourceDataDir = config.getDataDir();
     const sourceDbPath = config.getDbPath();
     ensureDataLayout(sourceDataDir);

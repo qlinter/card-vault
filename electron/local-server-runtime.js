@@ -6,6 +6,7 @@ const path = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");
 const { createOperationCoordinator } = require("./operation-coordinator");
 const { selectLocalPort } = require("./local-server-port");
+const { ACCOUNT_COOKIE, createAccountStore } = require("../lib/account-store");
 
 function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger, resolveSystemProxy }) {
   const runExclusiveOperation = createOperationCoordinator();
@@ -19,6 +20,19 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger, res
   const sessionCookieName = "card-vault-session";
   const sessionHeaderName = "x-card-vault-session";
   const sessionToken = randomBytes(32).toString("base64url");
+  const accountRunId = randomBytes(32).toString("hex");
+  const account = createAccountStore({ filePath: path.join(path.dirname(aiConfig.getConfigPath()), "account.json"), runId: accountRunId });
+  let accountLockPending = false;
+
+  async function requireAccount(event) {
+    if (accountLockPending || event.senderFrame !== event.sender.mainFrame) throw new Error("请先登录 Card Vault。");
+    const cookies = await event.sender.session.cookies.get({ url: serverUrl, name: ACCOUNT_COOKIE });
+    if (accountLockPending || !account.status(cookies[0]?.value).authenticated) throw new Error("请先登录 Card Vault。");
+  }
+  async function lockAccount() {
+    accountLockPending = true;
+    try { await account.lock(); } finally { accountLockPending = false; }
+  }
   const nextBuildSourcePaths = [
     path.join(rootDir, "app"), path.join(rootDir, "components"), path.join(rootDir, "lib"),
     path.join(rootDir, "next.config.mjs"), path.join(rootDir, "proxy.ts"), path.join(rootDir, "package.json"),
@@ -47,7 +61,7 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger, res
   }
 
   function getDesktopEnv() {
-    return { ...storage.getEnv(), CARD_VAULT_AI_CONFIG_PATH: aiConfig.getConfigPath(), ...aiConfig.getRuntimeEnv() };
+    return { ...storage.getEnv(), CARD_VAULT_AI_CONFIG_PATH: aiConfig.getConfigPath(), ...aiConfig.getRuntimeEnv(), CARD_VAULT_ACCOUNT_PATH: account.filePath, CARD_VAULT_ACCOUNT_RUN_ID: accountRunId };
   }
 
   function runNodeCommand(scriptPath, args, logFile) {
@@ -204,7 +218,7 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger, res
     try { await serverRestartPromise; } finally { serverRestartPromise = null; }
   }
 
-  return { runExclusiveOperation, getRootDir: () => rootDir, getServerUrl: () => serverUrl, getServerPort: () => serverPort, getSessionCookie: () => ({ name: sessionCookieName, value: sessionToken }), getDesktopEnv, runNodeCommand, waitForServer, waitForAvailablePort, selectServerTarget, ensurePreparedBuild, startServer, stopServer, waitForProcessExit, resumeLocalServer, restartLocalServer, getStorageWorkerPath: () => storageWorkerPath };
+  return { requireAccount, lockAccount, runExclusiveOperation, getRootDir: () => rootDir, getServerUrl: () => serverUrl, getServerPort: () => serverPort, getSessionCookie: () => ({ name: sessionCookieName, value: sessionToken }), getDesktopEnv, runNodeCommand, waitForServer, waitForAvailablePort, selectServerTarget, ensurePreparedBuild, startServer, stopServer, waitForProcessExit, resumeLocalServer, restartLocalServer, getStorageWorkerPath: () => storageWorkerPath };
 }
 
 module.exports = { createLocalServerRuntime };

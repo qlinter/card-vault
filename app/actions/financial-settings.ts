@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAccount } from "@/lib/account-server";
+
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
@@ -9,6 +11,7 @@ type State = { error?: string; saved?: boolean };
 const failure = (error: unknown): State => ({ error: error instanceof Error ? error.message : "Unable to save settings" });
 
 export async function savePrimaryCurrency(_state: State, formData: FormData): Promise<State> {
+  await requireAccount();
   try {
     const currency = String(formData.get("reportingCurrency"));
     if (!["CNY", "USD"].includes(currency)) throw new Error("Invalid currency");
@@ -19,6 +22,7 @@ export async function savePrimaryCurrency(_state: State, formData: FormData): Pr
 }
 
 export async function saveExchangeRate(_state: State, formData: FormData): Promise<State> {
+  await requireAccount();
   try {
     const id = String(formData.get("id") ?? "");
     const rateMicros = parseFxRate(String(formData.get("rate") ?? ""));
@@ -41,6 +45,7 @@ export async function saveExchangeRate(_state: State, formData: FormData): Promi
 }
 
 export async function deleteExchangeRate(_state: State, formData: FormData): Promise<State> {
+  await requireAccount();
   try {
     const id = String(formData.get("id") ?? "");
     if (!id) throw new Error("Invalid rate");

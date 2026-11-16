@@ -5,6 +5,7 @@ const path = require("node:path");
 const { _electron: electron, expect } = require("@playwright/test");
 const { initializeDatabase } = require("./database-schema");
 const { createAiConfigManager } = require("../electron/ai-config");
+const { signInTestPage } = require("./test-account-helpers");
 
 const projectRoot = path.resolve(__dirname, "..");
 const development = process.argv.includes("--development");
@@ -32,6 +33,7 @@ async function run(locale) {
     await expect.poll(() => fs.existsSync(logPath) && fs.readFileSync(logPath, "utf8").slice(offset).includes("Desktop app boot completed."), { timeout: 60000 }).toBe(true);
     const page = await app.firstWindow();
     await page.waitForLoadState("networkidle");
+    await signInTestPage(page);
     const origin = new URL(page.url()).origin;
     await page.context().addCookies([{ name: "card_vault_ui_locale", value: locale, url: origin }]);
     await page.goto(origin + "/settings", { waitUntil: "networkidle" });

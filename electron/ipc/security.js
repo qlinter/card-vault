@@ -12,9 +12,10 @@ function assertTrustedIpcSender(event, baseUrl) {
   if (!isTrustedIpcSender(event, baseUrl)) throw new Error("拒绝来自非 Card Vault 页面调用的桌面功能。");
 }
 
-function createTrustedIpcRegistrar(ipcMain, getBaseUrl) {
+function createTrustedIpcRegistrar(ipcMain, getBaseUrl, authorize) {
   return (channel, handler) => ipcMain.handle(channel, async (event, ...args) => {
     assertTrustedIpcSender(event, getBaseUrl());
+    if (authorize) await authorize(event);
     return handler(event, ...args);
   });
 }

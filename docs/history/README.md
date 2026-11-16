@@ -10,6 +10,7 @@
 
 | 版本 | 中文摘要 | English summary | 记录 |
 | --- | --- | --- | --- |
+| `1.5.3` | 完善录入校验与 AI 入口、草稿反馈、文件控件对齐及跨时区显示；合并维护文档，交付修订安装包与便携包。 | Improved entry validation, AI visibility, draft feedback, file controls and timezone rendering; consolidated documentation and shipped revised Windows distributions. | [发布说明](./releases.md#release-v1-5-3) |
 | `1.5.2` | 收藏回顾、沉浸式赏卡、统一字体与布局；修复 AI 删除卡顿、录入与删除保护、图片校验及备份状态。 | Collection Recaps, Immersive Viewing and consistent design; AI deletion, entry/deletion safeguards, image validation and backup status fixes. | [发布说明](./releases.md#release-v1-5-2) |
 | `1.5.1` | OpenAI 默认与代理、图片导出、统计命名、保存可靠性及代码结构整理；完成 GitHub 分发。 | OpenAI defaults and proxies, image exports, Statistics labels, save reliability and code organization; published Windows distributions on GitHub. | [发布说明](releases.md#release-v1-5-1) |
 | `1.5.0` | 完成三个阶段轻量化，精简收藏、录入、详情、分享、统计与设置，整理代码结构。 | Three-stage simplification of Collection, entry, details, sharing, Statistics and Settings, with code cleanup. | [发布说明](releases.md#release-v1-5-0) |

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, safeStorage, shell, session } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, safeStorage, shell, session, powerMonitor } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const { createAiConfigManager } = require("./ai-config");
@@ -9,6 +9,7 @@ const { registerStorageIpc } = require("./ipc/storage-ipc");
 const { shouldUseSoftwareRendering } = require("./rendering-mode");
 const { createStorageManager } = require("./storage");
 const { createWindowManager } = require("./window-manager");
+const { assertTrustedIpcSender } = require("./ipc/security");
 
 const rootDir = path.resolve(__dirname, "..");
 
@@ -58,6 +59,13 @@ const windowManager = createWindowManager({ serverRuntime: runtime, rootDir, log
 
 registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, logger });
 registerAiIpc({ ipcMain, aiConfig, runtime, logger });
+ipcMain.handle("card-vault:sign-out-account", async event => {
+  assertTrustedIpcSender(event, runtime.getServerUrl());
+  if (event.senderFrame !== event.sender.mainFrame) throw new Error("请从 Card Vault 主窗口操作。");
+  try { await runtime.lockAccount(); }
+  catch (error) { runtime.stopServer(); logger.appendLog("desktop.log", `Account sign-out failed: ${error.message}`); throw new Error("退出登录未完成，本地访问已停止。请检查账户配置文件后重启应用。"); }
+  await event.sender.session.clearCache();
+});
 async function bootDesktopApp() {
   try {
     logger.ensureLogsDir();
@@ -69,6 +77,18 @@ async function bootDesktopApp() {
     await runtime.startServer();
     await runtime.waitForServer(runtime.getServerUrl(), 30000);
     await windowManager.createMainWindow();
+    powerMonitor.on("lock-screen", () => {
+      windowManager.hideForSystemLock();
+      void runtime.lockAccount().then(async () => {
+        await session.defaultSession.clearCache();
+        await windowManager.loadLockedScreen();
+      }).catch(error => {
+        runtime.stopServer();
+        logger.appendLog("desktop.log", `Account lock failed: ${error.message}`);
+        dialog.showErrorBox("Card Vault", "账户锁定未完成，本地访问已停止。请检查账户配置文件的读写权限后重新启动应用。已开始的存储任务会继续完成。");
+      });
+    });
+    powerMonitor.on("unlock-screen", () => windowManager.showLockedScreen());
     logger.appendLog("desktop.log", "Desktop app boot completed.");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown startup error.";

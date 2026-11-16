@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { _electron: electron } = require("@playwright/test");
+const { signInTestPage } = require("./test-account-helpers");
 
 async function checkPackagedDesktop(executable, version, { env, userData, playerName, query, args = [], electronVersion, dataWorkspace = false }) {
   const logPath = path.join(userData, "logs", "desktop.log");
@@ -23,6 +24,9 @@ async function checkPackagedDesktop(executable, version, { env, userData, player
     }
     assert.ok(ready, "Packaged desktop did not complete startup.");
     const window = await desktop.firstWindow();
+    await window.waitForLoadState("networkidle");
+    await signInTestPage(window);
+    await window.goto(new URL(window.url()).origin, { waitUntil: "networkidle" });
     await window.getByText(playerName, { exact: true }).first().waitFor({ timeout: 60000 });
     assert.equal(await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()), false);
     const preferences = await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences());

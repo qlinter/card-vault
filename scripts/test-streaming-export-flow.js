@@ -7,13 +7,15 @@ const { pipeline } = require('node:stream/promises');
 const { DatabaseSync } = require('node:sqlite');
 const ExcelJS = require('exceljs');
 const { createMemorySampler } = require('./test-memory-sampler');
+const { testAccountCookies } = require('./test-account-helpers');
 const { initializeTestDatabase, fileDatabaseUrl, findAvailablePort, startTestServer, waitForServer, stopServer, removeTempRoot } = require('./test-http-flow-utils');
 
 // Native HTTP streams avoid an Undici paused-parser assertion in the bundled
 // Node runtime when a large, backpressured response closes its connection.
 function downloadResponse(url) {
   return new Promise((resolve, reject) => {
-    const request = http.get(url, { agent: false, signal: AbortSignal.timeout(600000) }, resolve);
+    const cookie = testAccountCookies(url).map(item => `${item.name}=${item.value}`).join('; ');
+    const request = http.get(url, { agent: false, headers: { Cookie: cookie }, signal: AbortSignal.timeout(600000) }, resolve);
     request.once('error', reject);
   });
 }

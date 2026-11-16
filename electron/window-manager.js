@@ -6,6 +6,8 @@ const { createSecureWebPreferences } = require("./window-options");
 function createWindowManager({ serverRuntime, rootDir, logger }) {
   const appIconPath = path.join(rootDir, "build", "icon.ico");
   let mainWindow = null;
+  let systemLocked = false;
+  let lockedScreenReady = true;
 
   function isLocalAppUrl(rawUrl) { return isSameOriginUrl(rawUrl, serverRuntime.getServerUrl()); }
   function openSafeExternalUrl(rawUrl) {
@@ -23,6 +25,8 @@ function createWindowManager({ serverRuntime, rootDir, logger }) {
     mainWindow.webContents.on("will-redirect", guardNavigation);
     mainWindow.once("ready-to-show", () => { if (process.env.CARD_VAULT_ACCEPTANCE_MODE !== "1") mainWindow?.show(); });
     const sessionCookie = serverRuntime.getSessionCookie();
+    // Discard media cached by versions that predate account protection.
+    await mainWindow.webContents.session.clearCache();
     await mainWindow.webContents.session.cookies.set({
       url: serverRuntime.getServerUrl(),
       name: sessionCookie.name,
@@ -36,9 +40,26 @@ function createWindowManager({ serverRuntime, rootDir, logger }) {
   }
 
   function getMainWindow() { return mainWindow; }
-  function focusMainWindow() { if (!mainWindow) return; if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus(); }
+  function focusMainWindow() { if (!mainWindow || systemLocked || !lockedScreenReady || process.env.CARD_VAULT_ACCEPTANCE_MODE === "1") return; if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus(); }
 
-  return { createMainWindow, getMainWindow, focusMainWindow };
+  function hideForSystemLock() {
+    systemLocked = true; lockedScreenReady = false;
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.hide();
+    mainWindow.webContents.send("card-vault:account-locked");
+  }
+  async function loadLockedScreen() {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    // Backup/restore can pause Next while the OS locks. Wait for its existing
+    // operation to finish, without killing a committed write or backup worker.
+    await serverRuntime.waitForServer(serverRuntime.getServerUrl(), 600000);
+    await mainWindow.loadURL(serverRuntime.getServerUrl() + "/login");
+    lockedScreenReady = true;
+    if (!systemLocked) focusMainWindow();
+  }
+  function showLockedScreen() { systemLocked = false; if (lockedScreenReady) focusMainWindow(); }
+
+  return { createMainWindow, getMainWindow, focusMainWindow, hideForSystemLock, loadLockedScreen, showLockedScreen };
 }
 
 module.exports = { createWindowManager };

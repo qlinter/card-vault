@@ -1,7 +1,7 @@
 const { createTrustedIpcRegistrar, isTrustedIpcSender } = require("./security");
 
 function registerAiIpc({ ipcMain, aiConfig, runtime, logger }) {
-  const trustedHandle = createTrustedIpcRegistrar(ipcMain, () => runtime.getServerUrl());
+  const trustedHandle = createTrustedIpcRegistrar(ipcMain, () => runtime.getServerUrl(), event => runtime.requireAccount(event));
 
   trustedHandle("card-vault:get-ai-settings", async () => aiConfig.getPublicSettings());
   ipcMain.on("card-vault:preload-ready", (event) => {

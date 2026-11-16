@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAccount } from "@/lib/account-server";
+
 import { assertCollectionStatusQuantity } from "@/lib/card-quantity";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -35,6 +37,7 @@ export async function createCardFormAction(
   _previousState: CreateCardFormState,
   formData: FormData
 ): Promise<CreateCardFormState> {
+  await requireAccount();
   let redirectPath: string | null = null;
   const values = readCardFormValues(formData);
   const saveIntent = readCardEntrySaveIntent(formData);
@@ -86,6 +89,7 @@ export async function createCardFormAction(
 }
 
 export async function updateCardFormAction(cardId: string, _previousState: CreateCardFormState, formData: FormData): Promise<CreateCardFormState> {
+  await requireAccount();
   const submittedVersion = formData.get("editVersion");
   const expectedVersion = typeof submittedVersion === "string" ? submittedVersion : "";
   const rawReturnTo = formData.get("returnTo");
@@ -179,6 +183,7 @@ export async function updateCardFormAction(cardId: string, _previousState: Creat
 }
 
 export async function deleteCardAction(cardId: string, expectedVersion: string): Promise<void> {
+  await requireAccount();
   let redirectPath = "/?error=unknown";
 
   try {

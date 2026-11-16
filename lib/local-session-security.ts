@@ -3,6 +3,16 @@ import { timingSafeEqual } from "node:crypto";
 export const localSessionCookieName = "card-vault-session";
 export const localSessionHeaderName = "x-card-vault-session";
 
+export function localRequestOrigin(host: string | null, protocol: string, configuredOrigin?: string): string | null {
+  if (!host || !["http:", "https:"].includes(protocol)) return null;
+  try {
+    const url = new URL(configuredOrigin || `${protocol}//${host}`);
+    if (url.host.toLowerCase() !== host.toLowerCase() || url.username || url.password) return null;
+    if (!configuredOrigin && !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) return null;
+    return url.origin;
+  } catch { return null; }
+}
+
 type LocalSessionRequest = {
   expectedToken?: string | null;
   allowedOrigin?: string | null;
@@ -70,7 +80,9 @@ export function localSecurityHeaders(): Record<string, string> {
       "script-src 'self' 'unsafe-inline'",
       "connect-src 'self'"
     ].join("; "),
-    "Referrer-Policy": "no-referrer",
+    // `no-referrer` makes Chromium send Origin:null on native form POSTs.
+    // Keep same-origin exports verifiable without disclosing paths off-origin.
+    "Referrer-Policy": "same-origin",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY"
   };

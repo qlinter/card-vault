@@ -86,8 +86,9 @@ test("recap computes current data and exposes no persistence endpoints", async (
   await page.goto("/portfolio/recap?id=recap-retired");
   await expect(page.locator(".recap-stats")).toBeVisible(); await expect(page.locator(".recap-saved-panel")).toHaveCount(0);
   fixture(db=>{ expect(db.prepare("SELECT COUNT(*) n FROM Card WHERE id LIKE 'recap-fixture-%'").get().n).toBe(3); });
-  expect((await page.request.post("/api/collection-recaps",{data:{spec,title:"Retired",representativeIds:[]}})).status()).toBe(405);
-  expect((await page.request.patch("/api/collection-recaps/recap-retired",{data:{title:"Retired"}})).status()).toBe(404);
+  const headers = { Origin: new URL(page.url()).origin };
+  expect((await page.request.post("/api/collection-recaps",{headers,data:{spec,title:"Retired",representativeIds:[]}})).status()).toBe(405);
+  expect((await page.request.patch("/api/collection-recaps/recap-retired",{headers,data:{title:"Retired"}})).status()).toBe(404);
 });
 
 test("representatives can be removed and added in the integrated picker", async ({ page }) => {

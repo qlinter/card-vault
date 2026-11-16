@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAccount } from "@/lib/account-server";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
@@ -60,6 +62,7 @@ function finishHistoryMutation(cardId: string, success: string, returnTo?: strin
 }
 
 export async function saveFinancialRecordFormAction(cardId: string, type: FinancialRecordType, recordId: string | null, returnTo: string | undefined, _previousState: { error: string }, formData: FormData, stayOnPage = false): Promise<{ error: string }> {
+  await requireAccount();
   const expectedVersion = String(formData.get("editVersion") ?? "");
   try {
     await mutateHistory(cardId, async (transaction) => {
@@ -79,6 +82,7 @@ export async function deleteFinancialRecordAction(
   returnTo: string | undefined,
   expectedVersion: string
 ): Promise<void> {
+  await requireAccount();
   try {
     await mutateHistory(cardId, (transaction) => deleteCardFinancialRecord(transaction, cardId, recordType, recordId, expectedVersion));
   } catch (error) {

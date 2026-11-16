@@ -1,6 +1,51 @@
 import { expect, test } from '@playwright/test';
 test.use({ actionTimeout: 10_000 });
 
+test('standalone sign-out stays visible with account settings collapsed in both languages, all themes and narrow screens', async ({ page, context, baseURL }) => {
+  test.setTimeout(120000);
+  for (const theme of ['classic', 'gallery', 'midnight', 'archive']) {
+    for (const locale of ['zh', 'en']) {
+      const english = locale === 'en';
+      await context.addCookies([{ name: 'card_vault_app_theme', value: theme, url: baseURL }, { name: 'card_vault_ui_locale', value: locale, url: baseURL }]);
+      await page.goto('/settings', { waitUntil: 'networkidle' });
+      await expect(page.locator('.header-utilities .header-tool')).toHaveCount(2);
+      await expect(page.locator('.header-utilities .header-settings')).toBeVisible();
+      await expect(page.getByRole('button', { name: english ? 'Choose language' : '选择语言', exact: true })).toBeVisible();
+      const expand = page.getByRole('button', { name: english ? 'Expand Account & security' : '展开账户与安全', exact: true });
+      await expect(expand).toHaveAttribute('aria-expanded', 'false');
+      const actions = page.locator('.settings-footer-bar');
+      const signOut = actions.getByRole('button', { name: english ? 'Sign out' : '退出登录', exact: true });
+      await expect(signOut).toBeVisible();
+      await expect(signOut).not.toHaveAttribute('aria-expanded');
+      await expect(signOut.locator('svg')).toHaveCount(0);
+      await expand.click();
+      await expect(page.getByRole('combobox', { name: english ? 'Manage account' : '账户管理', exact: true })).toHaveCSS('background-repeat', 'no-repeat');
+      await expect(page.locator('#account-security').getByRole('button', { name: english ? 'Sign out' : '退出登录', exact: true })).toHaveCount(0);
+      await page.getByRole('button', { name: english ? 'Collapse Account & security' : '收起账户与安全', exact: true }).click();
+      for (const width of [1440, 390, 320]) {
+        await page.setViewportSize({ width, height: 900 });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        await expect(signOut).toBeInViewport();
+        const signOutBox = await signOut.boundingBox();
+        const actionsBox = await actions.boundingBox();
+        const helpBox = await page.locator('.settings-help-toggle').boundingBox();
+        expect(signOutBox.height).toBeGreaterThanOrEqual(40);
+        expect(Math.abs(signOutBox.x + signOutBox.width - actionsBox.x - actionsBox.width)).toBeLessThan(2);
+        expect(helpBox.x + helpBox.width).toBeLessThan(signOutBox.x);
+        expect(Math.abs(signOutBox.y + signOutBox.height / 2 - helpBox.y - helpBox.height / 2)).toBeLessThan(2);
+      }
+      const before = await signOut.boundingBox();
+      await page.locator('.settings-help-toggle').click();
+      await expect(page.locator('.settings-help-content')).toBeVisible();
+      const after = await signOut.boundingBox();
+      expect(after.x).toBeCloseTo(before.x, 0);
+      expect(after.y).toBeCloseTo(before.y, 0);
+      await page.locator('.settings-help-toggle').click();
+      await page.screenshot({ path: `logs/settings-sign-out-${theme}-${locale}.png`, fullPage: true, animations: 'disabled' });
+    }
+  }
+});
+
 test('legacy settings links open the correct tools and help remains reachable', async ({ page }) => {
   await page.goto('/settings#data-export', { waitUntil: 'networkidle' });
   await expect(page.locator('#data-export')).toBeVisible();
@@ -17,7 +62,7 @@ test('legacy settings links open the correct tools and help remains reachable', 
   await expect(page.locator('.settings-help-actions a').first()).toHaveAttribute('href', '/settings/guide');
   await page.evaluate(() => { location.hash = 'user-guide-settings'; });
   await expect(page).toHaveURL(/\/settings\/guide$/);
-  await expect(page.locator('.user-guide-index a')).toHaveCount(9);
+  await expect(page.locator('.user-guide-index a')).toHaveCount(10);
 });
 
 test('AI fields are directly visible and preserve drafts and saved keys across provider switches and folding', async ({ page }) => {

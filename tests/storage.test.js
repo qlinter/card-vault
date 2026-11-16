@@ -21,6 +21,20 @@ function createTestManager(t) {
   };
 }
 
+test("collection paths cannot contain the device account configuration", t => {
+  const { root, appDataRoot, manager } = createTestManager(t);
+  seedData(manager);
+  fs.writeFileSync(path.join(appDataRoot, "account.json"), "protected account fixture");
+  for (const selected of [appDataRoot, root]) assert.throws(() => manager.migrateTo(selected), /收藏目录不能包含应用配置目录/);
+  assert.equal(fs.readFileSync(path.join(appDataRoot, "account.json"), "utf8"), "protected account fixture");
+  assert.equal(manager.getDataDir(), path.join(appDataRoot, "data"));
+  const backup = manager.backupDataFolder();
+  fs.writeFileSync(path.join(appDataRoot, "storage-config.json"), JSON.stringify({ dataDir: appDataRoot }));
+  assert.throws(() => manager.getDataDir(), /收藏目录不能包含应用配置目录/);
+  assert.throws(() => manager.backupDataFolder(), /收藏目录不能包含应用配置目录/);
+  assert.throws(() => manager.restoreDataFolder(backup.backupPath), /收藏目录不能包含应用配置目录/);
+});
+
 function seedData(manager) {
   manager.ensureDataLayout(manager.getDataDir());
   initializeDatabase(manager.getDbPath());

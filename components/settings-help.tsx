@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UiText, UiElement } from "./ui-text";
@@ -7,7 +7,7 @@ import { DisclosureIcon } from "./disclosure-icon";
 import { useLanguage } from "./language-provider";
 import { currentReleaseNotes } from "@/lib/release-notes";
 
-export function SettingsHelp({ defaultVersion }: { defaultVersion: string }) {
+export function SettingsHelp({ defaultVersion, action }: { defaultVersion: string; action: ReactNode }) {
   const { locale } = useLanguage();
   const router = useRouter();
   const [open, setOpen] = useState(false), [releaseOpen, setReleaseOpen] = useState(false);
@@ -25,9 +25,12 @@ export function SettingsHelp({ defaultVersion }: { defaultVersion: string }) {
   }, [router]);
   const highlights = currentReleaseNotes.highlights[locale === "en" ? "en" : "zh"];
   return <footer className="settings-help" id="help-settings" data-testid="settings-help">
-    <button type="button" className="settings-help-toggle" aria-expanded={open} aria-controls="help-settings-content" onClick={() => setOpen(!open)}>
-      <span><UiText text="帮助与版本" /></span><span><small>v{defaultVersion}</small><DisclosureIcon expanded={open} /></span>
-    </button>
+    <div className="settings-footer-bar">
+      <button type="button" className="settings-help-toggle" aria-expanded={open} aria-controls="help-settings-content" onClick={() => setOpen(!open)}>
+        <span><UiText text="帮助与版本" /><small>v{defaultVersion}</small></span><DisclosureIcon expanded={open} />
+      </button>
+      {action}
+    </div>
     <div className="settings-help-content" id="help-settings-content" hidden={!open}>
       <nav className="settings-help-actions">
         <Link className="btn btn-secondary" href="/settings/guide"><UiText text="使用说明" /></Link>

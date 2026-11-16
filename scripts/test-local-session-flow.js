@@ -4,6 +4,7 @@ const net = require("node:net");
 const os = require("node:os");
 const path = require("node:path");
 const { execFileSync, spawn } = require("node:child_process");
+const { authenticateTestServer } = require("./test-account-helpers");
 
 const rootDir = path.resolve(__dirname, "..");
 const nextCliPath = path.join(rootDir, "node_modules", "next", "dist", "bin", "next");
@@ -66,7 +67,9 @@ async function main() {
     CARD_VAULT_DATA_DIR: dataDir,
     DATABASE_URL: `file:${dbPath.replace(/\\/g, "/")}`,
     CARD_VAULT_SESSION_TOKEN: token,
-    CARD_VAULT_ALLOWED_ORIGIN: origin
+    CARD_VAULT_ALLOWED_ORIGIN: origin,
+    CARD_VAULT_ACCOUNT_PATH: path.join(tempRoot, "account", "account.json"),
+    CARD_VAULT_ACCOUNT_RUN_ID: "local-session-acceptance"
   };
   fs.mkdirSync(dataDir, { recursive: true });
   execFileSync(process.execPath, [initDbScriptPath], { cwd: rootDir, env, stdio: "ignore" });
@@ -85,7 +88,10 @@ async function main() {
     const unauthenticated = await request(port, "/");
     if (unauthenticated.status !== 403) throw new Error(`Unauthenticated local request returned ${unauthenticated.status}.`);
 
-    const cookie = `card-vault-session=${token}`;
+    const serviceCookie = `card-vault-session=${token}`;
+    const loginRequired = await request(port, "/", { headers: { Cookie: serviceCookie } });
+    if (loginRequired.status !== 401) throw new Error(`A desktop service cookie bypassed account login (${loginRequired.status}).`);
+    const cookie = await authenticateTestServer(origin, serviceCookie);
     const authenticated = await request(port, "/", { headers: { Cookie: cookie } });
     if (authenticated.status !== 200 || !String(authenticated.headers["content-security-policy"] || "").includes("frame-ancestors 'none'")) {
       throw new Error(`Authenticated local request failed (${authenticated.status}) or omitted CSP.`);

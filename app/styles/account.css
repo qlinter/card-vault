@@ -1,0 +1,37 @@
+.account-gateway { min-height: 100dvh; display: grid; place-items: center; padding: 4.5rem 0 2rem; }
+.account-gateway-tools { position: absolute; top: 1.25rem; right: 3vw; }
+.account-card { width: min(100%, 420px); padding: 2rem; }
+.account-brand { color: var(--muted); font-size: var(--text-sm); font-weight: var(--weight-semibold); letter-spacing: .06em; }
+.account-card h1 { font-size: var(--text-2xl); font-weight: var(--weight-semibold); line-height: var(--leading-heading); margin: .5rem 0 1.5rem; }
+.account-form fieldset { display: grid; gap: 1rem; border: 0; padding: 0; margin: 0; min-width: 0; }
+.account-field { display: grid; gap: .4rem; font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--slate); }
+.account-field input, .account-field select { width: 100%; min-width: 0; height: var(--control-height); border: 1px solid var(--line-strong); border-radius: var(--control-radius); padding: .5rem .7rem; background-color: var(--surface); color: var(--ink); font-size: var(--text-base); }
+.account-field select { padding-right: 2.5rem; }
+.account-field input:focus, .account-field select:focus { outline: 2px solid var(--teal); outline-offset: 2px; }
+.account-password { position: relative; display: flex; align-items: center; }
+.account-password input { padding-right: 2.75rem; }
+.account-reveal { position: absolute; right: .25rem; display: inline-flex; align-items: center; justify-content: center; width: var(--control-size-icon); height: var(--control-size-icon); padding: 0; border: 0; border-radius: var(--control-radius); background: transparent; color: var(--muted); cursor: pointer; }
+.account-reveal:hover { color: var(--ink); background: var(--surface-soft); }
+.account-reveal:focus-visible { outline: 2px solid var(--teal); outline-offset: 1px; }
+.account-submit { width: 100%; }
+.account-hint { color: var(--muted); font-size: var(--text-sm); line-height: var(--leading-body); margin: 0 0 .8rem; }
+.account-error { color: var(--theme-negative, #b04136); font-size: var(--text-sm); margin: 1rem 0 0; overflow-wrap: anywhere; }
+.account-text-button { display: block; margin: 1rem auto 0; border: 0; background: transparent; color: var(--muted); font-size: var(--text-sm); padding: .35rem; cursor: pointer; }
+.account-recovery { display: grid; gap: .8rem; }
+.account-recovery h2 { font-size: var(--text-lg); margin: 0; }
+.account-card .account-recovery h2 { display: none; }
+.account-recovery .account-hint { margin: 0; }
+.account-recovery-code { display: block; padding: 1rem; background: var(--surface-soft); border-radius: var(--control-radius); font-size: var(--text-base); line-height: 1.8; overflow-wrap: anywhere; user-select: all; }
+.account-check { display: flex; align-items: center; gap: .5rem; font-size: var(--text-sm); }
+.account-check input { width: var(--control-size-check); height: var(--control-size-check); margin: 0; accent-color: var(--teal); flex-shrink: 0; }
+.account-settings { max-width: 440px; }
+.account-current { display: flex; min-width: 0; align-items: baseline; gap: 1rem; color: var(--muted); font-size: var(--text-sm); margin: 0 0 1.25rem; }
+.account-current span { white-space: nowrap; }
+.account-current strong { min-width: 0; color: var(--ink); font-weight: var(--weight-medium); overflow-wrap: anywhere; }
+.account-private-content { display: contents; }
+.account-lock-cover { display: none; }
+html[data-account-masked="true"] body > * { visibility: hidden !important; }
+html[data-account-masked="true"] .account-lock-cover { position: fixed; inset: 0; z-index: 2147483647; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; background: var(--surface); }
+html[data-account-masked="true"] .account-lock-cover, html[data-account-masked="true"] .account-lock-cover * { visibility: visible !important; }
+.account-lock-cover p { margin: 0; max-width: 30rem; padding: 0 1rem; text-align: center; }
+@media (max-width: 520px) { .account-card { padding: 1.5rem; } .account-gateway { padding-top: 4rem; } }

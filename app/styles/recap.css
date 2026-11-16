@@ -41,7 +41,6 @@
 .recap-picker button[aria-pressed=true] { border-color: var(--muted-ink); opacity: .65; }
 .recap-picker-image { position: relative; height: 150px; display: block; }
 .recap-actions > div { display: flex; flex-wrap: wrap; gap: 8px; }
-.recap-check { display: flex !important; align-items: center; }
 .recap-story-header { display:flex; align-items:center; flex-wrap:wrap; gap:12px 20px; }
 .recap-story-header .recap-title-label { flex:1; min-width: min(100%, 300px); }
 .recap-panel .recap-image-actions .recap-privacy { display:inline-flex; align-items:center; gap:7px; min-height:32px; padding:4px 6px; border:0; background:transparent; border-radius:var(--control-radius); font-size:var(--text-sm); font-weight:var(--weight-medium); color:var(--muted-ink); white-space:nowrap; }

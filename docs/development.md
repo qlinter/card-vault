@@ -27,6 +27,27 @@
 
 录入字段的控件判断、展开、焦点和错误关联统一放在 `card-form-display.ts`；清理校验提示只移除自身的关联，不覆盖字段原有的辅助说明。草稿保存与切换继续由录入页面编排，删除失败须保留列表并允许重试。
 
+<a id="account-security"></a>
+## 账户与访问保护
+
+`lib/account-store.js` 是 Node 与 Electron 共用的账户状态机：原子替换配置、跨进程写锁、初始化标记、随机盐 scrypt（N=32768、r=8、p=3）密码哈希、160 位随机恢复码及 SHA-256 摘要。密码不修剪、不强制字符组合；连续失败从第五次开始递增等待，最多 60 秒，成功验证清零。配置不可读、结构错误或初始化后缺失均拒绝访问，不回落到创建账户。实现参考 [Node.js crypto](https://nodejs.org/api/crypto.html) 与 [OWASP 身份验证指南](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)。
+
+密码长度范围 8–128 由 `lib/account-password-policy.json` 统一维护，创建、重设和修改密码共用。输入框按 Unicode 字符进行原生约束校验，提交不合规密码时弹出本地化提示；服务端独立校验相同范围。
+
+客户端状态读取、退出遮罩和返回登录统一由 `account-client.ts` 管理。更换恢复码后，账户边界卸载收藏与设置内容，仅显示本次恢复码；`recoveryPending` 只对有效的待确认令牌返回，不授予页面、API 或 IPC 权限。确认页可通过定时校验及窗口焦点切换，保存确认后撤销会话并返回登录。恢复码不存入浏览器持久存储。
+
+账户会话使用独立 HttpOnly、SameSite=Strict 的会话 Cookie，配置仅保存 256 位随机令牌的摘要。每次登录轮换令牌；Windows 锁屏、退出登录、重设或修改密码撤销旧令牌。会话绑定桌面主进程的随机运行身份，本地服务重启保留，完整应用重启失效。顶栏只保留设置和语言工具；账户管理位于设置的“账户与安全”，退出登录由 `SettingsSignOut` 在设置底部操作行右侧独立呈现，与左侧帮助入口并列，无需展开任何区域。帮助展开内容位于该操作行下方。不提供独立账户菜单或手动锁定；没有闲置自动锁定，不打断赏卡。
+
+`proxy.ts` 先检查原有桌面本地服务令牌，再检查独立账户会话。仅登录页、账户端点、最小健康检查与明确列出的静态资源允许匿名；页面、API、图片、分享和导出均受保护。所有写请求验证已校验的本机 Host 与 Origin，服务端动作另在入口调用 `requireAccount`，避免通过公开登录路由提交受保护动作。响应禁止缓存；客户端在退出登录、Windows 锁屏、旧页面恢复及会话失效时遮罩并硬跳转登录，清除路由内存状态。桌面退出使用 `signOutAccount` 桥接及 `card-vault:sign-out-account` IPC；系统锁屏继续通过主进程撤销会话，二者共用内部保护逻辑。
+
+应用响应采用 `Referrer-Policy: same-origin`，使原生 CSV/XLSX 表单保留可校验的 Origin，同时不向外部站点透露来源地址；继续拒绝缺失或 `null` 的写请求来源。浏览器行为参见 [MDN Referrer-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy)。原图和分享媒体禁止长期缓存；登录状态变更发送缓存清理头，桌面启动与锁定另清理 HTTP 缓存，避免旧版本媒体缓存绕过保护。
+
+Electron 的存储和 AI IPC 在同源及主框架验证后校验账户 Cookie；锁屏操作立即隐藏窗口、撤销账户会话并加载登录页，Windows 解锁不自动登录。已开始的事务与存储工作按既有一致性流程结束，新请求被拒绝。账户配置不在收藏备份范围内，见[账户数据边界](./data-guide.md#account-security)。
+
+文件选择返回及清理／恢复确认前后再次验证登录，防止锁屏前打开的对话框在锁定后启动修改。已经进入写入或备份阶段的任务继续按原有事务与回滚规则结束。
+
+测试必须使用独立 `CARD_VAULT_ACCOUNT_PATH` 和运行身份；共享 HTTP／桌面测试工具通过真实创建与登录接口取得会话，不提供生产环境跳过认证的开关。账户测试还需覆盖匿名媒体、服务端动作、IPC、会话重放、窗口重启及锁屏事件。模块测试按改动需要执行。
+
 <a id="checks"></a>
 ## 检查与基准
 
@@ -38,7 +59,7 @@
 | `npm run build` | 生成 Prisma 客户端、前置检查与生产构建 |
 | `npm run test:security` / `test:card` / `test:share` / `test:showcase` / `test:management` / `test:scout` / `test:export` | 隔离数据与模拟服务下的业务、安全及导出验证 |
 | `npm run test:ui` | 中英文、主题、窗口尺寸与严格截图比较 |
-| `npm run test:desktop` / `test:desktop:ai` / `test:desktop:collection` / `test:proxy:pac` | 桌面启动、AI 删除、回顾／展馆和真实 PAC 规则 |
+| `npm run test:desktop` / `test:desktop:ai` / `test:desktop:collection` / `test:desktop:account` / `test:proxy:pac` | 桌面启动、AI 删除、回顾／展馆、登录／锁屏／IPC 和真实 PAC 规则 |
 | `npm run test:desktop:launcher` / `test:desktop:runtime` | 隔离启动器及 Electron 沙箱、预加载和页面返回；会重建本地构建 |
 | `npm run check:release` | 完整源码门槛；不生成分发文件 |
 | `npm run audit:all` / `audit:prod` | 向 npm registry 查询全部／生产依赖安全公告 |
@@ -46,6 +67,8 @@
 | `npm run benchmark:portfolio-history` / `benchmark:portfolio-workload` | 与冻结实现对照结果、耗时和内存 |
 
 先完成生产构建再启动界面测试；UI 使用一个工作进程及隔离数据库，避免同时启动两套 UI 测试。使用锁文件对应的 Playwright Chromium；已有浏览器缓存时配置 `PLAYWRIGHT_BROWSERS_PATH`。截图须逐张核对有意变化后再更新，不能用放宽阈值或仅截图代替比较。
+
+桌面验收可能自动准备构建，应与浏览器验收串行运行。界面回归期间不得重建或清理 `.next`，以免运行中的服务器引用已经移除的脚本，造成无效回归结果。
 
 测试不得依赖个人收藏或真实 API Key。合成数据的规模、机器条件和测量方式须随结果记录，不能把函数速度当作整页速度，也不能将一次采样当作通用性能保证。既有观测保存在[历史基准](./history/development.md#data-benchmarks)。
 

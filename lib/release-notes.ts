@@ -1,15 +1,15 @@
 export const currentReleaseNotes = {
-  "date": "2026-11-12",
+  "date": "2026-11-16",
   "highlights": {
     "zh": [
-      "新增卡片时明确提示缺图、必填项和保存失败；提示显示在保存按钮旁并自动定位，失败后保留输入和图片。",
-      "AI 识图录入默认展开，采用简洁分区和轻量操作；统一文件选择框的上下对齐。",
-      "合并录入反馈处理，完善草稿删除失败与重试；整理无用样式，将统计和分发文档分别并入统一维护入口。"
+      "新增离线本地账户：创建用户名和密码，保存恢复码后进入现有收藏。",
+      "新增登录和退出登录；Windows 锁屏后需要重新登录，页面、图片、接口和桌面功能统一受保护。",
+      "账户与安全支持修改用户名、密码及更换恢复码；收藏备份与账户分开保存。"
     ],
     "en": [
-      "New-card entry shows missing-image, required-field and save errors beside Save, brings them into view and preserves entered values and selected images on failure.",
-      "AI Image Entry stays expanded with a simple panel and lightweight actions. File selection controls share consistent vertical alignment.",
-      "Consolidated entry feedback, improved draft deletion failure and retry handling, removed unused styles, and merged statistics and distribution documentation into their maintenance guides."
+      "Create an offline local account and save a recovery code to enter your existing collection.",
+      "Sign in and sign out. Windows screen lock requires sign-in again; pages, media, APIs and desktop operations share access protection.",
+      "Account & security manages usernames, passwords and recovery codes. Collection backups remain separate from device accounts."
     ]
   }
 };

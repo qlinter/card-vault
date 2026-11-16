@@ -25,6 +25,7 @@ export default defineConfig({
   use: {
     baseURL,
     browserName: "chromium",
+    storageState: "tests/.ui-test-runtime/auth-state.json",
 
     colorScheme: "light",
     locale: "zh-CN",

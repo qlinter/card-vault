@@ -179,7 +179,6 @@ body:has(.home-page) {
   background: #f7fbff;
 }
 
-
 body:has(.home-page) .topbar {
   background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.74);
 }
@@ -199,10 +198,6 @@ body:has(.shares-page),
 body:has(.settings-page) {
   background: #f7fbff;
 }
-
-
-
-
 
 body:has(.portfolio-page) .topbar,
 body:has(.shares-page) .topbar,
@@ -383,18 +378,6 @@ form.panel {
   stroke-linejoin: round;
 }
 
-.disclosure-button {
-  display: inline-grid;
-  place-items: center;
-  width: 2.1rem;
-  height: 2.1rem;
-  min-height: 2.1rem;
-  padding: 0;
-  border-radius: 999px;
-  line-height: 1;
-  vertical-align: middle;
-}
-
 .entry-queue-import {
   display: grid;
   grid-template-columns: minmax(160px, 0.7fr) minmax(260px, 1fr) minmax(260px, 1.2fr) auto;
@@ -560,9 +543,6 @@ form.panel {
   font-size: var(--text-sm);
 }
 
-
-
-
 .entry-form-column {
   min-width: 0;
 }
@@ -697,7 +677,6 @@ form.panel {
   gap: 0.5rem;
 }
 
-
 .entry-draft-heading .btn {
   min-height: var(--control-height-compact);
   padding: .3rem .65rem;
@@ -806,7 +785,6 @@ form.panel {
   gap: 0.6rem;
   margin-top: 1rem;
 }
-
 
 .summary-grid .panel {
   position: relative;

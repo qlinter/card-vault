@@ -1,6 +1,12 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("cardVaultDesktop", {
+  signOutAccount: () => ipcRenderer.invoke("card-vault:sign-out-account"),
+  onAccountLocked: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on("card-vault:account-locked", listener);
+    return () => ipcRenderer.removeListener("card-vault:account-locked", listener);
+  },
   chooseStorageDirectory: () => ipcRenderer.invoke("card-vault:choose-storage-directory"),
   getBackupSettings: () => ipcRenderer.invoke("card-vault:get-backup-settings"),
   chooseBackupDirectory: () => ipcRenderer.invoke("card-vault:choose-backup-directory"),

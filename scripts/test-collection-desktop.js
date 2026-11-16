@@ -3,6 +3,7 @@ const fs = require("node:fs"), os = require("node:os"), path = require("node:pat
 const { DatabaseSync } = require("node:sqlite");
 const { _electron: electron, expect } = require("@playwright/test");
 const { initializeDatabase } = require("./database-schema");
+const { signInTestPage } = require("./test-account-helpers");
 
 const project = path.resolve(__dirname, ".."), development = process.argv.includes("--development");
 const executable = development ? require("electron") : path.resolve(process.argv[2] || "dist/win-unpacked/Card Vault.exe");
@@ -24,6 +25,7 @@ async function run(locale) {
     const app = await electron.launch({ executablePath: executable, args: development ? [project] : [], env, timeout: 60000 }); desktop = app;
     await expect.poll(() => fs.existsSync(logPath) && fs.readFileSync(logPath, "utf8").slice(offset).includes("Desktop app boot completed."), { timeout: 60000 }).toBe(true);
     const page = await app.firstWindow(); await page.waitForLoadState("networkidle");
+    await signInTestPage(page);
     const origin = new URL(page.url()).origin;
     await page.context().addCookies([{ name: "card_vault_ui_locale", value: locale, url: origin }]);
     await page.goto(origin + "/portfolio/recap?recapYear=2026", { waitUntil: "networkidle" });

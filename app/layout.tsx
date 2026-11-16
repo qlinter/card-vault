@@ -8,6 +8,8 @@ import { LanguageProvider } from "@/components/language-provider";
 import { SiteHeader } from "@/components/site-header";
 import { NavigationHistory } from "@/components/navigation-history";
 import { normalizeUiLocale, UI_LOCALE_COOKIE } from "@/lib/ui-locale";
+import { accountStatus } from "@/lib/account-server";
+import { AccountBoundary } from "@/components/account-boundary";
 
 export async function generateMetadata(): Promise<Metadata> {
   const cookieStore = await cookies();
@@ -24,6 +26,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const cookieStore = await cookies();
   const locale = normalizeUiLocale(cookieStore.get(UI_LOCALE_COOKIE)?.value);
   const theme = normalizeAppTheme(cookieStore.get(APP_THEME_COOKIE)?.value);
+  const account = await accountStatus();
   return (
     <html lang={locale} data-app-theme={theme} style={appThemeStyle(theme)} data-ui-locale={locale} data-ui-ready={locale === "en" ? "false" : "true"}>
       <body>
@@ -31,8 +34,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <LanguageProvider initialLocale={locale}>
           <ThemeProvider initialTheme={theme}>
             <div className="site-bg" />
-            <SiteHeader />
-            <main className="container">{children}</main>
+            {account.authenticated ? <AccountBoundary>
+              <SiteHeader />
+              <main className="container">{children}</main>
+            </AccountBoundary> : <main className="container">{children}</main>}
           </ThemeProvider>
         </LanguageProvider>
       </body>

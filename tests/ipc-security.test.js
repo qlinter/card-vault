@@ -25,3 +25,22 @@ test("trusted IPC registrar applies sender validation before invoking handlers",
   assert.equal(await registered.handler(eventWithUrl("http://127.0.0.1:3007/settings"), "ok"), "OK");
   await assert.rejects(registered.handler(eventWithUrl("https://attacker.example"), "no"), /非 Card Vault/);
 });
+
+test("protected IPC authorization runs after origin validation and before the operation", async () => {
+  let handler, operationCalls = 0, authorizations = 0;
+  let loggedIn = false;
+  const register = createTrustedIpcRegistrar({ handle: (_channel, callback) => { handler = callback; } }, () => "http://127.0.0.1:3007", async () => {
+    authorizations++;
+    if (!loggedIn) throw new Error("login required");
+  });
+  register("protected", async () => { operationCalls++; return "ok"; });
+  await assert.rejects(handler(eventWithUrl("https://attacker.example")), /非 Card Vault/);
+  assert.equal(authorizations, 0);
+  await assert.rejects(handler(eventWithUrl("http://127.0.0.1:3007/login")), /login required/);
+  assert.equal(operationCalls, 0);
+  loggedIn = true;
+  assert.equal(await handler(eventWithUrl("http://127.0.0.1:3007/settings")), "ok");
+  loggedIn = false;
+  await assert.rejects(handler(eventWithUrl("http://127.0.0.1:3007/settings")), /login required/);
+  assert.equal(operationCalls, 1);
+});

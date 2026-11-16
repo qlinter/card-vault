@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const net = require("node:net");
 const path = require("node:path");
 const { execFileSync, spawn } = require("node:child_process");
+const { accountTestEnvironment, authenticateTestServer } = require("./test-account-helpers");
 
 const rootDir = process.env.CARD_VAULT_TEST_APP_ROOT ? path.resolve(process.env.CARD_VAULT_TEST_APP_ROOT) : path.resolve(__dirname, "..");
 const initDbScriptPath = path.join(rootDir, "scripts", "init-db.js");
@@ -27,7 +28,7 @@ function startTestServer(port, env, output) {
   const serverProcess = spawn(
     process.execPath,
     [nextCliPath, "start", "--hostname", "127.0.0.1", "--port", String(port)],
-    { cwd: rootDir, env, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }
+    { cwd: rootDir, env: accountTestEnvironment(env), windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }
   );
   serverProcess.stdout.on("data", (chunk) => output.push(chunk.toString()));
   serverProcess.stderr.on("data", (chunk) => output.push(chunk.toString()));
@@ -42,8 +43,9 @@ async function waitForServer(baseUrl, output, serverProcess, label) {
     }
     try {
       const response = await fetch(`${baseUrl}/api/health`);
-      if (response.ok) return;
-    } catch {
+      if (response.ok) { await authenticateTestServer(baseUrl); return; }
+    } catch (error) {
+      if (error.message?.startsWith("Account fixture")) throw error;
       // The server may still be starting.
     }
     await new Promise((resolve) => setTimeout(resolve, 250));

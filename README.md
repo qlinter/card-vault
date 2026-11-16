@@ -6,14 +6,13 @@ Card Vault 是本地优先的 Windows 球星卡收藏管理应用，基于 Next.
 
 ## 当前版本
 
-当前版本：`1.5.3`。录入反馈、轻量界面和维护整理见 [v1.5.3 版本说明](./docs/release-v1.5.3.md)。
+当前版本：`1.6.0`。新增本地账户、登录与恢复码，见 [v1.6.0 版本说明](./docs/release-v1.6.0.md)。
 
-在 [v1.5.3 下载页](https://github.com/qlinter/card-vault/releases/tag/v1.5.3)获取 Windows x64 安装包 `card-vault-1.5.3-setup.exe`、便携包 `card-vault-1.5.3-portable.zip`、SHA-256 校验文件和构建清单。本版未签名，Windows 可能提示未知发布者。
-
-当前下载为 2026-11-13 修订包，包含草稿时间跨时区修复；修订源码见 [v1.5.3-r1](https://github.com/qlinter/card-vault/tree/v1.5.3-r1)。已下载初版的用户需要重新下载。
+在 [v1.6.0 下载页](https://github.com/qlinter/card-vault/releases/tag/v1.6.0)获取 Windows x64 安装包 `card-vault-1.6.0-setup.exe`、便携包 `card-vault-1.6.0-portable.zip`、SHA-256 校验文件及构建／验证清单。本版未签名，Windows 可能提示未知发布者。
 
 ## 主要能力
 
+- 本地账户：离线登录、退出登录、Windows 锁屏保护及恢复码；账户独立于收藏备份，应用访问保护不等于文件加密。
 - 收藏管理：搜索筛选、卡片与列表视图、最多五张图片、草稿、模板、批量录入和人工确认的 AI 候选。
 - 财务与统计：交易、费用、估值、实物数量、人工汇率，总览／趋势／结构／明细及收藏回顾。
 - 展示与分享：完整卡图展墙、单卡大图、四种浏览展馆风格、可编辑分享集和静态网页导出。

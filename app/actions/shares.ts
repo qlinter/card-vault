@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAccount } from "@/lib/account-server";
+
 import { randomUUID } from "crypto";
 import { assertShareVersion } from "@/lib/share-write-guards";
 import type { Prisma } from "@prisma/client";
@@ -172,6 +174,7 @@ async function createShareStructure(
 }
 
 export async function createShareCollectionAction(formData: FormData): Promise<void> {
+  await requireAccount();
   let redirectPath = "/shares/new?error=unknown";
   let uploadedPaths: string[] = [];
 
@@ -203,6 +206,7 @@ export async function createShareCollectionAction(formData: FormData): Promise<v
 }
 
 export async function updateShareCollectionAction(shareId: string, _previousState: { error: string }, formData: FormData): Promise<{ error: string }> {
+  await requireAccount();
   let redirectPath = `/shares/${shareId}/edit?error=unknown`;
   let uploadedPaths: string[] = [];
 
@@ -258,6 +262,7 @@ export async function updateShareCollectionAction(shareId: string, _previousStat
 }
 
 export async function deleteShareCollectionAction(shareId: string): Promise<void> {
+  await requireAccount();
   let redirectPath = "/shares?success=deleted";
 
   try {
@@ -279,6 +284,7 @@ export async function deleteShareCollectionAction(shareId: string): Promise<void
 }
 
 export async function exportShareCollectionAction(shareId: string, formData: FormData): Promise<void> {
+  await requireAccount();
   let redirectPath = `/shares/${shareId}/export?error=unknown`;
 
   try {

@@ -6,11 +6,12 @@ const { createTrustedIpcRegistrar } = require("./security");
 
 function registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, logger }) {
   const { sendStorageProgress, runStorageWorker, withStorageOperation } = createStorageWorkerBridge({ app, runtime, storage, logger });
-  const trustedHandle = createTrustedIpcRegistrar(ipcMain, () => runtime.getServerUrl());
+  const trustedHandle = createTrustedIpcRegistrar(ipcMain, () => runtime.getServerUrl(), event => runtime.requireAccount(event));
 
   trustedHandle("card-vault:choose-storage-directory", async (event) => {
     try {
       const result = await dialog.showOpenDialog({ title: "选择卡片资料存储路径", properties: ["openDirectory", "createDirectory"], defaultPath: storage.getDataDir() });
+      await runtime.requireAccount(event);
       if (result.canceled || result.filePaths.length === 0) { logger.appendLog("desktop.log", "Storage path change cancelled."); return { cancelled: true, changed: false, path: storage.getDataDir() }; }
       return await withStorageOperation(event, "migrate", async (sender) => {
         let serverWasStopped = false;
@@ -29,9 +30,10 @@ function registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, log
   });
 
   trustedHandle("card-vault:get-backup-settings", async () => storage.getBackupSettings());
-  trustedHandle("card-vault:choose-backup-directory", async () => {
+  trustedHandle("card-vault:choose-backup-directory", async (event) => {
     try {
       const result = await dialog.showOpenDialog({ title: "选择备份保存路径", properties: ["openDirectory", "createDirectory"], defaultPath: storage.getBackupDir() });
+      await runtime.requireAccount(event);
       if (result.canceled || result.filePaths.length === 0) { logger.appendLog("desktop.log", "Backup path change cancelled."); return { cancelled: true, path: storage.getBackupDir() }; }
       const backup = storage.chooseBackupDir(result.filePaths[0]); logger.appendLog("desktop.log", `Backup path updated to: ${backup.path}`); return { cancelled: false, path: backup.path };
     } catch (error) { logger.appendLog("desktop.log", `Backup path update failed: ${error instanceof Error ? error.message : "Unknown backup path error."}`); throw error; }
@@ -64,7 +66,9 @@ function registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, log
       if (health.orphanFiles.length === 0) return { cancelled: false, deletedFiles: [], failedFiles: [], health };
       const visibleFiles = health.orphanFiles.slice(0, 20).map((file) => file.path); const remainingCount = health.orphanFiles.length - visibleFiles.length;
       const detail = ["即将移出以下未被数据库引用的文件：", "", ...visibleFiles, ...(remainingCount > 0 ? [`……以及另外 ${remainingCount} 个文件`] : []), "", "文件会保留在数据目录的 .recovery 文件夹。清理时会暂停数据服务并重新核对引用，完成后自动恢复连接。"].join("\n");
+      await runtime.requireAccount(event);
       const confirmation = await dialog.showMessageBox({ type: "warning", title: "确认清理未引用文件", message: `确定清理 ${health.orphanFiles.length} 个未引用文件吗？`, detail, buttons: ["取消", `清理 ${health.orphanFiles.length} 个文件`], defaultId: 0, cancelId: 0, noLink: true });
+      await runtime.requireAccount(event);
       if (confirmation.response !== 1) return { cancelled: true, deletedFiles: [], failedFiles: [], health };
       sendStorageProgress(sender, "cleanup", { percent: 38, message: "已确认清理，正在进行删除前复核..." });
       const result = await runWithPausedLocalServer(runtime, () => runStorageWorker(sender, "cleanup", {}, { start: 40, end: 90 })); logger.appendLog("desktop.log", `Orphan cleanup completed: ${result.deletedFiles.length} retained in recovery, ${result.failedFiles.length} failed.`); return { cancelled: false, ...result };
@@ -74,6 +78,7 @@ function registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, log
     try {
       sendStorageProgress(sender, "restore", { percent: 1, message: "请选择要恢复的备份文件夹..." });
       const selected = await dialog.showOpenDialog({ title: "选择要恢复的数据备份文件夹", properties: ["openDirectory"], defaultPath: storage.getBackupDir() });
+      await runtime.requireAccount(event);
       if (selected.canceled || selected.filePaths.length === 0) return { cancelled: true };
       const selectedPath = selected.filePaths[0];
       const preflight = await runStorageWorker(sender, "restorePreflight", { selectedPath }, { start: 3, end: 30 }, "restore");
@@ -81,7 +86,9 @@ function registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, log
       const resolvedSourceSummary = path.resolve(selectedPath) === path.resolve(preflight.sourcePath) ? "" : `\n已自动定位到最新备份：${preflight.sourcePath}`;
       const issueSummary = preflight.health.missingFiles.length > 0 ? `\n\n注意：备份中有 ${preflight.health.missingFiles.length} 个数据库引用的图片文件缺失。` : "";
       sendStorageProgress(sender, "restore", { percent: 31, message: "备份检查完成，等待恢复确认..." });
+      await runtime.requireAccount(event);
       const confirmation = await dialog.showMessageBox({ type: "warning", title: "确认恢复备份", message: "恢复将替换当前数据目录。程序会先自动备份当前数据，恢复期间本地数据服务会短暂停止。", detail: `恢复来源：${selectedPath}${resolvedSourceSummary}${issueSummary}`, buttons: ["取消", "开始恢复"], defaultId: 0, cancelId: 0, noLink: true });
+      await runtime.requireAccount(event);
       if (confirmation.response !== 1) return { cancelled: true };
       sendStorageProgress(sender, "restore", { percent: 34, message: "正在暂停本地数据服务..." });
       const result = await runWithPausedLocalServer(

@@ -10,6 +10,8 @@
 
 `.next`、日志和测试输出是可重建文件；`npm run clean:cache` 会清除缓存和日志，执行前保存需要留档的证据。`.env`、收藏、媒体、备份、桌面配置和分发文件不是冗余源码，不应在结构整理中删除。
 
+开发依赖中的 node-gyp 和 TypeScript 项目查找通过 `tools/build-glob` 使用 glob，只提供这两个调用方使用的文件查找方法。升级任一工具后，用 `npm ci`、`node --test tests/build-glob.test.js` 和 `npm run audit:all` 检查实际解析路径和匹配结果。
+
 ## 代码职责
 
 | 位置 | 职责 |

@@ -27,7 +27,7 @@ function verifyInstalledDependencies(root) {
 function sourceIdentity(root) {
   const git = args => spawnSync("git", args, { cwd: root, encoding: "utf8", windowsHide: true });
   const head = git(["rev-parse", "HEAD"]), status = git(["status", "--porcelain", "--untracked-files=normal"]);
-  const listing = git(["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "app", "components", "electron", "lib", "scripts", "prisma", "public", "build/icon.ico", "next.config.mjs", "package.json", "package-lock.json"]);
+  const listing = git(["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "app", "components", "electron", "lib", "scripts", "prisma", "public", "build/icon.ico", ".npmrc", "tools/build-glob", "next.config.mjs", "package.json", "package-lock.json"]);
   const files = listing.status === 0 ? [...new Set(listing.stdout.split("\0").filter(Boolean))].filter(name => fs.existsSync(path.join(root, name)) && fs.statSync(path.join(root, name)).isFile()).sort() : [];
   const hash = createHash("sha256");
   for (const name of files) hash.update(name + "\0" + sha256File(path.join(root, name)) + "\n");

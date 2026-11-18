@@ -86,9 +86,14 @@
     "png-to-ico": "^3.0.1",
     "prisma": "^6.19.3",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.71.0"
+    "typescript-eslint": "^8.71.0",
+    "tinyglobby": "file:tools/build-glob"
   },
   "overrides": {
+    "minimatch@^9": "11.0.5",
+    "minimatch@^10": "11.0.5",
+    "node-gyp": { "tinyglobby": "$tinyglobby" },
+    "@typescript-eslint/typescript-estree": { "tinyglobby": "$tinyglobby" },
     "brace-expansion@^5.0.0": "5.0.12",
     "deepmerge-ts": "8.0.0",
     "exceljs": {

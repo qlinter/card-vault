@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { recapDraft, recapCards, loadRecapSummary } from "@/lib/collection-recap-service";
 import { renderRecapImage } from "@/lib/collection-recap-image";
-import { exportInWorkspace, ExportLimitError } from "@/lib/export-workspace";
+import { exportFileResponse, exportInWorkspace, ExportLimitError } from "@/lib/export-workspace";
 
 export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
@@ -20,6 +20,6 @@ export async function POST(request: NextRequest) {
       await renderRecapImage({ ...draft, summary, cards: ordered, includePrivate, locale: value.locale === "en" ? "en" : "zh-CN" }, output, signal);
       return output;
     }, request.signal);
-    return new NextResponse(result.body, { headers: { "Content-Type": "image/png", "Content-Length": String(result.size), "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "X-Recap-Records": String(count), "X-Recap-Quantity": String(quantity) } });
+    return exportFileResponse(result, "image/png", { "X-Recap-Records": String(count), "X-Recap-Quantity": String(quantity) });
   } catch (error) { return NextResponse.json({ error: error instanceof ExportLimitError ? error.message : "回顾图片生成失败，请重试。" }, { status: error instanceof ExportLimitError ? 429 : 400 }); }
 }

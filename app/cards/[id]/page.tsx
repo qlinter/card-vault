@@ -93,7 +93,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
         </section>
 
         <section className="panel">
-          <h2><UiText text={"卡片信息"} /></h2>
+          <h2><UiText text={"卡牌信息"} /></h2>
           <div className="info-grid">
             <div className="info-item"><strong><UiText text="收藏状态" /></strong><span><UiText text={collectionStatusText(card.collectionStatus)} /></span></div>
             <div className="info-item"><strong><UiText text="持有数量" /></strong><span>{card.holdingQuantity}</span></div>

@@ -3,7 +3,7 @@ import test from "node:test";
 import { buildQueryHref, encodeReturnTo, normalizeReturnTo } from "../lib/query-params.ts";
 
 test("collection navigation round-trips special characters without injecting query fields", () => {
-  const query = { q: "卡片 & + / #?viewId=other", isAutograph: "false", sort: "yearAsc", viewId: "view&1", error: undefined, sport: "" };
+  const query = { q: "卡牌 & + / #?viewId=other", isAutograph: "false", sort: "yearAsc", viewId: "view&1", error: undefined, sport: "" };
   const href = buildQueryHref("/portfolio", query);
   const url = new URL(href, "http://localhost");
   assert.equal(url.pathname, "/portfolio");

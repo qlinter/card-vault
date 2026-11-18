@@ -55,7 +55,7 @@ for (const locale of ["zh-CN", "en"]) test(`recap privacy switch controls direct
   await context.addCookies([{ name: "card_vault_ui_locale", value: locale, url: "http://127.0.0.1:3360" }]);
   const l=(zh,en)=>locale==="en"?en:zh;
   await page.goto("/portfolio/recap?recapYear=2026&q=RecapFixture");
-  const toggle=page.getByRole("switch", { name:l("包含私密卡片","Include Private Cards"), exact:true });
+  const toggle=page.getByRole("switch", { name:l("包含私密卡牌","Include Private Cards"), exact:true });
   await expect(toggle).toHaveAttribute("aria-checked","false");
   await expect(toggle).toHaveCSS("border-width", "0px");
   await expect(toggle).toHaveCSS("font-size", "13px");
@@ -93,19 +93,19 @@ test("recap computes current data and exposes no persistence endpoints", async (
 
 test("representatives can be removed and added in the integrated picker", async ({ page }) => {
   await page.goto("/portfolio/recap?recapYear=2026&q=RecapFixture");
-  await expect(page.locator(".recap-view-actions button")).toHaveText(["赏卡：本期全部", "赏卡：代表卡片", "卡片调整"]);
+  await expect(page.locator(".recap-view-actions button")).toHaveText(["赏卡：本期全部", "赏卡：代表卡牌", "卡牌调整"]);
   await expect(page.locator(".recap-stats > div").first()).toHaveCSS("text-align", "center");
   await expect(page.getByRole("heading", { name: "导出回顾长图", exact: true })).toHaveCount(0);
   await expect(page.locator(".recap-story-header").getByRole("button", { name: "生成长图", exact: true })).toBeVisible();
   await expect(page.locator(".recap-representatives article")).toHaveCount(2);
   await expect(page.locator(".recap-picker")).toHaveCount(0);
   await page.locator(".recap-representatives article").first().getByRole("button", { name: "移除", exact: true }).click();
-  await page.getByRole("button", { name: "卡片调整", exact: true }).click();
+  await page.getByRole("button", { name: "卡牌调整", exact: true }).click();
   await expect(page.locator(".recap-picker button")).toHaveCount(1);
   await page.locator(".recap-picker button").click();
   await expect(page.locator(".recap-representatives article")).toHaveCount(2);
   await expect(page.locator(".recap-picker button")).toHaveCount(0);
-  await page.getByRole("button", { name: "卡片调整", exact: true }).click();
+  await page.getByRole("button", { name: "卡牌调整", exact: true }).click();
   await page.goto("/showcase/cards/recap-fixture-a");
   await expect(page.getByRole("button", { name: "浏览", exact: true })).toHaveCount(0);
 });
@@ -190,7 +190,7 @@ test("immersive index is bounded across 500-card batches and deleted active card
   const second = await (await page.request.get(`/api/immersive?q=SessionFixture&cursor=${first.nextCursor}`)).json(); expect(second.ids).toHaveLength(3); expect(second.nextCursor).toBeNull(); expect(new Set([...first.ids, ...second.ids]).size).toBe(503);
   await page.goto("/showcase?q=RecapFixture"); await page.getByRole("button", { name: "浏览", exact: true }).click(); const stage = page.locator(".immersive-stage"); await expect(stage).toHaveAttribute("data-card-id", "recap-fixture-a");
   fixture(db => db.exec("DELETE FROM Card WHERE id='recap-fixture-b'")); await page.keyboard.press("ArrowRight");
-  await expect(page.getByText("卡片已删除或不在当前范围。", { exact: true })).toBeVisible(); await page.getByRole("button", { name: "跳过", exact: true }).click(); await expect(stage).toHaveAttribute("data-card-id", "recap-fixture-c");
+  await expect(page.getByText("卡牌已删除或不在当前范围。", { exact: true })).toBeVisible(); await page.getByRole("button", { name: "跳过", exact: true }).click(); await expect(stage).toHaveAttribute("data-card-id", "recap-fixture-c");
 });
 
 test("sequential viewing order matches Showcase", async ({ page }) => {

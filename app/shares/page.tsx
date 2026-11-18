@@ -37,7 +37,7 @@ export default async function SharesPage({ searchParams }: SharesPageProps) {
               <h2>{share.title}</h2>
               {share.subtitle || share.description ? <p className="muted">{share.subtitle || share.description}</p> : null}
               <p className="muted">
-                {share.items.length}<UiText text=" 张卡片" />
+                {share.items.length}<UiText text=" 张卡牌" />
               </p>
             </div>
             <div className="share-list-actions">
@@ -54,7 +54,7 @@ export default async function SharesPage({ searchParams }: SharesPageProps) {
 
       {shares.length === 0 ? (
         <div className="panel">
-          <p><UiText text={"还没有分享集。先新建一个主题展馆，手动挑选要展示的卡片。"} /></p>
+          <p><UiText text={"还没有分享集。先新建一个主题展馆，手动挑选要展示的卡牌。"} /></p>
         </div>
       ) : null}
     </div>

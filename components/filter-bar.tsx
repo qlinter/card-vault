@@ -1,8 +1,9 @@
 import { DisclosureIcon } from "./disclosure-icon";
+import { ClearHomeFilters } from "./clear-home-filters";
 import { CollectionViewToggle } from "./view-mode-toggle";
 import { cardCollectionStatuses, collectionStatusText } from "@/lib/card-domain";
 import { UiText, UiElement } from "@/components/ui-text";
-import { buildPortfolioScope } from "@/lib/portfolio-analysis-scope";
+import { buildPortfolioScope, portfolioFilterFields } from "@/lib/portfolio-analysis-scope";
 import { buildQueryHref } from "@/lib/query-params";
 import { PortfolioCriterion } from "./portfolio-criterion";
 type FilterBarProps = {
@@ -21,11 +22,7 @@ type FilterBarProps = {
   patchTypes: string[];
 };
 
-const advancedFilterFields = [
-  "sport", "team", "year", "productLine", "brand", "subsetName", "parallel", "cardNumber", "isSerialNumbered", "isOneOfOne", "isRookie",
-  "isAutograph", "autoType", "isPatch", "patchType", "isGraded", "gradingCompany",
-  "grade", "certNumber", "visibility"
-] as const;
+const advancedFilterFields = portfolioFilterFields.filter(field => field !== "q" && field !== "collectionStatus");
 
 function hasValue(value: string | undefined): boolean {
   return Boolean(value && value.trim());
@@ -215,15 +212,13 @@ export function FilterBar({
           <button type="submit" className="btn btn-secondary btn-quiet btn-soft">
             {<UiText text={"搜索 / 筛选"} />}
           </button>
-          <a href={exportMode ? "/?export=1" : "/"} className="btn btn-secondary btn-quiet">
-            {<UiText text={"清空条件"} />}
-          </a>
+          <ClearHomeFilters applied={portfolioScope.isFiltered || hasValue(query.sort)} href={exportMode ? "/?export=1" : "/"} />
           <a href={portfolioHref} className="scope-navigation-link filter-portfolio-link">
             <UiText text={portfolioScope.isFiltered ? "查看筛选组合统计" : "查看组合统计"} />
           </a>
         </div>
         <div className="filter-display-actions">{!exportMode ? <a className="scope-navigation-link" href={buildQueryHref("/", { ...query, export: "1" })}><UiText text="导出" /></a> : null}<a href="/cards/new" className="btn btn-secondary btn-quiet btn-soft filter-add-card">
-          {<UiText text={"新增卡片"} />}
+          {<UiText text={"新增卡牌"} />}
         </a><CollectionViewToggle /></div>
       </div>
 

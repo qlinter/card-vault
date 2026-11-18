@@ -7,10 +7,10 @@ export function defaultInitialQuantityForStatus(collectionStatus: string): numbe
 export function assertCollectionStatusQuantity(collectionStatus: string, quantity: number): void {
   const minimum = defaultInitialQuantityForStatus(collectionStatus);
   if (minimum === 0 && quantity !== 0) {
-    throw new Error("已售卡片的持有数量必须为 0，请先在财务记录中登记出售。");
+    throw new Error("已售卡牌的持有数量必须为 0，请先在财务记录中登记出售。");
   }
   if (minimum === 1 && quantity < minimum) {
-    throw new Error("持有、待送评、送评中或待售的卡片数量至少为 1，请先登记买入。");
+    throw new Error("持有、待送评、送评中或待售的卡牌数量至少为 1，请先登记买入。");
   }
 }
 

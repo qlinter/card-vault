@@ -1,3 +1,9 @@
+export const showcaseCaptionFields = [
+  { key: "variant", label: "版本" },
+  { key: "grade", label: "评级" },
+  { key: "serial", label: "限量编号" }
+];
+
 export function fitShowcaseImage(width: number, height: number, frameWidth: number, frameHeight: number, rotation: number) {
   if (![width, height, frameWidth, frameHeight].every(value => Number.isFinite(value) && value > 0)) return null;
   const angle = Number.isFinite(rotation) ? rotation * Math.PI / 180 : 0;

@@ -12,7 +12,7 @@ import { collectionStatusText } from "@/lib/card-domain";
 import styles from "./portfolio-data.module.css";
 
 const dimensions: [StructureField, keyof PortfolioAllocation, string][] = [
-  ["playerName", "byPlayer", "卡片主体"], ["sport", "bySport", "运动"], ["team", "byTeam", "Team"],
+  ["playerName", "byPlayer", "卡牌主体"], ["sport", "bySport", "运动"], ["team", "byTeam", "Team"],
   ["brand", "byBrand", "品牌"], ["year", "byYear", "年份"], ["productLine", "byProductLine", "产品线"],
   ["gradingCompany", "byGradingCompany", "评级机构"], ["collectionStatus", "byStatus", "收藏状态"]
 ];
@@ -63,14 +63,14 @@ export function PortfolioStructureView({ snapshot, physical, closed, attributes,
   });
   const rows = showAttributes ? attributeRows : distribution;
   const share = (value: number) => totalValue > 0 ? value / totalValue * 100 : null;
-  const tableProps = { currency, totalValue, label: showAttributes ? "卡片属性" : dimension[2] };
+  const tableProps = { currency, totalValue, label: showAttributes ? "卡牌属性" : dimension[2] };
 
   return <section className={styles.panel} data-testid="data-structure">
     <header className={styles.heading}>
       <h2><UiText text="收藏结构" /></h2>
       <UiElement as="div" className={styles.modeSwitch} role="group" aria-label="收藏结构显示方式" uiAttributes={["aria-label"]}>
         <button type="button" aria-pressed={!showAttributes} onClick={() => setShowAttributes(false)}><UiText text="结构分布" /></button>
-        <button type="button" aria-pressed={showAttributes} onClick={() => setShowAttributes(true)}><UiText text="卡片属性" /></button>
+        <button type="button" aria-pressed={showAttributes} onClick={() => setShowAttributes(true)}><UiText text="卡牌属性" /></button>
       </UiElement>
     </header>
     {!showAttributes ? <form className={styles.form} method="get">

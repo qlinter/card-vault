@@ -11,7 +11,7 @@ export async function mutateScout(body: Record<string, unknown>) {
     if (Object.keys(body).some(key => !allowed.has(key)) || Object.values(body).some(value => value !== undefined && typeof value !== "string")) throw new Error("心愿设置无效。");
     const data = {
       title: requiredCardText(String(body.title ?? ""), "心愿名称"),
-      playerName: optionalCardText(String(body.playerName ?? ""), "卡片主体", 500),
+      playerName: optionalCardText(String(body.playerName ?? ""), "卡牌主体", 500),
       budgetMinor: scoutAmount(body.budget),
       currency: normalizeCurrency(String(body.currency ?? "CNY")),
       notes: optionalCardText(String(body.notes ?? ""), "备注", 10000)

@@ -5,7 +5,7 @@
 <a id="current-release"></a>
 ## 当前版本
 
-[v1.6.0 版本说明](./release-v1.6.0.md)记录本地账户、访问保护及源码与分发验证结果。安装包和便携包见 [v1.6.0 下载页](https://github.com/qlinter/card-vault/releases/tag/v1.6.0)；以前版本见[历史资料](./history/README.md)。
+[v1.6.1 版本说明](./release-v1.6.1.md)汇总自 v1.6.0 以来的源码更新。Windows 下载见 [v1.6.1](https://github.com/qlinter/card-vault/releases/tag/v1.6.1)，以前版本见[历史资料](./history/README.md)。
 
 ## 当前规则
 

@@ -27,10 +27,15 @@ export type GalleryPreferences = {
   interval: number;
   allImages: boolean;
   random: boolean;
+  excludeSold: boolean;
 };
 export const defaultGalleryPreferences: GalleryPreferences = {
-  scene: "spotlight", layout: "exhibition", artScale: 92, light: 65, captions: true, interval: 8, allImages: false, random: false
+  scene: "spotlight", layout: "exhibition", artScale: 92, light: 65, captions: true, interval: 8, allImages: false, random: false, excludeSold: false
 };
+export function normalizePlaybackInterval(value: unknown, fallback = defaultGalleryPreferences.interval): number {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(1, Math.min(3600, Math.round(value))) : fallback;
+}
+
 export function normalizeGalleryPreferences(value: unknown): GalleryPreferences {
   const raw = value && typeof value === "object" ? value as Partial<GalleryPreferences> : {};
   const percentage = (candidate: unknown, fallback: number, min: number) => typeof candidate === "number" && Number.isFinite(candidate) ? Math.max(min, Math.min(100, Math.round(candidate))) : fallback;
@@ -40,9 +45,10 @@ export function normalizeGalleryPreferences(value: unknown): GalleryPreferences 
     artScale: percentage(raw.artScale, defaultGalleryPreferences.artScale, 60),
     light: percentage(raw.light, defaultGalleryPreferences.light, 0),
     captions: typeof raw.captions === "boolean" ? raw.captions : true,
-    interval: typeof raw.interval === "number" && Number.isFinite(raw.interval) ? Math.max(1, Math.min(3600, Math.round(raw.interval))) : 8,
+    interval: normalizePlaybackInterval(raw.interval),
     allImages: typeof raw.allImages === "boolean" ? raw.allImages : false,
-    random: typeof raw.random === "boolean" ? raw.random : false
+    random: typeof raw.random === "boolean" ? raw.random : false,
+    excludeSold: raw.excludeSold === true
   };
 }
 export function galleryPosition(index = 0, count = 0) {

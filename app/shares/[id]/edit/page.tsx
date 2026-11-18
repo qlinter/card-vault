@@ -44,7 +44,7 @@ export default async function EditSharePage({ params, searchParams }: EditShareP
       <div className="title-row">
         <div>
           <h1 className="h1"><UiText text={"编辑分享集"} /></h1>
-          <p className="muted"><UiText text={"调整展馆文案、卡片选择、排序和导出前展示内容。"} /></p>
+          <p className="muted"><UiText text={"调整展馆文案、卡牌选择、排序和导出前展示内容。"} /></p>
         </div>
         <div className="title-actions">
           <a className="btn btn-secondary" href={`/shares/${share.id}/preview`}><UiText text={"预览"} /></a>
@@ -52,7 +52,7 @@ export default async function EditSharePage({ params, searchParams }: EditShareP
         </div>
       </div>
       {success ? <p className="note-ok"><UiText text={success} /></p> : null}
-      <ShareCollectionForm editAction={updateShareCollectionAction.bind(null, share.id)} cards={cards} share={share} error={error} />
+      <ShareCollectionForm action={updateShareCollectionAction.bind(null, share.id)} cards={cards} share={share} error={error} />
     </div>
   );
 }

@@ -92,7 +92,7 @@ export function ShareSectionEditor({
             </div>
 
             <details className="share-section-card-assignment">
-              <summary><UiText text={"分配卡片（已选 "} />{section.cardIds.length}<UiText text={" 张）"} /></summary>
+              <summary><UiText text={"分配卡牌（已选 "} />{section.cardIds.length}<UiText text={" 张）"} /></summary>
               <div className="share-section-card-options">
                 {cards.map((card) => (
                   <label key={card.id} className="inline-check">

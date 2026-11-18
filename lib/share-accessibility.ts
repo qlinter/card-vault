@@ -8,11 +8,11 @@ export function auditShareAccessibility(data: ExportData): ShareExportIssue[] {
     issues.push({ level: "error", code: "a11y-empty-title", message: "展馆缺少可供辅助技术识别的标题。" });
   }
   if (data.cards.length === 0) {
-    issues.push({ level: "error", code: "a11y-empty-gallery", message: "展馆没有可浏览的卡片。" });
+    issues.push({ level: "error", code: "a11y-empty-gallery", message: "展馆没有可浏览的卡牌。" });
   }
   for (const card of data.cards) {
     if (!card.displayTitle.trim()) {
-      issues.push({ level: "error", code: "a11y-empty-card-title", message: `${card.playerName} 的卡片缺少公开展示标题。` });
+      issues.push({ level: "error", code: "a11y-empty-card-title", message: `${card.playerName} 的卡牌缺少公开展示标题。` });
     }
     if (card.images.length === 0) {
       issues.push({ level: "warning", code: "a11y-card-image-placeholder", message: `${card.playerName} / ${card.displayTitle} 没有可用图片，将显示带说明的占位内容。` });
@@ -28,7 +28,7 @@ export function auditShareAccessibility(data: ExportData): ShareExportIssue[] {
     if (!cardIds.has(cardId)) {
       issues.push({ level: "error", code: "a11y-missing-featured-card", message: `重点卡 ${cardId} 已不在当前展馆中。` });
     } else if (card && !card.description.trim()) {
-      issues.push({ level: "warning", code: "a11y-featured-story", message: `重点卡 ${card.playerName} / ${card.displayTitle} 尚未添加卡片故事。` });
+      issues.push({ level: "warning", code: "a11y-featured-story", message: `重点卡 ${card.playerName} / ${card.displayTitle} 尚未添加卡牌故事。` });
     }
   }
 

@@ -7,17 +7,12 @@ import { ShowcaseImage } from "@/components/showcase-image";
 import { ShowcaseIcon } from "@/components/showcase-icon";
 import { StartImmersive } from "@/components/immersive-viewer";
 import { prisma } from "@/lib/prisma";
-import { buildShowcaseCardHref, buildShowcaseHref, compareShowcaseGroupNames, normalizeGroupName, parseShowcasePage, SHOWCASE_PAGE_SIZE, toShowcaseWhere } from "@/lib/showcase";
-import { showcaseFacts } from "@/lib/showcase-presentation";
+import { buildShowcaseCardHref, buildShowcaseHref, compareShowcaseGroupNames, normalizeGroupName, parseShowcasePage, showcaseOrderBy, SHOWCASE_PAGE_SIZE, toShowcaseWhere } from "@/lib/showcase";
+import { showcaseCaptionFields, showcaseFacts } from "@/lib/showcase-presentation";
 import { toScalar } from "@/lib/query-params";
 import { homeThumbnailPublicPath } from "@/lib/card-thumbnail-core.js";
 
 type ShowcasePageProps = { searchParams: Promise<Record<string, string | string[] | undefined>> };
-const captionFields = [
-  { key: "variant", label: "版本" },
-  { key: "grade", label: "评级" },
-  { key: "serial", label: "限量编号" }
-];
 
 export default async function ShowcasePage({ searchParams }: ShowcasePageProps) {
   const params = await searchParams;
@@ -33,7 +28,7 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
       where,
       select: { id: true, playerName: true, cardTitle: true, gradingCompany: true, grade: true, parallel: true, serialNumber: true, serialRange: true,
         images: { take: 1, orderBy: { createdAt: "asc" }, select: { id: true, path: true, rotation: true } } },
-      orderBy: [{ playerName: "asc" }, { createdAt: "desc" }, { id: "asc" }],
+      orderBy: showcaseOrderBy,
       skip: (page - 1) * SHOWCASE_PAGE_SIZE,
       take: SHOWCASE_PAGE_SIZE
     });
@@ -51,14 +46,14 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
       <Link className="showcase-action showcase-shares" href="/shares"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="6" width="14" height="16" rx="2" /><path d="M7 6V2h14v16h-4" /></svg><UiText text="分享集" /></Link>
       <form className="showcase-search" method="get" role="search">
         <ShowcaseIcon name="search" />
-        <UiElement as="input" uiAttributes={["aria-label"]} name="q" defaultValue={query.q ?? ""} aria-label="搜索卡片主体、Team、系列、年份、标签..." className="showcase-search-input" />
+        <UiElement as="input" uiAttributes={["aria-label"]} name="q" defaultValue={query.q ?? ""} aria-label="搜索卡牌主体、Team、系列、年份、标签..." className="showcase-search-input" />
         {query.group ? <input type="hidden" name="group" value={query.group} /> : null}
         <button className="showcase-tool" type="submit"><UiText text="搜索" /></button>
         {filtered ? <Link className="showcase-tool" href="/showcase"><UiText text="清空" /></Link> : null}
       </form>
     </header>
     <ShowcaseGroupFilter groups={groups} activeGroup={query.group} queryText={query.q} />
-    <ShowcaseViews hasCards={cards.length > 0} heading={<h2 className="showcase-current-group">{query.group ?? <UiText text="全部卡片" />}<span className="showcase-summary"><UiText text={filtered ? "当前展出 {0} 张卡片" : "共 {0} 张卡片"} values={[totalCount]} /></span></h2>}>
+    <ShowcaseViews hasCards={cards.length > 0} heading={<h2 className="showcase-current-group">{query.group ?? <UiText text="全部卡牌" />}<span className="showcase-summary"><UiText text={filtered ? "当前展出 {0} 张卡牌" : "共 {0} 张卡牌"} values={[totalCount]} /></span></h2>}>
       <div className="showcase-grid">
         {cards.map((card, index) => {
           const facts = new Map(showcaseFacts(card).map(fact => [fact.label, fact.value]));
@@ -68,7 +63,7 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
               <h3 title={card.playerName}>{card.playerName}</h3>
               <p className="showcase-card-title" title={card.cardTitle}>{card.cardTitle}</p>
               <dl className="showcase-card-facts">
-                {captionFields.map(field => {
+                {showcaseCaptionFields.map(field => {
                   const value = facts.get(field.label);
                   return <div key={field.key} data-showcase-fact={field.key}>
                     <dt><UiText text={field.label} /></dt>
@@ -85,7 +80,7 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
         <span className="showcase-page-position" aria-live="polite">{page} / {pageCount}</span>
         {page < pageCount ? <Link className="showcase-tool showcase-pagination-next" href={buildShowcaseHref({ ...query, page: page + 1 })}><UiText text="下一页" /></Link> : <span />}
       </UiElement> : null}
-      {cards.length === 0 ? <div className="showcase-empty"><ShowcaseIcon name="image" /><h3><UiText text={filtered ? "没有匹配的收藏" : "收藏展墙等待第一张卡片"} /></h3><p><UiText text={filtered ? "试试其他关键词，或清空筛选查看全部收藏。" : "录入卡片后，它们会在这里完整展出。"} /></p><Link className="showcase-tool" href={filtered ? "/showcase" : "/cards/new"}><UiText text={filtered ? "查看全部收藏" : "新增卡片"} /></Link></div> : null}
+      {cards.length === 0 ? <div className="showcase-empty"><ShowcaseIcon name="image" /><h3><UiText text={filtered ? "没有匹配的收藏" : "收藏展墙等待第一张卡牌"} /></h3><p><UiText text={filtered ? "试试其他关键词，或清空筛选查看全部收藏。" : "录入卡牌后，它们会在这里完整展出。"} /></p><Link className="showcase-tool" href={filtered ? "/showcase" : "/cards/new"}><UiText text={filtered ? "查看全部收藏" : "新增卡牌"} /></Link></div> : null}
     </ShowcaseViews>
   </div></CollectionViewProvider>;
 }

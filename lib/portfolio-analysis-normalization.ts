@@ -234,7 +234,7 @@ export function normalizePortfolioSnapshot(value: unknown): PortfolioSnapshot {
     || cardCountValue < 1
     || cardCountValue > maximumCardCount
   ) {
-    throw new Error("当前组合没有可分析的卡片，或卡片数量异常。");
+    throw new Error("当前组合没有可分析的卡牌，或卡牌数量异常。");
   }
 
   const cardCount = Math.round(cardCountValue);

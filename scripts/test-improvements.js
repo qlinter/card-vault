@@ -52,7 +52,7 @@ async function main() {
     await page.goto(`${base}/portfolio`);
     assert.match(await page.locator('[aria-label="financial summary"] article strong').first().innerText(), /50\.00/, "exchange-rate changes must invalidate reporting results");
     await page.goto(`${base}/portfolio?tab=structure&isRookie=false`);
-    await page.getByRole("button", { name: "卡片属性", exact: true }).click();
+    await page.getByRole("button", { name: "卡牌属性", exact: true }).click();
     assert.equal(await page.getByRole("row").filter({ hasText: "新秀卡" }).getByRole("link", { name: "新秀卡", exact: true }).count(), 0);
     await page.goto(`${base}/cards/new`);
     fs.mkdirSync("logs", { recursive: true });
@@ -61,7 +61,7 @@ async function main() {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "collapsed entry form must fit the minimum desktop width");
     await page.screenshot({ path: "logs/improvements-entry-min-width.png", fullPage: true, animations: "disabled" });
     await page.setViewportSize({ width: 1440, height: 1000 });
-    assert.equal(await page.getByText("版本与卡片属性（可选）", { exact: true }).locator("..").getAttribute("open"), null);
+    assert.equal(await page.getByText("版本与卡牌属性（可选）", { exact: true }).locator("..").getAttribute("open"), null);
     await page.getByText("评级信息（可选）", { exact: true }).click();
     await page.locator('input[name="gradingLink"]').fill("invalid-url");
     await page.getByText("评级信息（可选）", { exact: true }).click();
@@ -80,12 +80,12 @@ async function main() {
     await page.reload();
     await page.waitForFunction(() => document.querySelector('.card-image-upload input[name="images"]').files.length === 1);
     assert.equal(await page.locator('input[name="playerName"]').inputValue(), "Draft subject");
-    await page.getByText("版本与卡片属性（可选）", { exact: true }).click();
+    await page.getByText("版本与卡牌属性（可选）", { exact: true }).click();
     await page.locator('input[name="parallel"]').fill("Gold");
     await page.waitForTimeout(1000);
     await page.reload();
     await page.waitForFunction(() => document.querySelector('.card-image-upload input[name="images"]').files.length === 1);
-    assert.ok(await page.getByText("版本与卡片属性（可选）", { exact: true }).locator("..").getAttribute("open") !== null);
+    assert.ok(await page.getByText("版本与卡牌属性（可选）", { exact: true }).locator("..").getAttribute("open") !== null);
     assert.equal(await page.locator('input[name="parallel"]').inputValue(), "Gold");
     const suggestion = await fetch(`${base}/api/cards/options`);
     assert.ok((await suggestion.json()).brand.includes("Test brand"));
@@ -97,7 +97,7 @@ async function main() {
       await new Promise(resolve => setTimeout(resolve, 1000));
       try { await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ suggestion: { playerName: "Cancelled result" } }) }); } catch { /* The cancelled request may already be gone. */ }
     });
-    await page.locator('.entry-ai-tools > summary').click();
+    await page.locator('.ai-alternate-source > summary').click();
     await page.locator('.ai-recognition-panel input[type="file"]').setInputFiles({ name: "ai.png", mimeType: "image/png", buffer: png });
     await page.locator('input[name="playerName"]').fill("Draft subject");
     await page.getByRole("button", { name: "识别并填入", exact: true }).click();

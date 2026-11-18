@@ -6,9 +6,9 @@ Card Vault is a local-first Windows sports-card collection application built wit
 
 ## Current version
 
-Current version: `1.6.0`. Local accounts, sign-in and recovery codes are described in the [v1.6.0 notes](./docs/release-v1.6.0.md).
+The current source version is `1.6.1`. See the [v1.6.1 notes](./docs/release-v1.6.1.md) for entry, sharing, finance, statistics and gallery changes.
 
-Download the Windows x64 installer `card-vault-1.6.0-setup.exe`, portable archive `card-vault-1.6.0-portable.zip`, SHA-256 checksums, build manifest and validation record from the [v1.6.0 release](https://github.com/qlinter/card-vault/releases/tag/v1.6.0). These binaries are unsigned; Windows may show an Unknown Publisher warning.
+Download the unsigned Windows x64 installer `card-vault-1.6.1-setup.exe`, portable archive `card-vault-1.6.1-portable.zip` and SHA-256 checksums from the [v1.6.1 release](https://github.com/qlinter/card-vault/releases/tag/v1.6.1).
 
 ## Main capabilities
 

@@ -36,12 +36,12 @@ test("status filters and editors share the owned order and preserve quantity and
   await page.goto("/cards/ui-card-1/edit", { waitUntil: "networkidle" });
   await page.locator('[name="collectionStatus"]').selectOption("sold");
   await page.getByRole("button", { name: "保存修改", exact: true }).click();
-  await expect(page.locator(".note-error")).toContainText("已售卡片的持有数量必须为 0");
+  await expect(page.locator(".note-error")).toContainText("已售卡牌的持有数量必须为 0");
   expect(fixture(db => db.prepare("SELECT holdingQuantity, collectionStatus FROM Card WHERE id='ui-card-1'").get())).toEqual({ holdingQuantity: 2, collectionStatus: "listed" });
   await page.goto("/cards/ui-card-3/edit", { waitUntil: "networkidle" });
   await page.locator('[name="collectionStatus"]').selectOption("pending_grading");
   await page.getByRole("button", { name: "保存修改", exact: true }).click();
-  await expect(page.locator(".note-error")).toContainText("卡片数量至少为 1");
+  await expect(page.locator(".note-error")).toContainText("卡牌数量至少为 1");
 });
 
 test("awaiting-grading entry saves its physical purchase and restores its status in the editor", async ({ page }) => {

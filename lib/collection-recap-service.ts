@@ -5,6 +5,10 @@ import { prisma } from "./prisma";
 import { buildCardFilters } from "./card-helpers";
 import { createRecapAccumulator, normalizeRecapSpec, recapActivity, representativeIds, type RecapSpec } from "./collection-recap";
 
+export const recapActivitySelect = {
+  createdAt: true, transactions: { where: { kind: "purchase" }, select: { occurredAt: true, quantity: true } }
+} satisfies Prisma.CardSelect;
+
 export const recapCardSelect = { id: true, playerName: true, cardTitle: true, sport: true, productLine: true, isAutograph: true, grade: true, collectionStatus: true, visibility: true, createdAt: true,
   images: { take: 1, orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: { id: true, path: true, rotation: true } } } satisfies Prisma.CardSelect;
 
@@ -19,7 +23,7 @@ export async function* recapBatches(spec: RecapSpec, includePrivate = true) {
   let cursor: string | undefined;
   for (;;) {
     const batch = await prisma.card.findMany({ where: { AND: [recapWhere(spec, includePrivate), ...(cursor ? [{ id: { gt: cursor } }] : [])] }, orderBy: { id: "asc" }, take: 250,
-      select: { ...recapCardSelect, images: false, transactions: { where: { kind: "purchase" }, select: { occurredAt: true, quantity: true } } } });
+      select: { ...recapCardSelect, ...recapActivitySelect, images: false } });
     yield batch;
     if (batch.length < 250) break;
     cursor = batch.at(-1)!.id; await yieldToRequests();

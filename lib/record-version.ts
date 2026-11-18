@@ -10,7 +10,7 @@ export function recordVersion(value: unknown): string {
   return JSON.stringify(normalize(value));
 }
 
-export const financialConflictMessage = "这条财务记录已被其他操作修改，未覆盖最新内容。当前输入已保留，请重新打开卡片核对后再保存。";
+export const financialConflictMessage = "这条财务记录已被其他操作修改，未覆盖最新内容。当前输入已保留，请重新打开卡牌核对后再保存。";
 
 export function assertFinancialVersion(record: unknown, expectedVersion: string) {
   if (!record || !expectedVersion || recordVersion(record) !== expectedVersion) throw new Error(financialConflictMessage);

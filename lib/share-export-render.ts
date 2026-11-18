@@ -180,7 +180,7 @@ function renderHero(data: ExportData, coverImage: string | undefined, coverTitle
       <h1>${escapeHtml(data.title)}</h1>
       ${data.subtitle ? `<p class="subtitle">${escapeHtml(data.subtitle)}</p>` : ""}
       ${paragraphHtml(data.description)}
-      <div class="stats"><span>${data.cards.length} 张卡片</span><span>${playerCount} 个卡片主体</span></div>
+      <div class="stats"><span>${data.cards.length} 张卡牌</span><span>${playerCount} 个卡牌主体</span></div>
       <a class="gallery-enter" href="#collection">浏览馆藏 <span aria-hidden="true">↗</span></a>
     </div>
     ${coverImage ? `<div class="hero-cover"><img src="${escapeHtml(coverImage)}"${normalizeCardImageRotation(data.coverRotation) ? ` style="transform:rotate(${normalizeCardImageRotation(data.coverRotation)}deg) scale(${normalizeCardImageRotation(data.coverRotation) % 180 === 0 ? 1 : 0.72});transform-origin:center"` : ""} alt="${escapeHtml(coverTitle)}" loading="eager" decoding="async" fetchpriority="high" /></div>` : ""}
@@ -199,7 +199,7 @@ function renderCarousel(data: ExportData, inlineDetails = false): string {
       ${cardLinkOpen(card, "card-image", inlineDetails, image, `查看 ${card.displayTitle}`)}
     </article>`;
   }).join("");
-  return `<section class="carousel" aria-label="卡片立体切换">
+  return `<section class="carousel" aria-label="卡牌立体切换">
     <div class="carousel-toolbar">
       <button type="button" data-carousel-prev aria-label="上一张"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg></button>
       <span><strong data-carousel-current>1</strong> / ${featuredCards.length}${data.cards.length > featuredCards.length ? ` <small>精选自 ${data.cards.length}</small>` : ""}</span>
@@ -212,7 +212,7 @@ function renderCarousel(data: ExportData, inlineDetails = false): string {
 function renderCollectionBrowser(data: ExportData, inlineDetails = false): string {
   if (data.cards.length <= shareGalleryFeaturedCardLimit) return "";
   return `<section id="collection" class="collection-browser" data-segmented-gallery data-segment-size="${shareGallerySegmentSize}">
-    <div class="collection-browser-head"><div><p class="kicker">完整馆藏</p><h2>浏览全部 ${data.cards.length} 张卡片</h2></div><span data-segment-status>已显示 ${Math.min(shareGallerySegmentSize, data.cards.length)} / ${data.cards.length}</span></div>
+    <div class="collection-browser-head"><div><p class="kicker">完整馆藏</p><h2>浏览全部 ${data.cards.length} 张卡牌</h2></div><span data-segment-status>已显示 ${Math.min(shareGallerySegmentSize, data.cards.length)} / ${data.cards.length}</span></div>
     <div class="collection-card-grid">${data.cards.map((card, index) => `<div data-segment-item${index >= shareGallerySegmentSize ? " hidden" : ""}>${renderGalleryCard(card, "section-card", inlineDetails, "", data.presentation.featuredCardIds.includes(card.id))}</div>`).join("")}</div>
     ${data.cards.length > shareGallerySegmentSize ? `<button type="button" class="segment-more" data-segment-more>显示更多（剩余 ${data.cards.length - shareGallerySegmentSize}）</button>` : ""}
   </section>`;
@@ -308,7 +308,7 @@ export function renderCardPage(data: ExportData, card: ExportCard): string {
 function renderCollectionPage(data: ExportData, title: string, kicker: string, description: string, cards: ExportCard[]): string {
   const body = `<main class="shell collection-page">
     <nav class="back"><a href="../index.html">← 返回展馆首页</a></nav>
-    <header class="collection-page-head"><p class="kicker">${escapeHtml(kicker)}</p><h1>${escapeHtml(title)}</h1>${paragraphHtml(description)}<span>${cards.length} 张卡片</span></header>
+    <header class="collection-page-head"><p class="kicker">${escapeHtml(kicker)}</p><h1>${escapeHtml(title)}</h1>${paragraphHtml(description)}<span>${cards.length} 张卡牌</span></header>
     <div class="collection-card-grid">${cards.map((card) => renderGalleryCard(card, "section-card", false, "../", data.presentation.featuredCardIds.includes(card.id))).join("")}</div>
   </main>`;
   return renderLayout(`${title} - ${data.title}`, body, data, "card", false, cards.find((card) => card.images.length > 0)?.images[0]?.src);
@@ -322,7 +322,7 @@ export function renderSectionPage(data: ExportData, section: ExportSection): str
 
 export function renderSubjectPage(data: ExportData, subject: ExportSubject): string {
   const cards = data.cards.filter((card) => subject.cardIds.includes(card.id));
-  return renderCollectionPage(data, subject.name, "卡片主体专题", `汇集 ${subject.name} 在本展馆中的全部卡片。`, cards);
+  return renderCollectionPage(data, subject.name, "卡牌主体专题", `汇集 ${subject.name} 在本展馆中的全部卡牌。`, cards);
 }
 
 export function renderNotFound(data: ExportData): string {

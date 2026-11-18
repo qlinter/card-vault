@@ -7,7 +7,7 @@ export const shareLayouts = [
   {
     id: "archive",
     label: "典藏档案",
-    description: "以章节、档案标签和卡片墙组织收藏，适合生涯与系列叙事。"
+    description: "以章节、档案标签和卡牌墙组织收藏，适合生涯与系列叙事。"
   },
   {
     id: "arena",

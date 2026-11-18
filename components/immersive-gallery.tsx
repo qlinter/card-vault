@@ -19,7 +19,7 @@ export function ImmersiveGallery({ source, onClose }: { source: GallerySource; o
   const viewer = useImmersiveViewer({ source, onClose, playback: preferences });
   const update = (patch: Partial<GalleryPreferences>) => { viewer.pause(); setPreferences(value => normalizeGalleryPreferences({ ...value, ...patch })); };
   const save = (interval: number) => {
-    const saved = normalizeGalleryPreferences({ ...preferences, interval, allImages: viewer.allImages, random: viewer.session?.random ?? preferences.random });
+    const saved = normalizeGalleryPreferences({ ...preferences, interval, allImages: viewer.allImages, excludeSold: source.spec ? preferences.excludeSold : viewer.excludeSold });
     try { localStorage.setItem(galleryPreferenceKey, JSON.stringify(saved)); setPreferences(saved); return true; }
     catch { return false; }
   };
@@ -28,7 +28,7 @@ export function ImmersiveGallery({ source, onClose }: { source: GallerySource; o
   const sceneStyle = { "--gallery-light": preferences.light / 100, "--gallery-art-scale": preferences.artScale / 100 } as CSSProperties;
   const scopeLabel = source.group || (source.spec ? `${source.spec.year}${source.spec.month ? ` / ${source.spec.month}` : ""}` : source.q);
   const sceneLabel = scopeLabel !== current?.playerName && scopeLabel !== current?.cardTitle ? scopeLabel : undefined;
-  const failure = !current ? "卡片已删除或不在当前范围。" : viewer.unavailable ? "当前范围的图片均不可用。可重试或退出赏卡。" : "图片暂时无法显示，可重试或跳过。";
+  const failure = !current ? "卡牌已删除或不在当前范围。" : viewer.unavailable ? "当前范围的图片均不可用。可重试或退出赏卡。" : "图片暂时无法显示，可重试或跳过。";
 
   return <dialog ref={viewer.dialog} tabIndex={-1} className={`immersive-viewer${viewer.controls ? "" : " is-idle"}`} style={sceneStyle}
     data-gallery-scene={preferences.scene} data-gallery-layout={preferences.layout} data-gallery-captions={preferences.captions} data-gallery-settings={viewer.settingsOpen} data-ready={viewer.loaded}
@@ -52,7 +52,7 @@ export function ImmersiveGallery({ source, onClose }: { source: GallerySource; o
           <div className="gallery-image-reveal" key={`${viewer.image?.id ?? "none"}-${viewer.cardId}-${viewer.imageIndex}-${viewer.imageRetry}`}>
             <ShowcaseImage src={viewer.image?.path} alt={viewer.card.cardTitle} rotation={(viewer.image?.rotation ?? 0) + viewer.rotation} eager priority shadow={false} onStatus={viewer.imageStatus} />
           </div>
-        </div></div> : <div className="gallery-loading" role="status"><span />{t(viewer.session?.ids.length === 0 ? "当前范围没有卡片。" : viewer.message || "正在布展…")}</div>}
+        </div></div> : <div className="gallery-loading" role="status"><span />{t(viewer.session?.ids.length === 0 ? "当前范围没有卡牌。" : viewer.message || "正在布展…")}</div>}
         <span className="gallery-art-baseline" aria-hidden="true" />
         {viewer.broken ? <div className="immersive-failure" role="status"><p>{t(failure)}</p><div>
           <button type="button" onClick={() => { viewer.pause(); viewer.setImageRetry(value => value + 1); }}>{t("重试")}</button>
@@ -78,7 +78,7 @@ export function ImmersiveGallery({ source, onClose }: { source: GallerySource; o
       </div>
     </footer>
     {viewer.message ? <p className="gallery-notice" role="status">{t(viewer.message)}<button type="button" onClick={() => viewer.setRetry(value => value + 1)}>{t("重试")}</button></p> : null}
-    <ImmersiveGallerySettings viewer={viewer} preferences={preferences} update={update} save={save} />
+    <ImmersiveGallerySettings viewer={viewer} allowSoldFilter={!source.spec} preferences={preferences} update={update} save={save} />
     </div>
   </dialog>;
 }

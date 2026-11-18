@@ -23,7 +23,11 @@
 
 财务计算统一由 `financial-reporting.ts` 编排，币种和历史投影独立维护。组合统计由 `portfolio-batch.ts` 分批聚合，导航、类型和明细选择各在相应模块；服务缓存受资料修订号与有效期约束。冻结参考实现仅用于测试，不成为运行时依赖。
 
-录入与详情复用 `FinancialRecordFields`，录入与导入的初始财务写入复用 `card-entry-finance-service.ts`。回顾分为页面编排、统计展示、卡片调整，屏幕和 PNG 共用统计定义。导出工作区统一限制并发、超时和清理；运行脚本白名单由 `release-runtime-files.js` 维护。避免因页面相似而复制整套校验、统计或导出流程。
+录入与详情复用 `FinancialRecordFields`，录入与导入的初始财务写入复用 `card-entry-finance-service.ts`。回顾分为页面编排、统计展示、卡牌调整，屏幕和 PNG 共用统计定义。表格、卡图与回顾长图共用导出工作区的并发限制、超时和清理。
+
+导出响应通过 `X-Export-Size` 标记生成文件的字节数。下载测试核对落盘大小和文件内容；如果 HTTP 层也提供 `Content-Length`，同时核对该值。运行脚本白名单由 `release-runtime-files.js` 维护。避免因页面相似而复制整套校验、统计或导出流程。
+
+收藏和统计的筛选字段由 `portfolio-analysis-scope.ts` 定义，首页单独处理排序。展墙和浏览接口使用 `showcase.ts` 的搜索范围与排序，展签字段由 `showcase-presentation.ts` 定义。浏览收藏回顾时按数据库解码后的日期判断期间，翻页游标按实际扫描批次推进。
 
 录入字段的控件判断、展开、焦点和错误关联统一放在 `card-form-display.ts`；清理校验提示只移除自身的关联，不覆盖字段原有的辅助说明。草稿保存与切换继续由录入页面编排，删除失败须保留列表并允许重试。
 
@@ -168,7 +172,7 @@ npm.cmd run release:win
 2. 执行完整测试、编码检查和生产构建；CI 额外执行全部依赖审计，本地发布前运行 `npm run audit:all`。
 3. 使用 electron-builder 生成 Windows 安装版。
 4. 签名模式验证安装器和主程序的签名者与 RFC 3161 时间戳；未签名模式验证两者均为 `NotSigned`。
-5. 验证打包文件，运行卡片、分享、数据管理、流式导出 HTTP 流程及包内健康端点冒烟测试；启动实际桌面，检查安全设置和编辑返回筛选结果。
+5. 验证打包文件，运行卡牌、分享、数据管理、流式导出 HTTP 流程及包内健康端点冒烟测试；启动实际桌面，检查安全设置和编辑返回筛选结果。
 6. 生成便携 ZIP 和 SHA-256 校验值，并再次验证 ZIP 内主程序与本次签名模式一致。
 
 `npm run package:win` 只执行基础 electron-builder 打包，适合本机快速检查。对外发布应使用 `npm run release:win`，即使没有证书，也能获得完整门禁、冒烟测试、便携 ZIP 和 SHA-256 清单。

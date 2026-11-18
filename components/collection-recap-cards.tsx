@@ -42,11 +42,11 @@ export function CollectionRecapCards({ spec, cardCount, initialCards, representa
 
   return <>
     <div className="recap-actions recap-view-actions">
-      <h2>{t("代表卡片")}</h2>
+      <h2>{t("代表卡牌")}</h2>
       <div>
         <StartImmersive source={{ spec }} label="赏卡：本期全部" disabled={!cardCount} />
-        <StartImmersive source={{ spec, ids: representatives.map(card => card.id) }} label="赏卡：代表卡片" disabled={!representatives.length} />
-        <button type="button" className="btn" aria-expanded={pickerOpen} aria-controls="recap-card-picker" onClick={() => setPickerOpen(!pickerOpen)}>{t("卡片调整")}</button>
+        <StartImmersive source={{ spec, ids: representatives.map(card => card.id) }} label="赏卡：代表卡牌" disabled={!representatives.length} />
+        <button type="button" className="btn" aria-expanded={pickerOpen} aria-controls="recap-card-picker" onClick={() => setPickerOpen(!pickerOpen)}>{t("卡牌调整")}</button>
       </div>
     </div>
     <div className="recap-representatives">
@@ -61,19 +61,19 @@ export function CollectionRecapCards({ spec, cardCount, initialCards, representa
         </div>
       </article>)}
     </div>
-    {!representatives.length ? <p>{t("最多选择六张代表卡片。")}</p> : null}
+    {!representatives.length ? <p>{t("最多选择六张代表卡牌。")}</p> : null}
     {pickerOpen ? <div className="recap-inline-picker" id="recap-card-picker">
       <form className="recap-actions" onSubmit={event => { event.preventDefault(); void loadCards(0); }}>
-        <label>{t("搜索本期卡片")}<input value={search} maxLength={160} onChange={event => setSearch(event.target.value)} /></label>
+        <label>{t("搜索本期卡牌")}<input value={search} maxLength={160} onChange={event => setSearch(event.target.value)} /></label>
         <button type="submit" className="btn" disabled={busy}>{t("搜索")}</button>
       </form>
       <div className="recap-picker">
         {available.map(card => <button type="button" key={card.id} disabled={representatives.length >= 6} onClick={() => onChange([...representatives, card])}>
           <span className="recap-picker-image"><CardImage card={card} /></span>
-          <strong>{card.playerName}</strong><span>{card.cardTitle}</span><small>{t("加入代表卡片")}</small>
+          <strong>{card.playerName}</strong><span>{card.cardTitle}</span><small>{t("加入代表卡牌")}</small>
         </button>)}
       </div>
-      {!cards.length ? <p>{t("本期没有匹配卡片。")}</p> : null}
+      {!cards.length ? <p>{t("本期没有匹配卡牌。")}</p> : null}
       <div className="recap-actions">
         <button type="button" disabled={!page || busy} onClick={() => loadCards(page - 1)}>{t("上一页")}</button>
         <span>{page + 1}</span>

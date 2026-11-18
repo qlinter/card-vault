@@ -3,7 +3,7 @@
 import { PersistentForm, type PersistentFormAction } from "./persistent-form";
 import { UiText } from "@/components/ui-text";
 import type { CardExpense, CardTransaction, CardValuation } from "@prisma/client";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { FinancialRecordFields } from "./financial-record-fields";
 import type { EntryFinanceRecord, EntryFinanceValues } from "@/lib/card-entry-finance";
@@ -16,7 +16,6 @@ type SharedFormProps = {
   submitLabel: string;
   marker?: string;
 };
-export type ExpenseSaleTransaction = Pick<CardTransaction, "id" | "kind" | "quantity" | "amountMinor" | "currency" | "occurredAt">;
 
 function amountInput(amountMinor: bigint, currency: string): string {
   return formatMinorMoney(amountMinor, currency).replace(`${currency} `, "");
@@ -34,17 +33,16 @@ function HistorySubmit({ editing, label }: { editing: boolean; label: string }) 
   return <button className={editing ? "btn btn-secondary" : "btn btn-primary"} type="submit" disabled={pending}><UiText text={label} /></button>;
 }
 
-function HistoryRecordForm({ action, submitLabel, marker, type, values, editing, version, sales = [], transactionKind }: SharedFormProps & {
+function HistoryRecordForm({ action, submitLabel, marker, type, values, editing, version, transactionKind }: SharedFormProps & {
   version?: string;
   type: EntryFinanceRecord["type"];
   values: EntryFinanceValues;
   editing: boolean;
-  sales?: Array<{ id: string; label: ReactNode }>;
   transactionKind?: "purchase" | "sale";
 }) {
   return <PersistentForm action={action} className="financial-form">
     <FormMarker value={marker} version={version} />
-    <FinancialRecordFields type={type} values={values} prefix="" sales={sales} showExpenseHelp transactionKind={transactionKind} />
+    <FinancialRecordFields type={type} values={values} prefix="" compactCurrency={type === "transaction"} transactionKind={transactionKind} />
     <HistorySubmit editing={editing} label={submitLabel} />
   </PersistentForm>;
 }
@@ -61,19 +59,14 @@ export function TransactionForm({ record, transactionKind, ...props }: SharedFor
   }} />;
 }
 
-export function ExpenseForm({ record, transactions, ...props }: SharedFormProps & { record?: CardExpense; transactions: ExpenseSaleTransaction[] }) {
-  const sales = transactions.filter(transaction => transaction.kind === "sale").map(sale => ({
-    id: sale.id,
-    label: <>{formatHistoryDateInput(sale.occurredAt)} · {sale.quantity}<UiText text=" 张 · " />{formatMinorMoney(sale.amountMinor, sale.currency)}</>
-  }));
-  return <HistoryRecordForm {...props} version={record ? recordVersion(record) : undefined} type="expense" editing={Boolean(record)} sales={sales} values={{
+export function ExpenseForm({ record, ...props }: SharedFormProps & { record?: CardExpense }) {
+  return <HistoryRecordForm {...props} version={record ? recordVersion(record) : undefined} type="expense" editing={Boolean(record)} values={{
     kind: record?.kind ?? "grading",
     context: record?.context ?? "grading",
     amount: record ? amountInput(record.amountMinor, record.currency) : "",
     currency: record?.currency ?? "CNY",
     occurredAt: formatHistoryDateInput(record?.occurredAt),
     vendor: record?.vendor ?? "",
-    transactionId: record?.transactionId ?? "",
     notes: record?.notes ?? ""
   }} />;
 }

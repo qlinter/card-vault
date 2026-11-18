@@ -127,17 +127,17 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
   return (
     <section className="panel share-section">
       <div className="share-section-head">
-        <h2><UiText text={"选择卡片"} /></h2>
+        <h2><UiText text={"选择卡牌"} /></h2>
         <span className="muted"><UiText text={"共"} />{cards.length}<UiText text={" 张可选 / 当前显示 "} />{visibleCount}<UiText text={"张"} /></span>
       </div>
 
       <label className="field share-card-search">
-        <span><UiText text={"搜索卡片"} /></span>
+        <span><UiText text={"搜索卡牌"} /></span>
         <UiElement as="input" uiAttributes={["placeholder"]}
           type="search"
           value={query}
           onChange={(event) => { setQuery(event.target.value); setLimits({}); }}
-          placeholder="搜索卡片主体、卡名、年份、品牌、产品线、评级..."
+          placeholder="搜索卡牌主体、卡名、年份、品牌、产品线、评级..."
         />
       </label>
 
@@ -228,10 +228,10 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
                             />
                           </label>
                           <label className="field">
-                            <span><UiText text={"卡片故事（公开）"} /></span>
+                            <span><UiText text={"卡牌故事（公开）"} /></span>
                             <UiElement as="textarea" uiAttributes={card.publicDescription ? [] : ["placeholder"]}
                               value={draft.displayDescription}
-                              placeholder={value(card.publicDescription) || "写下这张卡为何重要；留空时使用卡片公开描述"}
+                              placeholder={value(card.publicDescription) || "写下这张卡为何重要；留空时使用卡牌公开描述"}
                               onChange={(event) => onDraftChange(card.id, { displayDescription: event.target.value })}
                             />
                           </label>
@@ -247,7 +247,7 @@ export function ShareCardPicker({ cards, selectedIds, drafts, onSelectionChange,
         })}
       </div>
 
-      {visibleCount === 0 ? <p className="muted"><UiText text={"没有找到匹配的卡片。"} /></p> : null}
+      {visibleCount === 0 ? <p className="muted"><UiText text={"没有找到匹配的卡牌。"} /></p> : null}
     </section>
   );
 }

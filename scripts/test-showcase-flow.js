@@ -112,7 +112,7 @@ async function main() {
     assert.equal(await page.locator(".showcase-views.is-list").count(), 1);
     await assertImagesFit(page);
     await page.screenshot({ path: "logs/v1.4.2-showcase-list.png", fullPage: true, animations: "disabled" });
-    await page.getByRole("button", { name: "卡片视图", exact: true }).click();
+    await page.getByRole("button", { name: "卡牌视图", exact: true }).click();
     await page.locator('.showcase-chip[title="Jordan Lee"]').click();
     await page.locator('.showcase-card[href*="/slab?"]').click();
     assert.ok(page.url().includes("group=Jordan"));

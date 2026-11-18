@@ -4,11 +4,11 @@ import { UiText, UiElement } from "@/components/ui-text";
 import { useState } from "react";
 import { ShareGalleryCardsPanel } from "@/components/share-gallery-cards-panel";
 import { ShareGalleryContentPanel } from "@/components/share-gallery-content-panel";
-import type { ShareGalleryEditorProps } from "@/components/share-gallery-editor-types";
+import type { ShareGalleryEditorPanel, ShareGalleryEditorProps } from "@/components/share-gallery-editor-types";
 import { ShareGallerySectionsPanel } from "@/components/share-gallery-sections-panel";
 import { ShareGalleryVisualPanel } from "@/components/share-gallery-visual-panel";
 import { ShareDesignPreview } from "@/components/share-design-preview";
-import { useShareGalleryEditorState, type ShareGalleryEditorPanel } from "@/components/use-share-gallery-editor-state";
+import { useShareGalleryEditorState } from "@/components/use-share-gallery-editor-state";
 import { shareLayouts } from "@/lib/share-presentation";
 import { shareGalleryTemplates } from "@/lib/share-templates";
 import { shareThemes } from "@/lib/share-themes";
@@ -22,6 +22,8 @@ const editorPanels: Array<{ id: ShareGalleryEditorPanel; label: string }> = [
 ];
 
 export function ShareGalleryEditor({
+  activePanel,
+  setActivePanel,
   theme,
   presentation,
   values,
@@ -54,8 +56,6 @@ export function ShareGalleryEditor({
 }: ShareGalleryEditorProps) {
   const [customizing, setCustomizing] = useState(false);
   const {
-    activePanel,
-    setActivePanel,
     coverPreviewUrl,
     backgroundPreviewUrl,
     setCoverPreviewUrl,

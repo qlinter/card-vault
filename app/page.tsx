@@ -1,6 +1,7 @@
 import { CollectionViewProvider } from "@/components/view-mode-toggle";
 import { UiText } from "@/components/ui-text";
 import { valuationCoverage } from "@/lib/portfolio-metrics";
+import { portfolioFilterFields } from "@/lib/portfolio-analysis-scope";
 import { FilterBar } from "@/components/filter-bar";
 import { HomeCardGrid } from "@/components/home-card-grid";
 import { HomeValuation } from "@/components/home-valuation";
@@ -18,28 +19,7 @@ type HomeProps = {
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
   const query = {
-    q: toScalar(params.q),
-    sport: toScalar(params.sport),
-    team: toScalar(params.team),
-    year: toScalar(params.year),
-    brand: toScalar(params.brand),
-    productLine: toScalar(params.productLine),
-    subsetName: toScalar(params.subsetName),
-    parallel: toScalar(params.parallel),
-    cardNumber: toScalar(params.cardNumber),
-    isSerialNumbered: toScalar(params.isSerialNumbered),
-    isOneOfOne: toScalar(params.isOneOfOne),
-    isRookie: toScalar(params.isRookie),
-    isAutograph: toScalar(params.isAutograph),
-    autoType: toScalar(params.autoType),
-    isPatch: toScalar(params.isPatch),
-    patchType: toScalar(params.patchType),
-    isGraded: toScalar(params.isGraded),
-    gradingCompany: toScalar(params.gradingCompany),
-    grade: toScalar(params.grade),
-    certNumber: toScalar(params.certNumber),
-    visibility: toScalar(params.visibility),
-    collectionStatus: toScalar(params.collectionStatus),
+    ...Object.fromEntries(portfolioFilterFields.map(field => [field, toScalar(params[field])])),
     sort: toScalar(params.sort)
   };
 
@@ -86,7 +66,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
       {totalCount === 0 ? (
         <div className="panel" style={{ marginTop: "1rem" }}>
-          <p>{<UiText text={"没有找到符合条件的卡片，试试放宽筛选条件或新增一张卡片。"} />}</p>
+          <p>{<UiText text={"没有找到符合条件的卡牌，试试放宽筛选条件或新增一张卡牌。"} />}</p>
         </div>
       ) : null}
     </div></CollectionViewProvider>

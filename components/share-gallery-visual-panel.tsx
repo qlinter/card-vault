@@ -181,7 +181,7 @@ export function ShareGalleryVisualPanel({
           <span><UiText text={"封面图"} /></span>
           <div className="share-cover-options">
             <label className="inline-check">
-              <input type="radio" name="coverMode" value="auto" checked={coverMode === "auto"} onChange={() => onCoverModeChange("auto")} /><UiText text={"自动使用第一张有图卡片"} /></label>
+              <input type="radio" name="coverMode" value="auto" checked={coverMode === "auto"} onChange={() => onCoverModeChange("auto")} /><UiText text={"自动使用第一张有图卡牌"} /></label>
             <label className="inline-check">
               <input type="radio" name="coverMode" value="custom" checked={coverMode === "custom"} onChange={() => onCoverModeChange("custom")} /><UiText text={"自定义上传"} /></label>
             <input type="hidden" name="existingCoverImagePath" value={initialCoverImagePath} />

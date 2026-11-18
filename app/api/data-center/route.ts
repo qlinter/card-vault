@@ -6,18 +6,22 @@ import { prisma } from "@/lib/prisma";
 import { buildCardFilters } from "@/lib/card-helpers";
 import { parseExportSelection } from "@/lib/card-export-selection";
 import { operationFailure, OperationError } from "@/lib/operation-errors";
+import { exportFileResponse } from "@/lib/export-workspace";
+
 export const runtime = "nodejs";
 const active = new Set<string>();
 async function exportResponse(query: Record<string, unknown>, format: string, publicOnly: boolean, selection?: unknown, signal?: AbortSignal) {
   const result = await exportCards(normalizePortfolioFilterInput(query), format, publicOnly, parseExportSelection(selection), signal);
-  return new NextResponse(result.body, { headers: { "Content-Type": result.type, "Content-Length": String(result.size), "Content-Disposition": `attachment; filename="card-vault-${publicOnly ? "public" : "private"}.${result.extension}"`, "Cache-Control": "no-store" } });
+  return exportFileResponse(result, result.type, {
+    "Content-Disposition": `attachment; filename="card-vault-${publicOnly ? "public" : "private"}.${result.extension}"`
+  });
 }
 export async function GET(request: NextRequest) {
   try {
     const params = request.nextUrl.searchParams;
     if (params.has("selection")) {
       const rows = await prisma.card.findMany({ where: buildCardFilters(normalizePortfolioFilterInput(Object.fromEntries(params))), select: { id: true }, take: 10001, orderBy: { id: "asc" } });
-      if (rows.length > 10000) throw new Error("每批最多选择 10000 张卡片，请缩小搜索范围。");
+      if (rows.length > 10000) throw new Error("每批最多选择 10000 张卡牌，请缩小搜索范围。");
       return NextResponse.json({ ids: rows.map(row => row.id) });
     }
     if (params.has("export")) {

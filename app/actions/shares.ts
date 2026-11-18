@@ -14,6 +14,7 @@ import { createSharePresentation, sanitizeSharePresentationCards, serializeShare
 import { parseShareSectionDrafts } from "@/lib/share-sections";
 import { normalizeShareTheme } from "@/lib/share-themes";
 import { errorMessage } from "@/lib/feedback-messages";
+import { optionalText } from "@/lib/form-data";
 import { slugify } from "@/lib/slugify";
 import { scoutIdentity } from "@/lib/scout-identity";
 
@@ -25,15 +26,6 @@ function savedShareRedirect(formData: FormData, id: string, success: string) {
     query.set("submission", token);
   }
   return `/shares?${query}`;
-}
-
-function toOptionalString(value: FormDataEntryValue | null): string | null {
-  if (!value || typeof value !== "string") {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
 }
 
 async function uniqueSlug(title: string, existingId?: string): Promise<string> {
@@ -67,17 +59,17 @@ function selectedCardIds(formData: FormData): string[] {
 }
 
 async function collectionData(formData: FormData, cardIds: string[]) {
-  const title = toOptionalString(formData.get("title"));
+  const title = optionalText(formData, "title");
   if (!title) {
     throw new Error("请填写分享集标题。");
   }
 
   const uploadedPaths: string[] = [];
   try {
-    const coverMode = toOptionalString(formData.get("coverMode")) ?? "auto";
+    const coverMode = optionalText(formData, "coverMode") ?? "auto";
     const coverUpload = formData.get("coverImage");
     let coverImagePath =
-      coverMode === "custom" ? toOptionalString(formData.get("existingCoverImagePath")) : null;
+      coverMode === "custom" ? optionalText(formData, "existingCoverImagePath") : null;
     if (coverMode === "custom" && coverUpload instanceof File && coverUpload.size > 0) {
       coverImagePath = await saveShareImage(coverUpload, "cover");
       uploadedPaths.push(coverImagePath);
@@ -88,7 +80,7 @@ async function collectionData(formData: FormData, cardIds: string[]) {
     let backgroundImagePath =
       clearBackgroundImage
         ? null
-        : toOptionalString(formData.get("existingBackgroundImagePath"));
+        : optionalText(formData, "existingBackgroundImagePath");
     if (!clearBackgroundImage && backgroundUpload instanceof File && backgroundUpload.size > 0) {
       backgroundImagePath = await saveShareImage(backgroundUpload, "background");
       uploadedPaths.push(backgroundImagePath);
@@ -112,11 +104,11 @@ async function collectionData(formData: FormData, cardIds: string[]) {
             featuredCardIds: formData.get("featuredCardIdsJson")
           }), cardIds)
         ),
-        subtitle: toOptionalString(formData.get("subtitle")),
-        description: toOptionalString(formData.get("description")),
-        themeNarrative: toOptionalString(formData.get("themeNarrative")),
-        themeHighlights: toOptionalString(formData.get("themeHighlights")),
-        groupNotes: toOptionalString(formData.get("groupNotes")),
+        subtitle: optionalText(formData, "subtitle"),
+        description: optionalText(formData, "description"),
+        themeNarrative: optionalText(formData, "themeNarrative"),
+        themeHighlights: optionalText(formData, "themeHighlights"),
+        groupNotes: optionalText(formData, "groupNotes"),
         coverImagePath,
         backgroundImagePath
       },
@@ -135,8 +127,8 @@ function itemData(cardIds: string[], formData: FormData) {
       return {
         cardId,
         sortOrder: Number.isFinite(sortValue) && sortValue > 0 ? sortValue : index,
-        displayTitle: toOptionalString(formData.get(`displayTitle-${cardId}`)),
-        displayDescription: toOptionalString(formData.get(`displayDescription-${cardId}`))
+        displayTitle: optionalText(formData, `displayTitle-${cardId}`),
+        displayDescription: optionalText(formData, `displayDescription-${cardId}`)
       };
     })
     .sort((a, b) => a.sortOrder - b.sortOrder);
@@ -173,15 +165,15 @@ async function createShareStructure(
   }
 }
 
-export async function createShareCollectionAction(formData: FormData): Promise<void> {
+export async function createShareCollectionAction(_previousState: { error: string }, formData: FormData): Promise<{ error: string }> {
   await requireAccount();
-  let redirectPath = "/shares/new?error=unknown";
+  let redirectPath: string;
   let uploadedPaths: string[] = [];
 
   try {
     const cardIds = selectedCardIds(formData);
     if (cardIds.length === 0) {
-      throw new Error("请至少选择一张卡片。");
+      throw new Error("请至少选择一张卡牌。");
     }
 
     const collection = await collectionData(formData, cardIds);
@@ -198,8 +190,7 @@ export async function createShareCollectionAction(formData: FormData): Promise<v
     redirectPath = savedShareRedirect(formData, "new", "created");
   } catch (error) {
     await Promise.all(uploadedPaths.map((imagePath) => removeManagedShareImage(imagePath)));
-    const message = errorMessage(error, "创建分享集失败，请稍后重试。");
-    redirectPath = `/shares/new?error=${encodeURIComponent(message)}`;
+    return { error: errorMessage(error, "创建分享集失败，请稍后重试。") };
   }
 
   redirect(redirectPath);
@@ -221,7 +212,7 @@ export async function updateShareCollectionAction(shareId: string, _previousStat
 
     const cardIds = selectedCardIds(formData);
     if (cardIds.length === 0) {
-      throw new Error("请至少选择一张卡片。");
+      throw new Error("请至少选择一张卡牌。");
     }
 
     const collection = await collectionData(formData, cardIds);
@@ -305,7 +296,7 @@ export async function exportShareCollectionAction(shareId: string, formData: For
       throw new Error("分享集不存在或已删除。");
     }
     if (collection.items.length === 0) {
-      throw new Error("分享集没有选中的卡片。");
+      throw new Error("分享集没有选中的卡牌。");
     }
 
     const result = await exportShareCollection(collection, mode);

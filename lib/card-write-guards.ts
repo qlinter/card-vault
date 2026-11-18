@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { Card, CardImage, Prisma } from "@prisma/client";
 import { recordVersion } from "./record-version.ts";
 
-export const cardEditConflictMessage = "卡片资料或图片已在其他操作中更新，未覆盖最新内容。当前输入已保留，请重新打开编辑页核对后再保存。";
+export const cardEditConflictMessage = "卡牌资料或图片已在其他操作中更新，未覆盖最新内容。当前输入已保留，请重新打开编辑页核对后再保存。";
 
 /** The existing primary key makes retries atomic without changing the database format. */
 export function cardIdForSubmission(submissionId: string, draftId?: string, queueItemId?: string): string {
@@ -25,7 +25,7 @@ export function assertCardEditVersion(card: Archive, expectedVersion: string) {
   if (cardEditVersions(card).version !== expectedVersion) throw new Error(cardEditConflictMessage);
 }
 
-export const cardDeleteConflictMessage = "卡片资料、图片、财务或关联记录已发生变化，未执行删除。请核对最新内容后重新确认。";
+export const cardDeleteConflictMessage = "卡牌资料、图片、财务或关联记录已发生变化，未执行删除。请核对最新内容后重新确认。";
 export const cardDeleteInclude = {
   images: true, transactions: true, expenses: true, valuations: true,
   shareItems: true, acquiredWishes: true, tracking: true

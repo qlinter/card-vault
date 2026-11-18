@@ -17,7 +17,7 @@ test("ZIP archive contains nested static share files", async (t) => {
   fs.writeFileSync(path.join(source, "index.html"), "<h1>Card Vault</h1>");
   fs.writeFileSync(path.join(source, "assets", "site.css"), "body{}");
 
-  fs.writeFileSync(path.join(source, "assets", "卡片.bin"), Buffer.from([0, 1, 128, 255]));
+  fs.writeFileSync(path.join(source, "assets", "卡牌.bin"), Buffer.from([0, 1, 128, 255]));
   const zipPath = path.join(root, "share.zip");
   await createZipArchive(source, zipPath);
   const archive = fs.readFileSync(zipPath);
@@ -29,13 +29,13 @@ test("ZIP archive contains nested static share files", async (t) => {
   const expected = new Map([
     ["index.html", Buffer.from("<h1>Card Vault</h1>")],
     ["assets/site.css", Buffer.from("body{}")],
-    ["assets/卡片.bin", Buffer.from([0, 1, 128, 255])]
+    ["assets/卡牌.bin", Buffer.from([0, 1, 128, 255])]
   ]);
   assert.equal(extracted.files.length, expected.size);
   for (const entry of extracted.files) assert.deepEqual(await entry.buffer(), expected.get(entry.path));
   const orderedZip = path.join(root, "ordered.zip");
   await writeStreamingZip(orderedZip, [
-    { name: "02-first.webp", path: path.join(source, "assets", "卡片.bin") },
+    { name: "02-first.webp", path: path.join(source, "assets", "卡牌.bin") },
     { name: "01-second.html", path: path.join(source, "index.html") }
   ]);
   assert.deepEqual((await Open.file(orderedZip)).files.map((entry: { path: string }) => entry.path), ["02-first.webp", "01-second.html"]);

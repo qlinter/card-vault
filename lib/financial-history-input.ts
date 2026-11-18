@@ -1,16 +1,10 @@
 import type { UpdateExpenseInput, UpdateTransactionInput, UpdateValuationInput } from "./financial-history-store.ts";
+import { optionalText } from "./form-data.ts";
 
 function requiredText(formData: FormData, name: string, label: string): string {
-  const value = formData.get(name);
-  const trimmed = typeof value === "string" ? value.trim() : "";
+  const trimmed = optionalText(formData, name);
   if (!trimmed) throw new Error(`${label}不能为空。`);
   return trimmed;
-}
-
-export function optionalText(formData: FormData, name: string): string | null {
-  const value = formData.get(name);
-  const trimmed = typeof value === "string" ? value.trim() : "";
-  return trimmed || null;
 }
 
 function requiredDate(formData: FormData, name: string): Date {
@@ -44,7 +38,6 @@ export function expenseInput(formData: FormData): UpdateExpenseInput {
   return {
     kind: requiredText(formData, "kind", "费用类型"),
     context: requiredText(formData, "context", "费用归属"),
-    transactionId: optionalText(formData, "transactionId"),
     amount: requiredText(formData, "amount", "金额"),
     currency: requiredText(formData, "currency", "币种"),
     occurredAt: requiredDate(formData, "occurredAt"),

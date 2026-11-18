@@ -7,6 +7,9 @@ export type ShowcaseQuery = {
 };
 
 export const SHOWCASE_PAGE_SIZE = 48;
+export const showcaseOrderBy: Prisma.CardOrderByWithRelationInput[] = [
+  { playerName: "asc" }, { createdAt: "desc" }, { id: "asc" }
+];
 
 export function parseShowcasePage(value: string | undefined): number {
   if (!value || !/^[1-9]\d*$/.test(value)) return 1;
@@ -18,6 +21,8 @@ export function showcasePageForIndex(index: number): number {
   return Math.floor(index / SHOWCASE_PAGE_SIZE) + 1;
 }
 
+const searchableColumns = ["playerName", "cardTitle", "team", "productLine", "cardNumber", "tags", "sport", "year", "grade"] as const;
+
 export function toShowcaseWhere(input: ShowcaseQuery): Prisma.CardWhereInput {
   const andParts: Prisma.CardWhereInput[] = [];
 
@@ -27,17 +32,7 @@ export function toShowcaseWhere(input: ShowcaseQuery): Prisma.CardWhereInput {
 
   if (input.q) {
     andParts.push({
-      OR: [
-        { playerName: { contains: input.q } },
-        { cardTitle: { contains: input.q } },
-        { team: { contains: input.q } },
-        { productLine: { contains: input.q } },
-        { cardNumber: { contains: input.q } },
-        { tags: { contains: input.q } },
-        { sport: { contains: input.q } },
-        { year: { contains: input.q } },
-        { grade: { contains: input.q } }
-      ]
+      OR: searchableColumns.map(column => ({ [column]: { contains: input.q } }))
     });
   }
 
@@ -86,8 +81,6 @@ export function buildShowcaseCardHref(cardId: string, query: ShowcaseQuery, base
   const suffix = showcaseQuerySuffix(query);
   return suffix ? `${basePath}/${cardId}?${suffix}` : `${basePath}/${cardId}`;
 }
-
-const searchableColumns = ["playerName", "cardTitle", "team", "productLine", "cardNumber", "tags", "sport", "year", "grade"] as const;
 
 /** Mirrors toShowcaseWhere for bounded rank/neighbor queries against raw SQLite timestamps. */
 export function showcaseSqlScope(query: ShowcaseQuery): Prisma.Sql {

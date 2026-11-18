@@ -30,7 +30,7 @@ async function DataBody({ pending, query, state }: { pending: Promise<Loaded>; q
   if (!loaded) return <section className={styles.panel}><p role="alert" className="note-error"><UiText text={failure} /></p><RefreshPageButton /></section>;
   const { result, workspace } = loaded;
   const tab = dataTab(state.tab), returnTo = dataHref(query, state);
-  if (result.snapshot.cardCount === 0) return <section className={styles.panel}><h2><UiText text="还没有可汇总的收藏" /></h2><Link href={buildQueryHref("/cards/new", { returnTo })}><UiText text="新增卡片" /></Link></section>;
+  if (result.snapshot.cardCount === 0) return <section className={styles.panel}><h2><UiText text="还没有可汇总的收藏" /></h2><Link href={buildQueryHref("/cards/new", { returnTo })}><UiText text="新增卡牌" /></Link></section>;
   if (tab === "details") return <PortfolioDataDetails workspace={workspace} query={query} state={state} returnTo={returnTo} />;
   if (tab === "structure") return <PortfolioStructureView snapshot={result.snapshot} physical={workspace.physical} closed={workspace.closed} attributes={workspace.attributes} query={query} state={state} />;
   if (tab === "trends") return <div className={styles.stack} data-testid="data-trends">
@@ -63,7 +63,7 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
       <p id="portfolio-current-title" className={styles.scopeStatus}><UiText text="当前范围" /> · <span><UiText text={scope.isFiltered ? "已筛选" : "全部收藏"} /></span></p>
       <div className={styles.pageActions}>
         <Link href={buildQueryHref("/portfolio/recap", query)} className={`btn btn-secondary ${styles.pageAction}`}><UiText text="收藏回顾" /></Link>
-        <Link href={homeHref} className={`btn btn-secondary ${styles.pageAction}`}><UiText text={scope.isFiltered ? "返回筛选结果" : "查看卡片"} /></Link>
+        <Link href={homeHref} className={`btn btn-secondary ${styles.pageAction}`}><UiText text={scope.isFiltered ? "返回筛选结果" : "查看卡牌"} /></Link>
       </div>
       {scope.criteria.length ? <div className={styles.scope}>{scope.criteria.map(item => <Link key={item.field} href={dataHref({ ...query, [item.field]: undefined }, state, { page: undefined })}><PortfolioCriterion item={item} /> ×</Link>)}<Link href="/portfolio"><UiText text="清空条件" /></Link></div> : null}
     </header>

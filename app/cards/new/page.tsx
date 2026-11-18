@@ -47,7 +47,7 @@ export default async function NewCardPage({ searchParams }: NewCardPageProps) {
       ? normalizeCardFormValues(queueItem.recognition.suggestion)
       : normalizeCardFormValues(emptyCardFormValues);
   const initialMessage = success === "created"
-    ? "上一张卡片已保存，可以继续录入。"
+    ? "上一张卡牌已保存，可以继续录入。"
     : requestedDraftId && !draft
       ? "该草稿不存在或已经完成，已打开空白录入页。"
       : requestedQueueId && !queueItem
@@ -56,11 +56,7 @@ export default async function NewCardPage({ searchParams }: NewCardPageProps) {
 
   return (
     <div className="page entry-page">
-      <div className="title-row">
-        <div>
-          <h1 className="h1"><UiText text="新增卡片" /></h1>
-        </div>
-      </div>
+      <h1 className="h1 sr-only"><UiText text="新增卡牌" /></h1>
       <CreateCardForm
         submissionId={randomUUID()}
         queuePanel={<CardEntryQueuePanel items={queueItems} activeItemId={queueItem?.id} />}

@@ -1,7 +1,7 @@
 import "server-only";
 import type { CardFormValues } from "./card-form-values";
 import { optionalCardDate } from "./card-domain";
-import { normalizeCurrency } from "./financial-history";
+import { normalizeCurrency, normalizeOptionalHistoryText } from "./financial-history";
 import { calculatePositions, resolvePositionCollectionStatus } from "./position-accounting";
 import type { Prisma } from "@prisma/client";
 import { parseEntryFinance } from "./card-entry-finance.ts";
@@ -10,36 +10,22 @@ import { createCardTransaction, createCardExpense, createCardValuation, getCardF
 
 async function createEntryFinancialRecords(client: Prisma.TransactionClient, cardId: string, json: string) {
   const records = parseEntryFinance(json);
-  const transactionIds = new Map<string, string>();
   const formFor = (values: Record<string, string>) => {
     const form = new FormData();
     for (const [key, value] of Object.entries(values)) form.set(key, value);
     return form;
   };
-  // Resolve in-memory sale references only after every submitted transaction exists.
-  for (const record of records.filter(row => row.type === "transaction")) {
-    const created = await createCardTransaction(client, { cardId, ...transactionInput(formFor(record.values)), provenance:"initial_card_entry" });
-    transactionIds.set(record.id, created.id);
-  }
-  for (const record of records.filter(row => row.type !== "transaction")) {
+  for (const record of records) {
     const form = formFor(record.values);
-    if (record.type === "valuation") {
+    if (record.type === "transaction") {
+      await createCardTransaction(client, { cardId, ...transactionInput(form), provenance: "initial_card_entry" });
+    } else if (record.type === "valuation") {
       await createCardValuation(client, { cardId, ...valuationInput(form), provenance:"initial_card_entry" });
     } else {
-      if (record.values.context === "sale") {
-        const id = transactionIds.get(record.values.transactionId || "");
-        if (!id) throw new Error("出售相关费用必须关联本次录入的出售记录。");
-        form.set("transactionId", id);
-      }
       await createCardExpense(client, { cardId, ...expenseInput(form), provenance:"initial_card_entry" });
     }
   }
   return records.length;
-}
-
-function optionalString(value: string): string | null {
-  const trimmed = value.trim();
-  return trimmed ? trimmed : null;
 }
 
 export async function createInitialFinancialHistory(
@@ -49,13 +35,13 @@ export async function createInitialFinancialHistory(
   gradingCompany: string | null,
   quantity: number
 ) {
-  const purchaseAmount = optionalString(values.purchasePrice);
-  const gradingAmount = optionalString(values.gradingFee);
-  const valuationAmount = optionalString(values.currentValue);
+  const purchaseAmount = normalizeOptionalHistoryText(values.purchasePrice);
+  const gradingAmount = normalizeOptionalHistoryText(values.gradingFee);
+  const valuationAmount = normalizeOptionalHistoryText(values.currentValue);
   const purchaseDate = optionalCardDate(values.purchaseDate, "购买日期");
   const valuationDate = optionalCardDate(values.valuationDate, "估值日期");
-  const currency = normalizeCurrency(optionalString(values.historyCurrency));
-  const valuationSource = optionalString(values.valuationSource);
+  const currency = normalizeCurrency(normalizeOptionalHistoryText(values.historyCurrency));
+  const valuationSource = normalizeOptionalHistoryText(values.valuationSource);
   if ((purchaseAmount || gradingAmount || quantity > 1) && !purchaseDate) {
     throw new Error("填写购买价格、评级费用或多张初始数量时，必须填写购买日期。");
   }
@@ -76,7 +62,7 @@ export async function createInitialFinancialHistory(
       currency,
       quantity,
       occurredAt: purchaseDate ?? new Date(),
-      source: optionalString(values.purchaseSource),
+      source: normalizeOptionalHistoryText(values.purchaseSource),
       provenance: "initial_card_entry"
     });
   }

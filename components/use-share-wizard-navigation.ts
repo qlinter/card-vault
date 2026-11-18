@@ -6,7 +6,7 @@ export function useShareWizardNavigation(stepCount: number, selectedCount: numbe
 
   function requireSelection() {
     if (selectedCount > 0) return true;
-    setMessage("请至少选择一张卡片。");
+    setMessage("请至少选择一张卡牌。");
     return false;
   }
 

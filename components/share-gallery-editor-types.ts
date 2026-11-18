@@ -5,7 +5,11 @@ import type { ShareGalleryTemplateId } from "@/lib/share-templates";
 import type { ShareSectionDraft } from "@/lib/share-sections";
 import type { ShareThemeId } from "@/lib/share-themes";
 
+export type ShareGalleryEditorPanel = "content" | "visual" | "sections" | "cards";
+
 export type ShareGalleryEditorProps = {
+  activePanel: ShareGalleryEditorPanel;
+  setActivePanel: (panel: ShareGalleryEditorPanel) => void;
   theme: ShareThemeId;
   presentation: SharePresentation;
   values: ShareThemeValues;

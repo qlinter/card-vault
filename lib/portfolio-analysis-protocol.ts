@@ -18,7 +18,7 @@ export const portfolioAnalysisDimensions = [
   {
     id: "collectible",
     label: "收藏特征",
-    subtitle: "评级与特殊卡片属性",
+    subtitle: "评级与特殊卡牌属性",
     scorecardKey: "collectibleQuality",
     sectionKey: "collectibleQuality",
     promptFocus: "已录入收藏特征",

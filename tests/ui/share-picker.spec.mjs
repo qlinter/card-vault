@@ -19,6 +19,33 @@ async function openPicker(page) {
   return cards;
 }
 
+test("new share reports saving and server errors in its action bar without losing inputs", async ({ page }) => {
+  const cards = await openPicker(page);
+  await cards.first().getByRole("checkbox").check();
+  await page.getByRole("button", { name: /预览并保存/ }).click();
+  const title = page.locator('[name="title"]');
+  await title.fill("Picker save feedback");
+  const upload = page.locator('[name="backgroundImage"]');
+  await upload.setInputFiles({ name: "invalid.png", mimeType: "image/png", buffer: Buffer.from("invalid") });
+  const bar = page.locator(".share-form-actions");
+  let releaseRequest;
+  const gate = new Promise(resolve => { releaseRequest = resolve; });
+  await page.route("**/shares/new", async route => {
+    if (route.request().method() === "POST") await gate;
+    await route.continue();
+  });
+  try {
+    await bar.getByRole("button", { name: "确认保存" }).click();
+    await expect(bar.getByRole("button", { name: "保存中…" })).toBeDisabled();
+  } finally {
+    releaseRequest();
+  }
+  await expect(bar.getByRole("alert")).toBeVisible();
+  await expect(title).toHaveValue("Picker save feedback");
+  expect(await upload.evaluate(input => input.files[0]?.name)).toBe("invalid.png");
+  await expect(bar.getByRole("button", { name: "确认保存" })).toBeEnabled();
+});
+
 test("picker sorting and overrides survive filtering and save without changing card archives", async ({ page }) => {
   const before = fixture(db => db.prepare("SELECT * FROM Card WHERE id LIKE 'picker-ui-%' ORDER BY id").all());
   const cards = await openPicker(page);
@@ -31,13 +58,13 @@ test("picker sorting and overrides survive filtering and save without changing c
   const customTitle = "A public display title & original collection story";
   const story = "First paragraph of the public card story.\nSecond paragraph with context and provenance.";
   await first.getByLabel("展示标题", { exact: true }).fill(customTitle);
-  await first.getByLabel("卡片故事（公开）", { exact: true }).fill(story);
+  await first.getByLabel("卡牌故事（公开）", { exact: true }).fill(story);
   await page.locator(".share-card-search input").fill("Second selectable");
   await expect(cards).toHaveCount(1);
   await page.locator(".share-card-search input").fill("Picker UI");
   await expect(first.getByRole("checkbox")).toBeChecked();
   await expect(first.getByLabel("展示标题", { exact: true })).toHaveValue(customTitle);
-  await expect(first.getByRole("textbox", { name: "卡片故事（公开）", exact: true })).toHaveValue(story);
+  await expect(first.getByRole("textbox", { name: "卡牌故事（公开）", exact: true })).toHaveValue(story);
   await page.getByRole("button", { name: /预览并保存/ }).click();
   await page.locator('input[name="title"]').fill("Picker UI saved share");
   await page.getByRole("button", { name: "确认保存", exact: true }).first().click();
@@ -60,7 +87,7 @@ test("long card information and expanded overrides remain readable in every them
       const first = cards.filter({ has: page.getByRole("heading", { name: subject, exact: true }) });
       await first.locator(".share-card-overrides > summary").click();
       await first.getByLabel("展示标题", { exact: true }).fill("Long display title ".repeat(8));
-      await first.getByLabel("卡片故事（公开）", { exact: true }).fill("A public story with several paragraphs.\n".repeat(15));
+      await first.getByLabel("卡牌故事（公开）", { exact: true }).fill("A public story with several paragraphs.\n".repeat(15));
       const geometry = await first.evaluate(card => {
         const bounds = card.getBoundingClientRect();
         return { width: card.clientWidth, scrollWidth: card.scrollWidth, bounds: { left: bounds.left, right: bounds.right }, controls: [...card.querySelectorAll("input,textarea")].map(control => { const box = control.getBoundingClientRect(); return { left: box.left, right: box.right, width: box.width, type: control.type }; }) };

@@ -8,7 +8,7 @@ export function CollectionRecapSummary({ spec, summary }: { spec: RecapSpec; sum
   const { t } = useLanguage();
   const chart = recapChart(spec, summary), maximum = Math.max(1, ...chart.map(row => row.count));
   const activityLabel = t(spec.month ? "每周活动" : "每月活动");
-  const topics = [{ label: "卡片主体", rows: summary.subjects }, { label: "运动类型", rows: summary.sports }, { label: "产品线", rows: summary.series }];
+  const topics = [{ label: "卡牌主体", rows: summary.subjects }, { label: "运动类型", rows: summary.sports }, { label: "产品线", rows: summary.series }];
   return <>
     <div className="recap-stats">
       {recapStats(spec, summary).map(stat => <div key={stat.label}><strong>{stat.value}</strong><span>{t(stat.label)}</span></div>)}

@@ -23,7 +23,7 @@ export async function saveCardUploads(files: File[], prefix = ""): Promise<strin
 
   try {
     for (const file of files) {
-      const prepared = await prepareImageUpload(file, "卡片图片");
+      const prepared = await prepareImageUpload(file, "卡牌图片");
       const fileName = `${prefix}${Date.now()}-${randomUUID()}.${prepared.extension}`;
       const imagePath = toImagePublicPath(fileName);
       const fullPath = path.join(uploadDir, fileName);
@@ -46,6 +46,6 @@ export async function removeCardImageIfExists(relativePath: string): Promise<voi
     // 文件可能已由用户手动移除，数据库清理不应因此失败。
   }
   await removeHomeThumbnail(thumbnailsDir, relativePath).catch(() => {
-    // 缓存清理失败不应阻止卡片删除。
+    // 缓存清理失败不应阻止卡牌删除。
   });
 }

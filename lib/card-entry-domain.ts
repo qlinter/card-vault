@@ -147,8 +147,8 @@ export function buildCardData(values: CardFormValues) {
   }
 
   return {
-    playerName: requiredCardText(values.playerName, "卡片主体"),
-    cardTitle: requiredCardText(values.cardTitle, "卡片名称"),
+    playerName: requiredCardText(values.playerName, "卡牌主体"),
+    cardTitle: requiredCardText(values.cardTitle, "卡牌名称"),
     sport: requiredCardText(values.sport, "运动类型"),
     team: optionalCardText(values.team, "Team"),
     year: optionalCardText(values.year, "年份"),

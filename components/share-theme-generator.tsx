@@ -38,7 +38,7 @@ export function ShareThemeGenerator({ cards, currentValues, onApplySuggestion }:
 
   async function generateTheme() {
     if (cards.length === 0) {
-      setStatus("请先选择至少一张卡片。");
+      setStatus("请先选择至少一张卡牌。");
       return;
     }
 

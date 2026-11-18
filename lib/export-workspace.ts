@@ -11,7 +11,18 @@ let activeExports = 0;
 export class ExportLimitError extends Error {
   constructor() { super("已有两个导出任务，请等待完成后重试。"); }
 }
-/** All private tabular exports share limits, consistent reads and cancellation cleanup. */
+/** The file size is independent of HTTP streaming and compression. */
+export function exportFileResponse(file: { body: ReadableStream<Uint8Array>; size: number }, contentType: string, extraHeaders: Record<string, string>) {
+  return new Response(file.body, { headers: {
+    ...extraHeaders,
+    "Content-Type": contentType,
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "X-Export-Size": String(file.size)
+  } });
+}
+
+/** File exports share concurrency limits, cancellation and temporary-file cleanup. */
 export async function exportInWorkspace(build: (workspace: ExportWorkspace) => Promise<string>, requestSignal?: AbortSignal) {
   if (activeExports >= 2) throw new ExportLimitError();
   activeExports++;

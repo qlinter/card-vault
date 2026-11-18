@@ -42,7 +42,7 @@ export default async function ExportSharePage({ params, searchParams }: ExportSh
       <div className="title-row">
         <div>
           <h1 className="h1"><UiText text={"导出分享集"} /></h1>
-          <p className="muted">{share.title} / {share.items.length}<UiText text={" 张卡片"} /></p>
+          <p className="muted">{share.title} / {share.items.length}<UiText text={" 张卡牌"} /></p>
         </div>
         <div className="title-actions">
           <a className="btn btn-secondary" href={`/shares/${share.id}/edit`}><UiText text={"编辑"} /></a>
@@ -51,7 +51,7 @@ export default async function ExportSharePage({ params, searchParams }: ExportSh
       </div>
 
       {privateCount > 0 ? <p className="note-error"><UiText text={"当前分享集包含 "} />{privateCount}<UiText text={" 张私密卡。导出前请确认这是你主动选择的内容。"} /></p> : null}
-      <p className="muted export-privacy-note"><UiText text={"导出仅包含卡片主体、卡片和公开展示信息，不包含价格、成本、购买渠道、备注、AI Key 或本地数据库路径。"} /></p>
+      <p className="muted export-privacy-note"><UiText text={"导出仅包含卡牌主体、卡牌和公开展示信息，不包含价格、成本、购买渠道、备注、AI Key 或本地数据库路径。"} /></p>
       {error ? <p className="note-error"><UiText text={error} /></p> : null}
       {success ? (
         <div className="panel export-result">
@@ -83,7 +83,7 @@ export default async function ExportSharePage({ params, searchParams }: ExportSh
           <div>
             <h2><UiText text={"生成分享包"} /></h2>
             <p className="muted"><UiText text={"两种分享包包含相同的展馆网页，请根据使用场景选择附加配置。"} /></p>
-            <p className="muted"><UiText text={"导出会自动生成 WebP 展示图和缩略图，创建章节页与卡片主体专题页，并执行可访问性检查和版本差异比较。"} /></p>
+            <p className="muted"><UiText text={"导出会自动生成 WebP 展示图和缩略图，创建章节页与卡牌主体专题页，并执行可访问性检查和版本差异比较。"} /></p>
           </div>
 
           <fieldset className="share-export-options">

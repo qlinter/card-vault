@@ -25,7 +25,7 @@ export function ScoutWishlist({ identity, data, busy, saving, mutate, search, se
       <form onSubmit={async event => { event.preventDefault(); if (await mutate({ action: "wish", ...plan })) completeDraft(); }}>
         <fieldset disabled={busy}><div className="wish-form-grid">
           <label><span>{l("心愿名称 *", "Wish title *")}</span><input required maxLength={500} value={plan.title} onChange={event => setPlan({ ...plan, title: event.target.value })} /></label>
-          <label><span>{l("卡片主体（可选）", "Subject (optional)")}</span><input maxLength={500} value={plan.playerName} onChange={event => setPlan({ ...plan, playerName: event.target.value })} /></label>
+          <label><span>{l("卡牌主体（可选）", "Subject (optional)")}</span><input maxLength={500} value={plan.playerName} onChange={event => setPlan({ ...plan, playerName: event.target.value })} /></label>
           <label><span>{l("预算（可选）", "Budget (optional)")}</span><input inputMode="decimal" value={plan.budget} onChange={event => setPlan({ ...plan, budget: event.target.value })} /></label>
           <label><span>{l("币种", "Currency")}</span><select value={plan.currency} onChange={event => setPlan({ ...plan, currency: event.target.value })}><option>CNY</option><option>USD</option></select></label>
           <label className="wish-notes-field"><span>{l("备注（可选）", "Notes (optional)")}</span><textarea rows={3} maxLength={10000} value={plan.notes} onChange={event => setPlan({ ...plan, notes: event.target.value })} /></label>

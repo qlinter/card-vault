@@ -70,13 +70,13 @@ async function findMatch(tx: Prisma.TransactionClient, values: Record<string, st
     year: values.year ? String(values.year) : null, parallel: values.parallel ? String(values.parallel) : null, serialNumber: values.serialNumber ? String(values.serialNumber) : null
   };
   const matches = await tx.card.findMany({ where, take: 2, include: evidenceInclude });
-  if (matches.length > 1) throw new Error("匹配到多张卡片，请映射明确的卡片 ID。");
+  if (matches.length > 1) throw new Error("匹配到多张卡牌，请映射明确的卡牌 ID。");
   return matches[0] ?? null;
 }
 function metadataPatch(card: Card, raw: Input["values"]) {
   const merged = normalizeCardFormValues({ ...card, ...raw });
   const data = buildCardData(merged);
-  if ("collectionStatus" in raw && raw.collectionStatus !== card.collectionStatus) throw new Error("已有卡片的收藏状态请在详情页按交易数量调整。");
+  if ("collectionStatus" in raw && raw.collectionStatus !== card.collectionStatus) throw new Error("已有卡牌的收藏状态请在详情页按交易数量调整。");
   return Object.fromEntries(Object.entries(data).filter(([key]) => key in raw && key !== "collectionStatus")) as Prisma.CardUpdateInput;
 }
 
@@ -126,7 +126,7 @@ async function createPreview(inputs: Input[], options: Options, newBatch = "") {
         input.existingId = card.id; input.expected = fingerprint(card);
         if (options.policy === "update") {
           metadataPatch(card, input.values);
-          if (["purchasePrice", "purchaseDate", "currentValue", "initialQuantity"].some(key => input.values[key])) throw new Error("更新已有卡片仅接受档案字段；估值和交易请在详情页记录。");
+          if (["purchasePrice", "purchaseDate", "currentValue", "initialQuantity"].some(key => input.values[key])) throw new Error("更新已有卡牌仅接受档案字段；估值和交易请在详情页记录。");
         }
       } else validateInitial(input.values);
     } catch (error) { input.validationError = error instanceof Error ? error.message : "预演失败。"; }
@@ -159,7 +159,7 @@ export async function applyJob(id: string, undo = false, cursor?: number) {
         if (undo) {
           const current = await tx.card.findUnique({ where: { id: row.cardId! }, include: evidenceInclude });
           const after = JSON.parse(row.afterJson!) as { fingerprint: string };
-          if (!current || fingerprint(current) !== after.fingerprint) throw new Error("卡片已被后续修改，不能自动撤销。");
+          if (!current || fingerprint(current) !== after.fingerprint) throw new Error("卡牌已被后续修改，不能自动撤销。");
           if (!row.beforeJson) await tx.card.delete({ where: { id: current.id } });
           else {
             const before = JSON.parse(row.beforeJson) as Card;
@@ -171,7 +171,7 @@ export async function applyJob(id: string, undo = false, cursor?: number) {
         if (input.validationError) throw new Error(input.validationError);
         let card = input.existingId ? await tx.card.findUniqueOrThrow({ where: { id: input.existingId }, include: evidenceInclude }) : null;
         if (card && options.policy === "skip") { await tx.bulkJobRow.update({ where: { id: row.id }, data: { status: "skipped", error: null } }); return; }
-        if (card && fingerprint(card) !== input.expected) throw new Error("预演后卡片发生变化，请重新建立批次。");
+        if (card && fingerprint(card) !== input.expected) throw new Error("预演后卡牌发生变化，请重新建立批次。");
         let beforeJson: string | null = null;
         if (card) {
           const { transactions, expenses, valuations, images, shareItems, ...before } = card;
@@ -182,7 +182,7 @@ export async function applyJob(id: string, undo = false, cursor?: number) {
           const match = options.policy === "separate" ? null : await findMatch(tx, input.values);
           if (match) {
             if (options.policy === "skip") { await tx.bulkJobRow.update({ where: { id: row.id }, data: { status: "skipped", cardId: match.id, error: null } }); return; }
-            throw new Error("执行期间出现重复卡片，请重新预演。");
+            throw new Error("执行期间出现重复卡牌，请重新预演。");
           }
           const { values, data, quantity } = validateInitial(input.values);
           const created = await tx.card.create({ data: { ...data, holdingQuantity: quantity } });

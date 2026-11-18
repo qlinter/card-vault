@@ -42,7 +42,7 @@ export async function loadPortfolioSnapshot(value: unknown, options: LoadPortfol
   ) WHERE at <= ${asOf.getTime()}`
   ]);
   if (cardCount === 0 && !options.allowEmpty) {
-    throw new Error("当前筛选范围内没有可分析的卡片。");
+    throw new Error("当前筛选范围内没有可分析的卡牌。");
   }
   const earliest = dates[0]?.earliest;
   const accumulator = createPortfolioBatchAccumulator(buildPortfolioScope(query), config, asOf, earliest === null || earliest === undefined ? undefined : new Date(Number(earliest)).toISOString().slice(0, 7), options);

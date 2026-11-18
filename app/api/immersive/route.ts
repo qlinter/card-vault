@@ -1,26 +1,67 @@
+import type { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { toShowcaseWhere } from "@/lib/showcase";
+import { showcaseOrderBy, toShowcaseWhere } from "@/lib/showcase";
 import { normalizeRecapSpec, recapActivity, representativeIds } from "@/lib/collection-recap";
-import { recapWhere } from "@/lib/collection-recap-service";
+import { recapActivitySelect, recapWhere } from "@/lib/collection-recap-service";
+
+const batchSize = 500;
+const responseOptions = { headers: { "Cache-Control": "no-store" } };
+const galleryCardSelect = {
+  id: true, playerName: true, cardTitle: true, collectionStatus: true,
+  year: true, brand: true, productLine: true, parallel: true, gradingCompany: true,
+  grade: true, serialNumber: true, serialRange: true,
+  images: {
+    take: 5, orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { id: true, path: true, rotation: true }
+  }
+} satisfies Prisma.CardSelect;
 
 export async function GET(request: NextRequest) {
   try {
-    const params = request.nextUrl.searchParams, spec = params.has("spec") ? normalizeRecapSpec(JSON.parse(params.get("spec")!)) : undefined;
-    const restricted = params.has("ids") ? representativeIds(JSON.parse(params.get("ids")!)) : undefined;
-    const where = spec ? recapWhere(spec) : toShowcaseWhere({ q: params.get("q")?.slice(0, 160), group: params.get("group")?.slice(0, 160) });
-    const id = params.get("id"), cursor = params.get("cursor");
+    const params = request.nextUrl.searchParams;
+    const rawSpec = params.get("spec");
+    const rawIds = params.get("ids");
+    const spec = rawSpec === null ? undefined : normalizeRecapSpec(JSON.parse(rawSpec));
+    const id = params.get("id");
+    const cursor = params.get("cursor");
+    const scope = spec ? recapWhere(spec) : toShowcaseWhere({
+      q: params.get("q")?.slice(0, 160), group: params.get("group")?.slice(0, 160)
+    });
+    const conditions: Prisma.CardWhereInput[] = [scope];
+    if (!spec && params.get("excludeSold") === "1") conditions.push({ collectionStatus: { not: "sold" } });
+    if (rawIds !== null) conditions.push({ id: { in: representativeIds(JSON.parse(rawIds)) } });
+    if (id) conditions.push({ id });
+    else if (cursor && spec) conditions.push({ id: { gt: cursor } });
+
+    const query = {
+      where: { AND: conditions },
+      orderBy: spec ? { id: "asc" as const } : showcaseOrderBy,
+      take: id ? 1 : batchSize,
+      ...(cursor && !spec && !id ? { cursor: { id: cursor }, skip: 1 } : {})
+    };
+    const select = id ? galleryCardSelect : { id: true as const };
     const revision = id ? undefined : (await prisma.dataRevision.findUniqueOrThrow({ where: { id: 1 } })).revision.toString();
-    const cards = await prisma.card.findMany({ where: { AND: [where, ...(restricted ? [{ id: { in: restricted } }] : []), ...(id ? [{ id }] : cursor && spec ? [{ id: { gt: cursor } }] : [])] },
-      orderBy: spec ? [{ id: "asc" }] : [{ playerName: "asc" }, { createdAt: "desc" }, { id: "asc" }], take: id ? 1 : 500, ...(cursor && !spec && !id ? { cursor: { id: cursor }, skip: 1 } : {}),
-      select: { id: true, ...(spec ? { createdAt: true, transactions: { where: { kind: "purchase" }, select: { occurredAt: true, quantity: true } } } : {}),
-        ...(id ? { playerName: true, cardTitle: true, collectionStatus: true, year: true, brand: true, productLine: true, parallel: true, gradingCompany: true, grade: true, serialNumber: true, serialRange: true,
-          images: { take: 5, orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: { id: true, path: true, rotation: true } } } : {}) } });
-    const matching = cards.filter(card => !spec || recapActivity(spec, card as unknown as { createdAt: Date; transactions: { occurredAt: Date; quantity: number }[] }).length);
+
+    // Recap periods are evaluated on decoded dates, including legacy SQLite timestamp formats.
+    // Advance the cursor over the scanned rows even if no card in the batch matches the period.
+    const recapBatch = spec
+      ? await prisma.card.findMany({ ...query, select: { ...select, ...recapActivitySelect } })
+      : null;
+    const batch = recapBatch ?? await prisma.card.findMany({ ...query, select });
+    const matching = spec && recapBatch
+      ? recapBatch.flatMap(({ createdAt, transactions, ...card }) =>
+          recapActivity(spec, { createdAt, transactions }).length ? [card] : [])
+      : batch;
     if (id) {
-      const card = matching[0];
-      return card ? NextResponse.json({ card: { id: card.id, playerName: card.playerName, cardTitle: card.cardTitle, collectionStatus: card.collectionStatus, year: card.year, brand: card.brand, productLine: card.productLine, parallel: card.parallel, gradingCompany: card.gradingCompany, grade: card.grade, serialNumber: card.serialNumber, serialRange: card.serialRange, images: card.images } }, { headers: { "Cache-Control": "no-store" } }) : NextResponse.json({ error: "卡片已删除或不在当前范围。" }, { status: 404 });
+      return matching.length
+        ? NextResponse.json({ card: matching[0] }, responseOptions)
+        : NextResponse.json({ error: "卡牌已删除或不在当前范围。" }, { status: 404 });
     }
-    return NextResponse.json({ ids: matching.map(card => card.id), nextCursor: cards.length === 500 ? cards.at(-1)!.id : null, revision }, { headers: { "Cache-Control": "no-store" } });
-  } catch { return NextResponse.json({ error: "无法加载赏卡范围，请重试。" }, { status: 400 }); }
+    return NextResponse.json({
+      ids: matching.map(card => card.id), nextCursor: batch.length === batchSize ? batch.at(-1)!.id : null, revision
+    }, responseOptions);
+  } catch {
+    return NextResponse.json({ error: "无法加载赏卡范围，请重试。" }, { status: 400 });
+  }
 }

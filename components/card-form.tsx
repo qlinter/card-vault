@@ -110,7 +110,7 @@ export function CardForm({
       {mode === "create" && draftId ? <input type="hidden" name="draftId" value={draftId} /> : null}
       {mode === "create" && queueItemId ? <input type="hidden" name="queueItemId" value={queueItemId} /> : null}
 
-      {mode === "create" ? <section className="entry-ai-primary">{recognitionPanel}</section> : <details className="entry-ai-tools" open={queueRecognition?.status === "review" || undefined}><summary><UiText text="AI 识图填充" /></summary>{recognitionPanel}</details>}
+      {mode === "edit" ? <details className="entry-ai-tools" open={queueRecognition?.status === "review" || undefined}><summary><UiText text="AI 识图填充" /></summary>{recognitionPanel}</details> : null}
 
       {mode === "create" ? <CardEntryDuplicatePanel /> : null}
 
@@ -125,9 +125,11 @@ export function CardForm({
           }))}
           queuedImages={queuedImages}
           draftImages={draftImages}
-        />
+        >
+          {mode === "create" ? <section className="entry-ai-primary full">{recognitionPanel}</section> : null}
+        </CardImageFields>
         {mode === "create" ? (
-          <div className="form-section-heading full"><div><h2><UiText text="卡片信息" /></h2></div></div>
+          <div className="form-section-heading full"><div><h2><UiText text="卡牌信息" /></h2></div></div>
         ) : null}
         <CardArchiveFields values={values} card={card} numberedRef={numberedRef} afterBasicFields={mode === "create" ? statusFields : undefined} />
 
@@ -187,7 +189,7 @@ export function CardForm({
         ) : (
           <button type="submit" className="btn btn-primary" disabled={submitDisabled}><UiText text={"保存修改"} /></button>
         )}
-        <a href={mode === "create" ? "/" : `/cards/${card?.id}${encodeReturnTo(returnTo)}`} className="btn btn-secondary"><UiText text={"取消"} /></a>
+        <a href={mode === "create" ? "/" : `/cards/${card?.id}${encodeReturnTo(returnTo)}`} className="btn btn-secondary btn-quiet"><UiText text={"取消"} /></a>
       </div>
     </form>
   );

@@ -186,7 +186,7 @@ export async function exportShareCollection(
       coverImage = optimized.image.src;
       imageCount += optimized.fileCount;
     } else {
-      issues.push({ level: "warning", code: "missing-cover", message: "自定义封面文件不存在，已改用卡片图片或占位内容。" });
+      issues.push({ level: "warning", code: "missing-cover", message: "自定义封面文件不存在，已改用卡牌图片或占位内容。" });
     }
   }
 

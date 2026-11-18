@@ -25,7 +25,7 @@ test("Home shows a sort prompt while keeping newest and financial ordering avail
 
 test("entry types update attributes immediately within ordered sections", async ({ page }) => {
   await page.goto("/cards/new", { waitUntil: "networkidle" });
-  await page.getByText("版本与卡片属性（可选）", { exact: true }).click();
+  await page.getByText("版本与卡牌属性（可选）", { exact: true }).click();
   await page.getByText("评级信息（可选）", { exact: true }).click();
   const form = page.locator('[data-card-entry-form="true"]');
   const numbered = form.locator('[name="isSerialNumbered"]');
@@ -57,7 +57,9 @@ test("entry types update attributes immediately within ordered sections", async 
     await checkbox.uncheck();
     await expect(checkbox).not.toBeChecked();
   }
-  await expect(form.locator(".form-section-heading h2")).toHaveText(["卡片信息"]);
+  await expect(form.locator(".form-section-heading h2")).toHaveText(["AI 识图录入", "卡牌信息"]);
+  await expect(page.locator(".entry-page > .title-row")).toHaveCount(0);
+  await expect(form.locator(".card-image-upload + .entry-ai-primary")).toBeVisible();
   const position = async selector => (await form.locator(selector).boundingBox()).y;
   expect(await position('[name="patchType"]')).toBeLessThan(await position(".card-attribute-options"));
   expect(await position(".card-attribute-options")).toBeLessThan(await position('[name="gradingCompany"]'));
@@ -75,6 +77,10 @@ test("entry types update attributes immediately within ordered sections", async 
 test("AI suggestions and restored drafts visibly select matching attributes", async ({ page }) => {
   await page.route("**/api/ai/recognize-card", route => route.fulfill({ json: { suggestion: { serialRange: "/25", autoType: "on-card", patchType: "logo patch" } } }));
   await page.goto("/cards/new", { waitUntil: "networkidle" });
+  await page.getByText("标签与描述（可选）", { exact: true }).click();
+  const notes = page.locator('[name="notes"]');
+  await notes.fill("Handwritten collection note");
+  await page.getByText("另选识别图片", { exact: true }).click();
   await page.getByLabel("识别图片", { exact: true }).setInputFiles({ name: "front.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") });
   await page.getByRole("button", { name: "识别并填入", exact: true }).click();
   const numbered = page.locator('[name="isSerialNumbered"]');
@@ -85,6 +91,7 @@ test("AI suggestions and restored drafts visibly select matching attributes", as
   await expect(page).toHaveURL(/draft=/);
   await expect(page.locator(".entry-draft-status")).toContainText("草稿已保存");
   await page.reload({ waitUntil: "networkidle" });
+  await expect(notes).toHaveValue("Handwritten collection note");
   await expect(numbered).toBeChecked();
   await expect(page.locator('[name="serialRange"]')).toHaveValue("/25");
   await expect(page.locator('[name="autoType"]')).toHaveValue("on-card");
@@ -95,13 +102,14 @@ test("AI suggestions and restored drafts visibly select matching attributes", as
 
 test("changing recognition images clears previous inferred attributes", async ({ page }) => {
   await page.goto("/cards/new", { waitUntil: "networkidle" });
-  await page.getByText("版本与卡片属性（可选）", { exact: true }).click();
+  await page.getByText("版本与卡牌属性（可选）", { exact: true }).click();
   for (const [name, value] of [["serialRange", "/25"], ["autoType", "on-card"], ["patchType", "logo patch"]]) {
     await page.locator(`[name="${name}"]`).fill(value);
   }
   for (const name of ["isSerialNumbered", "isAutograph", "isPatch"]) await expect(page.locator(`[name="${name}"]`)).toBeChecked();
   await expect(page).toHaveURL(/draft=/);
   const clearedDraftSaved = page.waitForResponse(response => response.url().endsWith("/api/card-entry/drafts") && response.request().postDataJSON()?.values?.serialRange === "");
+  await page.getByText("另选识别图片", { exact: true }).click();
   await page.getByLabel("识别图片", { exact: true }).setInputFiles({ name: "replacement.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") });
   for (const name of ["isSerialNumbered", "isAutograph", "isPatch"]) await expect(page.locator(`[name="${name}"]`)).not.toBeChecked();
   for (const name of ["serialRange", "autoType", "patchType"]) await expect(page.locator(`[name="${name}"]`)).toHaveValue("");

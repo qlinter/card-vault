@@ -85,12 +85,12 @@
 .immersive-settings-body { overflow-y: auto; overscroll-behavior: contain; padding: 26px 32px 8px; scrollbar-width: thin; scrollbar-color: var(--gallery-line-strong) transparent; }
 .gallery-settings-footer { padding: 18px 32px 24px; border-top: 1px solid var(--gallery-line); }
 .gallery-settings-footer p { margin: 0 0 12px; color: var(--gallery-secondary); font-size: var(--gallery-font-meta); line-height: 1.6; }
-.gallery-settings-footer button { width: 100%; min-height: 40px; border: 1px solid var(--gallery-line-strong); border-radius: 2px; color: var(--gallery-ink); background: transparent; letter-spacing: .12em; transition: background-color 180ms ease, border-color 180ms ease; font-weight: var(--weight-medium); font-size: var(--text-base); }
-.gallery-settings-footer button:hover { background: var(--gallery-hover); }
+.gallery-settings-footer .btn { width: 100%; --button-fill: var(--gallery-accent); --button-hover: color-mix(in srgb, var(--gallery-accent) 88%, var(--gallery-panel)); --button-text: var(--gallery-play-ink); font: var(--weight-medium) var(--text-base)/var(--leading-control) var(--font-ui); }
 .gallery-settings-section { display: grid; gap: 22px; padding-bottom: 28px; }
 .gallery-settings-section + .gallery-settings-section { border-top: 1px solid var(--gallery-line); padding-top: 26px; }
 .gallery-settings-section h3 { margin: 0; color: var(--gallery-accent); font-size: var(--text-sm); font-weight: var(--weight-regular); letter-spacing: .12em; }
-.gallery-range { display: grid; gap: 15px; color: var(--gallery-muted); font-size: var(--text-sm); letter-spacing: .04em; }
+.gallery-settings-section label { color: var(--gallery-secondary); font: var(--weight-medium) var(--text-sm)/var(--leading-control) var(--font-ui); letter-spacing: normal; }
+.gallery-range { display: grid; gap: 15px; }
 .gallery-range > span { display: flex; justify-content: space-between; gap: 20px; align-items: baseline; }
 .gallery-range output { min-width: 40px; text-align: right; color: var(--gallery-muted); font-size: var(--gallery-font-meta); font-variant-numeric: tabular-nums; }
 .immersive-viewer .gallery-range input[type=range] { appearance: none; width: 100%; height: 16px; min-height: 0; margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer; }
@@ -98,11 +98,11 @@
 .gallery-range input::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; margin-top: -4.5px; border: 2px solid var(--gallery-panel); border-radius: 50%; background: var(--gallery-accent); box-shadow: 0 0 0 1px var(--gallery-accent); }
 .gallery-range input::-moz-range-track { height: 1px; background: var(--gallery-line-strong); }
 .gallery-range input::-moz-range-thumb { width: 6px; height: 6px; border: 2px solid var(--gallery-panel); border-radius: 50%; background: var(--gallery-accent); box-shadow: 0 0 0 1px var(--gallery-accent); }
-.gallery-setting-check { display: flex; align-items: center; justify-content: space-between; gap: 20px; color: var(--gallery-muted); font-size: var(--text-sm); letter-spacing: .04em; }
+.gallery-setting-check { display: flex; align-items: center; justify-content: space-between; gap: 20px; cursor: pointer; }
 .immersive-viewer .gallery-setting-check input { appearance: none; position: relative; flex-shrink: 0; width: var(--control-size-check); height: var(--control-size-check); min-height: 0; margin: 0; padding: 0; border: 1px solid var(--gallery-line-strong); border-radius: 1px; background: transparent; cursor: pointer; }
 .gallery-setting-check input:checked::after { content: ""; position: absolute; left: 5px; top: 2px; width: 4px; height: 8px; border: solid var(--gallery-accent); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
 .gallery-setting-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; }
-.gallery-setting-field, .gallery-setting-fields label { display: grid; gap: 6px; min-width: 0; font-size: var(--text-sm); letter-spacing: .04em; color: var(--gallery-muted); }
+.gallery-setting-field, .gallery-setting-fields label { display: grid; gap: 6px; min-width: 0; }
 .immersive-viewer .gallery-setting-field select, .immersive-viewer .gallery-setting-fields :is(select, input[type=number]) { width: 100%; min-width: 0; height: var(--control-height); min-height: var(--control-height); padding: 8px 4px 8px 0; border: 0; border-bottom: 1px solid var(--gallery-line-strong); border-radius: 0; color: var(--gallery-ink); appearance: auto; background: transparent; font-family: var(--font-ui); font-size: var(--text-base); line-height: 1.5; letter-spacing: .03em; transition: border-color 180ms ease; }
 .immersive-settings select:hover, .immersive-settings input[type=number]:hover { border-bottom-color: var(--gallery-accent); }
 .immersive-settings select:focus-visible, .immersive-settings input[type=number]:focus-visible { outline: 1px solid var(--gallery-accent); outline-offset: 4px; }

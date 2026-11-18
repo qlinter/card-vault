@@ -4,7 +4,8 @@ import { UiText, UiElement } from "@/components/ui-text";
 import type { FormEvent, MouseEvent } from "react";
 import { useActionState, useState } from "react";
 import type { PersistentFormAction } from "./persistent-form";
-import { useFormStatus } from "react-dom";
+import { flushSync } from "react-dom";
+import type { ShareGalleryEditorPanel } from "./share-gallery-editor-types";
 import { ShareCardPicker, type ShareCardDraft, type SharePickerCard } from "@/components/share-card-picker";
 import { ShareGalleryEditor } from "@/components/share-gallery-editor";
 import { ShareThemeGenerator } from "@/components/share-theme-generator";
@@ -19,8 +20,7 @@ import { toggleFeaturedCardId } from "@/lib/share-presentation";
 import type { ShareSectionDraft } from "@/lib/share-sections";
 
 type ShareCollectionWizardProps = {
-  action?: (formData: FormData) => void | Promise<void>;
-  editAction?: PersistentFormAction;
+  action: PersistentFormAction;
   editVersion?: string;
   draftId: string;
   cards: SharePickerCard[];
@@ -34,21 +34,15 @@ const steps = [
   { id: 1, title: "预览并保存" }
 ] as const;
 
-function ShareSubmitButton() {
-  const { pending } = useFormStatus();
-  return <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? <UiText text={"保存中…"} /> : <UiText text={"确认保存"} />}</button>;
-}
-
 function safeText(value: unknown): string {
   if (typeof value === "string") return value.trim();
   if (Array.isArray(value)) return value.map(safeText).filter(Boolean).join("\n");
   return "";
 }
 
-const emptyEditAction: PersistentFormAction = async () => ({ error: "" });
-
-export function ShareCollectionWizard({ action, editAction, editVersion, draftId, cards, aiCards, initialValues, error }: ShareCollectionWizardProps) {
-  const [state, submitEdit] = useActionState(editAction ?? emptyEditAction, { error: "" });
+export function ShareCollectionWizard({ action, editVersion, draftId, cards, aiCards, initialValues, error }: ShareCollectionWizardProps) {
+  const [state, submit, pending] = useActionState(action, { error: "" });
+  const [activePanel, setActivePanel] = useState<ShareGalleryEditorPanel>("content");
   const [openedVersion, setOpenedVersion] = useState(editVersion ?? "");
   const editor = useShareEditorState(cards, aiCards, initialValues);
   const { activeStep, setActiveStep, message, setMessage, goNext, goPrevious, goToStep } = useShareWizardNavigation(steps.length, editor.selectedIds.length);
@@ -80,7 +74,11 @@ export function ShareCollectionWizard({ action, editAction, editVersion, draftId
     editor.setDrafts((current) => ({ ...current, [cardId]: { sortOrder: current[cardId]?.sortOrder ?? "0", displayTitle: current[cardId]?.displayTitle ?? "", displayDescription: current[cardId]?.displayDescription ?? "", ...patch } }));
   }
 
-  function updateThemeField(field: ShareThemeField, value: string) { history.recordHistory(); editor.setThemeValues((current) => ({ ...current, [field]: value })); }
+  function updateThemeField(field: ShareThemeField, value: string) {
+    history.recordHistory();
+    editor.setThemeValues((current) => ({ ...current, [field]: value }));
+    if (field === "title" && value.trim()) setMessage("");
+  }
 
   function applySuggestion(suggestion: Partial<Record<ShareThemeField, unknown>>, overwrite: boolean): ShareThemeField[] {
     history.recordHistory();
@@ -141,25 +139,35 @@ export function ShareCollectionWizard({ action, editAction, editVersion, draftId
   function handleNextClick(event: MouseEvent<HTMLButtonElement>) { event.preventDefault(); goNext(); }
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     if (activeStep < steps.length - 1) { event.preventDefault(); goNext(); return; }
-    if (editor.selectedIds.length === 0) { event.preventDefault(); setMessage("请至少选择一张卡片。"); setActiveStep(0); return; }
-    if (!editor.themeValues.title.trim()) { event.preventDefault(); setMessage("请填写分享集标题。"); setActiveStep(1); return; }
+    if (editor.selectedIds.length === 0) { event.preventDefault(); setMessage("请至少选择一张卡牌。"); setActiveStep(0); return; }
+    if (!editor.themeValues.title.trim()) {
+      event.preventDefault();
+      flushSync(() => { setMessage("请填写分享集标题。"); setActivePanel("content"); });
+      const title = event.currentTarget.elements.namedItem("title");
+      if (title instanceof HTMLInputElement) title.focus();
+      return;
+    }
     const submission = event.currentTarget.elements.namedItem("draftSubmissionId");
     if (submission instanceof HTMLInputElement) submission.value = persistence.markSubmitted();
-    setMessage("正在保存分享集，请稍候…");
+    setMessage("");
   }
 
-  return <form action={editAction ? submitEdit : action} className="share-form" onSubmit={handleSubmit} onReset={event => event.preventDefault()} noValidate>
+  const feedback = pending ? "" : message || state.error || error;
+  return <form action={submit} className="share-form" onSubmit={handleSubmit} onReset={event => event.preventDefault()} noValidate>
     <input type="hidden" name="editVersion" value={openedVersion} />
-    {state.error ? <p className="note-error" role="alert"><UiText text={state.error} /></p> : null}
     <input type="hidden" name="draftSubmissionId" />
     {editor.selectedIds.map((cardId) => <input key={cardId} type="hidden" name="cardIds" value={cardId} />)}
     <input type="hidden" name="templateId" value={editor.presentation.templateId} /><input type="hidden" name="layout" value={editor.presentation.layout} /><input type="hidden" name="backgroundPositionX" value={editor.presentation.backgroundPosition.x} /><input type="hidden" name="backgroundPositionY" value={editor.presentation.backgroundPosition.y} /><input type="hidden" name="panelOpacity" value={editor.presentation.panelOpacity} /><input type="hidden" name="typography" value={editor.presentation.typography} /><input type="hidden" name="density" value={editor.presentation.density} /><input type="hidden" name="imageFit" value={editor.presentation.imageFit} /><input type="hidden" name="textScale" value={editor.presentation.textScale} /><input type="hidden" name="featuredCardIdsJson" value={JSON.stringify(editor.presentation.featuredCardIds)} /><input type="hidden" name="sectionsJson" value={JSON.stringify(editor.sections)} />
-    {error ? <p className="note-error"><UiText text={error} /></p> : null}{message ? <p className="note-error"><UiText text={message} /></p> : null}
+    {activeStep === 0 && feedback ? <p className="note-error" role="alert"><UiText text={feedback} /></p> : null}
     {persistence.recoverableDraft ? <section className="panel share-draft-recovery" role="status"><div><strong><UiText text={"检测到未完成的本机草稿"} /></strong><p className="muted"><UiText text={persistence.draftStatus} /><UiText text={"，恢复后仍可使用撤销返回当前已保存内容。"} /></p></div><div><button type="button" className="btn btn-primary" onClick={persistence.restoreDraft}><UiText text={"恢复草稿"} /></button><button type="button" className="btn btn-secondary" onClick={persistence.discardDraft}><UiText text={"放弃草稿"} /></button></div></section> : null}
-    <div className="share-wizard-header panel"><UiElement as="div" uiAttributes={["aria-label"]} className="share-wizard-steps" aria-label="分享集创建步骤">{steps.map((step) => <button key={step.id} type="button" className={`share-wizard-step${activeStep === step.id ? " active" : ""}`} aria-current={activeStep === step.id ? "step" : undefined} onClick={(event) => { event.preventDefault(); goToStep(step.id); }}><span>{step.id + 1}</span><UiText text={step.title} /></button>)}</UiElement><div className="share-wizard-actions"><button type="button" className="btn btn-secondary" onClick={goPrevious} disabled={activeStep === 0}><UiText text={"上一步"} /></button>{activeStep < steps.length - 1 ? <button type="button" className="btn btn-primary" onClick={handleNextClick}><UiText text={"下一步"} /></button> : <ShareSubmitButton />}<a href="/shares" className="btn btn-secondary"><UiText text={"返回分享"} /></a></div></div>
+    <div className={activeStep === 1 ? "share-wizard-header panel is-preview" : "share-wizard-header panel"}><UiElement as="div" uiAttributes={["aria-label"]} className="share-wizard-steps" aria-label="分享集创建步骤">{steps.map((step) => <button key={step.id} type="button" className={`share-wizard-step${activeStep === step.id ? " active" : ""}`} aria-current={activeStep === step.id ? "step" : undefined} onClick={(event) => { event.preventDefault(); goToStep(step.id); }}><span>{step.id + 1}</span><UiText text={step.title} /></button>)}</UiElement><div className="share-wizard-actions">{activeStep < steps.length - 1 ? <button type="button" className="btn btn-primary" onClick={handleNextClick}><UiText text={"下一步"} /></button> : null}<a href="/shares" className="btn btn-secondary"><UiText text={"返回分享"} /></a></div></div>
     <div className={activeStep === 0 ? "" : "share-step-hidden"}><ShareCardPicker cards={cards} selectedIds={editor.selectedIds} drafts={editor.drafts} onSelectionChange={updateSelection} onDraftChange={updateDraft} /></div>
     <div className={activeStep === 1 ? "" : "share-step-hidden"}><details className="share-ai-assistance"><summary><UiText text="AI 文案辅助（可选）" /></summary><ShareThemeGenerator cards={editor.selectedAiCards} currentValues={editor.themeValues} onApplySuggestion={applySuggestion} /></details></div>
-    <div className={activeStep === 1 ? "" : "share-step-hidden"}><ShareGalleryEditor theme={editor.theme} presentation={editor.presentation} values={editor.themeValues} sections={editor.sections} cards={editor.selectedCards} drafts={editor.drafts} coverMode={editor.coverMode} initialCoverImagePath={editor.initialCoverImagePath} initialBackgroundImagePath={editor.initialBackgroundImagePath} canUndo={history.canUndo} canRedo={history.canRedo} draftStatus={persistence.draftStatus} onUndo={history.undo} onRedo={history.redo} onThemeChange={(nextTheme) => { history.recordHistory(); editor.setTheme(nextTheme); }} onPresentationChange={(updater) => { history.recordHistory(); editor.setPresentation(updater); }} onFeaturedCardChange={changeFeaturedCard} onTemplateApply={(templateId) => { history.recordHistory(); editor.setPresentation(applyShareGalleryTemplate(editor.presentation, templateId)); }} onThemeFieldChange={updateThemeField} onCoverModeChange={(mode) => { history.recordHistory(); editor.setCoverMode(mode); }} onAddSection={addSection} onUpdateSection={updateSection} onRemoveSection={removeSection} onMoveSection={moveSection} onReorderSection={reorderSection} onAssignSectionCard={assignSectionCard} onDraftChange={updateDraft} onMoveCard={moveCard} onReorderCard={reorderCard} /></div>
-    {activeStep === 1 ? <div className="share-form-actions"><button type="button" className="btn btn-secondary" onClick={() => setActiveStep(0)}><UiText text="返回选卡" /></button><ShareSubmitButton /></div> : null}
+    <div className={activeStep === 1 ? "" : "share-step-hidden"}><ShareGalleryEditor activePanel={activePanel} setActivePanel={setActivePanel} theme={editor.theme} presentation={editor.presentation} values={editor.themeValues} sections={editor.sections} cards={editor.selectedCards} drafts={editor.drafts} coverMode={editor.coverMode} initialCoverImagePath={editor.initialCoverImagePath} initialBackgroundImagePath={editor.initialBackgroundImagePath} canUndo={history.canUndo} canRedo={history.canRedo} draftStatus={persistence.draftStatus} onUndo={history.undo} onRedo={history.redo} onThemeChange={(nextTheme) => { history.recordHistory(); editor.setTheme(nextTheme); }} onPresentationChange={(updater) => { history.recordHistory(); editor.setPresentation(updater); }} onFeaturedCardChange={changeFeaturedCard} onTemplateApply={(templateId) => { history.recordHistory(); editor.setPresentation(applyShareGalleryTemplate(editor.presentation, templateId)); }} onThemeFieldChange={updateThemeField} onCoverModeChange={(mode) => { history.recordHistory(); editor.setCoverMode(mode); }} onAddSection={addSection} onUpdateSection={updateSection} onRemoveSection={removeSection} onMoveSection={moveSection} onReorderSection={reorderSection} onAssignSectionCard={assignSectionCard} onDraftChange={updateDraft} onMoveCard={moveCard} onReorderCard={reorderCard} /></div>
+    {activeStep === 1 ? <div className="share-form-actions">
+      {feedback ? <p role="alert" className="note-error"><UiText text={feedback} /></p> : null}
+      <button type="button" className="btn btn-secondary" disabled={pending} onClick={goPrevious}><UiText text="返回选卡" /></button>
+      <button type="submit" className="btn btn-primary" disabled={pending} aria-busy={pending}><UiText text={pending ? "保存中…" : "确认保存"} /></button>
+    </div> : null}
   </form>;
 }

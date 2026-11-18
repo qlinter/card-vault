@@ -386,18 +386,17 @@ body:has(.share-unified-preview-page) main.container {
   background: #0b1018;
 }
 
-.share-form-actions.is-top {
+.share-wizard-header.is-preview { position: static; }
+.share-form-actions {
   position: sticky;
-  top: 0.75rem;
-  z-index: 10;
-  width: fit-content;
-  padding: 0.65rem;
-  border: 1px solid rgba(var(--theme-neutral-rgb, 25, 33, 48), 0.1);
-  border-radius: 12px;
-  background: rgba(var(--theme-surface-rgb, 255, 255, 255), 0.94);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 14px 34px rgba(var(--theme-neutral-rgb, 25, 33, 48), 0.12);
+  bottom: 0;
+  z-index: 12;
+  justify-content: flex-end;
+  padding: .6rem .8rem max(.6rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--surface);
 }
+.share-form-actions .note-error { flex: 1 1 18rem; min-width: 0; margin: 0; overflow-wrap: anywhere; }
 
 .share-list {
   display: grid;

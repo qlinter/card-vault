@@ -15,7 +15,7 @@ type DataHealth = Awaited<ReturnType<DesktopApi["checkDataHealth"]>>;
 type OrphanFile = DataHealth["orphanFiles"][number];
 
 const orphanTypeLabels: Record<string, string> = {
-  cardImage: "卡片图片",
+  cardImage: "卡牌图片",
   queueSource: "待处理源图",
   shareCover: "分享封面",
   shareBackground: "分享背景"
@@ -164,14 +164,14 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
       {health ? (
         <div className={health.ok ? "note-ok health-result" : "note-error health-result"}>
           <strong>{health.ok ? <UiText text={"数据状态正常"} /> : <UiText text={"数据需要处理"} />}</strong>
-          <p><UiText text="数据库：{0}；卡片 {1} 张；图片记录 {2} 条；待处理项目 {3} 个；分享集 {4} 个。" values={[health.integrity, health.counts.cards, health.counts.images, health.counts.queueItems, health.counts.shares]} /></p>
+          <p><UiText text="数据库：{0}；卡牌 {1} 张；图片记录 {2} 条；待处理项目 {3} 个；分享集 {4} 个。" values={[health.integrity, health.counts.cards, health.counts.images, health.counts.queueItems, health.counts.shares]} /></p>
           <p><UiText text="缺失文件 {0} 个；未被数据库引用的文件 {1} 个。" values={[health.missingFiles.length, health.orphanFiles.length]} /></p>
           {health.issues.map((issue) => <p key={issue}>{issue}</p>)}
           {health.orphanFiles.length > 0 ? (
             <div className="orphan-cleanup-panel">
               <details>
                 <summary><UiText text="查看未引用文件明细（{0} 个）" values={[health.orphanFiles.length]} /></summary>
-                <p className="muted"><UiText text={"这些文件位于当前数据目录中，但没有被任何卡片或分享集引用。"} /></p>
+                <p className="muted"><UiText text={"这些文件位于当前数据目录中，但没有被任何卡牌或分享集引用。"} /></p>
                 <ul className="orphan-file-list">
                   {health.orphanFiles.map((file) => (
                     <li key={`${file.type}:${file.path}`}>

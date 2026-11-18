@@ -34,7 +34,7 @@ const data: ExportData = {
   cards: [{
     id: "card-1",
     playerName: "测试球员",
-    cardTitle: "测试卡片",
+    cardTitle: "测试卡牌",
     displayTitle: "单卡详情",
     description: "公开说明",
     sport: "篮球",
@@ -146,7 +146,7 @@ test("static gallery uses responsive images and links section and subject pages"
   assert.match(sectionPage, /src="\.\.\/assets\/images\/card-thumb\.webp"/);
   assert.match(sectionPage, /href="\.\.\/cards\/card-1\.html"/);
   const subjectPage = renderSubjectPage(richData, richData.subjects![0]);
-  assert.match(subjectPage, /卡片主体专题/);
+  assert.match(subjectPage, /卡牌主体专题/);
   assert.match(subjectPage, /汇集 测试球员/);
 });
 
@@ -175,7 +175,7 @@ test("large galleries cap the carousel and reveal the complete collection in seg
     ...data.cards[0],
     id: `card-${index + 1}`,
     href: `cards/card-${index + 1}.html`,
-    displayTitle: `卡片 ${index + 1}`
+    displayTitle: `卡牌 ${index + 1}`
   }));
   const html = renderIndex({ ...data, sections: [], cards });
 

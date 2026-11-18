@@ -1,7 +1,7 @@
 export const shareSectionLayouts = [
   { id: "editorial", label: "叙事文章" },
   { id: "rail", label: "横向精选" },
-  { id: "grid", label: "卡片矩阵" }
+  { id: "grid", label: "卡牌矩阵" }
 ] as const;
 
 export type ShareSectionLayout = (typeof shareSectionLayouts)[number]["id"];

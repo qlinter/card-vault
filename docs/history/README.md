@@ -10,6 +10,7 @@
 
 | 版本 | 中文摘要 | English summary | 记录 |
 | --- | --- | --- | --- |
+| `1.6.0` | 本地单账户登录、恢复码、账户与安全设置及 Windows 分发。 | Offline local sign-in, recovery codes, account settings and Windows distributions. | [发布说明](./releases.md#release-v1-6-0) |
 | `1.5.3` | 完善录入校验与 AI 入口、草稿反馈、文件控件对齐及跨时区显示；合并维护文档，交付修订安装包与便携包。 | Improved entry validation, AI visibility, draft feedback, file controls and timezone rendering; consolidated documentation and shipped revised Windows distributions. | [发布说明](./releases.md#release-v1-5-3) |
 | `1.5.2` | 收藏回顾、沉浸式赏卡、统一字体与布局；修复 AI 删除卡顿、录入与删除保护、图片校验及备份状态。 | Collection Recaps, Immersive Viewing and consistent design; AI deletion, entry/deletion safeguards, image validation and backup status fixes. | [发布说明](./releases.md#release-v1-5-2) |
 | `1.5.1` | OpenAI 默认与代理、图片导出、统计命名、保存可靠性及代码结构整理；完成 GitHub 分发。 | OpenAI defaults and proxies, image exports, Statistics labels, save reliability and code organization; published Windows distributions on GitHub. | [发布说明](releases.md#release-v1-5-1) |
@@ -25,7 +26,7 @@
 | `1.3.1` | 修复启动端口、提醒复发、导出范围与恢复回滚，优化财务索引和历史查询，统一当前格式校验与文档。 | Fixed startup ports, recurring reminders, export scope and restore rollback; optimized financial indexing/history and consolidated current-format validation and documentation. | [发布说明](releases.md#release-v1-3-1) |
 | `1.3.0` | 统一双币财务与人工汇率，完成导入预演/撤销、整理提醒与计划、首页分页、组合与分享界面及本地安全加固。 | Unified mixed-currency accounting and manual FX; import previews/undo, reminders and plans, Home pagination, Portfolio/gallery refinements and local security improvements. | [发布说明](releases.md#release-v1-3-0) |
 | `1.2.1` | 增加中英文界面和可选 Windows 签名，完成分享展馆升级、响应式预览、导出质量检查及项目文档收敛。 | Added bilingual UI, consolidated Share Gallery and preview/export improvements, optional Windows signing, and unified code and product documentation. | [发布说明](releases.md#release-v1-2-1) |
-| `1.2.0` | 完成组合中心、收藏视图、时间点快照、真实历史趋势与比较，并加入图片旋转、卡片主体术语及展示体验优化。 | Completed the Portfolio Center, saved views, point-in-time snapshots, true historical trends and comparison, plus image rotation, card-subject terminology, and Showcase refinements. | [发布说明](releases.md#release-v1-2-0) |
+| `1.2.0` | 完成组合中心、收藏视图、时间点快照、真实历史趋势与比较，并加入图片旋转、卡牌主体术语及展示体验优化。 | Completed the Portfolio Center, saved views, point-in-time snapshots, true historical trends and comparison, plus image rotation, card-subject terminology, and Showcase refinements. | [发布说明](releases.md#release-v1-2-0) |
 | `1.1.1` | 增加数量持仓与收益核算、应用内备份恢复、首页缩略图与分批渲染、1/1 筛选，并完成数据库和界面收口。 | Added position accounting, in-app restore, home thumbnails and incremental rendering, a 1/1 filter, and database/UI consolidation. | [发布说明](releases.md#release-v1-1-1) |
 | `1.1.0` | 完成录入工作台 2.0：草稿恢复、连续录入、批量图片队列、WebP 预处理、模板、重复提示和需确认的 AI 候选。 | Delivered Card Entry Workbench 2.0 with draft recovery, continuous entry, batch-image preparation, templates, duplicate review, and confirmation-gated AI candidates. | [发布说明](releases.md#release-v1-1-0) |
 | `1.0.19` | 修复限量编号卡数据，增加限量卡筛选及 CNY 成本/估值排序，并加固本地服务、Electron sandbox、IPC 与质量门槛。 | Corrected serial-numbered data, added serial-numbered filtering and CNY cost/valuation sorting, and hardened the local service, Electron sandbox, IPC, and quality gates. | [发布说明](releases.md#release-v1-0-19) |
@@ -44,10 +45,10 @@
 | `1.0.6` | 将存储路径迁入设置页，增加独立备份路径与一键备份。 | Moved storage controls to Settings and added an independent one-click backup path. | [历史 README](#sources) |
 | `1.0.5` | 增加分享集、四步创建向导、AI 展馆文案和静态导出。 | Added share collections, a four-step wizard, AI gallery copy, and static export. | [历史 README](#sources) |
 | `1.0.4` | 增加 Azure OpenAI / MiniMax AI 识图录入、统一设置与编码检查。 | Added Azure OpenAI / MiniMax recognition, shared AI settings, and encoding safeguards. | [历史 README](#sources) |
-| `1.0.3` | 扩展卡片字段、公开状态和高级搜索，并兼容旧数据库。 | Expanded card fields, visibility states, advanced search, and legacy-data compatibility. | [历史 README](#sources) |
+| `1.0.3` | 扩展卡牌字段、公开状态和高级搜索，并兼容旧数据库。 | Expanded card fields, visibility states, advanced search, and legacy-data compatibility. | [历史 README](#sources) |
 | `1.0.2` | 增加评级费用与总投入，修复新增成功提示并完善桌面图标。 | Added grading cost and total investment, corrected success feedback, and improved desktop icons. | [历史 README](#sources) |
 | `1.0.1` | 增加多图上传、展示统计与分组收起，改善录入失败后的信息保留。 | Added multi-image entry, Showcase counts and collapsing, and form-value retention after errors. | [历史 README](#sources) |
-| `1.0.0` | 完成本地卡片管理、筛选、展示、SQLite 存储和 Electron 桌面运行。 | Delivered local card management, filters, Showcase, SQLite storage, and Electron desktop use. | [历史 README](#sources) |
+| `1.0.0` | 完成本地卡牌管理、筛选、展示、SQLite 存储和 Electron 桌面运行。 | Delivered local card management, filters, Showcase, SQLite storage, and Electron desktop use. | [历史 README](#sources) |
 
 <a id="sources"></a>
 ## 资料来源与缺失范围 / Sources and gaps

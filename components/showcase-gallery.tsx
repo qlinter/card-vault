@@ -33,7 +33,7 @@ export function ShowcaseGallery({ cardId, cardTitle, images }: ShowcaseGalleryPr
         <CardImageExport cardId={cardId} showcase />
       </div>
     </div> : null}
-    {images.length > 1 ? <div className="showcase-detail-thumbs" role="group" aria-label={t("卡片图片")}>
+    {images.length > 1 ? <div className="showcase-detail-thumbs" role="group" aria-label={t("卡牌图片")}>
       {images.map((image, index) => <button key={image.id} type="button" className={`showcase-thumb-button${index === activeIndex ? " active" : ""}`} aria-pressed={index === activeIndex}
         aria-label={t("查看第 {0} 张图片").replace("{0}", String(index + 1))} onClick={() => select(index)}>
         <ShowcaseImage src={image.path} alt={`${cardTitle} · ${index + 1}`} rotation={image.rotation} shadow={false} />

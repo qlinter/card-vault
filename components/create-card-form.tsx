@@ -48,8 +48,8 @@ type DraftSaveResponse = {
 
 const requiredEntryMessages: Record<string, string> = {
   images: "至少上传 1 张图片。",
-  playerName: "请填写卡片主体。",
-  cardTitle: "请填写卡片名称。",
+  playerName: "请填写卡牌主体。",
+  cardTitle: "请填写卡牌名称。",
   sport: "请填写运动类型。"
 };
 
@@ -420,7 +420,7 @@ export function CreateCardForm({
               {queueNavigation.nextId ? (
                 <button type="button" onClick={() => navigateToQueueItem(queueNavigation.nextId!)} title="Ctrl + Alt + →"><UiText text={"下一项 →"} /></button>
               ) : null}
-              {isPending ? <strong><UiText text={"正在创建卡片..."} /></strong> : null}
+              {isPending ? <strong><UiText text={"正在创建卡牌..."} /></strong> : null}
             </div>
           </div>
         ) : null}

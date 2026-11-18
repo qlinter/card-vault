@@ -16,7 +16,7 @@ test("已售默认数量为 0，四种持有状态默认数量为 1", () => {
 test("已售必须为零数量，目标卡不再是有效收藏状态", () => {
   assert.equal(parseInitialCardQuantity("", "sold"), 0);
   assert.equal(parseInitialCardQuantity("0", "sold"), 0);
-  assert.throws(() => parseInitialCardQuantity("2", "sold"), /已售卡片的持有数量必须为 0/);
+  assert.throws(() => parseInitialCardQuantity("2", "sold"), /已售卡牌的持有数量必须为 0/);
   assert.throws(() => parseInitialCardQuantity("0", "target"), /不支持的收藏状态/);
 });
 

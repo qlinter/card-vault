@@ -117,25 +117,14 @@ test("history store writes traceable valuations", async () => {
   assert.equal(calls[0].data.externalKey, "valuation-import-1");
 });
 
-test("sale expenses require and preserve a concrete sale transaction link", async () => {
+test("sale expenses save at card level without a transaction lookup", async () => {
   const { client, calls } = captureClient();
   await createCardExpense(client, {
-    cardId: "card-1",
-    kind: "marketplace_fee",
-    context: "sale",
-    transactionId: "sale-1",
-    amount: "12",
-    currency: "CNY",
-    occurredAt: new Date("2026-08-01T00:00:00.000Z")
+    cardId: "card-1", kind: "marketplace_fee", context: "sale",
+    amount: "12", currency: "CNY", occurredAt: new Date("2026-08-01T00:00:00.000Z")
   });
-  assert.equal(calls[0].data.transactionId, "sale-1");
-
-  await assert.rejects(createCardExpense(client, {
-    cardId: "card-1",
-    kind: "marketplace_fee",
-    context: "sale",
-    amount: "12",
-    currency: "CNY",
-    occurredAt: new Date("2026-08-01T00:00:00.000Z")
-  }), /必须关联一笔具体出售记录/);
+  assert.equal(calls[0].data.cardId, "card-1");
+  assert.equal(calls[0].data.context, "sale");
+  assert.equal(calls[0].data.amountMinor, 1200n);
+  assert.ok(!("transactionId" in calls[0].data));
 });

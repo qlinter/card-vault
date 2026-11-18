@@ -10,12 +10,12 @@ export function CardArchiveFields({ values, card, numberedRef, afterBasicFields 
   const hasSerial = Boolean(pickValue(values?.serialNumber, card?.serialNumber ?? "").trim() || pickValue(values?.serialRange, card?.serialRange ?? "").trim());
   return <>
         <label className="field card-field-wide">
-          <span><UiText text={"卡片主体 *"} /></span>
+          <span><UiText text={"卡牌主体 *"} /></span>
           <input name="playerName" required defaultValue={pickValue(values?.playerName, card?.playerName ?? "")} />
         </label>
 
         <label className="field card-field-wide">
-          <span><UiText text={"卡片名称 *"} /></span>
+          <span><UiText text={"卡牌名称 *"} /></span>
           <input name="cardTitle" required defaultValue={pickValue(values?.cardTitle, card?.cardTitle ?? "")} />
         </label>
 
@@ -51,7 +51,7 @@ export function CardArchiveFields({ values, card, numberedRef, afterBasicFields 
         </label>
 
     {afterBasicFields}
-    <OptionalCardFields title="版本与卡片属性（可选）" initialOpen={hasOptionalCardData(values, card, ["subsetName", "parallel", "cardNumber", "serialNumber", "serialRange", "autoType", "patchType", "isSerialNumbered", "isAutograph", "isPatch", "isRookie"])}>
+    <OptionalCardFields title="版本与卡牌属性（可选）" initialOpen={hasOptionalCardData(values, card, ["subsetName", "parallel", "cardNumber", "serialNumber", "serialRange", "autoType", "patchType", "isSerialNumbered", "isAutograph", "isPatch", "isRookie"])}>
         <label className="field">
           <span><UiText text={"子系列"} /></span>
           <input name="subsetName" defaultValue={pickValue(values?.subsetName, card?.subsetName ?? "")} />

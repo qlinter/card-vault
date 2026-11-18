@@ -16,7 +16,7 @@ function data(cardIds: string[]): ExportData {
     title: "展馆", theme: "spotlight", presentation: defaultSharePresentation, subtitle: null, description: null,
     themeNarrative: null, themeHighlights: null, groupNotes: null, coverImage: null, backgroundImage: null,
     generatedAt: new Date(0).toISOString(), mode: "static", sections: [], cards: cardIds.map((id) => ({
-      id, playerName: `球员 ${id}`, cardTitle: "卡片", displayTitle: "标题", description: "故事", sport: "篮球",
+      id, playerName: `球员 ${id}`, cardTitle: "卡牌", displayTitle: "标题", description: "故事", sport: "篮球",
       team: null, year: null, brand: null, productLine: null, subsetName: null, parallel: null, cardNumber: null,
       serialNumber: null, serialRange: null, isRookie: false, isAutograph: false, autoType: null, isPatch: false,
       patchType: null, gradingCompany: null, grade: null, certNumber: null, href: `cards/${id}.html`, images: []
@@ -39,7 +39,7 @@ test("export diff distinguishes first export, added, removed, changed and presen
   assert.deepEqual(diff.changedCardIds, ["a"]);
   assert.equal(diff.presentationChanged, true);
   const report = renderShareExportDiffReport(diff, current);
-  assert.match(report, /新增卡片：1/);
+  assert.match(report, /新增卡牌：1/);
   assert.match(report, /球员 b \/ 标题/);
   assert.doesNotMatch(report, /  - b$/m);
 });

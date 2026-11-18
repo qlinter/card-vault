@@ -1,4 +1,52 @@
 import { expect, test } from "@playwright/test";
+import { withUiDatabase } from "./database-fixture.mjs";
+
+test("Showcase browsing can exclude sold cards in the current scope and save the filter", async ({ page }) => {
+  const soldId = "gallery-sold-filter-sold";
+  const heldId = "gallery-sold-filter-held";
+  withUiDatabase(db => {
+    const insert = db.prepare("INSERT INTO Card(id, playerName, cardTitle, sport, collectionStatus, holdingQuantity) VALUES (?, ?, ?, 'Basketball', ?, ?)");
+    insert.run(soldId, "Gallery Filter Fixture", "Sold Example", "sold", 0);
+    insert.run(heldId, "Gallery Filter Fixture", "Held Example", "holding", 1);
+  });
+  try {
+    await page.goto("/showcase?group=Gallery+Filter+Fixture");
+    const browse = page.getByRole("button", { name: "浏览", exact: true });
+    await browse.click();
+    const viewer = page.getByRole("dialog", { name: "沉浸式赏卡" });
+    const total = viewer.locator(".gallery-position > span");
+    const settings = viewer.getByRole("button", { name: "展馆设置", exact: true });
+    const filter = viewer.getByRole("checkbox", { name: "排除已售", exact: true });
+    await expect(total).toHaveText("002");
+    await settings.click();
+    await expect(filter).not.toBeChecked();
+    await filter.check();
+    await expect(total).toHaveText("001");
+    await expect(viewer.locator(".immersive-stage")).toHaveAttribute("data-card-id", heldId);
+    const sold = await page.request.get(`/api/immersive?excludeSold=1&id=${soldId}`);
+    expect(sold.status()).toBe(404);
+    await viewer.getByRole("button", { name: "保存", exact: true }).click();
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await expect(viewer).toHaveCount(0);
+    await browse.click();
+    await expect(total).toHaveText("001");
+    await settings.click();
+    await expect(filter).toBeChecked();
+    await filter.uncheck();
+    await expect(total).toHaveText("002");
+
+    await page.goto("/showcase?group=Gallery+Filter+Fixture&q=Sold+Example");
+    await page.getByRole("button", { name: "浏览", exact: true }).click();
+    await expect(viewer.getByText("当前范围没有卡牌。")).toBeVisible();
+    await settings.click();
+    await filter.uncheck();
+    await expect(total).toHaveText("001");
+    await expect(viewer.locator(".immersive-stage")).toHaveAttribute("data-card-id", soldId);
+  } finally {
+    withUiDatabase(db => db.prepare("DELETE FROM Card WHERE id IN (?, ?)").run(soldId, heldId));
+  }
+});
 
 const portrait = `<svg xmlns="http://www.w3.org/2000/svg" width="700" height="1080" viewBox="0 0 700 1080">
 <defs><linearGradient id="slab" x2="1" y2="1"><stop stop-color="#d3d5d3"/><stop offset=".5" stop-color="#9fa4a3"/><stop offset="1" stop-color="#e1e1db"/></linearGradient><linearGradient id="card" x2=".7" y2="1"><stop stop-color="#253b4a"/><stop offset="1" stop-color="#091820"/></linearGradient></defs>
@@ -35,7 +83,7 @@ test("Browse and Shares share typography and geometry while search has no placeh
   const header = page.locator(".showcase-heading");
   await expect(header.getByRole("button", { name: "开始赏卡", exact: true })).toHaveCount(0);
   expect(await header.locator('input[name="q"]').getAttribute("placeholder")).toBeNull();
-  await expect(header.locator('input[name="q"]')).toHaveAccessibleName(/搜索卡片主体/);
+  await expect(header.locator('input[name="q"]')).toHaveAccessibleName(/搜索卡牌主体/);
   const compare = element => { const s = getComputedStyle(element); return [s.height, s.fontSize, s.fontWeight, s.lineHeight, s.padding, s.borderRadius, s.borderColor, s.backgroundColor, s.color]; };
   const browse = await header.getByRole("button", { name: "浏览", exact: true }).evaluate(compare);
   const shares = await header.getByRole("link", { name: "分享集", exact: true }).evaluate(compare);
@@ -82,6 +130,12 @@ for (const locale of ["zh-CN", "en"]) test(`gallery settings persist and Escape 
   const l = (zh, en) => locale === "en" ? en : zh;
   const viewer = await exhibition(page);
   await viewer.getByRole("button", { name: l("展馆设置", "Gallery Settings"), exact: true }).click();
+  await expect(viewer.getByRole("checkbox", { name: l("排除已售", "Exclude Sold"), exact: true })).toBeVisible();
+  const labelStyles = await viewer.locator(".gallery-settings-section label").evaluateAll(labels => labels.map(label => {
+    const style = getComputedStyle(label.querySelector("span") ?? label);
+    return [style.fontFamily, style.fontSize, style.fontWeight, style.letterSpacing, style.color].join("|");
+  }));
+  expect(new Set(labelStyles).size).toBe(1);
   await viewer.getByRole("combobox", { name: l("画面构图", "Composition"), exact: true }).selectOption("focus");
   await viewer.getByRole("slider", { name: l("画幅大小", "Artwork Size"), exact: true }).press("Home");
   await viewer.getByRole("slider", { name: l("画幅大小", "Artwork Size"), exact: true }).press("ArrowRight");

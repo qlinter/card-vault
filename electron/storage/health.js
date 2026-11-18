@@ -49,7 +49,7 @@ function inspectDataFolder(dataDir, onProgress) {
           if (fileName) {
             referenced.uploads.add(fileName.toLowerCase());
             if (!fs.existsSync(path.join(resolvedDataDir, "uploads", fileName))) missingFiles.push({ type: "cardImage", path: image.path });
-          } else issues.push(`卡片图片路径格式无效：${image.path}`);
+          } else issues.push(`卡牌图片路径格式无效：${image.path}`);
         }
       }
       if (tableExists(db, "ShareCollection")) {

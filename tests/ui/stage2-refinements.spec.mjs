@@ -42,7 +42,7 @@ test("one financial table preserves partial sales while switching status and ret
 
 test("share creation uses the entry title size and saves drafts without a success notice", async ({ page }) => {
   await page.goto("/cards/new", { waitUntil: "networkidle" });
-  const entryFont = await page.getByRole("heading", { name: "新增卡片", exact: true }).evaluate(element => getComputedStyle(element).fontSize);
+  const entryFont = await page.getByRole("heading", { name: "新增卡牌", exact: true }).evaluate(element => getComputedStyle(element).fontSize);
   await page.goto("/shares/new", { waitUntil: "networkidle" });
   await expect(page.getByRole("heading", { name: "新建分享集", exact: true })).toHaveCSS("font-size", entryFont);
   const group = page.locator(".share-sport-group").first();

@@ -3,6 +3,33 @@ import { withUiDatabase as fixture } from './database-fixture.mjs';
 
 const image = 'tests/fixtures/ui-media/showcase-bg.webp';
 
+test('recognition uses the first two archive files and restores them after closing the alternate source', async ({ page }) => {
+  const names = [];
+  await page.route('**/api/card-entry/drafts', route => route.fulfill({ json: { id: 'recognition-source-draft', updatedAt: new Date().toISOString() } }));
+  await page.route('**/api/ai/recognize-card', async route => {
+    const body = route.request().postDataBuffer().toString('latin1');
+    names.push(Array.from(body.matchAll(/filename="([^"]+)"/g), match => match[1]));
+    await route.fulfill({ json: { suggestion: { playerName: 'Entry Feedback AI' } } });
+  });
+  await page.goto('/cards/new');
+  const archive = page.locator('.card-entry-form input[name=images]');
+  const data = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+  const file = name => ({ name, mimeType: 'image/png', buffer: data });
+  await archive.setInputFiles(['front.png', 'back.png', 'detail.png'].map(file));
+  const panel = page.locator('.entry-ai-primary');
+  const recognize = panel.getByRole('button', { name: '识别并填入' });
+  await recognize.click();
+  await expect(panel.getByRole('status')).toBeVisible();
+  await panel.locator('summary').click();
+  await panel.locator('input[type=file]').setInputFiles(file('reference.png'));
+  await recognize.click();
+  await expect.poll(() => names.length).toBe(2);
+  await panel.locator('summary').click();
+  await recognize.click();
+  await expect.poll(() => names).toEqual([['front.png', 'back.png'], ['reference.png'], ['front.png', 'back.png']]);
+  expect(await archive.evaluate(el => Array.from(el.files, f => f.name))).toEqual(['front.png', 'back.png', 'detail.png']);
+});
+
 for (const [timezoneId, time] of [['Asia/Shanghai', '08:30:00'], ['America/Los_Angeles', '16:30:00']]) {
   for (const locale of ['zh-CN', 'en']) test(`draft timestamps hydrate and use the browser timezone (${timezoneId}, ${locale})`, async ({ browser, baseURL }) => {
     const timestamp = '2026-11-12T00:30:00.000Z';
@@ -76,9 +103,12 @@ for (const locale of ['zh', 'en']) {
     const recognize = ai.getByRole('button', { name: locale === 'en' ? 'Recognize and Apply' : '识别并填入', exact: true });
     await recognize.click();
     await expect(ai.getByRole('alert')).toBeVisible();
-    if (locale === 'en') await expect(ai.getByRole('alert')).toHaveText('Choose one or two images for AI recognition, or use the existing default images.');
+    if (locale === 'en') await expect(ai.getByRole('alert')).toHaveText('Upload card images or choose other images for recognition.');
     expect(recognitionRequests).toBe(0);
-    await ai.locator('input[type=file]').setInputFiles(image);
+    await ai.locator('summary').click();
+    const fileLabel = locale === 'en' ? 'Recognize Images' : '识别图片';
+    await expect(ai.getByText(fileLabel, { exact: true })).toHaveCount(0);
+    await ai.getByLabel(fileLabel, { exact: true }).setInputFiles(image);
     await recognize.click();
     await expect(ai.getByRole('alert')).toHaveText('AI recognition temporarily unavailable.');
     await recognize.click();
@@ -117,7 +147,7 @@ for (const locale of ['zh', 'en']) {
     const save = page.getByRole('button', { name: locale === 'en' ? 'Save and View' : '保存并查看', exact: true });
     await save.click();
     const error = page.locator('.card-form-error');
-    await expect(error).toContainText(locale === 'en' ? 'Enter the card subject.' : '请填写卡片主体。');
+    await expect(error).toContainText(locale === 'en' ? 'Enter the card subject.' : '请填写卡牌主体。');
     await expect(error).toBeInViewport();
     await expect(subject).toHaveAttribute('aria-describedby', 'entry-subject-help card-entry-save-error');
     await page.locator('[name=playerName]').fill('   ');
@@ -126,7 +156,7 @@ for (const locale of ['zh', 'en']) {
     await page.locator('[name=sport]').fill('Basketball');
     await save.click();
     await expect(error).toBeFocused();
-    await expect(error).toContainText(locale === 'en' ? 'Enter the card subject.' : '请填写卡片主体。');
+    await expect(error).toContainText(locale === 'en' ? 'Enter the card subject.' : '请填写卡牌主体。');
     await page.locator('[name=playerName]').fill('Entry Feedback Retry');
     await images.setInputFiles({ name: 'broken.png', mimeType: 'image/png', buffer: Buffer.from([137,80,78,71,13,10,26,10]) });
     for (let attempt = 0; attempt < 2; attempt++) {

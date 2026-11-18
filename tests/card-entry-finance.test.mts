@@ -65,7 +65,8 @@ test("entry finance requires real dates, quantities and valuation sources", () =
   assert.throws(()=>transactionInput(form),/只能填写一种币种/);
   form.delete("secondaryAmount");
   form.set("context","sale");form.set("transactionId","sale-1");
-  assert.equal(expenseInput(form).transactionId,"sale-1");
+  assert.equal(expenseInput(form).context, "sale");
+  assert.ok(!("transactionId" in expenseInput(form)));
   form.set("valuedAt","2026-03-01");
   assert.throws(()=>valuationInput(form),/来源/);
 });

@@ -112,5 +112,5 @@ export function renderShareExportDiffReport(diff: ShareExportDiff, data: ExportD
     diff.presentationChanged ? "视觉配置或重点卡" : null,
     diff.sectionsChanged ? "章节结构" : null
   ].filter(Boolean).join("、") || "无";
-  return `# 分享包版本差异\n\n- 当前导出：${data.generatedAt}\n- 对比基准：${diff.previousGeneratedAt ?? "首次导出，无历史版本"}\n- 新增卡片：${diff.addedCardIds.length}\n- 移除卡片：${diff.removedCardIds.length}\n- 修改卡片：${diff.changedCardIds.length}\n- 其他变化：${changedAreas}\n\n## 新增卡片\n\n${labels(diff.addedCardIds)}\n\n## 移除卡片\n\n${labels(diff.removedCardIds)}\n\n## 修改卡片\n\n${labels(diff.changedCardIds)}\n`;
+  return `# 分享包版本差异\n\n- 当前导出：${data.generatedAt}\n- 对比基准：${diff.previousGeneratedAt ?? "首次导出，无历史版本"}\n- 新增卡牌：${diff.addedCardIds.length}\n- 移除卡牌：${diff.removedCardIds.length}\n- 修改卡牌：${diff.changedCardIds.length}\n- 其他变化：${changedAreas}\n\n## 新增卡牌\n\n${labels(diff.addedCardIds)}\n\n## 移除卡牌\n\n${labels(diff.removedCardIds)}\n\n## 修改卡牌\n\n${labels(diff.changedCardIds)}\n`;
 }

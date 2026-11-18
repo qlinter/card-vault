@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 const productVersion = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version;
 test.beforeEach(() => fixture(db => {
-  db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,tags,notes) VALUES('management-ui','卡片数量','备注','Basketball','公开,标签','保存')").run();
+  db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,tags,notes) VALUES('management-ui','卡牌数量','备注','Basketball','公开,标签','保存')").run();
   db.prepare("INSERT INTO CardImage(id,cardId,path) VALUES('management-ui-image','management-ui','/media/ui-card-1.webp')").run();
 }));
 test.afterEach(() => fixture(db => { db.exec("DELETE FROM Card WHERE id='management-ui' OR playerName='Import UI'; DELETE FROM ShareCollection WHERE id='more-actions-ui'; DELETE FROM BulkJob; DELETE FROM CollectionPlan WHERE title='UI wishlist'; DELETE FROM CollectionTaskState WHERE id LIKE 'management-ui:%';"); }));
@@ -17,7 +17,7 @@ for (const locale of ["zh", "en"]) {
     });
     const labels = locale === "en"
       ? { all: "View portfolio statistics", filtered: "View filtered portfolio statistics", badge: "Filtered", back: "Back to results", count: "All Cards" }
-      : { all: "查看组合统计", filtered: "查看筛选组合统计", badge: "已筛选", back: "返回筛选结果", count: "全部卡片" };
+      : { all: "查看组合统计", filtered: "查看筛选组合统计", badge: "已筛选", back: "返回筛选结果", count: "全部卡牌" };
     await page.goto("/?sort=yearAsc", { waitUntil: "networkidle" });
     const advanced = page.locator(".filter-details");
     const disclosure = advanced.locator("summary");
@@ -59,7 +59,7 @@ for (const locale of ["zh", "en"]) {
     await page.screenshot({ path: testInfo.outputPath(`filtered-home-${locale}.png`), animations: "disabled" });
     await link.click();
     await expect(page.getByText(labels.badge, { exact: true })).toBeVisible();
-    await expect(page.getByTestId("data-counts")).toContainText(locale === "en" ? /All Cards\s*25/ : /全部卡片\s*25/);
+    await expect(page.getByTestId("data-counts")).toContainText(locale === "en" ? /All Cards\s*25/ : /全部卡牌\s*25/);
     if (locale === "en") {
       await expect(page.getByText("No financial records.", { exact: true })).toBeVisible();
       await expect(page.getByRole("link", { name: "View reasons", exact: true })).toHaveCount(4);
@@ -80,12 +80,12 @@ for (const locale of ["zh", "en"]) {
   });
 }
 test("language switches leave dictionary-like user content unchanged", async ({ page }) => {
-  await page.goto("/?q=卡片数量", { waitUntil: "networkidle" });
+  await page.goto("/?q=卡牌数量", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "选择语言" }).click(); await page.getByRole("menuitemradio", { name: "English" }).click();
-  const card = page.getByTestId("home-card-grid"); await expect(card.getByRole("heading", { name: "卡片数量" })).toBeVisible(); await expect(card.getByText("备注", { exact: true })).toBeVisible(); await expect(card.getByText("公开", { exact: true })).toBeVisible();
-  await card.locator("a").click(); await expect(page.getByRole("heading", { level: 1 })).toContainText("卡片数量");
+  const card = page.getByTestId("home-card-grid"); await expect(card.getByRole("heading", { name: "卡牌数量" })).toBeVisible(); await expect(card.getByText("备注", { exact: true })).toBeVisible(); await expect(card.getByText("公开", { exact: true })).toBeVisible();
+  await card.locator("a").click(); await expect(page.getByRole("heading", { level: 1 })).toContainText("卡牌数量");
   await page.goto("/cards/management-ui/edit", { waitUntil: "networkidle" });
-  await expect(page.locator('[name="playerName"]')).toHaveValue("卡片数量"); await expect(page.locator('[name="cardTitle"]')).toHaveValue("备注");
+  await expect(page.locator('[name="playerName"]')).toHaveValue("卡牌数量"); await expect(page.locator('[name="cardTitle"]')).toHaveValue("备注");
   await page.getByRole("button", { name: "Choose language" }).click(); await page.getByRole("menuitemradio", { name: "简体中文" }).click(); await expect(page.locator('.entry-page > form [name="notes"]')).toHaveValue("保存");
 });
 
@@ -130,13 +130,13 @@ test("failed edit retains fields, choices and newly selected images", async ({ p
   await page.locator('[name="images"]').setInputFiles({ name: "selected.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") });
   await page.getByRole("button", { name: "保存修改", exact: true }).click();
   await expect(page.locator(".note-error")).toContainText("http 或 https"); await expect(page.locator('[name="playerName"]')).toHaveValue("输入保留测试"); await expect(page.locator('[name="isRookie"]')).toBeChecked(); expect(await page.locator('[name="images"]').evaluate(input => input.files.length)).toBe(1);
-  expect(fixture(db => db.prepare("SELECT playerName FROM Card WHERE id='management-ui'").get().playerName)).toBe("卡片数量");
+  expect(fixture(db => db.prepare("SELECT playerName FROM Card WHERE id='management-ui'").get().playerName)).toBe("卡牌数量");
 });
 
 for (const blockedStorage of [false, true]) {
   test(`Back after editing returns to filtered cards, including reload and unavailable storage (${blockedStorage})`, async ({ page }) => {
     if (blockedStorage) await page.addInitScript(() => { Storage.prototype.getItem = () => { throw new Error("storage disabled"); }; Storage.prototype.setItem = () => { throw new Error("storage disabled"); }; });
-    const query = new URLSearchParams({ q: "卡片数量", sort: "yearAsc", collectionStatus: "holding" });
+    const query = new URLSearchParams({ q: "卡牌数量", sort: "yearAsc", collectionStatus: "holding" });
     await page.goto(`/?${query}`, { waitUntil: "networkidle" });
     await page.getByTestId("home-card-grid").locator(".card-item a").first().click();
     await page.locator(".title-row").getByRole("link", { name: "编辑", exact: true }).click();
@@ -146,7 +146,7 @@ for (const blockedStorage of [false, true]) {
     await page.reload({ waitUntil: "networkidle" });
     await page.getByRole("link", { name: "返回上一页", exact: true }).click();
     await expect(page).toHaveURL(url => url.pathname === "/" && [...query].every(([key, value]) => url.searchParams.get(key) === value) && url.searchParams.size === query.size);
-    await expect(page.locator('[name="q"]')).toHaveValue("卡片数量");
+    await expect(page.locator('[name="q"]')).toHaveValue("卡牌数量");
     await expect(page.getByTestId("home-card-grid").locator(".card-item")).toHaveCount(1);
     expect(fixture(db => db.prepare("SELECT notes FROM Card WHERE id='management-ui'").get().notes)).toBe("完成编辑后应回到筛选结果");
   });
@@ -154,17 +154,17 @@ for (const blockedStorage of [false, true]) {
 
 for (const blockedStorage of [false, true]) test(`cancelled repeated edits are skipped while ordinary detail navigation returns one step (${blockedStorage})`, async ({ page }) => {
   if (blockedStorage) await page.addInitScript(() => { Storage.prototype.getItem = () => { throw new Error("storage disabled"); }; Storage.prototype.setItem = () => { throw new Error("storage disabled"); }; });
-  await page.goto("/?q=卡片数量", { waitUntil: "networkidle" });
+  await page.goto("/?q=卡牌数量", { waitUntil: "networkidle" });
   await page.getByTestId("home-card-grid").locator(".card-item a").first().click();
   for (let attempt = 0; attempt < 2; attempt++) {
     await page.locator(".title-row").getByRole("link", { name: "编辑", exact: true }).click();
     await page.getByRole("link", { name: "取消", exact: true }).click();
   }
   await page.getByRole("link", { name: "返回上一页", exact: true }).click();
-  await expect(page).toHaveURL("http://127.0.0.1:3360/?q=卡片数量");
+  await expect(page).toHaveURL("http://127.0.0.1:3360/?q=卡牌数量");
   await page.getByTestId("home-card-grid").locator(".card-item a").first().click();
   await page.getByRole("link", { name: "返回上一页", exact: true }).click();
-  await expect(page).toHaveURL("http://127.0.0.1:3360/?q=卡片数量");
+  await expect(page).toHaveURL("http://127.0.0.1:3360/?q=卡牌数量");
 });
 test("failed financial record preserves entered values and leaves history unchanged", async ({ page }) => {
   await page.goto("/cards/management-ui", { waitUntil: "networkidle" });
@@ -199,9 +199,9 @@ test("wishlist budget persists and reminders can be snoozed", async ({ page }, t
   await page.getByLabel("心愿名称 *", { exact: true }).fill("UI wishlist"); await page.getByLabel("预算（可选）", { exact: true }).fill("88.25"); await page.getByRole("button", { name: "添加心愿" }).click(); await expect(page.getByText("UI wishlist", { exact: true })).toBeVisible();
   await expect(page.locator(".scout-wish .record-status")).toHaveCount(0);
   fixture(db => db.exec("UPDATE Card SET collectionStatus='listed',updatedAt='2025-01-01T00:00:00.000Z' WHERE id='management-ui'; UPDATE CardTracking SET statusStartedAt='2025-01-01T00:00:00.000Z' WHERE cardId='management-ui'"));
-  await page.goto("/portfolio?tab=details&kind=quality&q=卡片数量", { waitUntil: "networkidle" });
+  await page.goto("/portfolio?tab=details&kind=quality&q=卡牌数量", { waitUntil: "networkidle" });
   await page.locator(".collection-follow-up-toggle").click();
-  const task = page.locator(".management-task").filter({ hasText: "卡片数量" }).first(); await task.getByRole("button", { name: "延后 7 天" }).click();
+  const task = page.locator(".management-task").filter({ hasText: "卡牌数量" }).first(); await task.getByRole("button", { name: "延后 7 天" }).click();
   await page.reload({ waitUntil: "networkidle" });
   await page.locator(".collection-follow-up-toggle").click();
   expect(fixture(db => db.prepare("SELECT budgetMinor FROM CollectionPlan WHERE title='UI wishlist'").get().budgetMinor)).toBe(8825);
@@ -213,7 +213,7 @@ test("wishlist budget persists and reminders can be snoozed", async ({ page }, t
   await page.getByRole("menuitemradio", { name: "English" }).click();
   await page.goto("/collection", { waitUntil: "networkidle" });
   await expect(page.locator(".scout-wish .record-status")).toHaveCount(0);
-  await page.goto("/portfolio?tab=details&kind=quality&q=卡片数量", { waitUntil: "networkidle" });
+  await page.goto("/portfolio?tab=details&kind=quality&q=卡牌数量", { waitUntil: "networkidle" });
   await page.locator(".collection-follow-up-toggle").click();
   await page.getByLabel("Show handled reminders").check();
   await expect(page.locator(".management-task small").filter({ hasText: "Snoozed" })).toBeVisible();
@@ -241,7 +241,7 @@ test("management titles follow the locale and Settings owns the shared user guid
   await page.locator('.settings-help-toggle').click();
   await page.getByRole('link', { name: '使用说明', exact: true }).click();
   await expect(page).toHaveURL(/settings\/guide$/);
-  await expect(page.locator("#plans")).toContainText("不与心愿或卡片建立关联");
+  await expect(page.locator("#plans")).toContainText("不与心愿或卡牌建立关联");
   await expect(page.locator(".user-guide-index a")).toHaveCount(10);
   await page.getByRole("button", { name: "选择语言" }).click();
   await page.getByRole("menuitemradio", { name: "English" }).click();
@@ -252,7 +252,7 @@ test("management titles follow the locale and Settings owns the shared user guid
 });
 
 test("incomplete portfolio data links to the affected card and preserves the filter", async ({ page }) => {
-  await page.goto("/portfolio?q=卡片数量", { waitUntil: "networkidle" });
+  await page.goto("/portfolio?q=卡牌数量", { waitUntil: "networkidle" });
   await page.getByRole("link", { name: /待完善数据/ }).click();
   const note = page.getByTestId("data-details");
   const link = note.locator('a[href^="/cards/management-ui?"]');
@@ -264,7 +264,7 @@ test("incomplete portfolio data links to the affected card and preserves the fil
   const url = new URL(page.url());
   expect(url.pathname).toBe("/cards/management-ui");
   const back = new URL(url.searchParams.get("returnTo"), "http://localhost");
-  expect(back.searchParams.get("q")).toBe("卡片数量");
+  expect(back.searchParams.get("q")).toBe("卡牌数量");
   expect(back.searchParams.get("tab")).toBe("details");
   expect(back.searchParams.get("kind")).toBe("quality");
 });
@@ -298,7 +298,7 @@ test("Settings groups data management and fits the minimum Windows window", asyn
 });
 
 test("home and showcase view choices preserve cards, filters and page reloads", async ({ page }) => {
-  for (const [url, container] of [["/?q=卡片数量", '[data-testid="home-card-grid"]'], ["/showcase?q=Jordan", ".showcase-views"]]) {
+  for (const [url, container] of [["/?q=卡牌数量", '[data-testid="home-card-grid"]'], ["/showcase?q=Jordan", ".showcase-views"]]) {
     await page.goto(url, { waitUntil: "networkidle" });
     const cards = page.locator(container);
     const links = await cards.locator("a").evaluateAll(items => items.map(item => item.getAttribute("href")));
@@ -315,17 +315,17 @@ test("home and showcase view choices preserve cards, filters and page reloads", 
       await page.getByRole("link", { name: "返回上一页", exact: true }).click();
       await expect(page.locator(container)).toHaveClass(/is-list/);
     }
-    await page.getByRole("button", { name: "卡片视图", exact: true }).click();
+    await page.getByRole("button", { name: "卡牌视图", exact: true }).click();
     await expect(cards).not.toHaveClass(/is-list/);
   }
 });
 
 test("view switching works when preference storage is blocked", async ({ page }) => {
   await page.addInitScript(() => { Storage.prototype.getItem = () => { throw new Error("blocked"); }; Storage.prototype.setItem = () => { throw new Error("blocked"); }; });
-  await page.goto("/?q=卡片数量", { waitUntil: "networkidle" });
+  await page.goto("/?q=卡牌数量", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "列表视图", exact: true }).click();
   await expect(page.getByTestId("home-card-grid")).toHaveClass(/is-list/);
-  await page.getByRole("button", { name: "卡片视图", exact: true }).click();
+  await page.getByRole("button", { name: "卡牌视图", exact: true }).click();
   await expect(page.getByTestId("home-card-grid")).not.toHaveClass(/is-list/);
 });
 
@@ -333,7 +333,7 @@ for (const mode of ["list", "grid"]) {
   test(`export ${mode} card info restores collection filters, loaded cards and selection`, async ({ page }) => {
     fixture(db => { const insert = db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport,tags) VALUES(?,?,?,'Basketball','')"); for (let i=0;i<26;i++) insert.run("export-return-"+i, "Import UI", "Return card "+i); });
     await page.goto("/?q=Import+UI&export=1", { waitUntil: "networkidle" });
-    await page.getByRole("button", { name: mode === "list" ? "列表视图" : "卡片视图", exact: true }).click();
+    await page.getByRole("button", { name: mode === "list" ? "列表视图" : "卡牌视图", exact: true }).click();
     const rows = page.getByTestId("home-card-grid").locator(".card-item");
     await expect(rows).toHaveCount(24);
     await page.getByTestId("home-load-more").click();
@@ -354,7 +354,7 @@ for (const mode of ["list", "grid"]) {
     await expect(page).toHaveURL("http://127.0.0.1:3360" + returnTo);
     await expect(rows).toHaveCount(26);
     await expect(page.getByLabel("仅导出公开档案")).toBeChecked();
-    await expect(page.getByRole("button", { name: mode === "list" ? "列表视图" : "卡片视图", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: mode === "list" ? "列表视图" : "卡牌视图", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(rows.last().getByRole("checkbox")).toBeChecked();
     await expect(rows.last().locator("a")).toHaveAttribute("href", destination);
     await page.reload({ waitUntil: "networkidle" });

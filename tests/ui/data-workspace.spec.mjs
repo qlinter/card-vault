@@ -102,8 +102,8 @@ test("structure attributes include closed archives without adding them to holdin
   await page.screenshot({ path: testInfo.outputPath("data-structure-expanded.png"), fullPage: true });
   await structure.locator("summary").click();
   await expect(structure.locator("tbody tr:visible")).toHaveCount(5);
-  await page.getByRole("button", { name: "卡片属性", exact: true }).click();
-  await expect(page.getByRole("button", { name: "卡片属性", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "卡牌属性", exact: true }).click();
+  await expect(page.getByRole("button", { name: "卡牌属性", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByLabel("结构统计口径")).toHaveCount(0);
   const row = page.locator("tbody tr").filter({ has: page.getByRole("link", { name: "新秀卡", exact: true }) });
   await expect(row.locator("td").nth(1)).toHaveText("2已售 1 项");

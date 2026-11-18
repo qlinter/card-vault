@@ -1,4 +1,4 @@
-.stack { display:grid; gap: .8rem; }
+.stack { display:grid; grid-template-columns:minmax(0,1fr); gap: .8rem; }
 .bar { height:3px; margin-top:.4rem; background:var(--theme-soft,#f1f3f5); border-radius:2px; max-width:22rem; }
 .bar i { display:block; height:100%; background:var(--teal); border-radius:2px; }
 .panel { padding: var(--panel-space,1rem); border:1px solid var(--line); border-radius:var(--panel-radius); background:var(--theme-surface,#fff); }
@@ -63,6 +63,13 @@
 .detailsTable col:nth-child(5) { width:23%; }
 .detailsTable col:nth-child(6) { width:14%; }
 .detailsTable td { vertical-align:top; overflow-wrap:anywhere; }
+.detailsTable tr > :first-child { position:sticky; left:0; z-index:1; background:var(--surface); }
+@media (max-width:900px) {
+  .detailsTable col:first-child { width:14%; }
+  .detailsTable col:nth-child(4) { width:25%; }
+  .detailsTable col:nth-child(6) { width:18%; }
+  .detailsTable tr > :first-child { box-shadow:inset -1px 0 var(--line); }
+}
 .rowMetrics { margin:0; display:grid; gap:.35rem; font-size:var(--text-xs); }
 .rowMetrics>div { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:.15rem .5rem; }
 .rowMetrics dt { color:var(--muted-ink); font-size:var(--text-xs); }

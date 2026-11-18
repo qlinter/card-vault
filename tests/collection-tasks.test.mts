@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { deriveCollectionTasks, taskIsVisible, type TaskCard } from "../lib/collection-tasks.ts";
 const now = new Date("2026-09-07T00:00:00Z");
-const card: TaskCard = { id: "one", playerName: "卡片主体", cardTitle: "备注", collectionStatus: "holding", createdAt: new Date("2025-01-01"), updatedAt: new Date("2026-01-01"), _count: { images: 0, transactions: 0 }, valuations: [] };
+const card: TaskCard = { id: "one", playerName: "卡牌主体", cardTitle: "备注", collectionStatus: "holding", createdAt: new Date("2025-01-01"), updatedAt: new Date("2026-01-01"), _count: { images: 0, transactions: 0 }, valuations: [] };
 const tracking = { statusStartedAt: new Date("2025-01-01"), statusDateEstimated: false, statusRevision: 0, imagesRevision: 0, purchaseRevision: 0, valuationRevision: 0 };
 
 test("unrelated edits do not postpone status follow-up; recurring missing evidence reopens", () => {

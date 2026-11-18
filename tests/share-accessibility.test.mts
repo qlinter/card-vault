@@ -8,7 +8,7 @@ const data: ExportData = {
   title: "测试展馆", theme: "spotlight", presentation: { ...defaultSharePresentation, featuredCardIds: ["card-1"] },
   subtitle: null, description: null, themeNarrative: null, themeHighlights: null, groupNotes: null,
   coverImage: null, backgroundImage: null, generatedAt: new Date(0).toISOString(), mode: "static", sections: [],
-  cards: [{ id: "card-1", playerName: "球员", cardTitle: "卡片", displayTitle: "卡片", description: "", sport: "篮球", team: null, year: null, brand: null, productLine: null, subsetName: null, parallel: null, cardNumber: null, serialNumber: null, serialRange: null, isRookie: false, isAutograph: false, autoType: null, isPatch: false, patchType: null, gradingCompany: null, grade: null, certNumber: null, href: "cards/card.html", images: [] }]
+  cards: [{ id: "card-1", playerName: "球员", cardTitle: "卡牌", displayTitle: "卡牌", description: "", sport: "篮球", team: null, year: null, brand: null, productLine: null, subsetName: null, parallel: null, cardNumber: null, serialNumber: null, serialRange: null, isRookie: false, isAutograph: false, autoType: null, isPatch: false, patchType: null, gradingCompany: null, grade: null, certNumber: null, href: "cards/card.html", images: [] }]
 };
 
 test("gallery accessibility audit reports actionable non-blocking content gaps", () => {

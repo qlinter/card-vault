@@ -45,7 +45,7 @@ test("export directory validation detects broken links and accepts a complete pa
   const root = await mkdtemp(path.join(os.tmpdir(), "card-vault-export-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(path.join(root, "assets"));
-  await writeFile(path.join(root, "index.html"), '<html lang="zh-CN"><head><meta name="viewport" content="width=device-width"><link href="assets/site.css"></head><body><main><h1>展馆</h1><a href="cards/card.html">卡片</a><img alt="卡片" src="assets/thumb.webp" srcset="assets/thumb.webp 640w, assets/full.webp 1600w"></main></body></html>', "utf8");
+  await writeFile(path.join(root, "index.html"), '<html lang="zh-CN"><head><meta name="viewport" content="width=device-width"><link href="assets/site.css"></head><body><main><h1>展馆</h1><a href="cards/card.html">卡牌</a><img alt="卡牌" src="assets/thumb.webp" srcset="assets/thumb.webp 640w, assets/full.webp 1600w"></main></body></html>', "utf8");
   await writeFile(path.join(root, "assets", "site.css"), "body{}", "utf8");
   await writeFile(path.join(root, "assets", "thumb.webp"), "thumb", "utf8");
 
@@ -55,7 +55,7 @@ test("export directory validation detects broken links and accepts a complete pa
   assert.ok(broken.issues.some((issue) => issue.message.includes("assets/full.webp")));
 
   await mkdir(path.join(root, "cards"));
-  await writeFile(path.join(root, "cards", "card.html"), '<html lang="zh-CN"><head><meta name="viewport" content="width=device-width"></head><body><main><h1>卡片</h1><a href="../index.html">返回</a></main></body></html>', "utf8");
+  await writeFile(path.join(root, "cards", "card.html"), '<html lang="zh-CN"><head><meta name="viewport" content="width=device-width"></head><body><main><h1>卡牌</h1><a href="../index.html">返回</a></main></body></html>', "utf8");
   await writeFile(path.join(root, "assets", "full.webp"), "full", "utf8");
   const complete = await validateExportDirectory(root);
   assert.equal(complete.valid, true);

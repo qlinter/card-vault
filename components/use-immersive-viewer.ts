@@ -1,15 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { advancePlayback, startPlayback, type Playback } from "@/lib/immersive-playback";
 import type { GallerySource, GalleryCard, GalleryPreferences } from "@/lib/immersive-presentation";
 
-export function useImmersiveViewer({ source, onClose, playback }: { source: GallerySource; onClose: () => void; playback: Pick<GalleryPreferences, "interval" | "allImages" | "random"> }) {
-  const [initialPlayback] = useState(playback);
+export function useImmersiveViewer({ source, onClose, playback }: { source: GallerySource; onClose: () => void; playback: Pick<GalleryPreferences, "interval" | "allImages" | "random" | "excludeSold"> }) {
+  const [excludeSold, setExcludeSold] = useState(playback.excludeSold);
   const dialog = useRef<HTMLDialogElement>(null);
   const surface = useRef<HTMLDivElement>(null);
   const [session, setSession] = useState<Playback>(), [card, setCard] = useState<GalleryCard>();
-  const [playing, setPlaying] = useState(false), [interval, setIntervalSeconds] = useState(initialPlayback.interval), [allImages, setAllImages] = useState(initialPlayback.allImages);
+  const beginPlayback = useEffectEvent((ids: string[]) => setSession(startPlayback(ids, playback.random)));
+  const [playing, setPlaying] = useState(false), [interval, setIntervalSeconds] = useState(playback.interval), [allImages, setAllImages] = useState(playback.allImages);
   const [imageIndex, setImageIndex] = useState(0), [zoom, setZoom] = useState(1), [rotation, setRotation] = useState(0), [loaded, setLoaded] = useState(false), [broken, setBroken] = useState(false);
   const [message, setMessage] = useState(""), [retry, setRetry] = useState(0), [imageRetry, setImageRetry] = useState(0), [controls, setControls] = useState(true), [fullscreen, setFullscreen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -22,10 +23,19 @@ export function useImmersiveViewer({ source, onClose, playback }: { source: Gall
     const value = JSON.parse(sourceKey) as GallerySource, params = new URLSearchParams();
     for (const key of ["q", "group"] as const) if (value[key]) params.set(key, value[key]);
     if (value.spec) params.set("spec", JSON.stringify(value.spec));
+    else if (excludeSold) params.set("excludeSold", "1");
     if (value.ids) params.set("ids", JSON.stringify(value.ids));
     return params;
-  }, [sourceKey]);
+  }, [sourceKey, excludeSold]);
   const pause = useCallback(() => setPlaying(false), []);
+  const updateSoldFilter = (exclude: boolean) => {
+    pause();
+    setSession(undefined);
+    setCard(undefined);
+    setLoaded(false);
+    setBroken(false);
+    setExcludeSold(exclude);
+  };
   const move = useCallback((delta: number) => { setPlaying(false); setSession(state => state && advancePlayback(state, delta)); }, []);
   const showControls = useCallback(() => {
     setControls(true); clearTimeout(idleTimer.current);
@@ -54,11 +64,11 @@ export function useImmersiveViewer({ source, onClose, playback }: { source: Gall
       } while (cursor);
       if (!controller.signal.aborted) {
         const preferred = (JSON.parse(sourceKey) as GallerySource).ids;
-        setSession(startPlayback(preferred ? preferred.filter(id => ids.includes(id)) : ids, initialPlayback.random));
+        beginPlayback(preferred ? preferred.filter(id => ids.includes(id)) : ids);
       }
     })().catch(() => { if (!controller.signal.aborted) setMessage("无法加载赏卡范围，请重试。"); });
     return () => controller.abort();
-  }, [query, sourceKey, retry, initialPlayback.random]);
+  }, [query, sourceKey, retry]);
 
   useEffect(() => {
     const position = `${cardId}:${session?.index}`;
@@ -68,7 +78,7 @@ export function useImmersiveViewer({ source, onClose, playback }: { source: Gall
     if (!cardId) return;
     const controller = new AbortController(), params = query(); params.set("id", cardId);
     fetch(`/api/immersive?${params}`, { signal: controller.signal }).then(async response => {
-      if (!response.ok) throw new Error("卡片已删除或不在当前范围。");
+      if (!response.ok) throw new Error("卡牌已删除或不在当前范围。");
       const result = await response.json();
       if (!controller.signal.aborted) {
         setCard(result.card);
@@ -147,7 +157,7 @@ export function useImmersiveViewer({ source, onClose, playback }: { source: Gall
     if (status === "error") { setPlaying(false); badImages.current.add(`${cardId}:${image?.id}`); if (cardId && (!allImages || !card?.images.length || card.images.every(item => badImages.current.has(`${cardId}:${item.id}`)))) badCards.current.add(cardId); } else if (cardId) badCards.current.delete(cardId);
   }, [cardId, allImages, card, image?.id]);
   const unavailable = session && session.ids.length > 0 && badCards.current.size >= session.ids.length;
-  return { dialog, surface, session, card, cardId, image, imageIndex, playing, setPlaying, interval, setIntervalSeconds, allImages, setAllImages, zoom, rotation, setRotation, loaded, broken, controls, fullscreen, message, imageRetry, unavailable, setSession, setImageRetry, setRetry, pause, move, showControls, shiftImage, resize, close, imageStatus, settingsOpen, setSettingsOpen, settingsToggle, closeSettings, dismiss, toggleFullscreen };
+  return { dialog, surface, session, card, cardId, image, imageIndex, playing, setPlaying, interval, setIntervalSeconds, allImages, setAllImages, excludeSold, updateSoldFilter, zoom, rotation, setRotation, loaded, broken, controls, fullscreen, message, imageRetry, unavailable, setSession, setImageRetry, setRetry, pause, move, showControls, shiftImage, resize, close, imageStatus, settingsOpen, setSettingsOpen, settingsToggle, closeSettings, dismiss, toggleFullscreen };
 }
 
 export type ImmersiveController = ReturnType<typeof useImmersiveViewer>;

@@ -14,7 +14,7 @@ async function addRecord(page,type) {
 }
 async function fill(record,key,value) { await record.locator(`[name$=".${key}"]`).fill(value); }
 
-test("entry saves supplementary finance and sale links atomically after draft recovery",async({page})=>{
+test("entry saves supplementary finance and standalone sale fees atomically after draft recovery",async({page})=>{
   await page.goto("/cards/new",{waitUntil:"networkidle"});
   await page.getByText("财务记录（可选）",{exact:true}).click();
   await expect(page.locator('[name="secondaryPurchasePrice"]')).toHaveCount(0);
@@ -31,12 +31,10 @@ test("entry saves supplementary finance and sale links atomically after draft re
   await expect(row.locator('[name$=".amountUnknown"]')).toHaveCount(0);
   await row.locator('[name$=".kind"]').selectOption("sale");
   await fill(row,"amount","150");await fill(row,"quantity","1");await fill(row,"occurredAt","2026-02-01");await fill(row,"source","market");await fill(row,"notes","sale note");
-  const saleId=await row.locator('[name="financialRecordId"]').inputValue();
   row=await addRecord(page,"费用");
   await row.locator('[name$=".context"]').selectOption("sale");
   await row.locator('[name$=".kind"]').selectOption("shipping");
   await fill(row,"amount","10");await fill(row,"occurredAt","2026-02-02");
-  await row.locator('[name$=".transactionId"]').selectOption(saleId);
   row=await addRecord(page,"估值");
   await expect(row.locator('[name$=".source"] > option')).toHaveText(["个人估值", "卡淘成交", "eBay成交", "Others"]);
   await fill(row,"amount","-1");await fill(row,"valuedAt","2026-03-01");
@@ -46,7 +44,7 @@ test("entry saves supplementary finance and sale links atomically after draft re
   await expect(page.locator(".entry-draft-status")).toContainText("草稿已保存");
   await page.reload({waitUntil:"networkidle"});
   await expect(page.locator(".entry-financial-record")).toHaveCount(3);
-  await expect(page.locator('[name$=".transactionId"]')).toHaveValue(saleId);
+  await expect(page.locator('[name$=".transactionId"]')).toHaveCount(0);
   await expect(page.locator('[name$=".amountUnknown"]')).toHaveCount(0);
   await expect(page.locator('.entry-financial-record').first().locator('[name$=".notes"]')).toHaveValue("sale note");
   await page.screenshot({path:"logs/entry-refinement-20260918/v134-entry-finance.png",fullPage:true});
@@ -65,7 +63,7 @@ test("entry saves supplementary finance and sale links atomically after draft re
   expect(saved.card.holdingQuantity).toBe(1);expect(saved.transactions).toHaveLength(2);expect(saved.expenses).toHaveLength(2);expect(saved.valuations).toHaveLength(1);
   expect(saved.transactions.every(row=>row.paymentsJson===null)).toBe(true);
   expect(saved.transactions.every(row=>row.amountKnown===1)).toBe(true);
-  expect(saved.expenses.find(row=>row.context==="sale").transactionId).toBe(saved.transactions.find(row=>row.kind==="sale").id);
+  expect(saved.expenses.find(row=>row.context==="sale").transactionId).toBeNull();
   expect(saved.valuations[0].amountMinor).toBe(9000);
 });
 

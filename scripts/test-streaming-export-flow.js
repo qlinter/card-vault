@@ -51,7 +51,9 @@ async function main() {
         assert.equal(response.statusCode, 200, 'export download status');
         const readyMs=Math.round(performance.now()-start), destination=path.join(root,`download.${format}`);
         await pipeline(response,fs.createWriteStream(destination));
-        assert.equal(fs.statSync(destination).size,Number(response.headers['content-length']));
+        const fileSize = fs.statSync(destination).size;
+        assert.equal(fileSize, Number(response.headers['x-export-size']), 'downloaded bytes match the generated file');
+        if (response.headers['content-length']) assert.equal(fileSize, Number(response.headers['content-length']));
         const elapsedMs=Math.round(performance.now()-start);
         const memory = sampler.read();
         await cleaned();
@@ -63,7 +65,7 @@ async function main() {
           for await(const sheet of book){let rows=0;for await(const row of sheet){assert.ok(row.number>0);rows++;}counts[sheet.name]=rows;}
           assert.deepEqual(counts,{'Cards':size+1,'Financial history':size*38+1});
         }
-        const result={cards:size,ledgerRows:size*38,format,readyMs,totalMs:elapsedMs,bytes:fs.statSync(destination).size,baselineRssMb:Math.round(baseline/1048576),peakRssMb:Math.round(memory.peak/1048576)};
+        const result={cards:size,ledgerRows:size*38,format,readyMs,totalMs:elapsedMs,bytes:fileSize,baselineRssMb:Math.round(baseline/1048576),peakRssMb:Math.round(memory.peak/1048576)};
         results.push(result);console.log(JSON.stringify(result));
       }
     }

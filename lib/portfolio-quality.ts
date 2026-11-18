@@ -4,11 +4,11 @@ import type { PortfolioAttentionItem, PortfolioValuationRecord } from "./portfol
 export const stalePortfolioValuationDays = 180;
 
 export const portfolioQualityMetrics = [
-  { type: "missing_valuation", label: "未估值", issue: "缺少估值", definition: "卡片没有任何估值记录。", priority: "high" },
-  { type: "stale_valuation", label: "估值过期", issue: `估值超过 ${stalePortfolioValuationDays} 天`, definition: `卡片的最新估值距当前日期超过 ${stalePortfolioValuationDays} 天。`, priority: "medium" },
-  { type: "missing_transaction", label: "无交易", issue: "缺少交易记录", definition: "卡片没有任何买入或出售交易记录。", priority: "medium" },
-  { type: "missing_image", label: "无图片", issue: "缺少图片", definition: "卡片没有上传任何卡片图片。", priority: "low" },
-  { type: "incomplete_data", label: "资料不完整", issue: "基础资料不完整", definition: "卡片主体、运动类型或卡片标题等基础资料尚未填写完整。", priority: "medium" }
+  { type: "missing_valuation", label: "未估值", issue: "缺少估值", definition: "卡牌没有任何估值记录。", priority: "high" },
+  { type: "stale_valuation", label: "估值过期", issue: `估值超过 ${stalePortfolioValuationDays} 天`, definition: `卡牌的最新估值距当前日期超过 ${stalePortfolioValuationDays} 天。`, priority: "medium" },
+  { type: "missing_transaction", label: "无交易", issue: "缺少交易记录", definition: "卡牌没有任何买入或出售交易记录。", priority: "medium" },
+  { type: "missing_image", label: "无图片", issue: "缺少图片", definition: "卡牌没有上传任何卡牌图片。", priority: "low" },
+  { type: "incomplete_data", label: "资料不完整", issue: "基础资料不完整", definition: "卡牌主体、运动类型或卡牌标题等基础资料尚未填写完整。", priority: "medium" }
 ] as const satisfies ReadonlyArray<{
   type: PortfolioAttentionItem["type"];
   label: string;

@@ -27,8 +27,8 @@ const attentionText = {
   missing_valuation: ["补充缺失估值", "缺少估值会削弱组合价值结构与流动性判断。"],
   stale_valuation: ["更新过期估值", "较早的估值可能不能反映当前记录状态。"],
   missing_transaction: ["补充交易记录", "缺少买入等交易信息会降低财务效率判断的可靠性。"],
-  missing_image: ["补充卡片图片", "图片缺失会降低档案完整度和后续核对效率。"],
-  incomplete_data: ["完善卡片资料", "核心字段不完整会降低分类和结构分析质量。"],
+  missing_image: ["补充卡牌图片", "图片缺失会降低档案完整度和后续核对效率。"],
+  incomplete_data: ["完善卡牌资料", "核心字段不完整会降低分类和结构分析质量。"],
 } as const;
 
 const attentionPriority = { high: 0, medium: 1, low: 2 } as const;
@@ -49,18 +49,18 @@ function fallbackActions(snapshot: PortfolioSnapshot): PortfolioAnalysisAction[]
   const defaults: Omit<PortfolioAnalysisAction, "priority">[] = [
     {
       action: "建立定期估值复核节奏",
-      reason: `当前有 ${snapshot.financials.freshValuationCount}/${snapshot.financials.valuationEligibleCount} 张卡片具备 90 天内估值。`,
+      reason: `当前有 ${snapshot.financials.freshValuationCount}/${snapshot.financials.valuationEligibleCount} 张卡牌具备 90 天内估值。`,
       expectedBenefit: "保持组合价值概览的时效性，并减少过期估值造成的偏差。",
       sourcePath: "financials.freshValuationCount",
     },
     {
       action: "定期检查头部集中度",
-      reason: `当前头部卡片主体数量占比为 ${snapshot.concentration.player.top1CountShare}%，前三为 ${snapshot.concentration.player.top3CountShare}%。`,
+      reason: `当前头部卡牌主体数量占比为 ${snapshot.concentration.player.top1CountShare}%，前三为 ${snapshot.concentration.player.top3CountShare}%。`,
       expectedBenefit: "帮助确认组合结构是否持续符合当前收藏主题。",
       sourcePath: "concentration.player",
     },
     {
-      action: "保持新增卡片档案完整",
+      action: "保持新增卡牌档案完整",
       reason: `当前核心字段平均完整度为 ${snapshot.coverage.coreFieldCompletenessAverage}%，图片覆盖 ${snapshot.coverage.imageCoverageCount}/${snapshot.cardCount}。`,
       expectedBenefit: "让后续筛选、统计和 AI 分析持续获得稳定的数据基础。",
       sourcePath: "coverage",
@@ -152,10 +152,10 @@ export function buildFallbackPortfolioAnalysis(snapshot: PortfolioSnapshot): Por
     scorecard: {
       structure: {
         score: structureScore,
-        explanation: `头部卡片主体数量占比 ${topPlayerShare}%，前三占比 ${topThreePlayerShare}%。`,
+        explanation: `头部卡牌主体数量占比 ${topPlayerShare}%，前三占比 ${topThreePlayerShare}%。`,
         dataSufficiency: structureDataSufficiency,
         evidence: [
-          evidence("concentration.player", "头部卡片主体数量占比", `${topPlayerShare}%`),
+          evidence("concentration.player", "头部卡牌主体数量占比", `${topPlayerShare}%`),
         ],
       },
       financialEfficiency: {
@@ -207,7 +207,7 @@ export function buildFallbackPortfolioAnalysis(snapshot: PortfolioSnapshot): Por
           ),
           evidence(
             "coverage.imageCoverageCount",
-            "有图片卡片",
+            "有图片卡牌",
             `${snapshot.coverage.imageCoverageCount}/${snapshot.cardCount}`,
           ),
         ],
@@ -219,7 +219,7 @@ export function buildFallbackPortfolioAnalysis(snapshot: PortfolioSnapshot): Por
         findings: [
           {
             title: "组合集中度",
-            content: `头部卡片主体占比 ${topPlayerShare}%，前三个主体合计 ${topThreePlayerShare}%；应结合收藏主题判断集中是否符合预期。`,
+            content: `头部卡牌主体占比 ${topPlayerShare}%，前三个主体合计 ${topThreePlayerShare}%；应结合收藏主题判断集中是否符合预期。`,
             confidence: "high",
             dataSufficiency: structureDataSufficiency,
             evidence: [
@@ -237,7 +237,7 @@ export function buildFallbackPortfolioAnalysis(snapshot: PortfolioSnapshot): Por
         findings: [
           {
             title: "财务数据覆盖",
-            content: `交易覆盖 ${transactionCoverage}%，估值覆盖 ${valuationCoverage}%。只对同币种和可比卡片记录进行财务判断。`,
+            content: `交易覆盖 ${transactionCoverage}%，估值覆盖 ${valuationCoverage}%。只对同币种和可比卡牌记录进行财务判断。`,
             confidence: "high",
             dataSufficiency: financialDataSufficiency,
             evidence: [
@@ -285,13 +285,13 @@ export function buildFallbackPortfolioAnalysis(snapshot: PortfolioSnapshot): Por
         findings: [
           {
             title: "档案完整度",
-            content: `核心字段平均完整度 ${snapshot.coverage.coreFieldCompletenessAverage}%，有图片的卡片 ${snapshot.coverage.imageCoverageCount} 张，待完善 ${snapshot.coverage.incompleteCardCount} 张。`,
+            content: `核心字段平均完整度 ${snapshot.coverage.coreFieldCompletenessAverage}%，有图片的卡牌 ${snapshot.coverage.imageCoverageCount} 张，待完善 ${snapshot.coverage.incompleteCardCount} 张。`,
             confidence: "high",
             dataSufficiency: collectibleDataSufficiency,
             evidence: [
               evidence(
                 "coverage",
-                "待完善卡片",
+                "待完善卡牌",
                 `${snapshot.coverage.incompleteCardCount} 张`,
               ),
             ],

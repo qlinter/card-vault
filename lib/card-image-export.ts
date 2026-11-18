@@ -7,6 +7,6 @@ export function exportImageFilename(title: string, index: number, extension: str
 
 export function managedImageFilename(imagePath: string): string {
   const match = /^\/media\/([^/\\]+\.(?:jpe?g|png|webp))$/i.exec(imagePath);
-  if (!match || path.basename(match[1]) !== match[1] || /[\p{Cc}<>:"|?*]/u.test(match[1])) throw new Error("卡片图片路径无效。");
+  if (!match || path.basename(match[1]) !== match[1] || /[\p{Cc}<>:"|?*]/u.test(match[1])) throw new Error("卡牌图片路径无效。");
   return match[1];
 }

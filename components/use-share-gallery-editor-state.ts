@@ -1,9 +1,6 @@
 import { useState } from "react";
 
-export type ShareGalleryEditorPanel = "content" | "visual" | "sections" | "cards";
-
 export function useShareGalleryEditorState() {
-  const [activePanel, setActivePanel] = useState<ShareGalleryEditorPanel>("content");
   const [coverPreviewUrl, setCoverPreviewUrl] = useState("");
   const [backgroundPreviewUrl, setBackgroundPreviewUrl] = useState("");
   const [backgroundFileSelected, setBackgroundFileSelected] = useState(false);
@@ -21,8 +18,6 @@ export function useShareGalleryEditorState() {
   }
 
   return {
-    activePanel,
-    setActivePanel,
     coverPreviewUrl,
     setCoverPreviewUrl,
     backgroundPreviewUrl,

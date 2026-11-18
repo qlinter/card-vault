@@ -31,13 +31,13 @@ export function PortfolioDataDetails({ workspace, query, state, returnTo }: { wo
         <UiElement as="optgroup" uiAttributes={["label"]} label="查看范围"><option value="all"><UiText text="全部" /></option><option value="holdings"><UiText text="持仓" /></option><option value="sales"><UiText text="出售记录" /></option></UiElement>
         <UiElement as="optgroup" uiAttributes={["label"]} label="收藏状态">{cardCollectionStatuses.map(status => <option key={status} value={status}><UiText text={collectionStatusText(status)} /></option>)}</UiElement>
       </UiElement>
-      <UiElement as="input" uiAttributes={["placeholder", "aria-label"]} type="search" name="search" placeholder="搜索卡片" aria-label="搜索卡片" defaultValue={state.search} maxLength={160} />
+      <UiElement as="input" uiAttributes={["placeholder", "aria-label"]} type="search" name="search" placeholder="搜索卡牌" aria-label="搜索卡牌" defaultValue={state.search} maxLength={160} />
       <UiElement as="select" uiAttributes={["aria-label"]} name="order" aria-label="明细排序" defaultValue={state.order || "valueDesc"}>{[["valueDesc", "估值从高到低"], ["costDesc", "成本从高到低"], ["profitDesc", "已实现盈亏从高到低"], ["dateDesc", "最近日期"], ["nameAsc", "主体名称"]].map(([value, label]) => <option key={value} value={value}><UiText text={label} /></option>)}</UiElement>
       <button className="btn btn-secondary"><UiText text="筛选" /></button><span className={styles.note}>{workspace.total} <UiText text="项" /> · {workspace.currency}</span>
     </form>}
     <div className={styles.tableWrap}><table className={`${styles.table} ${quality ? "" : styles.detailsTable}`}>
       {!quality ? <colgroup><col /><col /><col /><col /><col /><col /></colgroup> : null}
-      <thead><tr><th><UiText text="卡片" /></th><th><UiText text="收藏状态" /></th>{quality ? <><th className={styles.numeric}><UiText text="持有数量" /></th><th><UiText text="待完善数据" /></th><th><UiText text="最新估值" /></th></> : <><th><UiText text="数量" /></th><th><UiText text="持仓" /></th><th><UiText text="出售" /></th><th><UiText text="最近记录" /></th></>}</tr></thead>
+      <thead><tr><th><UiText text="卡牌" /></th><th><UiText text="收藏状态" /></th>{quality ? <><th className={styles.numeric}><UiText text="持有数量" /></th><th><UiText text="待完善数据" /></th><th><UiText text="最新估值" /></th></> : <><th><UiText text="数量" /></th><th><UiText text="持仓" /></th><th><UiText text="出售" /></th><th><UiText text="最近记录" /></th></>}</tr></thead>
       <tbody>{workspace.rows.map(row => <tr key={row.id}>
         <td><Link href={`/cards/${encodeURIComponent(row.id)}?returnTo=${encodeURIComponent(returnTo)}`}><b>{row.playerName}</b><small>{row.cardTitle}</small></Link></td>
         <td><UiText text={collectionStatusText(row.collectionStatus)} /></td>

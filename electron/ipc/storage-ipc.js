@@ -10,7 +10,7 @@ function registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, log
 
   trustedHandle("card-vault:choose-storage-directory", async (event) => {
     try {
-      const result = await dialog.showOpenDialog({ title: "选择卡片资料存储路径", properties: ["openDirectory", "createDirectory"], defaultPath: storage.getDataDir() });
+      const result = await dialog.showOpenDialog({ title: "选择卡牌资料存储路径", properties: ["openDirectory", "createDirectory"], defaultPath: storage.getDataDir() });
       await runtime.requireAccount(event);
       if (result.canceled || result.filePaths.length === 0) { logger.appendLog("desktop.log", "Storage path change cancelled."); return { cancelled: true, changed: false, path: storage.getDataDir() }; }
       return await withStorageOperation(event, "migrate", async (sender) => {

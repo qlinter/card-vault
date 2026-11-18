@@ -213,9 +213,9 @@ async function main() {
     assertIncludes(newSharePage, "选择球星卡", "分享向导第一步");
     assertIncludes(newSharePage, "预览并保存", "分享向导预览保存步骤");
     for (const removedCopy of [
-      "先挑选本次分享要展示的卡片。",
-      "基于已选卡片生成中文展馆标题、封面介绍、收藏叙事和分组说明。",
-      "保存前确认本次分享集包含的卡片。导出包不会包含价格、成本、购买渠道和备注。",
+      "先挑选本次分享要展示的卡牌。",
+      "基于已选卡牌生成中文展馆标题、封面介绍、收藏叙事和分组说明。",
+      "保存前确认本次分享集包含的卡牌。导出包不会包含价格、成本、购买渠道和备注。",
       "展馆版式"
     ]) {
       if (newSharePage.includes(removedCopy)) {
@@ -245,7 +245,7 @@ async function main() {
 
     const editPage = await fetchPage(baseUrl, "/shares/e2e-share-1/edit");
     assertIncludes(editPage, "编辑分享集", "分享集编辑页");
-    assertIncludes(editPage, "E2E 球员", "编辑页已选卡片");
+    assertIncludes(editPage, "E2E 球员", "编辑页已选卡牌");
 
     const previewPage = await fetchPage(baseUrl, "/shares/e2e-share-1/preview");
     assertIncludes(previewPage, "E2E 分享展馆", "分享集预览页标题");
@@ -305,7 +305,7 @@ async function main() {
     const editedPreviewPage = await fetchPage(baseUrl, "/shares/e2e-share-1/preview");
     assertIncludes(editedPreviewPage, "E2E 编辑后分享展馆", "编辑后的分享集预览标题");
     assertIncludes(editedPreviewPage, "编辑后章节", "编辑后的分享集章节");
-    assertIncludes(editedPreviewPage, "编辑后展示标题", "编辑后的分享卡片标题");
+    assertIncludes(editedPreviewPage, "编辑后展示标题", "编辑后的分享卡牌标题");
 
     const currentExportPage = await fetchPage(baseUrl, "/shares/e2e-share-1/export");
     const staticExportResponse = await submitExport(baseUrl, currentExportPage, "生成分享包", "static");
@@ -373,7 +373,7 @@ async function main() {
     const exportedIndex = fs.readFileSync(path.join(exportFolder, "index.html"), "utf8");
     assertIncludes(exportedIndex, "noindex, nofollow, noarchive", "临时发布 noindex");
     assertIncludes(exportedIndex, 'href="sections/page-1.html"', "章节独立页入口");
-    assertIncludes(exportedIndex, 'href="subjects/e2e.html"', "卡片主体专题页入口");
+    assertIncludes(exportedIndex, 'href="subjects/e2e.html"', "卡牌主体专题页入口");
     assertIncludes(exportedIndex, "srcset=", "响应式图片来源");
     assertIncludes(exportedIndex, "重点卡故事", "重点卡故事");
 

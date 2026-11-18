@@ -122,7 +122,7 @@ async function main() {
     await waitForServer(baseUrl, output, serverProcess, "Card flow");
 
     const newPage = await fetchPage(baseUrl, "/cards/new");
-    for (const marker of ["新增卡片", "批量录入", "导入并预处理", "保存并查看", "保存并继续", "录入工具", "模板"]) {
+    for (const marker of ["新增卡牌", "批量录入", "导入并预处理", "保存并查看", "保存并继续", "录入工具", "模板"]) {
       if (!newPage.includes(marker)) {
         throw new Error(`Entry workbench is missing the expected marker: ${marker}`);
       }
@@ -141,7 +141,7 @@ async function main() {
     const settingsPage = await fetchPage(baseUrl, "/settings");
     for (const removedCopy of [
       "管理本地存储、备份恢复、AI 服务和 Card Vault 应用信息。",
-      "设置数据库、卡片图片、分享封面和导出文件的本地保存位置，并检查当前存储数据是否完整。",
+      "设置数据库、卡牌图片、分享封面和导出文件的本地保存位置，并检查当前存储数据是否完整。",
       "备份会生成 SQLite 一致性快照；恢复前会再次备份当前数据"
     ]) {
       if (settingsPage.includes(removedCopy)) {
@@ -479,7 +479,7 @@ async function main() {
     }
 
     const editPage = await fetchPage(baseUrl, `/cards/${cardId}/edit`);
-    if (!editPage.includes("卡片主体") || !editPage.includes('name="existingImageRotations"')) {
+    if (!editPage.includes("卡牌主体") || !editPage.includes('name="existingImageRotations"')) {
       throw new Error("Card edit page is missing the card-subject label or image rotation state.");
     }
     const editForm = new FormData();
@@ -735,7 +735,6 @@ async function main() {
     appendActionFieldsForMarker(saleExpenseForm, soldDetailPage, "保存费用");
     saleExpenseForm.append("kind", "marketplace_fee");
     saleExpenseForm.append("context", "sale");
-    saleExpenseForm.append("transactionId", sale.id);
     saleExpenseForm.append("amount", "10");
     saleExpenseForm.append("currency", "CNY");
     saleExpenseForm.append("occurredAt", "2026-08-11");
@@ -743,12 +742,12 @@ async function main() {
     const expenseResponse = await fetch(`${baseUrl}/cards/${cardId}`, { method: "POST", body: saleExpenseForm, redirect: "manual" });
     const expenseLocation = expenseResponse.headers.get("location") || "";
     if (expenseResponse.status !== 303 || !expenseLocation.includes("success=history-added")) {
-      throw new Error(`Linked sale expense action failed (${expenseResponse.status}, ${expenseLocation}).`);
+      throw new Error(`Sale expense action failed (${expenseResponse.status}, ${expenseLocation}).`);
     }
     db = new DatabaseSync(dbPath, { readOnly: true });
-    const linkedExpense = db.prepare("SELECT transactionId FROM CardExpense WHERE cardId = ? AND context = 'sale'").get(cardId);
+    const savedExpense = db.prepare("SELECT transactionId FROM CardExpense WHERE cardId = ? AND context = 'sale'").get(cardId);
     db.close();
-    if (linkedExpense?.transactionId !== sale.id) throw new Error("Sale expense did not preserve its concrete sale link.");
+    if (savedExpense?.transactionId !== null) throw new Error("Sale expense was not saved without a transaction link.");
 
     const expenseDetailPage = await fetchPage(baseUrl, expenseLocation);
     const repurchaseForm = new FormData();
@@ -771,8 +770,8 @@ async function main() {
     if (repurchasedCard?.holdingQuantity !== 1 || repurchasedCard?.collectionStatus !== "holding") {
       throw new Error(`Repurchase did not restore the position status: ${JSON.stringify(repurchasedCard)}.`);
     }
-    if (!repurchasedDetailPage.includes("总盈亏") || !repurchasedDetailPage.replace(/<!--.*?-->/g, "").includes("关联 2026-08-11 出售")) {
-      throw new Error(`Financial detail does not show total profit or the linked sale expense: ${repurchasedDetailPage.includes("总盈亏")},${repurchasedDetailPage.replace(/<!--.*?-->/g, "").includes("关联 2026-08-11 出售")}.`);
+    if (!repurchasedDetailPage.includes("总盈亏") || !repurchasedDetailPage.includes("销售扣点")) {
+      throw new Error("Financial detail does not show total profit and the standalone sales commission.");
     }
     const portfolioPage = await fetchPage(baseUrl, "/portfolio");
     for (const marker of [
@@ -803,7 +802,7 @@ async function main() {
         throw new Error(`Portfolio center interactive controls or filter links are missing: ${marker}`);
       }
     }
-    for (const marker of ['aria-label="收藏结构维度"', 'aria-label="收藏结构显示方式"', "档案数量", "实物数量", "估值占比", "卡片属性"]) if (!structurePage.includes(marker)) throw new Error(`Structure measurement is missing: ${marker}`);
+    for (const marker of ['aria-label="收藏结构维度"', 'aria-label="收藏结构显示方式"', "档案数量", "实物数量", "估值占比", "卡牌属性"]) if (!structurePage.includes(marker)) throw new Error(`Structure measurement is missing: ${marker}`);
     if (structurePage.includes('aria-label="结构统计口径"')) throw new Error("Structure still exposes the retired measurement selector.");
     for (const marker of ["出售", "已实现盈亏", "净出售金额", "结转成本"]) if (!salesPage.includes(marker)) throw new Error(`Sales details are missing: ${marker}`);
     for (const marker of ["列表", "整理", "待完善数据", "data-details", "collection-follow-up"]) if (!qualityPage.includes(marker)) throw new Error(`Quality navigation is missing: ${marker}`);
@@ -850,7 +849,7 @@ async function main() {
       console.error(output.join("").slice(-6000));
       throw error;
     });
-  console.log("Card flow HTTP E2E passed: workbench quantity, home thumbnails, portfolio center, financial overview and charts, linked sale expenses, status transitions, and core card routes.");
+  console.log("Card flow HTTP E2E passed: workbench quantity, home thumbnails, portfolio center, financial overview and charts, standalone sale expenses, status transitions, and core card routes.");
   } finally {
     stopServer(serverProcess);
     await removeTempRoot(tempRoot);

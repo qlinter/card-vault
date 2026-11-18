@@ -238,15 +238,95 @@ test("generated share preview fills the page canvas without redundant helper cop
   expect(iframeBox.height).toBeGreaterThanOrEqual(640);
 });
 
+test("share preview has a single reachable save bar throughout editing", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 700 });
+  await page.goto("/shares/ui-share-1/edit");
+  await page.getByRole("button", { name: /预览并保存/ }).click();
+  const save = page.getByRole("button", { name: "确认保存", exact: true });
+  await expect(save).toHaveCount(1);
+  for (const position of [0, 600, 1600]) {
+    await page.evaluate(y => window.scrollTo(0, y), position);
+    await expect(save).toBeInViewport({ ratio: 1 });
+  }
+  const title = page.locator('input[name="title"]');
+  await title.fill(" ");
+  await page.getByText("自定义设计", { exact: true }).click();
+  await page.getByRole("button", { name: "视觉设计", exact: true }).click();
+  await expect(title).toBeHidden();
+  await save.click();
+  await expect(title).toBeFocused();
+  await expect(page.locator(".share-form-actions").getByRole("alert")).toHaveText("请填写分享集标题。");
+  await title.fill("Updated preview title");
+  await expect(page.locator(".share-form-actions").getByRole("alert")).toHaveCount(0);
+  await page.getByRole("button", { name: "返回选卡", exact: true }).click();
+  await expect(page.locator(".share-card-picker, .share-sport-group").first()).toBeVisible();
+});
+
+test("Clear Filters follows pending and applied inputs and keeps export mode", async ({ page }) => {
+  await page.goto("/?export=1");
+  const form = page.locator(".home-filter-form");
+  const clear = form.getByRole("button", { name: "清空条件" });
+  const search = form.locator('[name="q"]');
+  await expect(clear).toBeDisabled();
+  await search.fill("Jordan");
+  await expect(clear).toBeEnabled();
+  await search.fill("");
+  await expect(clear).toBeDisabled();
+  await form.locator('[name="sort"]').selectOption("yearAsc");
+  await clear.click();
+  await expect(form.locator('[name="sort"]')).toHaveValue("");
+  await expect(clear).toBeDisabled();
+  await form.locator("summary").click();
+  await form.locator('[name="isGraded"]').selectOption("false");
+  await expect(clear).toBeEnabled();
+  await form.getByRole("button", { name: "搜索 / 筛选" }).click();
+  await form.locator('[name="isGraded"]').selectOption("");
+  await expect(clear).toBeEnabled();
+  await clear.click();
+  await expect(page).toHaveURL(/\/\?export=1$/);
+  await expect(clear).toBeDisabled();
+});
+
+test("showcase grid hides missing facts and list restores their columns", async ({ page }) => {
+  await page.goto("/showcase");
+  const card = page.locator('a.showcase-card[href*="ui-card-2"]');
+  const fields = card.locator(".showcase-card-facts > div");
+  await expect(fields.filter({ visible: true })).toHaveCount(1);
+  await expect(card.locator('[data-showcase-fact="variant"] dd')).toHaveText("Gold");
+  await page.getByRole("button", { name: "列表视图" }).click();
+  await expect(fields.filter({ visible: true })).toHaveCount(3);
+  await expect(card.locator('[data-showcase-fact="grade"] dd')).toHaveText("–");
+  await page.getByRole("button", { name: "卡牌视图" }).click();
+  await expect(fields.filter({ visible: true })).toHaveCount(1);
+});
+
+test("narrow statistics details keep the card name in view while scrolling amounts", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 700 });
+  await page.goto("/portfolio?tab=details");
+  const table = page.getByTestId("data-details").locator("table");
+  const name = table.locator("tbody tr").first().locator("td").first();
+  const before = await name.boundingBox();
+  const moved = await table.evaluate(el => {
+    const wrapper = el.parentElement;
+    wrapper.scrollLeft = wrapper.scrollWidth;
+    return wrapper.scrollLeft;
+  });
+  expect(moved).toBeGreaterThan(100);
+  const after = await name.boundingBox();
+  expect(Math.abs(after.x - before.x)).toBeLessThan(2);
+  expect(after.width).toBeLessThan(160);
+  await expect(name.getByRole("link")).toBeInViewport();
+});
+
 test("share gallery wizard keeps two concise steps without redundant helper copy", async ({ page }) => {
   await page.goto("/shares/ui-share-1/edit", { waitUntil: "networkidle" });
 
   await expect(page.locator(".share-wizard-step")).toHaveCount(2);
   for (const helper of [
-    "先挑选本次分享要展示的卡片。",
-    "只会导出你勾选的卡片。价格、成本、购买渠道和备注不会进入分享包。",
-    "基于已选卡片生成中文展馆标题、封面介绍、收藏叙事和分组说明。",
-    "保存前确认本次分享集包含的卡片。导出包不会包含价格、成本、购买渠道和备注。"
+    "先挑选本次分享要展示的卡牌。",
+    "只会导出你勾选的卡牌。价格、成本、购买渠道和备注不会进入分享包。",
+    "基于已选卡牌生成中文展馆标题、封面介绍、收藏叙事和分组说明。",
+    "保存前确认本次分享集包含的卡牌。导出包不会包含价格、成本、购买渠道和备注。"
   ]) {
     await expect(page.getByText(helper, { exact: true })).toHaveCount(0);
   }

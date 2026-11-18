@@ -97,7 +97,7 @@ export function assertExpenseKind(value: string): ExpenseKind {
 
 export function assertExpenseContext(value: string): ExpenseContext {
   if (!expenseContexts.includes(value as ExpenseContext)) {
-    throw new Error("费用归属必须选择计入买入成本、计入评级成本或从出售收入扣除。");
+    throw new Error("费用归属必须选择计入买入成本、计入评级成本或计入卖出成本。");
   }
   return value as ExpenseContext;
 }

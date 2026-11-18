@@ -1,6 +1,6 @@
 "use client";
 
-import { UiText } from "@/components/ui-text";
+import { UiElement, UiText } from "@/components/ui-text";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { errorMessage } from "@/lib/feedback-messages";
@@ -27,7 +27,6 @@ function clearRecognizedFields(input: HTMLInputElement): void {
     return;
   }
 
-  setCardFormText(form, "notes", "");
   // Clear supporting text first so automatic attribute checks cannot restore old flags.
   for (const field of cardRecognitionFields) {
     if (field !== "isRookie" && field !== "isAutograph" && field !== "isPatch") setCardFormText(form, field, "");
@@ -45,7 +44,6 @@ function applySuggestion(
     return [];
   }
 
-  setCardFormText(form, "notes", "");
   const applied: string[] = [];
 
   for (const field of cardRecognitionFields) {
@@ -84,9 +82,20 @@ export function AiRecognitionPanel({
   persistedRecognition
 }: AiRecognitionPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const alternateSource = useRef<HTMLDetailsElement>(null);
   const actionButtonRef = useRef<HTMLButtonElement>(null);
   const activeRequest = useRef<AbortController | null>(null);
   useEffect(() => () => activeRequest.current?.abort(), []);
+  useEffect(() => {
+    if (mode !== "create" || queueItemId) return;
+    const images = actionButtonRef.current?.form?.elements.namedItem("images");
+    if (!(images instanceof HTMLInputElement)) return;
+    const cancelStaleRequest = () => {
+      if (!alternateSource.current?.open) activeRequest.current?.abort();
+    };
+    images.addEventListener("change", cancelStaleRequest);
+    return () => images.removeEventListener("change", cancelStaleRequest);
+  }, [mode, queueItemId]);
   const [overwrite, setOverwrite] = useState(false);
   const [useExistingImages, setUseExistingImages] = useState(defaultImageUrls.length > 0);
   const [isPending, setIsPending] = useState(false);
@@ -109,11 +118,16 @@ export function AiRecognitionPanel({
 
   async function handleRecognize() {
     if (activeRequest.current) return;
-    const files = Array.from(fileInputRef.current?.files ?? []);
+    const useCardImages = mode === "create" && !alternateSource.current?.open;
+    const useSavedImages = mode === "edit" ? useExistingImages : useCardImages && defaultImageUrls.length > 0;
+    const archiveInput = actionButtonRef.current?.form?.elements.namedItem("images");
+    const files = useCardImages && archiveInput instanceof HTMLInputElement
+      ? Array.from(archiveInput.files ?? []).slice(0, 2)
+      : Array.from(fileInputRef.current?.files ?? []);
 
-    if (!useExistingImages && (files.length < 1 || files.length > 2)) {
+    if (!useSavedImages && (files.length < 1 || files.length > 2)) {
       setMessageIsError(true);
-      setMessage("请选择 1 到 2 张图片用于 AI 识别，或使用已有默认图片。");
+      setMessage(useCardImages ? "请先上传卡牌图片，或另选识别图片。" : "请选择 1 到 2 张图片用于 AI 识别。");
       return;
     }
 
@@ -126,7 +140,7 @@ export function AiRecognitionPanel({
     try {
       let suggestion: CardRecognitionSuggestion | undefined;
       let confidence: CardRecognitionConfidence | undefined;
-      if (queueItemId && useExistingImages) {
+      if (queueItemId && useSavedImages) {
         const response = await fetch(
           `/api/card-entry/queue/${encodeURIComponent(queueItemId)}/recognize`,
           { method: "POST", signal: controller.signal }
@@ -142,10 +156,10 @@ export function AiRecognitionPanel({
         confidence = data.recognition.confidence;
       } else {
         const formData = new FormData();
-        if (useExistingImages) {
+        if (useSavedImages) {
           const count = await appendUrlImages(formData, defaultImageUrls, controller.signal);
           if (count < 1) {
-            throw new Error("当前卡片没有可用于识别的已有图片。");
+            throw new Error("当前卡牌没有可用于识别的已有图片。");
           }
         } else {
           for (const file of files) {
@@ -195,35 +209,38 @@ export function AiRecognitionPanel({
     }
   }
 
+  const recognitionPicker = <label className="field">
+    {mode === "edit" ? <span><UiText text="识别图片" /></span> : null}
+    <UiElement as="input" uiAttributes={["aria-label"]} aria-label={mode === "create" ? "识别图片" : undefined} ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleImageSelectionChange} />
+  </label>;
+
   return (
     <div className="ai-recognition-panel">
-      <div className="title-row" style={{ marginBottom: "0.6rem" }}>
+      <div className={mode === "create" ? "form-section-heading" : "title-row"} style={mode === "edit" ? { marginBottom: "0.6rem" } : undefined}>
         <div>
           {mode === "create" ? <h2 className="ai-recognition-heading">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 6.3L21 12l-6.3 2.7L12 21l-2.7-6.3L3 12l6.3-2.7L12 3Z" /></svg>
             <UiText text="AI 识图录入" />
           </h2> : <strong><UiText text="AI 识图填充" /></strong>}
         </div>
-        <Link href="/settings" className={mode === "create" ? "btn btn-secondary btn-quiet" : "btn btn-secondary"}><UiText text={"AI 设置"} /></Link>
+        {mode === "edit" ? <Link href="/settings" className="btn btn-secondary"><UiText text="AI 设置" /></Link> : null}
       </div>
 
       <div className="ai-recognition-grid">
-        <label className="field">
-          <span><UiText text={"识别图片"} /></span>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            onChange={handleImageSelectionChange}
-          />
-        </label>
+        {mode === "create" ? <details ref={alternateSource} className="ai-alternate-source" onToggle={() => {
+          activeRequest.current?.abort();
+          setMessage(null);
+        }}>
+          <summary><UiText text="另选识别图片" /></summary>
+          {recognitionPicker}
+        </details> : recognitionPicker}
 
         <label className="field ai-checkbox-field">
           <span>
             <input type="checkbox" checked={overwrite} onChange={(event) => setOverwrite(event.target.checked)} /><UiText text={"覆盖当前字段"} /></span>
         </label>
         <div className="ai-actions">
+          {mode === "create" ? <Link href="/settings" className="btn btn-secondary btn-quiet"><UiText text="AI 设置" /></Link> : null}
           <button
             ref={actionButtonRef}
             type="button"
@@ -237,10 +254,10 @@ export function AiRecognitionPanel({
         </div>
       </div>
 
-      {defaultImageUrls.length > 0 ? (
+      {mode === "edit" && defaultImageUrls.length > 0 ? (
         <label className="field ai-existing-image-option">
           <span>
-            <input type="checkbox" checked={useExistingImages} onChange={(event) => setUseExistingImages(event.target.checked)} /><UiText text={" 使用"} />{mode === "edit" ? <UiText text={"已有默认"} /> : <UiText text={"队列预处理"} />}<UiText text={"图片识别"} /></span>
+            <input type="checkbox" checked={useExistingImages} onChange={(event) => setUseExistingImages(event.target.checked)} /><UiText text={" 使用"} /><UiText text={"已有默认"} /><UiText text={"图片识别"} /></span>
         </label>
       ) : null}
 

@@ -15,7 +15,7 @@ export const expenseKindLabels: Record<string, string> = {
   tax: "税费",
   insurance: "保险费",
   storage: "存储费",
-  marketplace_fee: "平台费用",
+  marketplace_fee: "销售扣点",
   other: "其他费用"
 };
 
@@ -28,13 +28,7 @@ export const expenseContextLabels: Record<string, string> = {
 export const expenseContextInputLabels: Record<string, string> = {
   purchase: "计入买入成本",
   grading: "计入评级成本",
-  sale: "从出售收入扣除"
-};
-
-export const expenseContextDescriptions: Record<string, string> = {
-  purchase: "这笔费用会增加球星卡的持仓成本。",
-  grading: "这笔费用会增加球星卡的持仓成本。",
-  sale: "这笔费用会从所选出售记录的收入中扣除。"
+  sale: "计入卖出成本"
 };
 
 export const positionEventLabels: Record<string, string> = {

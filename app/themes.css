@@ -1,6 +1,7 @@
 /* Application palettes come from lib/app-themes.ts. Classic uses the shared homepage background and original colors. */
 html[data-app-theme]:not([data-app-theme="classic"]) {
   color-scheme: var(--theme-color-scheme);
+  --theme-primary-button: var(--accent);
 }
 html[data-app-theme]:not([data-app-theme="classic"]) body {
   background: var(--theme-canvas);
@@ -30,13 +31,6 @@ html[data-app-theme]:not([data-app-theme="classic"]) .home-page :is(.panel, .car
   border-color: var(--line);
   box-shadow: var(--shadow-soft);
 }
-html[data-app-theme]:not([data-app-theme="classic"]) :is(.btn-primary, .btn-primary:hover) {
-  color: var(--theme-on-accent);
-  border-color: var(--accent);
-  background: var(--accent);
-  box-shadow: var(--shadow-soft);
-}
-html[data-app-theme]:not([data-app-theme="classic"]) .btn-primary:hover { background: var(--theme-accent-hover); }
 html[data-app-theme]:not([data-app-theme="classic"]) :is(.nav-links a.active, .financial-history-filters button[aria-pressed="true"]) {
   background: var(--accent);
   color: var(--theme-on-accent);
@@ -50,12 +44,6 @@ html[data-app-theme]:not([data-app-theme="classic"]) :is(input, select, textarea
   border-color: var(--teal);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 20%, transparent);
 }
-html[data-app-theme]:not([data-app-theme="classic"]) .share-list-actions .btn-danger {
-  color: var(--theme-negative);
-  background: var(--surface-soft);
-  border-color: var(--line);
-}
-html[data-app-theme]:not([data-app-theme="classic"]) .share-list-actions .btn-danger:hover { background: color-mix(in srgb, var(--theme-negative) 12%, var(--surface)); }
 
 .theme-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .85rem; min-width: 0; margin: 0; padding: 0; border: 0; }
 .theme-option { position: relative; display: grid; align-content: start; min-width: 0; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); cursor: pointer; }

@@ -15,7 +15,7 @@ function buildRecognitionPrompt(): string {
     `fields 和 confidence 只能使用这些字段：${cardRecognitionFields.join(", ")}。`,
     "不确定的信息不要编造，可省略字段；每个已返回字段都必须给出置信度。布尔字段只返回 true 或 false，其他字段返回字符串。",
     "不要估算购买价、评级费用、估值或购买渠道，不要填写 notes。",
-    "publicDescription 必须使用中文，侧重球星背景、代表成就和卡片收藏意义，不要只是罗列字段。"
+    "publicDescription 必须使用中文，侧重球星背景、代表成就和卡牌收藏意义，不要只是罗列字段。"
   ].join("\n");
 }
 

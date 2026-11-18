@@ -1,5 +1,6 @@
 "use server";
 
+import { optionalText } from "@/lib/form-data";
 import { requireAccount } from "@/lib/account-server";
 
 import { revalidatePath } from "next/cache";
@@ -15,7 +16,7 @@ import {
   updateCardTransaction,
   updateCardValuation
 } from "@/lib/financial-history-store";
-import { transactionInput, expenseInput, valuationInput, optionalText } from "@/lib/financial-history-input";
+import { transactionInput, expenseInput, valuationInput } from "@/lib/financial-history-input";
 import { prisma } from "@/lib/prisma";
 import { errorMessage } from "@/lib/feedback-messages";
 import { normalizeReturnTo } from "@/lib/query-params";

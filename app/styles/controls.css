@@ -104,7 +104,7 @@ summary.btn {
   border-width: 1px;
   border-style: solid;
   border-radius: var(--control-radius);
-  padding: .45rem .8rem;
+  padding: .45rem .9rem;
   font-family: inherit;
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
@@ -115,77 +115,52 @@ summary.btn {
     background-color 160ms ease,
     border-color 160ms ease,
     color 160ms ease,
-    box-shadow 160ms ease,
-    transform 120ms ease,
     opacity 160ms ease;
 }
 
-.btn, .btn-secondary { background: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.06); color: var(--ink); border-color: var(--line-strong); }
-
-a.btn:hover,
-button.btn:hover:not(:disabled) {
-  transform: translateY(-1px);
+.btn {
+  --button-fill: color-mix(in srgb, var(--ink) 7%, var(--surface));
+  --button-hover: color-mix(in srgb, var(--ink) 12%, var(--surface));
+  --button-text: var(--ink);
+  border-color: transparent;
+  background: var(--button-fill);
+  color: var(--button-text);
 }
 
-a.btn:focus-visible,
-button.btn:focus-visible {
-  outline: 3px solid rgba(62, 168, 168, 0.28);
+.btn:where(:hover):where(:not(:disabled, [aria-disabled="true"])) {
+  background: var(--button-hover);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--teal);
   outline-offset: 2px;
 }
 
-button.btn:disabled,
-button.btn[aria-disabled="true"] {
+.btn:is(:disabled, [aria-disabled="true"]) {
   cursor: not-allowed;
   opacity: 0.48;
-  transform: none;
-  box-shadow: none;
 }
 
 .btn-primary {
-  background: #c74616;
-  color: #fff;
-  border-color: rgba(139, 47, 16, 0.18);
-  box-shadow: 0 8px 18px rgba(217, 83, 30, 0.2);
-}
-
-.btn-primary:hover {
-  background: #b83e14;
-  box-shadow: 0 10px 22px rgba(217, 83, 30, 0.28);
-}
-
-
-
-.btn:not(.btn-primary):not(.btn-danger):hover:not(:disabled):not([aria-disabled="true"]) {
-  background: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.1);
-  border-color: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.18);
+  --button-fill: var(--theme-primary-button, #c74616);
+  --button-hover: var(--theme-accent-hover, #b83e14);
+  --button-text: var(--theme-on-accent, #fff);
 }
 
 .btn-danger {
-  background: #d0453a;
-  color: #fff;
-  border-color: rgba(126, 28, 24, 0.22);
-  box-shadow: 0 8px 18px rgba(208, 69, 58, 0.18);
+  --button-text: var(--theme-negative, #a62e26);
+  --button-fill: color-mix(in srgb, var(--button-text) 8%, var(--surface));
+  --button-hover: color-mix(in srgb, var(--button-text) 15%, var(--surface));
 }
 
-.btn-danger:hover {
-  background: #b9362e;
-  box-shadow: 0 10px 22px rgba(208, 69, 58, 0.24);
+.btn-quiet {
+  --button-fill: transparent;
+  --button-text: var(--muted-ink);
 }
 
-.btn.btn-quiet {
-  background: transparent;
-  border-color: transparent;
-  color: var(--muted-ink);
-  box-shadow: none;
-  transform: none;
-}
-.btn.btn-quiet.btn-soft { background: var(--surface-soft); color: var(--ink); }
-.btn.btn-quiet:not(.btn-primary):not(.btn-danger):hover:not(:disabled):not([aria-disabled="true"]) {
-  background: rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.06);
-  border-color: transparent;
-  color: var(--ink);
-  box-shadow: none;
-  transform: none;
+.btn-soft {
+  --button-fill: var(--surface-soft);
+  --button-text: var(--ink);
 }
 
 .form-grid {
@@ -616,7 +591,6 @@ textarea {
 .financial-record-description { display: grid; gap: 0.24rem; min-width: 0; }
 .financial-record-description > div { display: flex; align-items: center; gap: 0.5rem; }
 .financial-record-description small { color: var(--muted-ink); overflow-wrap: anywhere; }
-.financial-record-link { color: var(--theme-link, #1d6168) !important; }
 .financial-record-amount { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; min-width: 0; }
 
 .financial-kind {

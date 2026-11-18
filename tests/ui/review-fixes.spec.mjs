@@ -57,12 +57,10 @@ test('financial saves synchronize sold and repurchased status and retain other r
   form = await open('expense');
   await expect(form.locator('[name=amount]')).toHaveValue('37');
   await form.locator('[name=context]').selectOption('sale');
-  const saleId = fixture(db => db.prepare("SELECT id FROM CardTransaction WHERE cardId='review-finance' AND kind='sale'").get().id);
-  await form.locator('[name=transactionId]').selectOption(saleId);
   await form.locator('[name=occurredAt]').fill('2026-10-01');
   await form.getByRole('button', { name: '保存费用', exact: true }).click();
   await expect(finance.getByRole('status')).toHaveText('财务记录已保存。');
-  expect(fixture(db => db.prepare("SELECT transactionId FROM CardExpense WHERE cardId='review-finance'").get().transactionId)).toBe(saleId);
+  expect(fixture(db => db.prepare("SELECT transactionId FROM CardExpense WHERE cardId='review-finance'").get().transactionId)).toBeNull();
   await archive.getByRole('button', { name: '保存修改', exact: true }).click();
   await expect(page).toHaveURL(/\/cards\/review-finance\?/);
   expect(fixture(db => db.prepare("SELECT collectionStatus,holdingQuantity,playerName FROM Card WHERE id='review-finance'").get())).toMatchObject({collectionStatus:'sold',holdingQuantity:0,playerName:'Preserved archive draft'});

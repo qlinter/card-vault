@@ -21,7 +21,7 @@ export function PortfolioOverview({ result, workspace, returnTo, detailsHref, qu
       {metric.value === null ? <Link href={qualityHref}><UiText text="查看原因" /></Link> : metric.key === "value" && !coverage.complete ? <small><UiText text="已估值部分" /></small> : <small>{workspace.currency}</small>}
     </article>)}</section>
     <div className={styles.meta} data-testid="data-counts">
-      <span><UiText text="全部卡片" /> <b>{snapshot.cardCount}</b> <UiText text="项" /></span>
+      <span><UiText text="全部卡牌" /> <b>{snapshot.cardCount}</b> <UiText text="项" /></span>
       <span><UiText text="当前持有" /> <b>{snapshot.activeCount}</b> <UiText text="项" /> · <b>{workspace.quantity}</b> <UiText text="张" /></span>
       <span><UiText text="估值覆盖" /> <b>{percent(coverage.valuedCount, coverage.eligibleCount)}</b> ({coverage.valuedCount}/{coverage.eligibleCount})</span>
       <span><UiText text="已售" /> <b>{snapshot.soldCount}</b> <UiText text="项" /></span>

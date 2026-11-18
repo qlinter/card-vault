@@ -50,7 +50,7 @@ test("历史估值按目标日期的最新估值和当时持仓数量计算", ()
   ]);
 });
 
-test("历史重建使用业务日期，不因卡片后来导入而丢失早期记录", () => {
+test("历史重建使用业务日期，不因卡牌后来导入而丢失早期记录", () => {
   const importedLater = card({
     createdAt: new Date("2026-08-01"),
     transactions: [{ kind: "purchase", amountMinor: 10000n, currency: "CNY", quantity: 1, occurredAt: new Date("2026-01-05") }],

@@ -19,7 +19,7 @@ export function ShareGalleryCardsPanel({
     <section className="panel share-section share-editor-v2-panel">
       <div className="share-section-head">
         <h2><UiText text={"单卡展示编辑"} /></h2>
-        <span className="muted">{cards.length}<UiText text={" 张卡片"} /></span>
+        <span className="muted">{cards.length}<UiText text={" 张卡牌"} /></span>
       </div>
       <div className="share-item-editor">
         {cards.map((card) => {
@@ -48,15 +48,15 @@ export function ShareGalleryCardsPanel({
                 <UiElement as="span" uiAttributes={["title"]}
                   className="share-drag-handle"
                   draggable
-                  title="拖拽调整卡片顺序"
+                  title="拖拽调整卡牌顺序"
                   aria-hidden="true"
                   onDragStart={() => setDraggedCardId(card.id)}
                 >⠿</UiElement>
                 <strong>{card.playerName}</strong>
                 <p className="muted">{card.cardTitle}</p>
                 <UiElement as="div" uiMessages={{"aria-label": {text:"{0} 排序",values:[card.playerName],translateValues:[]}}} className="share-keyboard-order" >
-                  <UiElement as="button" uiAttributes={["title"]} type="button" className="icon-btn" title="上移卡片" onClick={() => onMoveCard(card.id, -1)} disabled={cards[0]?.id === card.id}>↑</UiElement>
-                  <UiElement as="button" uiAttributes={["title"]} type="button" className="icon-btn" title="下移卡片" onClick={() => onMoveCard(card.id, 1)} disabled={cards.at(-1)?.id === card.id}>↓</UiElement>
+                  <UiElement as="button" uiAttributes={["title"]} type="button" className="icon-btn" title="上移卡牌" onClick={() => onMoveCard(card.id, -1)} disabled={cards[0]?.id === card.id}>↑</UiElement>
+                  <UiElement as="button" uiAttributes={["title"]} type="button" className="icon-btn" title="下移卡牌" onClick={() => onMoveCard(card.id, 1)} disabled={cards.at(-1)?.id === card.id}>↓</UiElement>
                 </UiElement>
               </div>
               <label className="field share-sort-field">
@@ -68,10 +68,10 @@ export function ShareGalleryCardsPanel({
                 <input value={draft.displayTitle} placeholder={card.cardTitle} onChange={(event) => onDraftChange(card.id, { displayTitle: event.target.value })} />
               </label>
               <label className="field full">
-                <span><UiText text={"卡片故事（公开）"} /></span>
+                <span><UiText text={"卡牌故事（公开）"} /></span>
                 <textarea
                   value={draft.displayDescription}
-                  placeholder={card.publicDescription || "写下这张卡为何重要；留空时使用卡片公开描述"}
+                  placeholder={card.publicDescription || "写下这张卡为何重要；留空时使用卡牌公开描述"}
                   onChange={(event) => onDraftChange(card.id, { displayDescription: event.target.value })}
                 />
               </label>

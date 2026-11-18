@@ -3,7 +3,7 @@
 import { UiElement, UiText } from "@/components/ui-text";
 import { cardImageSelectionError } from "@/lib/card-image-limits.js";
 import type { DraftImage } from "@/lib/card-entry-draft-images.js";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import {
   cardImageRotationStyle,
   normalizeCardImageRotation,
@@ -32,6 +32,7 @@ type NewImagePreview = {
 };
 
 type CardImageFieldsProps = {
+  children?: ReactNode;
   mode: "create" | "edit";
   cardTitle: string;
   existingImages: ExistingImage[];
@@ -48,7 +49,7 @@ function RotationButtons({ label, onLeft, onRight }: { label: string; onLeft: ()
   );
 }
 
-export function CardImageFields({ mode, cardTitle, existingImages, queuedImages, draftImages }: CardImageFieldsProps) {
+export function CardImageFields({ mode, cardTitle, existingImages, queuedImages, draftImages, children }: CardImageFieldsProps) {
   const [existingRotations, setExistingRotations] = useState<Record<string, number>>(() => Object.fromEntries(
     existingImages.map((image) => [image.id, normalizeCardImageRotation(image.rotation)])
   ));
@@ -146,6 +147,7 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages,
         <small><UiText text="支持 JPG、PNG、WebP，单张最多 15MB，总计最多 5 张。" /></small>
         {selectionError ? <span role="alert" className="note-error"><UiText text={selectionError} /></span> : null}
       </label>
+      {children}
 
       <input type="hidden" name="existingImageRotations" value={JSON.stringify(Object.fromEntries(
         Object.entries(existingRotations).map(([id, rotation]) => [id, toPersistedCardImageRotation(rotation)])
@@ -164,7 +166,7 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages,
             {newImages.map((image, index) => (
               <figure className="card-image-edit-item" key={image.id}>
                 <div className="card-image-preview-frame">
-                  <img src={image.url} alt={`${cardTitle || "卡片"} 新增图片 ${index + 1}`} style={cardImageRotationStyle(image.rotation, { continuous: true })} />
+                  <img src={image.url} alt={`${cardTitle || "卡牌"} 新增图片 ${index + 1}`} style={cardImageRotationStyle(image.rotation, { continuous: true })} />
                 </div>
                 <figcaption>{image.name}</figcaption>
                 <RotationButtons label={`第 ${index + 1} 张新增图片`} onLeft={() => rotateNew(image.id, -1)} onRight={() => rotateNew(image.id, 1)} />

@@ -60,7 +60,7 @@ for (const locale of ["zh", "en"]) {
     await expect(page.getByRole("link", { name: locale === "en" ? "Back" : "返回上一页", exact: true })).toHaveAttribute("href", returnTo);
     await page.locator(".title-row").getByRole("link", { name: locale === "en" ? "Edit" : "编辑", exact: true }).click();
     await expect(page.locator(".title-row").getByRole("link", { name: label, exact: true })).toHaveCount(0);
-    await expect(page.getByText(locale === "en" ? "Financial records are managed separately from card details" : "财务记录已从卡片资料中分离", { exact: true })).toHaveCount(0);
+    await expect(page.getByText(locale === "en" ? "Financial records are managed separately from card details" : "财务记录已从卡牌资料中分离", { exact: true })).toHaveCount(0);
     const cancel = page.getByRole("link", { name: locale === "en" ? "Cancel" : "取消", exact: true });
     await expect(cancel).toHaveAttribute("href", detailHref);
     await cancel.click();
@@ -240,10 +240,13 @@ test("single-currency purchases and a cross-currency sale share one reporting va
 
   form = await openComposer(page, "费用");
   await form.locator('[name="context"]').selectOption("sale");
+  await expect(form.locator('[name="context"] option[value="sale"]')).toHaveText("计入卖出成本");
+  await expect(form.locator('label:has(select[name="context"]) small')).toHaveCount(0);
+  await expect(form.locator('[name="transactionId"]')).toHaveCount(0);
+  await expect(form.locator('[name="kind"] option[value="marketplace_fee"]')).toHaveText("销售扣点");
+  await form.locator('[name="kind"]').selectOption("marketplace_fee");
   await form.locator('[name="amount"]').fill("10");
   await form.locator('[name="occurredAt"]').fill("2026-02-01");
-  const saleId = fixtureDb((db) => db.prepare("SELECT id FROM CardTransaction WHERE cardId='finance-ui' AND kind='sale'").get().id);
-  await form.locator('[name="transactionId"]').selectOption(saleId);
   await form.getByRole("button", { name: "保存费用" }).click();
   await expect(page.locator(".financial-overview")).toContainText("+CNY 290.00");
 

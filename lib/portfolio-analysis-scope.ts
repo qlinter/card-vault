@@ -24,7 +24,9 @@ export const portfolioFilterDefinitions = {
   certNumber: "证书号",
   visibility: "公开状态",
   collectionStatus: "收藏状态"
-} as const;
+} as const satisfies Record<PortfolioFilterField, string>;
+
+export const portfolioFilterFields = Object.keys(portfolioFilterDefinitions) as PortfolioFilterField[];
 
 export type PortfolioFilterInput = Record<string, string | undefined>;
 
@@ -43,7 +45,7 @@ export function normalizePortfolioFilterInput(value: unknown): PortfolioFilterIn
 
   const source = value as Record<string, unknown>;
   const normalized: PortfolioFilterInput = {};
-  for (const field of Object.keys(portfolioFilterDefinitions) as PortfolioFilterField[]) {
+  for (const field of portfolioFilterFields) {
     const candidate = source[field];
     if (candidate === undefined || candidate === null || candidate === "") continue;
     if (typeof candidate !== "string") {
@@ -62,7 +64,7 @@ export function normalizePortfolioFilterInput(value: unknown): PortfolioFilterIn
   return normalized;
 }
 
-function displayFilterValue(field: PortfolioFilterField, value: string): string {
+export function displayPortfolioFilterValue(field: PortfolioFilterField, value: string): string {
   if (booleanFilterFields.has(field)) return value === "true" ? "是" : value === "false" ? "否" : value;
   if (field === "visibility") return Object.hasOwn(visibilityLabels, value) ? visibilityLabels[value] : value;
   if (field === "collectionStatus") return collectionStatusText(value);
@@ -71,10 +73,10 @@ function displayFilterValue(field: PortfolioFilterField, value: string): string 
 
 export function buildPortfolioScope(input: PortfolioFilterInput, titles: Partial<Record<PortfolioFilterField, string>> = {}): PortfolioScope {
   const criteria: PortfolioFilterCriterion[] = [];
-  for (const field of Object.keys(portfolioFilterDefinitions) as PortfolioFilterField[]) {
+  for (const field of portfolioFilterFields) {
     const value = input[field]?.trim();
     if (value && booleanFilterFields.has(field) && !isBooleanFilterValue(value)) continue;
-    if (value) criteria.push({ field, label: portfolioFilterDefinitions[field], value: titles[field] ?? displayFilterValue(field, value) });
+    if (value) criteria.push({ field, label: portfolioFilterDefinitions[field], value: titles[field] ?? displayPortfolioFilterValue(field, value) });
   }
   return { isFiltered: criteria.length > 0, criteria };
 }
@@ -85,12 +87,8 @@ export function portfolioScopeInstructions(scope: PortfolioScope): string[] {
   return [
     `本次分析对象是筛选结果，不是完整收藏。筛选条件：${criteria}。`,
     "必须把上述筛选条件视为用户主动设定的研究范围，不得因为被筛选字段在结果中高度集中，就将其判断为集中度风险、结构缺陷或扣分项。",
-    "例如筛选条件为“运动类型=足球”时，不得提出“足球卡占比过高”；筛选 Team、卡片主体关键词、年份、评级或签名属性时同理。",
+    "例如筛选条件为“运动类型=足球”时，不得提出“足球卡占比过高”；筛选 Team、卡牌主体关键词、年份、评级或签名属性时同理。",
     "组合结构只评价筛选范围内部仍可比较的维度，并明确结论仅适用于当前筛选结果，不得外推到用户的完整收藏。",
     "summary 和 structure 中应明确说明分析基于当前筛选范围。"
   ];
-}
-
-export function displayPortfolioFilterValue(field: PortfolioFilterField, value: string): string {
-  return displayFilterValue(field, value);
 }

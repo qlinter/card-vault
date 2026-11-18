@@ -11,7 +11,7 @@ function useViewMode(scope: string, initial: ViewMode): [ViewMode, (mode: ViewMo
 }
 function ViewModeToggle({ value, onChange, modes }: { value: ViewMode; onChange: (mode: ViewMode) => void; modes: ViewMode[] }) {
   const { locale } = useLanguage();
-  const labels = locale === "en" ? { grid: "Cards", list: "List", table: "Table" } : { grid: "卡片", list: "列表", table: "表格" };
+  const labels = locale === "en" ? { grid: "Cards", list: "List", table: "Table" } : { grid: "卡牌", list: "列表", table: "表格" };
   return (
     <div className="view-mode-toggle" role="group" aria-label={locale === "en" ? "View mode" : "视图切换"}>
       {modes.map(mode => {

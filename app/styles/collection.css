@@ -53,11 +53,7 @@ form.home-filter-form > .filters { grid-template-columns: minmax(220px, 3fr) rep
 .entry-ai-tools { margin: 0 0 .5rem; }
 .entry-ai-tools[open] > summary { margin-bottom: .5rem; }
 .entry-ai-tools .ai-recognition-panel { margin-bottom: .5rem; }
-.card-entry-form .entry-ai-tools { margin: 0; padding-bottom: .25rem; border-bottom: 1px solid var(--line); }
-.card-entry-form .entry-ai-tools > summary { min-height: 44px; padding: .4rem 0 .6rem; color: var(--teal); font-size: var(--text-md); font-weight: var(--weight-bold); }
-.card-entry-form .entry-ai-tools > summary:hover { color: var(--ink); }
 .card-entry-form .entry-duplicate-slot:empty { display: none; }
-.card-entry-form .card-image-upload { padding-top: 0; border-top: 0; }
 .entry-page > .financial-history { margin-top: 1rem; }
 .card-detail-attributes, .card-detail-note, .card-detail-visibility { margin-top: .8rem; }
 .card-detail-page .details { align-items: start; }

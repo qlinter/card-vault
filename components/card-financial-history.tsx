@@ -6,7 +6,7 @@ import { useState } from "react";
 import { paymentComponents, type FinancialConfig } from "@/lib/financial-reporting";
 import { saveFinancialRecordFormAction, deleteFinancialRecordAction } from "@/app/actions/financial-history";
 import { recordVersion } from "@/lib/record-version";
-import { ExpenseForm, TransactionForm, ValuationForm, type ExpenseSaleTransaction } from "@/components/financial-history-forms";
+import { ExpenseForm, TransactionForm, ValuationForm } from "@/components/financial-history-forms";
 import { FinancialPositionOverview } from "@/components/financial-position-overview";
 import { formatMinorMoney } from "@/lib/financial-history";
 import {
@@ -28,7 +28,7 @@ type FinancialHistoryProps = {
   expenses: CardExpense[];
   valuations: CardValuation[];
   editorOnly?: false;
-} | { editorOnly: true; cardId: string; returnTo?: string; transactions: ExpenseSaleTransaction[] };
+} | { editorOnly: true; cardId: string; returnTo?: string };
 
 type TimelineItem =
   | { type: "transaction"; date: Date; record: CardTransaction }
@@ -83,7 +83,7 @@ function recordSource(item: TimelineItem): string | null {
   return valuationSourceLabel(item.record.source);
 }
 
-function AddRecord({ cardId, returnTo, transactions, recordKind, open, onKindChange, onClose, stayOnPage, onSaved }: { cardId: string; returnTo?: string; transactions: ExpenseSaleTransaction[]; recordKind: NewRecordKind; open: boolean; onKindChange: (kind: NewRecordKind) => void; onClose: () => void; stayOnPage?: boolean; onSaved: () => void }) {
+function AddRecord({ cardId, returnTo, recordKind, open, onKindChange, onClose, stayOnPage, onSaved }: { cardId: string; returnTo?: string; recordKind: NewRecordKind; open: boolean; onKindChange: (kind: NewRecordKind) => void; onClose: () => void; stayOnPage?: boolean; onSaved: () => void }) {
   const [versions, setVersions] = useState({ purchase: 0, sale: 0, expense: 0, valuation: 0 });
   const [pending, setPending] = useState(false);
   const action = (type: RecordType, kind: NewRecordKind) => {
@@ -109,14 +109,14 @@ function AddRecord({ cardId, returnTo, transactions, recordKind, open, onKindCha
       <div className="financial-record-composer">
         <div hidden={recordKind !== "purchase"}><TransactionForm key={versions.purchase} action={action("transaction", "purchase")} submitLabel="保存交易" transactionKind="purchase" /></div>
         <div hidden={recordKind !== "sale"}><TransactionForm key={versions.sale} action={action("transaction", "sale")} submitLabel="保存交易" transactionKind="sale" /></div>
-        <div hidden={recordKind !== "expense"}><ExpenseForm key={versions.expense} action={action("expense", "expense")} submitLabel="保存费用" transactions={transactions} /></div>
+        <div hidden={recordKind !== "expense"}><ExpenseForm key={versions.expense} action={action("expense", "expense")} submitLabel="保存费用" /></div>
         <div hidden={recordKind !== "valuation"}><ValuationForm key={versions.valuation} action={action("valuation", "valuation")} submitLabel="保存估值" /></div>
       </div>
     </div>
   );
 }
 
-function TimelineRecord({ cardId, item, returnTo, transactions }: { cardId: string; item: TimelineItem; returnTo?: string; transactions: CardTransaction[] }) {
+function TimelineRecord({ cardId, item, returnTo }: { cardId: string; item: TimelineItem; returnTo?: string }) {
   const [isEditing, setIsEditing] = useState(false);
   const record = item.record;
   const [editVersion] = useState(() => recordVersion(record));
@@ -124,9 +124,6 @@ function TimelineRecord({ cardId, item, returnTo, transactions }: { cardId: stri
   const updateAction = saveFinancialRecordFormAction.bind(null, cardId, item.type, record.id, returnTo);
   const deleteAction = deleteFinancialRecordAction.bind(null, cardId, item.type, record.id, returnTo, editVersion);
   const source = recordSource(item);
-  const linkedSale = item.type === "expense" && item.record.transactionId
-    ? transactions.find((transaction) => transaction.id === item.record.transactionId)
-    : null;
 
   return (
     <article className={`financial-timeline-item financial-timeline-${item.type}`}>
@@ -134,14 +131,13 @@ function TimelineRecord({ cardId, item, returnTo, transactions }: { cardId: stri
       <div className="financial-record-description">
         <div><span className={`financial-kind financial-kind-${item.type}`}><UiText text={filterLabels[item.type]} /></span>{recordTitle(item) !== filterLabels[item.type] ? <strong><UiText text={recordTitle(item)} /></strong> : null}</div>
         <small><UiText text={recordImpact(item)} /></small>
-        {linkedSale ? <small className="financial-record-link">{<UiText text={"关联 {0} 出售"} values={[formatHistoryDateInput(linkedSale.occurredAt)]} />}</small> : null}
       </div>
       <strong className={`financial-record-amount ${item.type === "valuation" ? "is-neutral" : item.type === "transaction" && item.record.kind === "sale" ? "is-positive" : "is-negative"}`}>{recordAmount(item)}</strong>
       <button type="button" className="btn btn-secondary financial-edit-trigger" aria-expanded={isEditing} aria-controls={editorId} onClick={() => setIsEditing((open) => !open)}><UiText text={isEditing ? "收起" : "编辑"} /></button>
       <div id={editorId} className="financial-correction-body" hidden={!isEditing}>
           {source || record.notes ? <div className="financial-record-context">{source ? <span><UiText text={"来源 / 服务方："} />{item.type === "valuation" ? <UiText text={source} /> : source}</span> : null}{record.notes ? <span><UiText text={"备注："} />{record.notes}</span> : null}</div> : null}
           {item.type === "transaction" ? <TransactionForm action={updateAction} submitLabel="保存修改" marker={`${item.type}-${record.id}`} record={item.record} /> : null}
-          {item.type === "expense" ? <ExpenseForm action={updateAction} submitLabel="保存修改" marker={`${item.type}-${record.id}`} record={item.record} transactions={transactions} /> : null}
+          {item.type === "expense" ? <ExpenseForm action={updateAction} submitLabel="保存修改" marker={`${item.type}-${record.id}`} record={item.record} /> : null}
           {item.type === "valuation" ? <ValuationForm action={updateAction} submitLabel="保存修改" marker={`${item.type}-${record.id}`} record={item.record} /> : null}
           <form action={deleteAction} className="financial-delete-form">
             <button className="btn btn-danger" type="submit"><UiText text={"删除这条记录"} /></button>
@@ -165,7 +161,7 @@ export function CardFinancialHistory(props: FinancialHistoryProps) {
   const visibleTimeline = filter === "all" ? timeline : timeline.filter((item) => item.type === filter);
   const counts: Record<HistoryFilter, number> = {
     all: timeline.length,
-    transaction: props.transactions.length,
+    transaction: props.editorOnly ? 0 : props.transactions.length,
     expense: props.editorOnly ? 0 : props.expenses.length,
     valuation: props.editorOnly ? 0 : props.valuations.length
   };
@@ -186,7 +182,7 @@ export function CardFinancialHistory(props: FinancialHistoryProps) {
         </div>
       </div>
       {saved ? <p className="note-ok" role="status"><UiText text="财务记录已保存。" /></p> : null}
-      <AddRecord cardId={props.cardId} returnTo={props.returnTo} transactions={props.transactions} recordKind={recordKind} open={adding} onKindChange={setRecordKind} onClose={() => setAdding(false)} stayOnPage={props.editorOnly} onSaved={() => { setAdding(false); setSaved(true); }} />
+      <AddRecord cardId={props.cardId} returnTo={props.returnTo} recordKind={recordKind} open={adding} onKindChange={setRecordKind} onClose={() => setAdding(false)} stayOnPage={props.editorOnly} onSaved={() => { setAdding(false); setSaved(true); }} />
       {!props.editorOnly ? timeline.length ? <FinancialPositionOverview transactions={props.transactions} expenses={props.expenses} valuations={props.valuations} config={props.config} holdingQuantity={props.holdingQuantity} collectionStatus={props.collectionStatus} /> : <p className="muted"><UiText text="暂无财务记录。" /></p> : null}
       {!props.editorOnly && timeline.length ? <details className="financial-history-details"><summary><UiText text="历史记录" /> · {timeline.length}</summary><div className="financial-timeline">
         <div className="financial-timeline-heading">
@@ -198,7 +194,7 @@ export function CardFinancialHistory(props: FinancialHistoryProps) {
           </UiElement>
         </div>
         {visibleTimeline.length
-          ? visibleTimeline.map((item) => <TimelineRecord key={`${item.type}-${item.record.id}`} cardId={props.cardId} item={item} returnTo={props.returnTo} transactions={props.transactions} />)
+          ? visibleTimeline.map((item) => <TimelineRecord key={`${item.type}-${item.record.id}`} cardId={props.cardId} item={item} returnTo={props.returnTo} />)
           : <p className="financial-empty muted"><UiText text={"暂无"} />{filter === "all" ? null : <UiText text={filterLabels[filter]} />}<UiText text={"记录。"} /></p>}
       </div></details> : null}
     </section>

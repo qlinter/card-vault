@@ -101,7 +101,7 @@ export function siteJs(): string {
         visibleCount = nextVisibleCount;
         if (status) status.textContent = "已显示 " + visibleCount + " / " + items.length;
         const remaining = items.length - visibleCount;
-        button.textContent = remaining > 0 ? "显示更多（剩余 " + remaining + "）" : "已显示全部卡片";
+        button.textContent = remaining > 0 ? "显示更多（剩余 " + remaining + "）" : "已显示全部卡牌";
         button.hidden = remaining === 0;
       });
     });

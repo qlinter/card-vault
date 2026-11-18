@@ -21,7 +21,7 @@ function record(overrides: Partial<PortfolioQualityRecord> = {}): PortfolioQuali
   };
 }
 
-test("组合质量清单忽略资料完整且估值新鲜的卡片", () => {
+test("组合质量清单忽略资料完整且估值新鲜的卡牌", () => {
   const result = buildPortfolioQualityCards([record()], new Date("2026-08-25T00:00:00.000Z"));
   assert.deepEqual(result, []);
 });
@@ -57,7 +57,7 @@ test("组合质量清单识别超过 180 天的估值并按优先级排序", () 
   assert.deepEqual(result[1].issues, ["估值超过 180 天"]);
 });
 
-test("组合质量清单处理所有传入的收藏卡片", () => {
+test("组合质量清单处理所有传入的收藏卡牌", () => {
   const result = buildPortfolioQualityCards([
     record({ id: "sold", valuations: [], transactionCount: 0, imageCount: 0 }),
     record({ id: "target", valuations: [], transactionCount: 0, imageCount: 0 }),

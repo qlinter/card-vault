@@ -1,15 +1,17 @@
 export const currentReleaseNotes = {
-  "date": "2026-11-16",
+  "date": "2026-11-18",
   "highlights": {
     "zh": [
-      "新增离线本地账户：创建用户名和密码，保存恢复码后进入现有收藏。",
-      "新增登录和退出登录；Windows 锁屏后需要重新登录，页面、图片、接口和桌面功能统一受保护。",
-      "账户与安全支持修改用户名、密码及更换恢复码；收藏备份与账户分开保存。"
+      "新增卡牌时，AI 默认读取卡牌图片，也可另选识别图片。",
+      "分享保存进度与错误集中在底部操作栏。统计明细横向滚动时固定卡牌名称。",
+      "费用统一按买入、评级或卖出归属登记，销售扣点可直接计入卖出成本。",
+      "展馆浏览支持排除已售，展墙网格隐藏空字段，收藏筛选按当前输入启用清空操作。"
     ],
     "en": [
-      "Create an offline local account and save a recovery code to enter your existing collection.",
-      "Sign in and sign out. Windows screen lock requires sign-in again; pages, media, APIs and desktop operations share access protection.",
-      "Account & security manages usernames, passwords and recovery codes. Collection backups remain separate from device accounts."
+      "AI Image Entry uses the card images by default, with an optional separate image source.",
+      "Share previews show saving progress and errors in the action bar. Card names stay visible when scrolling the statistics details horizontally.",
+      "Record expenses against purchase, grading or selling costs. Sales commissions can be recorded directly as selling costs.",
+      "Showcase browsing can exclude sold cards. The grid hides empty fields, and Clear Filters follows current input."
     ]
   }
 };

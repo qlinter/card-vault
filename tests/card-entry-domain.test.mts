@@ -79,6 +79,6 @@ test("entry intent is allowlisted and domain validation remains centralized", ()
   assert.equal(manuallyChecked.isPatch, true);
   assert.throws(
     () => buildCardData({ ...emptyCardFormValues, cardTitle: "Card", sport: "Basketball" }),
-    /卡片主体/
+    /卡牌主体/
   );
 });

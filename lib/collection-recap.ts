@@ -10,7 +10,7 @@ export function recapStats(spec: RecapSpec, summary: RecapSummary) {
   return [
     { label: spec.basis === "purchase" ? "购入张数" : "新增档案", value: summary.quantity },
     { label: "涉及档案", value: summary.cardCount },
-    { label: "卡片主体", value: summary.subjectCount },
+    { label: "卡牌主体", value: summary.subjectCount },
     { label: "产品线", value: summary.seriesCount },
     { label: "签名档案", value: summary.autograph },
     { label: "评级档案", value: summary.graded }
@@ -46,7 +46,7 @@ export function recapDefaultTitle(spec: Pick<RecapSpec, "year" | "month">, local
 }
 
 export function representativeIds(value: unknown): string[] {
-  if (!Array.isArray(value) || value.length > 6 || value.some(id => typeof id !== "string" || !id || id.length > 100) || new Set(value).size !== value.length) throw new Error("代表卡片最多选择六张，且不能重复。");
+  if (!Array.isArray(value) || value.length > 6 || value.some(id => typeof id !== "string" || !id || id.length > 100) || new Set(value).size !== value.length) throw new Error("代表卡牌最多选择六张，且不能重复。");
   return value as string[];
 }
 

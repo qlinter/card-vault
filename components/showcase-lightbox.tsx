@@ -55,7 +55,7 @@ export function ShowcaseLightbox({ cardTitle, images, activeIndex, rotation, onS
   }
   return <>
     <button type="button" className="showcase-tool showcase-expand" aria-label={t("查看大图")} title={t("查看大图")} onClick={() => { changeZoom(1); dialog.current?.showModal(); setOpen(true); }}><ShowcaseIcon name="expand" /></button>
-    <dialog ref={dialog} className="showcase-lightbox" aria-label={t("卡片大图")} onClose={() => setOpen(false)} onKeyDown={keyDown}>
+    <dialog ref={dialog} className="showcase-lightbox" aria-label={t("卡牌大图")} onClose={() => setOpen(false)} onKeyDown={keyDown}>
       <div className="showcase-lightbox-head"><span className="showcase-lightbox-title">{cardTitle}</span><button type="button" className="showcase-tool" onClick={() => dialog.current?.close()} aria-label={t("关闭大图")}><ShowcaseIcon name="close" /></button></div>
       <div ref={viewport} className="showcase-lightbox-viewport" aria-label={t("大图浏览区域")}>
         {open ? <div className="showcase-lightbox-canvas" style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%` }}><ShowcaseImage key={active.id} src={active.path} alt={cardTitle} rotation={rotation} eager /></div> : null}

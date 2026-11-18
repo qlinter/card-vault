@@ -24,6 +24,6 @@ export function ImportJobResults({ job, busy, paused, stop, ...actions }: Props)
         {busy ? <button className="btn btn-secondary" onClick={onPause}>{l("完成当前批次后暂停", "Pause after current chunk")}</button> : null}
         <button className="btn btn-secondary" disabled={busy || !(job.counts.applied || job.counts["undo-failed"])} onClick={onUndoRequest}>{l("撤销本批次", "Undo this batch")}</button>
       </div>
-      {stop ? <p className="note-error">{l("将恢复本批次修改前的值，并删除本批次新建卡片。后续已修改的卡片会保留并提示冲突。", "Restore previous values and delete cards created by this batch. Later edits are preserved and reported as conflicts.")} <button className="btn btn-secondary" disabled={busy} onClick={onUndoConfirm}>{l("确认撤销", "Confirm undo")}</button> <button className="btn btn-secondary" onClick={onUndoCancel}>{l("取消", "Cancel")}</button></p> : null}
+      {stop ? <p className="note-error">{l("将恢复本批次修改前的值，并删除本批次新建卡牌。后续已修改的卡牌会保留并提示冲突。", "Restore previous values and delete cards created by this batch. Later edits are preserved and reported as conflicts.")} <button className="btn btn-secondary" disabled={busy} onClick={onUndoConfirm}>{l("确认撤销", "Confirm undo")}</button> <button className="btn btn-secondary btn-quiet" onClick={onUndoCancel}>{l("取消", "Cancel")}</button></p> : null}
     </section>;
 }

@@ -24,7 +24,7 @@ async function main() {
     initializeTestDatabase(env); server = startTestServer(port, env, output); await waitForServer(base, output, server, "Management"); db = new DatabaseSync(dbPath);
     const headers = ["playerName", "cardTitle", "sport", "purchasePrice", "purchaseDate", "currentValue", "valuationDate", "valuationSource"];
     const mapping = Object.fromEntries(headers.map(key => [key, key]));
-    const input = { action: "preview", headers, mapping, policy: "skip", rows: [["卡片数量", "备注", "Basketball", "120.25", "2026-01-01", "150", "2026-08-01", "个人估计"], ["Invalid", "Missing date", "Basketball", "42", "", "", "", ""]] };
+    const input = { action: "preview", headers, mapping, policy: "skip", rows: [["卡牌数量", "备注", "Basketball", "120.25", "2026-01-01", "150", "2026-08-01", "个人估计"], ["Invalid", "Missing date", "Basketball", "42", "", "", "", ""]] };
     const preview = await post(input); assert.equal(preview.rows[0].status, "pending"); assert.equal(preview.rows[1].status, "failed"); assert.equal(db.prepare("SELECT COUNT(*) n FROM Card").get().n, 0);
     const result = await all(preview.id, "apply"); assert.equal(result.status, "partial"); const cardId = result.rows[0].cardId;
     assert.equal(db.prepare("SELECT holdingQuantity FROM Card WHERE id=?").get(cardId).holdingQuantity, 1);
@@ -69,7 +69,7 @@ async function main() {
     const independent = await post({ action: "preview", headers: ["playerName", "cardTitle", "sport"], mapping: { playerName: "playerName", cardTitle: "cardTitle", sport: "sport" }, policy: "separate", rows: [["Paged", "Card 0", "Basketball"]] });
     assert.equal(independent.rows[0].status, "pending");
     const missingId = await post({ action: "preview", headers: ["id"], mapping: { id: "id" }, policy: "update", rows: [["not-present"]] });
-    assert.match(missingId.rows[0].error, /卡片 ID 不存在/);
+    assert.match(missingId.rows[0].error, /卡牌 ID 不存在/);
     await all(duplicatePreview.id, "undo");
     await all(paged.id, "undo"); assert.equal(db.prepare("SELECT COUNT(*) n FROM Card").get().n, 1);
     const exportResponse = await fetch(base + "/api/data-center?export=xlsx"); assert.equal(exportResponse.status, 200); const exported = new ExcelJS.Workbook(); await exported.xlsx.load(Buffer.from(await exportResponse.arrayBuffer())); assert.equal(exported.worksheets[0].name, "Cards"); assert.equal(exported.getWorksheet("Financial history").rowCount, 3);

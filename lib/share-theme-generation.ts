@@ -179,7 +179,7 @@ function buildPrompt(cards: SanitizedCard[], current: Record<string, unknown>): 
 
   return [
     "你是一个球星卡收藏展馆策展人。请基于用户选中的球星卡，为 Card Vault 分享集生成中文精品展馆文案。",
-    "目标读者是不一定熟悉这批卡的人，文字要有收藏叙事、球星生涯背景和卡片意义，不要写成字段列表。",
+    "目标读者是不一定熟悉这批卡的人，文字要有收藏叙事、球星生涯背景和卡牌意义，不要写成字段列表。",
     "不要提及购买价格、成本、估值、购买渠道、备注或任何私人信息。",
     "只输出最终 JSON，不要 Markdown，不要解释，不要输出思考过程。",
     "不要把思考过程、推理过程、分析过程、Reasoning、Thought process 写进任何 JSON 字段。",
@@ -190,7 +190,7 @@ function buildPrompt(cards: SanitizedCard[], current: Record<string, unknown>): 
     "description：封面介绍，2-4 句。",
     "themeNarrative：整体收藏叙事，2-4 段，可换行。",
     "themeHighlights：收藏亮点，每行一个亮点。",
-    "groupNotes：按卡片主体、年份、系列或主题给出分组说明，每行一个分组。",
+    "groupNotes：按卡牌主体、年份、系列或主题给出分组说明，每行一个分组。",
     "",
     JSON.stringify(
       {
@@ -207,8 +207,8 @@ export async function generateShareTheme(settings: ActiveAiSettings, payload: Re
   signal?.throwIfAborted();
   const cards = sanitizeCards(payload.cards);
   const current = payload.current && typeof payload.current === "object" ? payload.current as Record<string, unknown> : {};
-  if (cards.length === 0) throw new Error("请先选择至少一张卡片再生成主题。");
-  if (cards.length > 80) throw new Error("单次 AI 主题生成最多支持 80 张卡片。");
+  if (cards.length === 0) throw new Error("请先选择至少一张卡牌再生成主题。");
+  if (cards.length > 80) throw new Error("单次 AI 主题生成最多支持 80 张卡牌。");
   const temperature = settings.provider === "openai" ? 0.2 : 0.5;
   const content = await callChat(settings, buildPrompt(cards, current), 1400, temperature, signal);
   try {

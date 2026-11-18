@@ -23,7 +23,7 @@ test("simple wishes retain drafts, reject invalid budgets and support edit, sear
   await page.goto("/collection", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "新增心愿", exact: true }).click();
   await page.getByLabel("心愿名称 *", { exact: true }).fill("Scout UI 金签");
-  await page.getByLabel("卡片主体（可选）", { exact: true }).fill("Jordan Lee");
+  await page.getByLabel("卡牌主体（可选）", { exact: true }).fill("Jordan Lee");
   await page.getByLabel("预算（可选）", { exact: true }).fill("0");
   await page.getByLabel("备注（可选）", { exact: true }).fill("Long notes\n第二行");
   await page.screenshot({ path: testInfo.outputPath("simple-wish-editor.png"), fullPage: true });

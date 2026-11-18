@@ -293,7 +293,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
           <p>{t("确认删除自定义配置“{0}”吗？保存设置后删除生效。").replace("{0}", currentCustom.name)}</p>
           <div className="ai-provider-actions">
             <button type="button" className="btn btn-secondary" onClick={deleteCurrentCustomProvider} onKeyDown={handleDeleteKey}><UiText text="确认删除" /></button>
-            <button ref={cancelDeleteButton} type="button" className="btn btn-secondary" onClick={cancelDelete} onKeyDown={handleDeleteKey}><UiText text="取消" /></button>
+            <button ref={cancelDeleteButton} type="button" className="btn btn-secondary btn-quiet" onClick={cancelDelete} onKeyDown={handleDeleteKey}><UiText text="取消" /></button>
           </div>
         </div> : null}
 

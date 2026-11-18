@@ -105,7 +105,7 @@ export async function updateCardFormAction(cardId: string, _previousState: Creat
     });
 
     if (!existing) {
-      throw new Error("卡片不存在或已删除。");
+      throw new Error("卡牌不存在或已删除。");
     }
     assertCardEditVersion(existing, expectedVersion);
 
@@ -189,7 +189,7 @@ export async function deleteCardAction(cardId: string, expectedVersion: string):
   try {
     const images = await prisma.$transaction(async transaction => {
       const existing = await transaction.card.findUnique({ where: { id: cardId }, include: cardDeleteInclude });
-      if (!existing) throw new Error("卡片不存在或已删除。");
+      if (!existing) throw new Error("卡牌不存在或已删除。");
       assertCardDeleteVersion(existing, expectedVersion);
       await transaction.card.delete({ where: { id: cardId } });
       return existing.images;

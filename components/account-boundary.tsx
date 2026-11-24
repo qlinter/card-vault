@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { accountErrorMessage, signOutAccount, maskAccount, readAccountStatus, returnToSignIn, subscribeAccountEnd, SIGN_OUT_FAILURE_EVENT } from "@/lib/account-client";
+import { accountErrorMessage, changeGuestSession, signOutAccount, maskAccount, readAccountStatus, returnToSignIn, subscribeAccountEnd, SIGN_OUT_FAILURE_EVENT } from "@/lib/account-client";
 import { useLanguage } from "./language-provider";
 import { RecoveryConfirmation } from "./account-fields";
 
@@ -13,7 +13,7 @@ export function useAccountRecovery() {
   return showRecovery;
 }
 
-export function AccountBoundary({ children }: { children: React.ReactNode }) {
+export function AccountBoundary({ children, guest = false }: { children: React.ReactNode; guest?: boolean }) {
   const { locale } = useLanguage(), english = locale === "en";
   const [error, setError] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
@@ -35,8 +35,9 @@ export function AccountBoundary({ children }: { children: React.ReactNode }) {
       if (mask) maskAccount();
       try {
         const status = await readAccountStatus(originalFetch);
-        if (disposed) return;
-        if (!status.authenticated && !(recoveryActive.current && status.recoveryPending)) { leave(); return; }
+        if (disposed || document.documentElement.dataset.accountEnding === "true") return;
+        const valid = guest ? status.guest : status.authenticated || (recoveryActive.current && status.recoveryPending);
+        if (!valid) { leave(); return; }
         if (!disposed && document.documentElement.dataset.accountEnding !== "true") { delete document.documentElement.dataset.accountMasked; setError(""); }
       } catch {
         // A backup can temporarily stop the service. Keep an already masked page
@@ -63,7 +64,7 @@ export function AccountBoundary({ children }: { children: React.ReactNode }) {
       window.removeEventListener("focus", onFocus); document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener(SIGN_OUT_FAILURE_EVENT, onSignOutFailure);
     };
-  }, [english]);
+  }, [english, guest]);
   return <AccountRecoveryContext.Provider value={showRecovery}>
     <div className="account-private-content">{recoveryCode ? <div className="account-gateway">
       <section className="account-card panel" aria-labelledby="recovery-heading">
@@ -77,7 +78,10 @@ export function AccountBoundary({ children }: { children: React.ReactNode }) {
       <strong>Card Vault</strong>
       <p>{error || (english ? "Please sign in again" : "请重新登录")}</p>
       <button type="button" className="btn btn-secondary btn-quiet" onClick={async () => {
-        try { await signOutAccount(); } catch (problem) { setError(accountErrorMessage(problem, english)); }
+        try {
+          if (guest) await changeGuestSession("end-guest", "guest");
+          else await signOutAccount();
+        } catch (problem) { setError(accountErrorMessage(problem, english)); }
       }}>{english ? "Return to sign in" : "返回登录"}</button>
     </div>
   </AccountRecoveryContext.Provider>;

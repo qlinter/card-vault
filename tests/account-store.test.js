@@ -58,6 +58,30 @@ test("manual lock is not an account action and leaves a valid session intact", a
   assert.equal(store.status(result.token).authenticated, true);
 });
 
+test("guest handoff replaces owner access and guest sessions end on lock or restart", async t => {
+  const { store, config } = fixture(t);
+  const { token } = await setup(store);
+  assert.equal(store.status(token).guestEnabled, false);
+  await assert.rejects(store.execute("start-guest", {}, token), code("guest-disabled"));
+  await store.execute("set-guest", { enabled: true }, token);
+  await assert.rejects(store.execute("start-guest"), code("login-required"));
+
+  const { guestToken } = await store.execute("start-guest", {}, token);
+  assert.equal(store.status(token, guestToken).authenticated, false);
+  assert.equal(store.status(guestToken).recoveryPending, undefined);
+  assert.equal(store.status(guestToken, guestToken).guest, true);
+  assert.equal(fs.readFileSync(config.filePath, "utf8").includes(guestToken), false);
+  await assert.rejects(store.execute("set-guest", { enabled: false }, guestToken), code("login-required"));
+  assert.equal(createAccountStore({ ...config, runId: "next-run" }).status(undefined, guestToken).guest, false);
+  await store.lock();
+  assert.equal(store.status(undefined, guestToken).guest, false);
+
+  const next = await store.execute("start-guest");
+  await store.execute("end-guest", {}, undefined, next.guestToken);
+  assert.equal(store.status(undefined, next.guestToken).guest, false);
+  assert.equal(store.status().guestAvailable, true);
+});
+
 test("password change verifies the current password and revokes all sessions", async t => {
   const { store } = fixture(t), initial = await setup(store), nextPass = "a different long password";
   await assert.rejects(store.execute("change-password", { currentPassword: "wrong", password: nextPass }, initial.token), code("incorrect-credentials"));

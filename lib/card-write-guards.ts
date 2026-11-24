@@ -15,7 +15,7 @@ type Archive = Card & { images: CardImage[] };
 export function cardEditVersions(card: Archive) {
   // Financial writes update updatedAt and quantity independently of the archive form.
   const archive = Object.fromEntries(Object.entries(card).filter(([key]) => !["images", "createdAt", "updatedAt", "holdingQuantity"].includes(key)));
-  const pictureState = card.images.map(({ id, path, rotation }) => ({ id, path, rotation })).sort((a, b) => a.id.localeCompare(b.id));
+  const pictureState = card.images.map(({ id, path, rotation, sortOrder }) => ({ id, path, rotation, sortOrder })).sort((a, b) => a.id.localeCompare(b.id));
   const hash = (values: object) => createHash("sha256").update(JSON.stringify([Object.entries(values).sort(([a], [b]) => a.localeCompare(b)), pictureState])).digest("hex");
   const withoutStatus = Object.fromEntries(Object.entries(archive).filter(([key]) => key !== "collectionStatus"));
   return { version: hash(archive), archiveVersion: hash(withoutStatus) };

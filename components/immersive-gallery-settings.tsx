@@ -48,8 +48,8 @@ export function ImmersiveGallerySettings({ viewer, preferences, update, save, al
           <label>{t("播放顺序")}<select aria-label={t("播放顺序")} value={preferences.random ? "random" : "sequential"} onChange={event => { const random = event.target.value === "random"; update({ random }); viewer.setSession(state => state && changePlaybackOrder(state, random)); }}><option value="sequential">{t("顺序")}</option><option value="random">{t("随机")}</option></select></label>
           <label>{t("间隔（秒）")}<input type="number" min="1" max="3600" step="1" required title={t("可设置 1–3600 秒")} value={intervalDraft} onChange={event => { viewer.pause(); setIntervalDraft(event.target.value); if (event.target.validity.valid) viewer.setIntervalSeconds(Number(event.target.value)); }} onBlur={commitInterval} onKeyDown={event => { if (event.key === "Enter") event.currentTarget.blur(); }} /></label>
         </div>
-        <label className="gallery-setting-field">{t("播放模式")}<select value={viewer.allImages ? "all" : "first"} onChange={event => { viewer.pause(); viewer.setAllImages(event.target.value === "all"); }}>
-          <option value="first">{t("首图")}</option><option value="all">{t("全部")}</option>
+        <label className="gallery-setting-field">{t("播放模式")}<select value={preferences.studioImage ? "studio" : viewer.allImages ? "all" : "first"} onChange={event => { viewer.pause(); update({ studioImage: event.target.value === "studio" }); viewer.setAllImages(event.target.value === "all"); }}>
+          <option value="studio">{t("AI 展馆图")}</option><option value="first">{t("录入原图 · 首图")}</option><option value="all">{t("录入原图 · 全部")}</option>
         </select></label>
         {allowSoldFilter ? <label className="gallery-setting-check"><span>{t("排除已售")}</span><input type="checkbox" checked={viewer.excludeSold} onChange={event => viewer.updateSoldFilter(event.target.checked)} /></label> : null}
       </section>

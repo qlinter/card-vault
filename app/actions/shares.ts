@@ -1,5 +1,6 @@
 "use server";
 
+import { cardImageOrder } from "@/lib/card-image-order";
 import { requireAccount } from "@/lib/account-server";
 
 import { randomUUID } from "crypto";
@@ -8,6 +9,7 @@ import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { prefersStudioImages } from "@/lib/showcase-source-server";
 import { exportShareCollection, ShareExportMode } from "@/lib/share-export";
 import { removeManagedShareImage, saveShareImage } from "@/lib/share-media-service";
 import { createSharePresentation, sanitizeSharePresentationCards, serializeSharePresentation } from "@/lib/share-presentation";
@@ -286,7 +288,7 @@ export async function exportShareCollectionAction(shareId: string, formData: For
       include: {
         sections: { orderBy: { sortOrder: "asc" } },
         items: {
-          include: { card: { include: { images: { orderBy: { createdAt: "asc" } } } } },
+          include: { card: { include: { images: { orderBy: cardImageOrder } } } },
           orderBy: { sortOrder: "asc" }
         }
       }
@@ -299,7 +301,7 @@ export async function exportShareCollectionAction(shareId: string, formData: For
       throw new Error("分享集没有选中的卡牌。");
     }
 
-    const result = await exportShareCollection(collection, mode);
+    const result = await exportShareCollection(collection, mode, await prefersStudioImages());
     redirectPath = `/shares/${shareId}/export?success=${mode}&path=${encodeURIComponent(result.folderPath)}&zip=${encodeURIComponent(result.zipPath)}&report=${encodeURIComponent(result.reportPath)}&diff=${encodeURIComponent(result.diffPath)}&cards=${result.cardCount}&images=${result.imageCount}&files=${result.fileCount}&bytes=${result.totalBytes}&warnings=${result.warningCount}&first=${result.diff.isFirstExport ? "1" : "0"}&added=${result.diff.added}&removed=${result.diff.removed}&changed=${result.diff.changed}`;
   } catch (error) {
     const message = errorMessage(error, "导出失败，请稍后重试。");

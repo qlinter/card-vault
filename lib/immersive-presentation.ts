@@ -3,7 +3,7 @@ import { showcaseFacts } from "./showcase-presentation.ts";
 
 export type GallerySource = { q?: string; group?: string; spec?: RecapSpec; ids?: string[] };
 export type GalleryCard = {
-  id: string; playerName: string; cardTitle: string; collectionStatus: string;
+  id: string; playerName: string; cardTitle: string; collectionStatus?: string;
   year?: string | null; brand?: string | null; productLine?: string | null;
   parallel?: string | null; gradingCompany?: string | null; grade?: string | null;
   serialNumber?: string | null; serialRange?: string | null;
@@ -25,12 +25,13 @@ export type GalleryPreferences = {
   light: number;
   captions: boolean;
   interval: number;
+  studioImage?: boolean;
   allImages: boolean;
   random: boolean;
   excludeSold: boolean;
 };
 export const defaultGalleryPreferences: GalleryPreferences = {
-  scene: "spotlight", layout: "exhibition", artScale: 92, light: 65, captions: true, interval: 8, allImages: false, random: false, excludeSold: false
+  scene: "spotlight", layout: "exhibition", artScale: 92, light: 65, captions: true, interval: 8, studioImage: true, allImages: false, random: false, excludeSold: false
 };
 export function normalizePlaybackInterval(value: unknown, fallback = defaultGalleryPreferences.interval): number {
   return typeof value === "number" && Number.isFinite(value) ? Math.max(1, Math.min(3600, Math.round(value))) : fallback;
@@ -46,6 +47,7 @@ export function normalizeGalleryPreferences(value: unknown): GalleryPreferences 
     light: percentage(raw.light, defaultGalleryPreferences.light, 0),
     captions: typeof raw.captions === "boolean" ? raw.captions : true,
     interval: normalizePlaybackInterval(raw.interval),
+    studioImage: raw.studioImage !== false,
     allImages: typeof raw.allImages === "boolean" ? raw.allImages : false,
     random: typeof raw.random === "boolean" ? raw.random : false,
     excludeSold: raw.excludeSold === true

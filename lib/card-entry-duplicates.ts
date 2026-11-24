@@ -1,3 +1,4 @@
+import { cardImageOrder } from "./card-image-order.ts";
 import { normalizeCardFormValues } from "@/lib/card-entry-domain";
 import { prisma } from "@/lib/prisma";
 import {
@@ -21,12 +22,12 @@ export async function findCardEntryDuplicates(
     certNumber ? prisma.card.findMany({
       where: { certNumber, id: excludeId ? { not: excludeId } : undefined },
       orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 5,
-      include: { images: { take: 1, orderBy: { createdAt: "asc" } } }
+      include: { images: { take: 1, orderBy: cardImageOrder } }
     }) : Promise.resolve([]),
     playerName ? prisma.card.findMany({
       where: { playerName: { contains: playerName }, id: excludeId ? { not: excludeId } : undefined },
       orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 40,
-      include: { images: { take: 1, orderBy: { createdAt: "asc" } } }
+      include: { images: { take: 1, orderBy: cardImageOrder } }
     }) : Promise.resolve([])
   ]);
   const certificateIds = new Set(certificates.map(card => card.id));

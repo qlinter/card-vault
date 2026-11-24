@@ -96,6 +96,15 @@ function activeAiSettings(settings: AiSettingsFile): ActiveAiSettings {
   return { provider: "openai", ...settings.openai, proxy: settings.proxy };
 }
 
+export function hasStudioKey() {
+  try { return Boolean(getStudioAiSettings().apiKey); } catch { return false; }
+}
+
+export function getStudioAiSettings() {
+  const { openai, proxy } = getAiSettingsFile();
+  return { apiKey: openai.apiKey, model: openai.model, proxy };
+}
+
 export function getAiSettings(): ActiveAiSettings {
   return activeAiSettings(getAiSettingsFile());
 }

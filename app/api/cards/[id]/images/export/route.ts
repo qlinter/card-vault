@@ -1,3 +1,4 @@
+import { cardImageOrder } from "@/lib/card-image-order";
 import { copyFile, lstat, realpath } from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
@@ -12,7 +13,7 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const card = await prisma.card.findUnique({ where: { id }, select: { cardTitle: true, images: { orderBy: { createdAt: "asc" }, select: { path: true } } } });
+    const card = await prisma.card.findUnique({ where: { id }, select: { cardTitle: true, images: { orderBy: cardImageOrder, select: { path: true } } } });
     if (!card || !card.images.length) return NextResponse.json({ error: "没有可导出的卡牌图片。" }, { status: 404 });
     let filename = "", type = "application/zip";
     const result = await exportInWorkspace(async ({ directory, signal }) => {

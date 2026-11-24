@@ -1,4 +1,8 @@
+import { cardImageOrder } from "@/lib/card-image-order";
 import { UiText, UiElement } from "@/components/ui-text";
+import { prefersStudioImages } from "@/lib/showcase-source-server";
+import { showcasePhotos } from "@/lib/studio-images";
+import { ShowcaseSourceSwitch } from "@/components/showcase-source-switch";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -21,7 +25,7 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
     include: {
       sections: { orderBy: { sortOrder: "asc" } },
       items: {
-        include: { card: { include: { images: { orderBy: { createdAt: "asc" } } } } },
+        include: { card: { include: { images: { orderBy: cardImageOrder } } } },
         orderBy: { sortOrder: "asc" }
       }
     }
@@ -31,18 +35,20 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
     notFound();
   }
 
-  const fallbackCoverImage = share.items.find((item) => item.card.images.length > 0)?.card.images[0] ?? null;
+  const studio = await prefersStudioImages();
+  const imagesByItem = await Promise.all(share.items.map(({ card }) => showcasePhotos(card, studio)));
+  const fallbackCoverImage = imagesByItem.find(images => images.length)?.[0] ?? null;
   const fallbackCover = fallbackCoverImage?.path ?? null;
   const coverImagePath = share.coverImagePath?.startsWith("/share-covers/") ? share.coverImagePath : fallbackCover;
   const theme = normalizeShareTheme(share.theme);
   const customBackground = share.backgroundImagePath?.startsWith("/share-backgrounds/")
     ? share.backgroundImagePath
     : null;
-  const cards = share.items.map((item) =>
+  const cards = share.items.map((item, index) =>
     toPublicExportCard({
       item,
       href: `#card-${item.cardId}`,
-      images: item.card.images.map((image) => ({
+      images: imagesByItem[index].map((image) => ({
         src: image.path,
         thumbnailSrc: image.path,
         width: 0,
@@ -83,6 +89,7 @@ export default async function PreviewSharePage({ params }: PreviewSharePageProps
           <h1 className="h1">{share.title}</h1>
         </div>
         <div className="title-actions">
+          <ShowcaseSourceSwitch studio={studio} guest={false} />
           <Link className="btn btn-secondary" href="/shares"><UiText text={"返回分享"} /></Link>
           <Link className="btn btn-secondary" href={`/shares/${share.id}/edit`}><UiText text={"编辑"} /></Link>
           <Link className="btn btn-secondary" href={`/shares/${share.id}/export`}><UiText text={"导出"} /></Link>

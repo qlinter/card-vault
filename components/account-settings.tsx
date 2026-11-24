@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { accountErrorMessage, accountRequest, AccountRequestError, returnToSignIn } from "@/lib/account-client";
+import { accountErrorMessage, accountRequest, AccountRequestError, changeGuestSession, returnToSignIn } from "@/lib/account-client";
 import { useLanguage } from "./language-provider";
 import { SettingsDisclosure } from "./settings-disclosure";
 import { PasswordField } from "./account-fields";
 import { useAccountRecovery } from "./account-boundary";
 
-export function AccountSettings({ username }: { username: string }) {
+export function AccountSettings({ username, initialGuestEnabled, publicCardCount }: { username: string; initialGuestEnabled: boolean; publicCardCount: number }) {
   const { locale } = useLanguage(), english = locale === "en";
   const [mode, setMode] = useState("change-username"), [name, setName] = useState(username);
   const [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [error, setError] = useState("");
+  const [guestEnabled, setGuestEnabled] = useState(initialGuestEnabled);
+  const [guestError, setGuestError] = useState("");
   const showRecovery = useAccountRecovery();
   const showError = (problem: unknown) => setError(accountErrorMessage(problem, english));
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -51,6 +53,25 @@ export function AccountSettings({ username }: { username: string }) {
       </form>
       {error ? <p className="account-error" role="alert">{error}</p> : null}
       {message ? <p role="status" className="account-hint">{message}</p> : null}
+      <div className="account-guest-settings">
+        <label className="account-check"><input type="checkbox" checked={guestEnabled} disabled={busy} onChange={async event => {
+          const enabled = event.currentTarget.checked;
+          setGuestEnabled(enabled);
+          setBusy(true); setGuestError("");
+          try { const result = await accountRequest("set-guest", { enabled }); setGuestEnabled(result.guestEnabled === true); }
+          catch (problem) { setGuestEnabled(!enabled); setGuestError(accountErrorMessage(problem, english)); }
+          finally { setBusy(false); }
+        }} />{english ? "Allow guest browsing" : "允许访客浏览"}</label>
+        {guestEnabled ? <>
+          <p className="account-hint">{english ? `${publicCardCount} public cards available to guests` : `访客可查看 ${publicCardCount} 张公开卡牌`}</p>
+          <button type="button" className="btn btn-secondary" disabled={busy} onClick={async () => {
+            setBusy(true); setGuestError("");
+            try { await changeGuestSession("start-guest", "owner"); }
+            catch (problem) { setGuestError(accountErrorMessage(problem, english)); setBusy(false); }
+          }}>{english ? "Switch to guest browsing" : "进入访客浏览"}</button>
+        </> : null}
+        {guestError ? <p className="account-error" role="alert">{guestError}</p> : null}
+      </div>
     </div>
   </SettingsDisclosure>;
 }

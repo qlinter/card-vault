@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import type { AccountStatus } from "@/lib/account-store";
-import { accountErrorMessage, accountRequest, AccountRequestError } from "@/lib/account-client";
+import { accountErrorMessage, accountRequest, AccountRequestError, changeGuestSession } from "@/lib/account-client";
 import { useLanguage } from "./language-provider";
 import { LanguageSwitch } from "./language-switch";
 import { PasswordField, RecoveryConfirmation } from "./account-fields";
@@ -28,7 +28,14 @@ export function AccountLogin({ status }: { status: AccountStatus }) {
     finally { setBusy(false); }
   }
   return <div className="account-gateway">
-    <div className="account-gateway-tools"><LanguageSwitch /></div>
+    <div className="account-gateway-tools header-utilities">
+      {status.state === "ready" && status.guestAvailable && !recover && !code ? <button className="btn btn-secondary btn-quiet" type="button" disabled={busy} onClick={async () => {
+        setBusy(true); setError("");
+        try { await changeGuestSession("start-guest", "login"); }
+        catch (problem) { showError(problem); setBusy(false); }
+      }}>{english ? "Browse as guest" : "访客浏览"}</button> : null}
+      <LanguageSwitch />
+    </div>
     <section className="account-card panel" aria-labelledby="account-heading">
       <div className="account-brand">Card Vault</div>
       <h1 id="account-heading">{english ? (code ? "Recovery code" : setup ? "Create your account" : recover ? "Reset password" : "Sign in") : (code ? "恢复码" : setup ? "创建本地账户" : recover ? "重设密码" : "登录")}</h1>

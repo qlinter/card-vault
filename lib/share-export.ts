@@ -1,4 +1,5 @@
 import fs from "fs";
+import { existingStudioFile } from "./studio-images";
 import { createHash } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
@@ -84,7 +85,8 @@ function backgroundSourcePath(imagePath: string): string {
 
 export async function exportShareCollection(
   collection: ShareCollectionWithItems,
-  mode: ShareExportMode
+  mode: ShareExportMode,
+  preferStudio = true
 ): Promise<ShareExportResult> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const exportRoot = path.join(resolveDataDir(), "exports");
@@ -122,8 +124,10 @@ export async function exportShareCollection(
     cardFileNames.add(cardSlug);
     const images: ExportCard["images"] = [];
 
-    for (const [imageIndex, image] of card.images.entries()) {
-      const source = imageSourcePath(image.path);
+    const studio = preferStudio ? await existingStudioFile(card) : null;
+    const sources = studio ? [{ path: path.basename(studio), rotation: 0 }] : card.images;
+    for (const [imageIndex, image] of sources.entries()) {
+      const source = studio ?? imageSourcePath(image.path);
       if (!fs.existsSync(source)) {
         issues.push({
           level: "warning",

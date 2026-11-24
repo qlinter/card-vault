@@ -1,3 +1,4 @@
+import { hasStudioKey } from "@/lib/ai-settings";
 import { UiText } from "@/components/ui-text";
 import { CreateCardForm } from "@/components/create-card-form";
 import { CardEntryQueuePanel } from "@/components/card-entry-queue-panel";
@@ -57,12 +58,13 @@ export default async function NewCardPage({ searchParams }: NewCardPageProps) {
   return (
     <div className="page entry-page">
       <h1 className="h1 sr-only"><UiText text="新增卡牌" /></h1>
+      {success === "created" && !hasStudioKey() ? <p className="muted"><UiText text="未配置 OpenAI Key，展馆暂用首图。可在设置中补生成。" /></p> : null}
       <CreateCardForm
         submissionId={randomUUID()}
         queuePanel={<CardEntryQueuePanel items={queueItems} activeItemId={queueItem?.id} />}
         initialValues={initialValues}
         initialDraftId={draft?.id}
-        initialImages={draft?.images ?? []}
+        initialImages={draft?.images ?? []} initialFrontChoice={draft?.frontChoice}
         initialMessage={initialMessage}
         recentDrafts={recentDrafts}
         queueItem={queueItem}

@@ -362,6 +362,7 @@ async function main() {
     createForm.append("images", new Blob([png], { type: "image/png" }), "card.png");
     createForm.append("queuedImageRotations", JSON.stringify(Object.fromEntries(processedQueueImages.map((image, index) => [image.id, index === 0 ? 90 : 180]))));
     createForm.append("newImageRotations", JSON.stringify([270]));
+    createForm.set("frontChoice", "new:0");
 
     const createResponse = await fetch(`${baseUrl}/cards/new`, { method: "POST", body: createForm, redirect: "manual" });
     const createLocation = createResponse.headers.get("location") || "";
@@ -375,7 +376,7 @@ async function main() {
 
     db = new DatabaseSync(dbPath, { readOnly: true });
     const created = db.prepare("SELECT playerName, cardTitle, year, grade, holdingQuantity, isSerialNumbered FROM Card WHERE id = ?").get(cardId);
-    const createdImages = db.prepare("SELECT id, path, rotation FROM CardImage WHERE cardId = ? ORDER BY createdAt, rowid").all(cardId);
+    const createdImages = db.prepare("SELECT id, path, rotation FROM CardImage WHERE cardId = ? ORDER BY sortOrder, createdAt, id").all(cardId);
     const createdTransaction = db.prepare("SELECT kind, amountMinor, currency, quantity, provenance FROM CardTransaction WHERE cardId = ?").get(cardId);
     const createdExpense = db.prepare("SELECT kind, context, amountMinor, currency, provenance FROM CardExpense WHERE cardId = ?").get(cardId);
     const createdValuation = db.prepare("SELECT amountMinor, currency, source, provenance FROM CardValuation WHERE cardId = ?").get(cardId);
@@ -388,6 +389,7 @@ async function main() {
     }
     if (
       createdImages.length !== 3 ||
+      createdImages[0].rotation !== 270 ||
       JSON.stringify(createdImages.map((image) => image.rotation).sort((left, right) => left - right)) !== JSON.stringify([90, 180, 270]) ||
       createdImages.some((image) => !fs.existsSync(path.join(dataDir, "uploads", path.basename(image.path))))
     ) {
@@ -501,7 +503,7 @@ async function main() {
     db = new DatabaseSync(dbPath, { readOnly: true });
     const updated = db.prepare("SELECT playerName, cardTitle, grade, publicDescription FROM Card WHERE id = ?").get(cardId);
     const imageCount = Number(db.prepare("SELECT COUNT(*) AS count FROM CardImage WHERE cardId = ?").get(cardId).count);
-    const updatedImageRotations = db.prepare("SELECT rotation FROM CardImage WHERE cardId = ? ORDER BY createdAt, rowid").all(cardId).map((image) => image.rotation);
+    const updatedImageRotations = db.prepare("SELECT rotation FROM CardImage WHERE cardId = ? ORDER BY sortOrder, createdAt, id").all(cardId).map((image) => image.rotation);
     const historyCount = Number(db.prepare("SELECT (SELECT COUNT(*) FROM CardTransaction WHERE cardId = ?) + (SELECT COUNT(*) FROM CardExpense WHERE cardId = ?) + (SELECT COUNT(*) FROM CardValuation WHERE cardId = ?) AS count").get(cardId, cardId, cardId).count);
     db.close();
     if (updated?.playerName !== "E2E Updated Player" || updated?.grade !== "Authentic" || updated?.publicDescription !== "编辑流程回归测试。") {
@@ -525,7 +527,7 @@ async function main() {
       detailPage.includes("返回上一页"),
       detailPage.includes("<h2>财务</h2>"),
       detailPage.includes("新增财务记录"),
-      detailPage.includes("持仓成本与估值变化"),
+      detailPage.includes("持仓成本与估值"),
       detailPage.includes("累计成本构成"),
       detailPage.includes("费用归属"),
       detailPage.includes("计入评级成本"),

@@ -12,6 +12,21 @@ function temporaryDatabase(t) {
   return path.join(root, "dev.db");
 }
 
+test("opening a collection without image ranks preserves its previous front image", t => {
+  const dbPath = temporaryDatabase(t);
+  initializeDatabase(dbPath);
+  const old = new DatabaseSync(dbPath);
+  try {
+    old.exec(`ALTER TABLE CardImage DROP COLUMN sortOrder;
+      INSERT INTO Card(id, playerName,cardTitle,sport) VALUES('one','Player','Card','Football');
+      INSERT INTO CardImage(id,cardId,path,createdAt) VALUES('back','one','/media/back.png',2),('front','one','/media/front.png',1);`);
+  } finally { old.close(); }
+  initializeDatabase(dbPath);
+  const db = new DatabaseSync(dbPath);
+  try { assert.deepEqual(db.prepare("SELECT id FROM CardImage ORDER BY sortOrder,createdAt,id").all().map(image => image.id), ["front", "back"]); }
+  finally { db.close(); }
+});
+
 test("financial schema preserves manual FX history and initializes idempotently", (t) => {
   const dbPath = temporaryDatabase(t);
   initializeDatabase(dbPath);

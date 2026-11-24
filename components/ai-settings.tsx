@@ -5,6 +5,7 @@ import { AiProxySettings } from "./ai-proxy-settings";
 import { UiText, UiElement } from "@/components/ui-text";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useAiSettingsRequests } from "./use-ai-settings-requests";
+import { StudioRecovery } from "./studio-recovery";
 import { useLanguage } from "./language-provider";
 import { DisclosureIcon } from "@/components/disclosure-icon";
 import { errorMessage } from "@/lib/feedback-messages";
@@ -319,6 +320,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
               <label className="field full"><span><UiText text="模型列表 Endpoint（可选）" /></span><UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.modelsEndpoint} onChange={event => updateCurrentCustom({ modelsEndpoint: event.target.value })} placeholder="留空时从 /chat/completions 自动推断 /models" disabled={!isDesktop} /></label>
             </> : settings.provider === "custom" ? <p className="muted full"><UiText text="尚未创建自定义配置，请点击“新增自定义 AI”。" /></p> : null}
         </div>
+        <StudioRecovery hasKey={settings.openai.hasApiKey} />
         <AiProxySettings value={settings.proxy} onChange={patch => setSettings(current => ({ ...current, proxy: { ...current.proxy, ...patch } }))} password={proxyPassword} onPassword={setProxyPassword} clearPassword={clearProxyPassword} onClearPassword={setClearProxyPassword} disabled={!isDesktop} />
         <div className="ai-actions">
           <button type="button" className="btn btn-secondary" onClick={handleSave} disabled={isDesktop !== true || isSaving}>{isSaving ? <UiText text="保存中..." /> : <UiText text="保存设置" />}</button>

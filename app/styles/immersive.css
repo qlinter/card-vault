@@ -81,7 +81,7 @@
 .immersive-settings { position: absolute; z-index: 5; inset: 0 0 0 auto; display: grid; grid-template-rows: 86px minmax(0, 1fr) auto; width: min(360px, 96vw); background: linear-gradient(145deg, color-mix(in srgb, var(--gallery-panel) 94%, var(--gallery-accent)), var(--gallery-panel) 45%); border-left: 1px solid var(--gallery-line); box-shadow: -24px 0 80px rgb(0 0 0 / .24); }
 .immersive-settings[hidden] { display: none; }
 .immersive-settings-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px 28px 24px 32px; border-bottom: 1px solid var(--gallery-line); }
-.immersive-settings-heading h2 { margin: 0; padding-left: 14px; border-left: 2px solid var(--gallery-accent); font-family: var(--font-exhibit); font-size: var(--text-xl); font-weight: var(--weight-regular); letter-spacing: .09em; line-height: 1.2; }
+.immersive-settings-heading h2 { margin: 0; padding-left: 14px; border-left: 2px solid var(--gallery-accent); font-family: var(--font-ui); font-size: var(--text-xl); font-weight: var(--weight-regular); letter-spacing: .09em; line-height: 1.2; }
 .immersive-settings-body { overflow-y: auto; overscroll-behavior: contain; padding: 26px 32px 8px; scrollbar-width: thin; scrollbar-color: var(--gallery-line-strong) transparent; }
 .gallery-settings-footer { padding: 18px 32px 24px; border-top: 1px solid var(--gallery-line); }
 .gallery-settings-footer p { margin: 0 0 12px; color: var(--gallery-secondary); font-size: var(--gallery-font-meta); line-height: 1.6; }
@@ -104,6 +104,9 @@
 .gallery-setting-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; }
 .gallery-setting-field, .gallery-setting-fields label { display: grid; gap: 6px; min-width: 0; }
 .immersive-viewer .gallery-setting-field select, .immersive-viewer .gallery-setting-fields :is(select, input[type=number]) { width: 100%; min-width: 0; height: var(--control-height); min-height: var(--control-height); padding: 8px 4px 8px 0; border: 0; border-bottom: 1px solid var(--gallery-line-strong); border-radius: 0; color: var(--gallery-ink); appearance: auto; background: transparent; font-family: var(--font-ui); font-size: var(--text-base); line-height: 1.5; letter-spacing: .03em; transition: border-color 180ms ease; }
+.immersive-settings { --font-ui: "Segoe UI", "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", sans-serif; }
+
+.immersive-settings option { font-family: var(--font-ui); }
 .immersive-settings select:hover, .immersive-settings input[type=number]:hover { border-bottom-color: var(--gallery-accent); }
 .immersive-settings select:focus-visible, .immersive-settings input[type=number]:focus-visible { outline: 1px solid var(--gallery-accent); outline-offset: 4px; }
 @supports (appearance: base-select) {
@@ -114,17 +117,20 @@
   .immersive-settings select::picker(select) { padding: 8px; border: 1px solid var(--gallery-line-strong); border-radius: 2px; background: var(--gallery-panel); color: var(--gallery-ink); box-shadow: 0 18px 48px rgb(0 0 0 / .2); font-family: var(--font-ui); font-size: var(--text-base); }
   .immersive-settings option { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 10px 12px; border-radius: 1px; color: var(--gallery-secondary); }
   .immersive-settings option:hover, .immersive-settings option:focus-visible, .immersive-settings option:checked { background: var(--gallery-hover); color: var(--gallery-ink); }
-  .immersive-settings option::checkmark { color: var(--gallery-accent); font-size: var(--text-xs); }
+  .immersive-settings option::checkmark { content: ""; width: 5px; height: 9px; margin-inline-start: auto; border: solid var(--gallery-accent); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
   .gallery-scene-select option::before { content: ""; flex: 0 0 20px; height: 24px; border: 1px solid var(--gallery-line-strong); border-radius: 1px; background: linear-gradient(135deg, #464744, #17191a); }
   .gallery-scene-select option[value=whitebox]::before { background: linear-gradient(135deg, #fffef8, #d3d9d0); }
   .gallery-scene-select option[value=archive]::before { background: linear-gradient(135deg, #f1e5cb, #bda37b); }
   .gallery-scene-select option[value=moonlight]::before { background: linear-gradient(135deg, #4c6b83, #112031); }
 }
-.immersive-viewer[data-gallery-layout=focus] .immersive-composition { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 12px; }
-.immersive-viewer[data-gallery-layout=focus] .immersive-caption { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 6px 30px; align-items: baseline; justify-self: center; width: min(760px, 100%); max-width: none; padding: 14px 0 20px; border-top: 1px solid var(--gallery-line); }
-.immersive-viewer[data-gallery-layout=focus] .immersive-caption h1 { grid-column: 1; font-size: var(--text-exhibit-compact); -webkit-line-clamp: 2; }
-.immersive-viewer[data-gallery-layout=focus] .gallery-work-title { grid-column: 2; grid-row: 1 / span 2; margin: 0; font-size: var(--gallery-font-ui); -webkit-line-clamp: 2; }
-.immersive-viewer[data-gallery-layout=focus] .gallery-current-status { grid-column: 1; margin-top: 4px; }
+.immersive-viewer[data-gallery-layout=focus] :is(.gallery-floor, .gallery-wall-seam, .gallery-art-baseline) { display: none; }
+.immersive-viewer[data-gallery-layout=focus] .gallery-architecture::after { inset: 0; }
+.immersive-viewer[data-gallery-layout=focus] .immersive-composition { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 0; }
+.immersive-viewer[data-gallery-layout=focus] .gallery-art-viewport { inset: 0 1%; }
+.immersive-viewer[data-gallery-layout=focus] .immersive-caption { display: grid; gap: .25rem; justify-self: center; width: min(72ch, 100%); max-width: none; padding: .55rem 0 .85rem; border: 0; text-align: center; }
+.immersive-viewer[data-gallery-layout=focus] .immersive-caption h1 { font-size: var(--text-exhibit-compact); line-height: 1.2; -webkit-line-clamp: 1; }
+.immersive-viewer[data-gallery-layout=focus] .gallery-work-title { margin: 0; font-size: var(--gallery-font-ui); line-height: 1.4; -webkit-line-clamp: 2; }
+.immersive-viewer[data-gallery-layout=focus] .gallery-current-status { margin: 0; justify-self: center; }
 .immersive-viewer[data-gallery-layout=focus] :is(.gallery-work-facts, .gallery-work-year) { display: none; }
 .immersive-viewer[data-gallery-captions=false] .immersive-composition { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
 @media(max-height: 800px) {

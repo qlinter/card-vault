@@ -78,6 +78,32 @@ async function exhibition(page, { horizontal = false, rotation = 0, long = false
   return viewer;
 }
 
+test("focus separates long captions from the artwork, scenery and playback controls", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const viewer = await exhibition(page, { long: true });
+  await viewer.getByRole("button", { name: "展馆设置", exact: true }).click();
+  await viewer.getByRole("combobox", { name: "展示风格" }).selectOption("whitebox");
+  await viewer.getByRole("combobox", { name: "画面构图" }).selectOption("focus");
+  await page.keyboard.press("Escape");
+  for (const size of [{ width: 1440, height: 900 }, { width: 1024, height: 600 }, { width: 390, height: 720 }]) {
+    await page.setViewportSize(size);
+    await expect(viewer.locator(".gallery-floor")).toBeHidden();
+    await expect(viewer.locator(".gallery-wall-seam")).toBeHidden();
+    await expect(viewer.locator(".gallery-art-baseline")).toBeHidden();
+    const stage = await viewer.locator(".immersive-stage").boundingBox();
+    const caption = await viewer.locator(".immersive-caption").boundingBox();
+    const controls = await viewer.locator(".immersive-controls").boundingBox();
+    expect(stage.y + stage.height).toBeLessThanOrEqual(caption.y + 1);
+    expect(caption.y + caption.height).toBeLessThanOrEqual(controls.y + 1);
+    if (size.width === 1440) await viewer.screenshot({ path: "logs/gallery-focus-caption.png" });
+  }
+  const height = (await viewer.locator(".immersive-stage").boundingBox()).height;
+  await viewer.getByRole("button", { name: "展馆设置", exact: true }).click();
+  await viewer.getByRole("checkbox", { name: "显示标题" }).uncheck();
+  await page.keyboard.press("Escape");
+  expect((await viewer.locator(".immersive-stage").boundingBox()).height).toBeGreaterThan(height);
+});
+
 test("Browse and Shares share typography and geometry while search has no placeholder", async ({ page }) => {
   await page.goto("/showcase");
   const header = page.locator(".showcase-heading");
@@ -149,6 +175,20 @@ for (const locale of ["zh-CN", "en"]) test(`gallery settings persist and Escape 
   await page.getByRole("button", { name: /^(浏览|Browse)$/ }).click();
   await expect(viewer).toHaveAttribute("data-gallery-layout", "focus");
   expect(await viewer.evaluate(element => element.style.getPropertyValue("--gallery-art-scale"))).toBe("0.61");
+});
+
+test("gallery dropdowns only draw one arrow in every application theme", async ({ page, context, baseURL }) => {
+  for (const theme of ["classic", "gallery", "midnight", "archive"]) {
+    await context.addCookies([{ name: "card_vault_app_theme", value: theme, url: baseURL }]);
+    const viewer = await exhibition(page);
+    await expect(page.locator("html")).toHaveAttribute("data-app-theme", theme);
+    await viewer.getByRole("button", { name: "展馆设置", exact: true }).click();
+    await viewer.getByRole("combobox", { name: "展示风格" }).selectOption("whitebox");
+    const selects = viewer.locator(".immersive-settings select");
+    expect(await selects.evaluateAll(items => items.map(el => getComputedStyle(el).backgroundImage))).toEqual(Array(await selects.count()).fill("none"));
+    if (theme === "gallery") await viewer.locator(".immersive-settings").screenshot({ path: "logs/whitebox-controls-fixed.png" });
+    await page.keyboard.press("Escape"); await page.keyboard.press("Escape");
+  }
 });
 
 test("spotlight gallery portrait visual baseline", async ({ page }) => {

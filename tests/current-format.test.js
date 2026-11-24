@@ -18,18 +18,30 @@ function fixture(t, extraTable = false) {
   return { root, data, file };
 }
 
+function expectedWithImageOrder(fixture) {
+  const expected = path.join(fixture.root, "expected.db");
+  fs.copyFileSync(fixture.file, expected);
+  const db = new DatabaseSync(expected);
+  try { db.exec("ALTER TABLE CardImage ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0"); }
+  finally { db.close(); }
+  return fs.readFileSync(expected);
+}
+
 for (const extraTable of [false, true]) {
-  test(`published 1.5.1 data opens without schema or content changes (extra table: ${extraTable})`, t => {
+  test(`published 1.5.1 data opens with only the image order column added (extra table: ${extraTable})`, t => {
     const f = fixture(t, extraTable), before = fs.readFileSync(f.file);
+    const expected = expectedWithImageOrder(f);
     validateDatabase(f.file);
-    assert.equal(initializeDatabase(f.file).initialized, false);
-    assert.equal(initializeDatabase(f.file).initialized, false);
     assert.deepEqual(fs.readFileSync(f.file), before);
+    assert.equal(initializeDatabase(f.file).initialized, false);
+    assert.equal(initializeDatabase(f.file).initialized, false);
+    assert.deepEqual(fs.readFileSync(f.file), expected);
     assert.equal(fs.existsSync(path.join(f.data, "schema-backups")), false);
   });
 
   test(`restore preserves the current format and ignores unused tables (extra table: ${extraTable})`, t => {
     const f = fixture(t, extraTable), before = fs.readFileSync(f.file);
+    const expected = expectedWithImageOrder(f);
     writeBackupManifest(f.data);
     const target = path.join(f.root, "restored");
     const service = createRestoreService({
@@ -40,7 +52,7 @@ for (const extraTable of [false, true]) {
     service.restoreDataFolder(f.data);
     verifyBackupManifest(f.data); verifyBackupManifest(target);
     assert.deepEqual(fs.readFileSync(f.file), before);
-    assert.deepEqual(fs.readFileSync(path.join(target, "dev.db")), before);
+    assert.deepEqual(fs.readFileSync(path.join(target, "dev.db")), expected);
   });
 }
 

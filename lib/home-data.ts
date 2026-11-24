@@ -1,3 +1,4 @@
+import { cardImageOrder } from "./card-image-order.ts";
 import "server-only";
 import { prisma } from "./prisma";
 import { buildCardFilters, buildCardSorting, splitTagString } from "./card-helpers";
@@ -16,7 +17,7 @@ export async function loadHomeData(query: Query, page = 0, attempt = 0): Promise
   const orderBy = buildCardSorting(query.sort);
   const statusQuery = prisma.card.groupBy({ by: ["collectionStatus"], where, _count: { _all: true } });
   const [cards, totalCount, summary, settings, meta, statuses, activeCount] = await prisma.$transaction([
-    prisma.card.findMany({ where, take: homePageSize, skip: Math.max(0, Math.trunc(page)) * homePageSize, orderBy, select: { id: true, playerName: true, cardTitle: true, year: true, team: true, productLine: true, tags: true, images: { take: 1, orderBy: { createdAt: "asc" }, select: { path: true, rotation: true } } } }),
+    prisma.card.findMany({ where, take: homePageSize, skip: Math.max(0, Math.trunc(page)) * homePageSize, orderBy, select: { id: true, playerName: true, cardTitle: true, year: true, team: true, productLine: true, tags: true, images: { take: 1, orderBy: cardImageOrder, select: { path: true, rotation: true } } } }),
     prisma.card.count({ where }),
     prisma.cardReport.aggregate({ where: { card: where }, _sum: { valueMinor: true }, _count: { valueMinor: true } }),
     prisma.financialSettings.findUnique({ where: { id: "default" } }),

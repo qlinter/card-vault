@@ -33,7 +33,7 @@ export function CardForm({
   returnTo,
   formRef,
   draftId,
-  draftImages,
+  draftImages, initialFrontChoice,
   editVersion,
   onSubmit,
   onInvalid,
@@ -124,7 +124,7 @@ export function CardForm({
             rotation: image.rotation
           }))}
           queuedImages={queuedImages}
-          draftImages={draftImages}
+          draftImages={draftImages} initialFrontChoice={initialFrontChoice}
         >
           {mode === "create" ? <section className="entry-ai-primary full">{recognitionPanel}</section> : null}
         </CardImageFields>

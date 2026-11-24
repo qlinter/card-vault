@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useLanguage } from "./language-provider";
 import { ShowcaseIcon } from "./showcase-icon";
 import { ShowcaseImage } from "./showcase-image";
 import { CardImageExport } from "./card-image-export";
 import { ShowcaseLightbox } from "./showcase-lightbox";
 
-type ShowcaseGalleryProps = { cardId: string; cardTitle: string; images: Array<{ id: string; path: string; rotation: number }> };
+type ShowcaseGalleryProps = { sourceSwitch?: ReactNode; cardId: string; cardTitle: string; images: Array<{ id: string; path: string; rotation: number }>; guest?: boolean };
 
-export function ShowcaseGallery({ cardId, cardTitle, images }: ShowcaseGalleryProps) {
+export function ShowcaseGallery({ cardId, cardTitle, images, guest = false, sourceSwitch }: ShowcaseGalleryProps) {
   const { t } = useLanguage();
   const [activeIndex, setActiveIndex] = useState(0);
   const [viewRotation, setViewRotation] = useState(0);
@@ -21,6 +21,7 @@ export function ShowcaseGallery({ cardId, cardTitle, images }: ShowcaseGalleryPr
       <ShowcaseImage key={activeImage?.id ?? "empty"} src={activeImage?.path} alt={cardTitle} rotation={displayedRotation} eager priority />
     </div>
     {activeImage ? <div className="showcase-image-controls">
+      {sourceSwitch}
       <div className="showcase-tool-group">
         {images.length > 1 ? <button type="button" className="showcase-tool" onClick={() => select((activeIndex + images.length - 1) % images.length)} aria-label={t("上一张图片")}><ShowcaseIcon name="previous" /></button> : null}
         {images.length > 1 ? <span className="showcase-image-counter" aria-live="polite">{activeIndex + 1} / {images.length}</span> : null}
@@ -30,7 +31,7 @@ export function ShowcaseGallery({ cardId, cardTitle, images }: ShowcaseGalleryPr
         <button type="button" className="showcase-tool" onClick={() => setViewRotation(value => value - 90)} aria-label={t("向左旋转图片")}><ShowcaseIcon name="left" /></button>
         <button type="button" className="showcase-tool" onClick={() => setViewRotation(value => value + 90)} aria-label={t("向右旋转图片")}><ShowcaseIcon name="right" /></button>
         <ShowcaseLightbox cardTitle={cardTitle} images={images} activeIndex={activeIndex} rotation={displayedRotation} onSelect={select} />
-        <CardImageExport cardId={cardId} showcase />
+        {!guest ? <CardImageExport cardId={cardId} showcase /> : null}
       </div>
     </div> : null}
     {images.length > 1 ? <div className="showcase-detail-thumbs" role="group" aria-label={t("卡牌图片")}>

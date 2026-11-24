@@ -1,7 +1,7 @@
 import passwordPolicy from "./account-password-policy.json";
 import type { AccountStatus } from "./account-store";
 
-export type AccountReply = { recoveryCode?: string; username?: string; logout?: boolean };
+export type AccountReply = { recoveryCode?: string; username?: string; logout?: boolean; guestEnabled?: boolean };
 export const SIGN_OUT_FAILURE_EVENT = "card-vault:account-sign-out-failed";
 export class AccountRequestError extends Error {
   constructor(public code: string, public retryAfter = 0) { super(code); }
@@ -32,6 +32,7 @@ export function accountErrorMessage(error: unknown, english: boolean): string {
     "invalid-password": [`密码需为 ${passwordPolicy.minLength}–${passwordPolicy.maxLength} 个字符。`, `Use ${passwordPolicy.minLength}–${passwordPolicy.maxLength} characters for the password.`],
     "already-configured": ["账户已创建，请返回登录。", "An account already exists. Return to sign in."],
     "login-required": ["登录已失效，请重新登录。", "Your session has ended. Please sign in again."],
+    "guest-disabled": ["访客浏览未开启。请登录后在账户与安全中开启。", "Sign in and enable guest browsing in Account & security."],
     "account-unavailable": ["无法读取账户配置。请检查本机账户文件或恢复其副本后重启应用。", "The account configuration cannot be read. Check or restore the local account files, then restart the app."],
     "account-busy": ["账户操作正在进行，请稍后重试。", "An account operation is in progress. Please try again shortly."],
     "network": ["连接中断，请稍后重试。", "The connection was interrupted. Please try again."],
@@ -76,6 +77,27 @@ export async function readAccountStatus(fetcher: typeof fetch = window.fetch): P
   const status = await response.json();
   if (!["setup", "ready", "unavailable"].includes(status.state) || typeof status.authenticated !== "boolean") throw new AccountRequestError("unavailable");
   return status;
+}
+
+export async function changeGuestSession(action: "start-guest" | "end-guest", currentMode: "login" | "owner" | "guest") {
+  document.documentElement.dataset.accountEnding = "true";
+  if (currentMode !== "login") maskAccount();
+  try {
+    await accountRequest(action);
+  } catch (problem) {
+    delete document.documentElement.dataset.accountEnding;
+    if (currentMode !== "login") {
+      const status = await readAccountStatus().catch(() => null);
+      if (currentMode === "owner" ? status?.authenticated : status?.guest) {
+        delete document.documentElement.dataset.accountMasked;
+      } else {
+        returnToSignIn();
+      }
+    }
+    throw problem;
+  }
+  broadcastAccountEnd();
+  window.location.replace(action === "start-guest" ? "/showcase" : "/login");
 }
 
 export async function signOutAccount() {

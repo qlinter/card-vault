@@ -10,6 +10,7 @@
 
 | 版本 | 中文摘要 | English summary | 记录 |
 | --- | --- | --- | --- |
+| `1.6.1` | 卡牌录入、财务与展馆改进。 | Card entry, finance and gallery improvements. | [发布说明](./releases.md#release-v1-6-1) |
 | `1.6.0` | 本地单账户登录、恢复码、账户与安全设置及 Windows 分发。 | Offline local sign-in, recovery codes, account settings and Windows distributions. | [发布说明](./releases.md#release-v1-6-0) |
 | `1.5.3` | 完善录入校验与 AI 入口、草稿反馈、文件控件对齐及跨时区显示；合并维护文档，交付修订安装包与便携包。 | Improved entry validation, AI visibility, draft feedback, file controls and timezone rendering; consolidated documentation and shipped revised Windows distributions. | [发布说明](./releases.md#release-v1-5-3) |
 | `1.5.2` | 收藏回顾、沉浸式赏卡、统一字体与布局；修复 AI 删除卡顿、录入与删除保护、图片校验及备份状态。 | Collection Recaps, Immersive Viewing and consistent design; AI deletion, entry/deletion safeguards, image validation and backup status fixes. | [发布说明](./releases.md#release-v1-5-2) |

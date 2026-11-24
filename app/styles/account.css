@@ -17,6 +17,15 @@
 .account-hint { color: var(--muted); font-size: var(--text-sm); line-height: var(--leading-body); margin: 0 0 .8rem; }
 .account-error { color: var(--theme-negative, #b04136); font-size: var(--text-sm); margin: 1rem 0 0; overflow-wrap: anywhere; }
 .account-text-button { display: block; margin: 1rem auto 0; border: 0; background: transparent; color: var(--muted); font-size: var(--text-sm); padding: .35rem; cursor: pointer; }
+.account-guest-settings { display: grid; justify-items: start; gap: .65rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.account-guest-settings :is(.account-hint, .account-error) { margin: 0; }
+.guest-topbar { justify-content: space-between; }
+.guest-identity { display: flex; align-items: baseline; gap: .75rem; }
+.guest-mode-label { color: var(--muted-ink); font-size: var(--text-sm); font-weight: var(--weight-medium); }
+.guest-header-error { margin-block: 0; padding-bottom: .5rem; }
+@media (max-width: 640px) {
+  .guest-identity { flex-direction: column; align-items: flex-start; gap: 0; }
+}
 .account-recovery { display: grid; gap: .8rem; }
 .account-recovery h2 { font-size: var(--text-lg); margin: 0; }
 .account-card .account-recovery h2 { display: none; }

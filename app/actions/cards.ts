@@ -1,9 +1,12 @@
 "use server";
 
+import { cardImageOrder } from "@/lib/card-image-order";
 import { requireAccount } from "@/lib/account-server";
 
 import { assertCollectionStatusQuantity } from "@/lib/card-quantity";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { generateStudioImage, studioFile, removeStudioFile } from "@/lib/studio-images";
 import { redirect } from "next/navigation";
 import type { CardFormValues } from "@/lib/card-form-values";
 import {
@@ -33,6 +36,13 @@ export type CreateCardFormState = {
   expectedVersion?: string;
 };
 
+function scheduleStudioImage(cardId: string) {
+  after(async () => {
+    try { await generateStudioImage(cardId); }
+    catch { console.warn("Studio image pending; generation can be resumed in AI settings."); }
+  });
+}
+
 export async function createCardFormAction(
   _previousState: CreateCardFormState,
   formData: FormData
@@ -51,11 +61,13 @@ export async function createCardFormAction(
       submissionId,
       values,
       files,
+      frontChoice: String(formData.get("frontChoice") || ""),
       newImageRotations: readNewCardImageRotations(formData, files.length),
       queuedImageRotations: readCardImageRotationRecord(formData, "queuedImageRotations"),
       draftId,
       queueItemId
     });
+    scheduleStudioImage(card.id);
     let nextQueueItemId: string | undefined;
     if (usedQueueItemId) {
       try {
@@ -101,7 +113,7 @@ export async function updateCardFormAction(cardId: string, _previousState: Creat
   try {
     const existing = await prisma.card.findUnique({
       where: { id: cardId },
-      include: { images: true }
+      include: { images: { orderBy: cardImageOrder } }
     });
 
     if (!existing) {
@@ -115,7 +127,12 @@ export async function updateCardFormAction(cardId: string, _previousState: Creat
     const existingImageRotations = readCardImageRotationRecord(formData, "existingImageRotations");
     const newImageRotations = readNewCardImageRotations(formData, files.length);
 
-    const imagesToRemove = existing.images.filter((image) => removeImageIds.includes(image.id));
+    const front = existing.images[0];
+    const chosen = String(formData.get("frontChoice") || "");
+    const newIndex = files.findIndex((_, i) => chosen === "new:" + i);
+    const existingChoice = existing.images.find(image => chosen === "existing:" + image.id && !removeImageIds.includes(image.id));
+    if (chosen && newIndex < 0 && !existingChoice) throw new Error("请选择有效的首图。");
+    const imagesToRemove = existing.images.filter(image => removeImageIds.includes(image.id));
     const remainingCount = existing.images.length - imagesToRemove.length + files.length;
 
     if (remainingCount < 1) {
@@ -126,8 +143,10 @@ export async function updateCardFormAction(cardId: string, _previousState: Creat
     }
 
     const imagePaths = await saveCardUploads(files);
+    const previousStudio = studioFile(existing);
+    let nextStudio: string | null;
     try {
-      await prisma.$transaction(async (transaction) => {
+      nextStudio = await prisma.$transaction(async (transaction) => {
         const current = await transaction.card.findUniqueOrThrow({ where: { id: cardId }, include: { images: true } });
         assertCardEditVersion(current, expectedVersion);
         if (current.collectionStatus !== cardData.collectionStatus) {
@@ -153,17 +172,35 @@ export async function updateCardFormAction(cardId: string, _previousState: Creat
           }
         }
 
-        if (imagePaths.length > 0) {
+        const lastRank = current.images.reduce((max, image) => Math.max(max, image.sortOrder), 0);
+        const appended = imagePaths.map((path, index) => ({ cardId, path, rotation: newImageRotations[index] ?? 0, sortOrder: lastRank + 1 + index }));
+        if (appended.length) {
           await transaction.cardImage.createMany({
-            data: imagePaths.map((pathValue, index) => ({ cardId, path: pathValue, rotation: newImageRotations[index] ?? 0 }))
+            data: appended
           });
         }
+        if (chosen) {
+          const ordered = await transaction.cardImage.findMany({ where: { cardId }, orderBy: cardImageOrder });
+          const index = ordered.findIndex(image => existingChoice ? image.id === existingChoice.id : image.path === imagePaths[newIndex]);
+          if (index < 0) throw new Error("请选择有效的首图。");
+          if (index > 0) {
+            const [first] = ordered.splice(index, 1);
+            ordered.unshift(first);
+            for (const [rank, image] of ordered.entries()) await transaction.cardImage.update({ where: { id: image.id }, data: { sortOrder: rank } });
+          }
+        }
+        const saved = await transaction.card.findUniqueOrThrow({ where: { id: cardId }, include: {
+          images: { orderBy: cardImageOrder, take: 1 }
+        } });
+        return studioFile(saved);
       });
     } catch (error) {
       await Promise.all(imagePaths.map((imagePath) => removeCardImageIfExists(imagePath)));
       throw error;
     }
 
+    if (nextStudio !== previousStudio) scheduleStudioImage(cardId);
+    if (front && imagesToRemove.some(image => image.id === front.id)) await removeStudioFile(previousStudio);
     await Promise.all(imagesToRemove.map((image) => removeCardImageIfExists(image.path)));
 
     revalidatePath("/");

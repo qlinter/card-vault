@@ -16,6 +16,7 @@ export async function createCardEntry(input: {
   submissionId: string;
   values: CardFormValues;
   files: File[];
+  frontChoice?: string;
   newImageRotations?: CardImageRotation[];
   queuedImageRotations?: Record<string, CardImageRotation>;
   draftId?: string;
@@ -69,14 +70,18 @@ export async function createCardEntry(input: {
       const transactionQueueImages = transactionQueueItem?.images.map((image) => {
         if (!image.processedPath) throw new Error("队列项目缺少预处理图片。");
         return {
+          key: "queued:" + image.id,
           path: image.processedPath,
           rotation: queuedImageRotations[image.id] ?? 0
         };
       }) ?? [];
-      await transaction.cardImage.createMany({ data: [
+      const pictures = [
         ...transactionQueueImages,
-        ...imagePaths.map((pathValue, index) => ({ path: pathValue, rotation: newImageRotations[index] ?? 0 }))
-      ].map(image => ({ cardId, ...image })) });
+        ...imagePaths.map((pathValue, index) => ({ key: "new:" + index, path: pathValue, rotation: newImageRotations[index] ?? 0 }))
+      ];
+      const first = input.frontChoice || pictures[0].key;
+      if (!pictures.some(image => image.key === first)) throw new Error("请选择有效的首图。");
+      await transaction.cardImage.createMany({ data: pictures.map(({ key, ...image }, index) => ({ cardId, ...image, sortOrder: key === first ? 0 : index + 1 })) });
       await createInitialFinancialHistory(
         transaction,
         created.id,

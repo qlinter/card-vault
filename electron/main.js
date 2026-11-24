@@ -61,7 +61,7 @@ registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, logger });
 registerAiIpc({ ipcMain, aiConfig, runtime, logger });
 ipcMain.handle("card-vault:sign-out-account", async event => {
   assertTrustedIpcSender(event, runtime.getServerUrl());
-  if (event.senderFrame !== event.sender.mainFrame) throw new Error("请从 Card Vault 主窗口操作。");
+  await runtime.requireAccount(event);
   try { await runtime.lockAccount(); }
   catch (error) { runtime.stopServer(); logger.appendLog("desktop.log", `Account sign-out failed: ${error.message}`); throw new Error("退出登录未完成，本地访问已停止。请检查账户配置文件后重启应用。"); }
   await event.sender.session.clearCache();

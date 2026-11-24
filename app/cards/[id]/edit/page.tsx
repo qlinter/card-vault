@@ -1,3 +1,4 @@
+import { cardImageOrder } from "@/lib/card-image-order";
 import { EditCardForm } from "@/components/edit-card-form";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
@@ -16,7 +17,7 @@ export default async function EditCardPage({ params, searchParams }: EditProps) 
   const query = await searchParams;
   const card = await prisma.card.findUnique({
     where: { id },
-    include: { images: { orderBy: { createdAt: "asc" } } }
+    include: { images: { orderBy: cardImageOrder } }
   });
 
   if (!card) {

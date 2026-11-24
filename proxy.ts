@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ACCOUNT_COOKIE, createAccountStore } from "@/lib/account-store";
+import { ACCOUNT_COOKIE, GUEST_COOKIE, createAccountStore } from "@/lib/account-store";
 import {
   evaluateLocalSessionRequest,
   localSecurityHeaders,
@@ -41,13 +41,19 @@ export function proxy(request: NextRequest): NextResponse {
   if (!["GET", "HEAD", "OPTIONS"].includes(request.method) && request.headers.get("origin") !== expectedOrigin) {
     return withSecurityHeaders(NextResponse.json({ error: "invalid-origin" }, { status: 403, headers: { "Cache-Control": "no-store" } }));
   }
-  if (!publicRoute && !createAccountStore().status(request.cookies.get(ACCOUNT_COOKIE)?.value).authenticated) {
-    const isDocument = ["GET", "HEAD"].includes(request.method) && request.headers.get("sec-fetch-dest") === "document";
-    const response = isDocument
-      ? NextResponse.redirect(new URL("/login", request.url), 303)
-      : NextResponse.json({ error: "login-required" }, { status: 401 });
-    response.headers.set("Cache-Control", "no-store, private");
-    return withSecurityHeaders(response);
+  if (!publicRoute) {
+    const status = createAccountStore().status(request.cookies.get(ACCOUNT_COOKIE)?.value, request.cookies.get(GUEST_COOKIE)?.value);
+    const isRead = ["GET", "HEAD"].includes(request.method);
+    const guestRoute = pathname === "/showcase" || pathname === "/api/immersive"
+      || /^\/(?:showcase\/cards|media|thumbnails)\/[^/]+$/.test(pathname);
+    if (!status.authenticated && !(status.guest && isRead && guestRoute)) {
+      const isDocument = isRead && request.headers.get("sec-fetch-dest") === "document";
+      const response = isDocument
+        ? NextResponse.redirect(new URL(status.guest ? "/showcase" : "/login", request.url), 303)
+        : NextResponse.json({ error: status.guest ? "guest-read-only" : "login-required" }, { status: status.guest ? 403 : 401 });
+      response.headers.set("Cache-Control", "no-store, private");
+      return withSecurityHeaders(response);
+    }
   }
   const response = NextResponse.next();
   if (!pathname.startsWith("/_next/static/")) {

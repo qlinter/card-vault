@@ -534,7 +534,7 @@ html[data-ui-locale="en"][data-ui-ready="false"] body {
 .management-task { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; padding: 1rem 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: inherit; width: 100%; text-align: left; }
 .management-task > div:first-child { display: grid; gap: .4rem; min-width: 0; overflow-wrap: anywhere; }
 .management-task small { color: var(--muted); }
-@media(max-width: 760px) { .topbar-inner { flex-wrap: wrap; } .nav-links { order: 3; flex: 1 0 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: .35rem; } }
+@media(max-width: 640px) { .nav-links { overflow-x: auto; flex-wrap: nowrap; padding-bottom: .35rem; } }
 .management-section label:has(> input[type=checkbox]) { display: flex; align-items: center; gap: .5rem; flex: 0 1 auto; }
 .management-section label:has(> input[type=checkbox]) input { flex: 0 0 auto; margin: 0; }
 .management-page .summary-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }

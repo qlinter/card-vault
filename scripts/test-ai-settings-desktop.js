@@ -89,7 +89,7 @@ async function run(locale) {
     await service.selectOption("deepseek");
     await page.getByLabel("Model", { exact: true }).fill("fixture-deepseek");
     await page.getByRole("button", { name: l("保存设置", "Save Settings"), exact: true }).click();
-    await expect(page.locator(".ai-settings-panel [role=status]")).toHaveText(l("AI 设置已保存。", "AI settings saved."), { timeout: 45000 });
+    await expect(page.getByRole("status").filter({ hasText: l("AI 设置已保存。", "AI settings saved.") })).toBeVisible({ timeout: 45000 });
     await expect(service).toBeEnabled();
     const saved = await page.evaluate(() => window.cardVaultDesktop.getAiSettings());
     assert.equal(saved.provider, "deepseek"); assert.deepEqual(saved.customProviders, []);

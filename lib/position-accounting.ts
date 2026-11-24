@@ -29,13 +29,11 @@ export type CurrencyPosition = {
   totalProfitMinor: bigint | null;
 };
 
-export type PositionSeriesPoint = {
-  occurredAt: Date;
-  type: "purchase" | "sale" | "inventory_expense" | "sale_expense" | "valuation";
+export type HoldingSnapshot = {
+  day: string;
   remainingQuantity: number;
   remainingCostMinor: bigint;
-  amountMinor: bigint;
-  quantity: number | null;
+  quote: { day: string; unitMinor: bigint | null } | null;
   currentValueMinor: bigint | null;
 };
 
@@ -50,7 +48,7 @@ type InventoryEvent =
   | { type: "purchase" | "sale"; amountMinor: bigint; quantity: number; occurredAt: Date; createdAt?: Date }
   | { type: "inventory_expense"; amountMinor: bigint; occurredAt: Date; createdAt?: Date }
   | { type: "sale_expense"; amountMinor: bigint; occurredAt: Date; createdAt?: Date }
-  | { type: "valuation"; amountMinor: bigint; occurredAt: Date; createdAt?: Date };
+  | { type: "valuation"; amountMinor: bigint; available?: boolean; occurredAt: Date; createdAt?: Date };
 
 function eventPriority(type: InventoryEvent["type"]): number {
   if (type === "purchase") return 0;
@@ -89,10 +87,11 @@ function currencyEvents(history: PositionHistory, currency: string): InventoryEv
       createdAt: row.createdAt
     })),
     ...(history.valuations ?? [])
-      .filter((row) => row.available !== false && normalizeCurrency(row.currency) === currency)
+      .filter((row) => normalizeCurrency(row.currency) === currency)
       .map((row): InventoryEvent => ({
         type: "valuation",
         amountMinor: row.amountMinor,
+        available: row.available,
         occurredAt: accountingDate(row.valuedAt, row.createdAt),
         createdAt: row.createdAt
       }))
@@ -129,23 +128,23 @@ function applyInventoryEvent(
   state.realizedCostMinor += allocatedCost;
 }
 
-export function calculateCurrencyPositionSeries(history: PositionHistory, currencyValue: string): PositionSeriesPoint[] {
+export function calculateHoldingSnapshots(history: PositionHistory, currencyValue: string): HoldingSnapshot[] {
   const currency = normalizeCurrency(currencyValue);
   const state = { purchasedQuantity: 0, remainingQuantity: history.transactions.length === 0 ? Math.max(0, history.holdingQuantity ?? 0) : 0, remainingCostMinor: BigInt(0), realizedCostMinor: BigInt(0) };
-  return currencyEvents(history, currency).map((event) => {
+  const days = new Map<string, HoldingSnapshot>();
+  let quote: HoldingSnapshot["quote"] = null;
+  for (const event of currencyEvents(history, currency)) {
     applyInventoryEvent(state, event);
-    return {
-      occurredAt: event.occurredAt,
-      type: event.type,
+    const day = event.occurredAt.toISOString().slice(0, 10);
+    if (event.type === "valuation") quote = { day, unitMinor: event.available === false ? null : event.amountMinor };
+    days.set(day, {
+      day, quote,
       remainingQuantity: state.remainingQuantity,
       remainingCostMinor: state.remainingCostMinor,
-      amountMinor: event.amountMinor,
-      quantity: event.type === "purchase" || event.type === "sale" ? event.quantity : null,
-      currentValueMinor: event.type === "valuation"
-        ? event.amountMinor * BigInt(state.remainingQuantity)
-        : null
-    };
-  });
+      currentValueMinor: quote?.unitMinor == null ? null : quote.unitMinor * BigInt(state.remainingQuantity)
+    });
+  }
+  return [...days.values()];
 }
 
 export function calculateCurrencyPosition(history: PositionHistory, currencyValue: string): CurrencyPosition {

@@ -144,6 +144,7 @@ model CardValuation {
 }
 
 model CardImage {
+  sortOrder Int @default(0)
   id        String   @id @default(cuid())
   cardId    String
   path      String

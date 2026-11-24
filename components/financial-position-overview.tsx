@@ -6,12 +6,12 @@ import { useMemo } from "react";
 import { useLanguage } from "./language-provider";
 import { reportingHistory, type FinancialConfig } from "@/lib/financial-reporting";
 import { formatMinorMoney } from "@/lib/financial-history";
-import { positionEventLabels } from "@/lib/financial-history-presentation";
+import { HoldingComparison } from "./holding-comparison";
 import {
-  calculateCurrencyPositionSeries,
+  calculateHoldingSnapshots,
   calculatePositions,
   type CurrencyPosition,
-  type PositionSeriesPoint
+  type HoldingSnapshot
 } from "@/lib/position-accounting";
 
 type PositionOverviewProps = {
@@ -42,78 +42,6 @@ function ratioPercent(value: bigint, total: bigint): number {
 function valueRatio(value: bigint, maximum: bigint): number {
   if (maximum <= BigInt(0)) return 0;
   return Number((value * BigInt(10000)) / maximum) / 10000;
-}
-
-function dateLabel(date: Date): string {
-  return date.toLocaleDateString("zh-CN", { timeZone: "UTC", month: "2-digit", day: "2-digit" });
-}
-
-function PositionTrendChart({ series, currency }: { series: PositionSeriesPoint[]; currency: string }) {
-  if (series.length === 0) {
-    return <div className="financial-chart-empty"><UiText text={"新增交易或估值后，这里会显示持仓成本变化。"} /></div>;
-  }
-
-  const width = 720;
-  const height = 240;
-  const left = 64;
-  const right = 18;
-  const top = 24;
-  const bottom = 48;
-  const plotWidth = width - left - right;
-  const plotHeight = height - top - bottom;
-  const firstTime = series[0].occurredAt.getTime();
-  const lastTime = series.at(-1)?.occurredAt.getTime() ?? firstTime;
-  const timeRange = Math.max(1, lastTime - firstTime);
-  const values = series.flatMap((point) => point.currentValueMinor === null
-    ? [point.remainingCostMinor]
-    : [point.remainingCostMinor, point.currentValueMinor]);
-  const maximum = values.reduce((current, value) => value > current ? value : current, BigInt(1));
-  const x = (point: PositionSeriesPoint) => firstTime === lastTime
-    ? left + plotWidth / 2
-    : left + ((point.occurredAt.getTime() - firstTime) / timeRange) * plotWidth;
-  const y = (value: bigint) => top + plotHeight * (1 - valueRatio(value, maximum));
-  const costPath = series.reduce((path, point, index) => {
-    const pointX = x(point);
-    const pointY = y(point.remainingCostMinor);
-    if (index === 0) return `M ${pointX} ${pointY}`;
-    return `${path} H ${pointX} V ${pointY}`;
-  }, "");
-  const valuationPoints = series.filter((point) => point.type === "valuation" && point.currentValueMinor !== null);
-  const valuationPath = valuationPoints.map((point, index) =>
-    `${index === 0 ? "M" : "L"} ${x(point)} ${y(point.currentValueMinor ?? BigInt(0))}`).join(" ");
-
-  return (
-    <div className="position-trend-chart" data-testid="position-trend-chart">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby={`position-chart-title-${currency} position-chart-desc-${currency}`}>
-        <title id={`position-chart-title-${currency}`}>{currency}<UiText text={" 持仓成本与估值变化"} /></title>
-        <desc id={`position-chart-desc-${currency}`}><UiText text={"实线表示剩余持仓成本，圆点表示录入的持仓估值快照。"} /></desc>
-        <line className="chart-grid-line" x1={left} x2={width - right} y1={top} y2={top} />
-        <line className="chart-grid-line" x1={left} x2={width - right} y1={top + plotHeight} y2={top + plotHeight} />
-        <text className="chart-axis-label" x={left - 8} y={top + 4} textAnchor="end">{formatMinorMoney(maximum, currency)}</text>
-        <text className="chart-axis-label" x={left - 8} y={top + plotHeight + 4} textAnchor="end">0</text>
-        <path className="chart-cost-line" d={costPath} />
-        {valuationPath ? <path className="chart-value-line" d={valuationPath} /> : null}
-        {valuationPoints.map((point, index) => (
-          <circle className="chart-value-point" key={`valuation-${point.occurredAt.getTime()}-${index}`} cx={x(point)} cy={y(point.currentValueMinor ?? BigInt(0))} r="5">
-            <title>{dateLabel(point.occurredAt)}<UiText text={" · 持仓估值 "} />{formatMinorMoney(point.currentValueMinor ?? BigInt(0), currency)} · {point.remainingQuantity}<UiText text={" 张"} /></title>
-          </circle>
-        ))}
-        {series.map((point, index) => (
-          <g key={`${point.type}-${point.occurredAt.getTime()}-${index}`}>
-            <line className={`chart-event chart-event-${point.type}`} x1={x(point)} x2={x(point)} y1={top + plotHeight + 7} y2={top + plotHeight + 17}>
-              <title>{dateLabel(point.occurredAt)} · <UiText text={positionEventLabels[point.type]} /><UiText text={" · 持有 "} />{point.remainingQuantity}<UiText text={" 张"} /></title>
-            </line>
-          </g>
-        ))}
-        <text className="chart-axis-label" x={left} y={height - 7}>{dateLabel(series[0].occurredAt)}</text>
-        <text className="chart-axis-label" x={width - right} y={height - 7} textAnchor="end">{dateLabel(series.at(-1)?.occurredAt ?? series[0].occurredAt)}</text>
-      </svg>
-      <div className="financial-chart-legend">
-        <span><i className="legend-cost" /><UiText text={"剩余成本"} /></span>
-        <span><i className="legend-value" /><UiText text={"估值快照"} /></span>
-      </div>
-    </div>
-  );
 }
 
 function CostComposition({ position }: { position: CurrencyPosition }) {
@@ -178,7 +106,7 @@ function ProfitBars({ position }: { position: CurrencyPosition }) {
   );
 }
 
-function PositionPanel({ position, series }: { position: CurrencyPosition; series: PositionSeriesPoint[] }) {
+function PositionPanel({ position, days }: { position: CurrencyPosition; days: HoldingSnapshot[] }) {
   const currency = position.currency;
   return (
     <div className="financial-position-panel">
@@ -212,11 +140,8 @@ function PositionPanel({ position, series }: { position: CurrencyPosition; serie
         </details>
       </div>
 
-      {series.length ? <details className="financial-chart-details"><summary><UiText text="财务图表" /></summary><div className="financial-charts-grid">
-        <section className="financial-chart-card trend-chart-card">
-          <div className="financial-chart-heading"><h3><UiText text={"持仓成本与估值变化"} /></h3><span>{series.length}<UiText text={" 个事件"} /></span></div>
-          <PositionTrendChart series={series} currency={currency} />
-        </section>
+      {days.length ? <details className="financial-chart-details"><summary><UiText text="财务图表" /></summary><div className="financial-charts-grid">
+        <HoldingComparison days={days} currency={currency} />
         <div className="financial-side-charts">
           <CostComposition position={position} />
           <ProfitBars position={position} />
@@ -232,13 +157,13 @@ export function FinancialPositionOverview(props: PositionOverviewProps) {
   const report = useMemo(() => reportingHistory(props, props.config), [props]);
   const positions = calculatePositions(report);
   const activePosition = positions[0];
-  const series = calculateCurrencyPositionSeries(report, props.config.reportingCurrency);
+  const days = calculateHoldingSnapshots(report, props.config.reportingCurrency);
   return (
     <div className="financial-overview">
       <section data-i18n-skip>
         {!activePosition || report.costMissing.length > 0 ? <p>{text("持仓估值", "Holding value")}: {activePosition?.currentValueMinor != null ? formatMinorMoney(activePosition.currentValueMinor, props.config.reportingCurrency) : "–"}</p> : null}
       </section>
-      {activePosition && report.costMissing.length === 0 ? <PositionPanel position={activePosition} series={series} /> : null}
+      {activePosition && report.costMissing.length === 0 ? <PositionPanel position={activePosition} days={days} /> : null}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   calculateCurrencyPosition,
-  calculateCurrencyPositionSeries,
+  calculateHoldingSnapshots,
   resolvePositionCollectionStatus
 } from "../lib/position-accounting.ts";
 
@@ -60,18 +60,33 @@ test("position presentation separates cost expenses and produces dated chart poi
   assert.equal(position.inventoryExpenseMinor, 4000n);
   assert.equal(position.saleExpenseMinor, 500n);
 
-  const series = calculateCurrencyPositionSeries(history, "CNY");
-  assert.deepEqual(series.map((point) => point.type), [
-    "purchase",
-    "inventory_expense",
-    "inventory_expense",
-    "valuation",
-    "sale",
-    "sale_expense"
-  ]);
-  assert.equal(series[3].currentValueMinor, 28000n);
+  const series = calculateHoldingSnapshots(history, "CNY");
+  assert.deepEqual(series.map(point => point.day), ["2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04"]);
+  assert.equal(series[0].remainingCostMinor, 21000n);
+  assert.equal(series[0].currentValueMinor, null);
+  assert.equal(series[2].currentValueMinor, 28000n);
+  assert.equal(series[3].currentValueMinor, position.currentValueMinor);
+  assert.deepEqual(series[3].quote, { day: "2026-01-03", unitMinor: 14000n });
   assert.equal(series.at(-1)?.remainingQuantity, 1);
   assert.equal(series.at(-1)?.remainingCostMinor, 12000n);
+});
+
+test("daily holdings distinguish an absent, zero and unavailable quote through a full sale", () => {
+  const history = {
+    transactions: [
+      { kind: "purchase", currency: "CNY", quantity: 1, amountMinor: 5000n, occurredAt: at("2026-01-01") },
+      { kind: "sale", currency: "CNY", quantity: 1, amountMinor: 6500n, occurredAt: at("2026-01-05") }
+    ],
+    expenses: [],
+    valuations: [0n, 0n, 6000n].map((amountMinor, index) => {
+      const date = at(`2026-01-0${index + 2}`);
+      return { currency: "CNY", amountMinor, available: index !== 1, valuedAt: date, createdAt: date };
+    })
+  };
+  const days = calculateHoldingSnapshots(history, "CNY");
+  assert.deepEqual(days.map(day => day.currentValueMinor), [null, 0n, null, 6000n, 0n]);
+  assert.deepEqual(days.map(day => day.quote?.unitMinor), [undefined, 0n, null, 6000n, 6000n]);
+  assert.equal(days.at(-1)?.remainingCostMinor, 0n);
 });
 
 test("selling more than the current holding is rejected", () => {

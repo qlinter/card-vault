@@ -1,3 +1,6 @@
+import { cardImageOrder } from "@/lib/card-image-order";
+import { existingStudioFile } from "@/lib/studio-images";
+import { hasStudioKey } from "@/lib/ai-settings";
 import { CardImageExport } from "@/components/card-image-export";
 import { collectionStatusText } from "@/lib/card-domain";
 import { UiText } from "@/components/ui-text";
@@ -42,7 +45,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
   const card = await prisma.card.findUnique({
     where: { id },
     include: {
-      images: { orderBy: { createdAt: "asc" } },
+      images: { orderBy: cardImageOrder },
       transactions: { orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }] },
       expenses: { orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }] },
       valuations: { orderBy: [{ valuedAt: "desc" }, { createdAt: "desc" }] }
@@ -79,6 +82,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
       </div>
 
       {success ? <p className="note-ok"><UiText text={success} /></p> : null}
+      {["created", "updated"].includes(toScalar(query.success) ?? "") && !hasStudioKey() && !await existingStudioFile(card) ? <p className="muted"><UiText text="未配置 OpenAI Key，展馆暂用首图。可在设置中补生成。" /></p> : null}
       {error ? <p className="note-error"><UiText text={error} /></p> : null}
 
       <div className="details">

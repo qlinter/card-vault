@@ -1,3 +1,5 @@
+import { ShowcaseSourceSwitch } from "@/components/showcase-source-switch";
+import { prefersStudioImages } from "@/lib/showcase-source-server";
 import { UiText } from "@/components/ui-text";
 import { exportShareCollectionAction } from "@/app/actions/shares";
 import { prisma } from "@/lib/prisma";
@@ -45,6 +47,7 @@ export default async function ExportSharePage({ params, searchParams }: ExportSh
           <p className="muted">{share.title} / {share.items.length}<UiText text={" 张卡牌"} /></p>
         </div>
         <div className="title-actions">
+          <ShowcaseSourceSwitch studio={await prefersStudioImages()} guest={false} />
           <a className="btn btn-secondary" href={`/shares/${share.id}/edit`}><UiText text={"编辑"} /></a>
           <a className="btn btn-secondary" href={`/shares/${share.id}/preview`}><UiText text={"预览"} /></a>
         </div>

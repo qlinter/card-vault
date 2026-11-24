@@ -46,14 +46,15 @@ for (const locale of ["zh", "en"]) test(`both card views export original files a
 
 test("images with the same upload timestamp download a complete ZIP in display order, while missing images fail visibly and can retry", async ({ page, request }) => {
   fixture(db => {
-    db.exec("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES('image-export-ui','Export fixture','导出 / 原图','Basketball'); INSERT INTO CardImage(id,cardId,path,rotation,createdAt) VALUES('export-z','image-export-ui','/media/ui-card-1.webp',90,1000),('export-a','image-export-ui','/media/ui-card-2.webp',0,1000)");
+    db.exec("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES('image-export-ui','Export fixture','导出 / 原图','Basketball'); INSERT INTO CardImage(id,cardId,path,rotation,createdAt,sortOrder) VALUES('export-z','image-export-ui','/media/ui-card-1.webp',90,1000,0),('export-a','image-export-ui','/media/ui-card-2.webp',0,1000,1)");
   });
   const response = await request.get("/api/cards/image-export-ui/images/export");
   expect(response.status()).toBe(200);
   expect(response.headers()["content-type"]).toBe("application/zip");
   const archive = await Open.buffer(await response.body());
   expect(archive.files.map(file => file.path)).toEqual(["导出 - 原图-01.webp", "导出 - 原图-02.webp"]);
-  expect(await archive.files[0].buffer()).toEqual(await readFile(original));
+  expect((await archive.files[0].buffer()).equals(await readFile(original))).toBe(true);
+  expect((await archive.files[1].buffer()).equals(await readFile(new URL("ui-card-2.webp", original)))).toBe(true);
   expect((await request.get("/api/cards/no-such-card/images/export")).status()).toBe(404);
   fixture(db => db.exec("UPDATE CardImage SET path='/media/missing.webp' WHERE id='export-a'"));
   await page.goto("/cards/image-export-ui", { waitUntil: "networkidle" });

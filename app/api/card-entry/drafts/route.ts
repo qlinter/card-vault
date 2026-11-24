@@ -11,7 +11,7 @@ class DraftRequestTooLargeError extends Error {}
 
 async function readDraftPayload(
   request: NextRequest
-): Promise<{ id?: unknown; values?: unknown; imageRotations?: unknown }> {
+): Promise<{ id?: unknown; values?: unknown; frontChoice?: unknown; imageRotations?: unknown }> {
   if (!request.body) return {};
   const reader = request.body.getReader();
   const decoder = new TextDecoder();
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       const id = normalizeCardEntryId(form.get("id"));
       if (form.has("id") && !id) throw new Error("草稿编号无效。");
       const images = form.getAll("images").filter((file): file is File => file instanceof File);
-      const draft = await saveCardEntryDraft({ id, values: JSON.parse(values), images, imageRotations: JSON.parse(String(form.get("imageRotations") || "[]")) });
+      const draft = await saveCardEntryDraft({ id, frontChoice: form.get("frontChoice"), values: JSON.parse(values), images, imageRotations: JSON.parse(String(form.get("imageRotations") || "[]")) });
       return NextResponse.json({ id: draft.id, updatedAt: draft.updatedAt.toISOString() });
     }
     if (contentLength > maxDraftRequestBytes) {
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     if (payload.id !== undefined && !id) {
       return NextResponse.json({ error: "草稿编号无效。" }, { status: 400 });
     }
-    const draft = await saveCardEntryDraft({ id, values: payload.values, imageRotations: payload.imageRotations });
+    const draft = await saveCardEntryDraft({ id, frontChoice: payload.frontChoice, values: payload.values, imageRotations: payload.imageRotations });
     return NextResponse.json({ id: draft.id, updatedAt: draft.updatedAt.toISOString() });
   } catch (error) {
     if (error instanceof DraftRequestTooLargeError) {

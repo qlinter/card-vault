@@ -86,6 +86,13 @@
   .settings-surface .orphan-reveal-button { grid-column: 1; justify-self: start; }
 }
 .ai-settings-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
+.studio-recovery { display: grid; justify-items: start; gap: .5rem; margin-top: 1rem; padding-top: .8rem; border-top: 1px solid var(--line); }
+.studio-recovery-heading { display: flex; width: 100%; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; }
+.studio-recovery-heading h3 { margin: 0; font-size: var(--text-base); font-weight: var(--weight-semibold); }
+.studio-recovery p { margin: 0; font-size: var(--text-sm); }
+.studio-recovery-counts { display: flex; flex-wrap: wrap; gap: .25rem 1rem; color: var(--muted-ink); }
+.studio-recovery-counts span { white-space: nowrap; }
+.studio-recovery-counts strong { color: var(--ink); font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; }
 .ai-delete-confirmation { margin: .8rem 0; padding: .8rem; border: 1px solid var(--line); border-radius: .65rem; overflow-wrap: anywhere; }
 .ai-delete-confirmation p { margin: 0 0 .6rem; }
 

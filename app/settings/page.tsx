@@ -10,19 +10,24 @@ import { ThemeSettings } from "@/components/theme-settings";
 import { AccountSettings } from "@/components/account-settings";
 import { SettingsSignOut } from "@/components/settings-sign-out";
 import { requireAccount } from "@/lib/account-server";
+import { prisma } from "@/lib/prisma";
+import { guestShowcaseVisibility } from "@/lib/showcase";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const account = await requireAccount();
-  const financialConfig = await loadFinancialSettings();
+  const [financialConfig, publicCardCount] = await Promise.all([
+    loadFinancialSettings(),
+    prisma.card.count({ where: { visibility: guestShowcaseVisibility } })
+  ]);
 
   return (
     <div className="page settings-page settings-surface">
       <h1 className="sr-only"><UiText text="设置" /></h1>
 
       <div className="settings-groups">
-        <AccountSettings username={account.username || ""} />
+        <AccountSettings username={account.username || ""} initialGuestEnabled={account.guestEnabled === true} publicCardCount={publicCardCount} />
         <ThemeSettings />
         <DataSettings><DataWorkspace embedded /></DataSettings>
         <AiSettings />

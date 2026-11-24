@@ -10,6 +10,7 @@ import { NavigationHistory } from "@/components/navigation-history";
 import { normalizeUiLocale, UI_LOCALE_COOKIE } from "@/lib/ui-locale";
 import { accountStatus } from "@/lib/account-server";
 import { AccountBoundary } from "@/components/account-boundary";
+import { GuestHeader } from "@/components/guest-header";
 
 export async function generateMetadata(): Promise<Metadata> {
   const cookieStore = await cookies();
@@ -36,6 +37,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div className="site-bg" />
             {account.authenticated ? <AccountBoundary>
               <SiteHeader />
+              <main className="container">{children}</main>
+            </AccountBoundary> : account.guest ? <AccountBoundary guest>
+              <GuestHeader />
               <main className="container">{children}</main>
             </AccountBoundary> : <main className="container">{children}</main>}
           </ThemeProvider>

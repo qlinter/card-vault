@@ -24,7 +24,7 @@ function firstCardImagePaths(dbPath) {
         SELECT firstImage.rowid
         FROM CardImage firstImage
         WHERE firstImage.cardId = image.cardId
-        ORDER BY firstImage.createdAt, firstImage.rowid
+        ORDER BY firstImage.sortOrder, firstImage.createdAt, firstImage.id
         LIMIT 1
       )
       ORDER BY image.cardId

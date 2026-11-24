@@ -10,6 +10,94 @@ test.afterEach(() => fixtureDb((db) => {
   db.exec("DELETE FROM ExchangeRate; DELETE FROM FinancialSettings;");
 }));
 
+test("holding comparison shows end-of-day cost and quoted value on one scale", async ({ page }) => {
+  fixtureDb(db => db.exec(`
+    INSERT INTO CardTransaction(id,cardId,kind,amountMinor,currency,quantity,occurredAt,provenance)
+    VALUES ('cmp-buy','finance-ui','purchase',20000,'CNY',2,'2026-01-01T00:00:00.000Z','manual'),
+           ('cmp-sale','finance-ui','sale',17000,'CNY',1,'2026-03-01T00:00:00.000Z','manual');
+    INSERT INTO CardValuation(id,cardId,amountMinor,currency,valuedAt,source,provenance)
+    VALUES ('cmp-quote','finance-ui',10000,'CNY','2026-02-01T00:00:00.000Z','个人估计','manual'),
+           ('cmp-update','finance-ui',15000,'CNY','2026-02-15T00:00:00.000Z','个人估计','manual');
+    UPDATE Card SET holdingQuantity=1 WHERE id='finance-ui';
+  `));
+  await page.goto("/cards/finance-ui", { waitUntil: "networkidle" });
+  await page.locator(".financial-chart-details > summary").click();
+  const chart = page.locator(".holding-comparison");
+  await expect(chart.getByRole("img")).toHaveCount(1);
+  await expect(chart.getByRole("combobox")).toHaveCount(0);
+  await expect(chart.locator("time")).toHaveAttribute("datetime", "2026-03-01");
+  await expect(chart.locator(".holding-readout dd")).toHaveText(["CNY 100.00", "CNY 150.00"]);
+  await expect(chart.locator(".holding-cost path")).toHaveAttribute("d", /^M.+ H.+ V.+ H.+ V/);
+  await expect(chart.locator(".holding-value path")).toHaveAttribute("d", /^ M.+ L.+ H.+ V/);
+  await page.locator(".financial-charts-grid").screenshot({ path: "logs/holding-comparison-desktop.png" });
+  await expect(chart.locator(".holding-value circle")).toHaveCount(3);
+  const tooltip = chart.getByRole("tooltip");
+  await chart.locator(".holding-value circle").first().hover();
+  await expect(tooltip.locator("strong")).toHaveText("2026-02-01");
+  await expect(tooltip.locator("dd")).toHaveText(["CNY 200.00", "CNY 200.00", "2"]);
+  await chart.locator(".holding-value circle").last().hover();
+  await expect(tooltip.locator("dd")).toHaveText(["CNY 100.00", "CNY 150.00", "1"]);
+  await chart.screenshot({ path: "logs/holding-point-tooltip.png" });
+  await chart.getByRole("heading").hover();
+  await expect(tooltip).toHaveCount(0);
+  await page.setViewportSize({ width: 320, height: 760 });
+  await expect(chart.locator(".holding-lines text").filter({ hasText: "2026-03-01" })).toBeVisible();
+  expect(await chart.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await chart.screenshot({ path: "logs/holding-comparison-mobile.png" });
+  await chart.getByRole("img").focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(tooltip.locator("strong")).toHaveText("2026-02-15");
+  expect(await tooltip.evaluate(el => {
+    const rect = el.getBoundingClientRect(), plot = el.parentElement.getBoundingClientRect();
+    return rect.left >= plot.left - 1 && rect.right <= plot.right + 1;
+  })).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(tooltip).toHaveCount(0);
+  await page.getByRole("button", { name: "选择语言" }).click();
+  await page.getByRole("menuitemradio", { name: "English" }).click();
+  await expect(chart.getByRole("heading")).toHaveText("Holding Cost and Value");
+  await expect(chart.locator("time")).toHaveText("As of 2026-03-01");
+});
+
+test("a full sale connects the previous holding directly to zero on both lines", async ({ page }) => {
+  fixtureDb(db => db.exec(`
+    INSERT INTO CardTransaction(id,cardId,kind,amountMinor,currency,quantity,occurredAt,provenance)
+    VALUES ('buy','finance-ui','purchase',20000,'CNY',2,'2026-01-01T00:00:00.000Z','manual'),
+           ('partial','finance-ui','sale',17000,'CNY',1,'2026-02-01T00:00:00.000Z','manual'),
+           ('last-sale','finance-ui','sale',18000,'CNY',1,'2026-03-01T00:00:00.000Z','manual');
+    INSERT INTO CardValuation(id,cardId,amountMinor,currency,valuedAt,source,provenance)
+    VALUES ('quote','finance-ui',15000,'CNY','2026-01-01T00:00:00.000Z','个人估计','manual');
+    UPDATE Card SET collectionStatus='sold', holdingQuantity=0 WHERE id='finance-ui';
+  `));
+  await page.goto("/cards/finance-ui", { waitUntil: "networkidle" });
+  await page.locator(".financial-chart-details > summary").click();
+  const chart = page.locator(".holding-comparison");
+  for (const line of [".holding-cost", ".holding-value"]) {
+    await expect(chart.locator(`${line} path`)).toHaveAttribute("d", /^M[^ ]+ H[^ ]+ V[^ ]+ L[^ ]+$/);
+  }
+  await expect(chart.locator(".holding-readout dd")).toHaveText(["CNY 0.00", "CNY 0.00"]);
+  await chart.screenshot({ path: "logs/holding-sold-line.png" });
+  await chart.locator(".holding-value circle").last().hover();
+  await expect(chart.getByRole("tooltip").locator("dd")).toHaveText(["CNY 0.00", "CNY 0.00", "0"]);
+});
+
+test("a single record date shows one cost marker without inventing a valuation", async ({ page }) => {
+  fixtureDb(db => db.exec(`
+    INSERT INTO CardTransaction(id,cardId,kind,amountMinor,currency,quantity,occurredAt,provenance)
+    VALUES ('first-buy','finance-ui','purchase',9000,'CNY',1,'2026-01-01T00:00:00.000Z','manual');
+    UPDATE Card SET holdingQuantity=1 WHERE id='finance-ui';
+  `));
+  await page.goto("/cards/finance-ui", { waitUntil: "networkidle" });
+  await page.locator(".financial-chart-details > summary").click();
+  const chart = page.locator(".holding-comparison");
+  await expect(chart.locator(".holding-lines text").filter({ hasText: "2026-01-01" })).toHaveCount(1);
+  await expect(chart.locator(".holding-cost circle")).toBeVisible();
+  await expect(chart.locator(".holding-value circle")).toHaveCount(0);
+  await expect(chart.locator(".holding-readout dd")).toHaveText(["CNY 90.00", "暂无估值"]);
+  await chart.locator(".holding-cost circle").hover();
+  await expect(chart.getByRole("tooltip").locator("dd")).toHaveText(["CNY 90.00", "暂无估值", "1"]);
+});
+
 async function revealHistory(page) {
   const history = page.locator(".financial-history-details");
   await expect(history).toBeVisible();

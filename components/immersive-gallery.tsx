@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { rememberShowcaseSource } from "@/lib/showcase-source";
 import { useState, type CSSProperties } from "react";
 import { defaultGalleryPreferences, galleryCaption, galleryPosition, galleryPreferenceKey, normalizeGalleryPreferences, type GalleryCard, type GalleryPreferences, type GallerySource } from "@/lib/immersive-presentation";
 import { useLanguage } from "./language-provider";
@@ -8,19 +10,25 @@ import { ShowcaseImage } from "./showcase-image";
 import { ShowcaseIcon } from "./showcase-icon";
 import { ImmersiveGallerySettings } from "./immersive-gallery-settings";
 
-function initialPreferences() {
-  try { return normalizeGalleryPreferences(JSON.parse(localStorage.getItem(galleryPreferenceKey) ?? "null")); }
+function initialPreferences(key: string) {
+  try { return normalizeGalleryPreferences(JSON.parse(localStorage.getItem(key) ?? "null")); }
   catch { return { ...defaultGalleryPreferences }; }
 }
 
-export function ImmersiveGallery({ source, onClose }: { source: GallerySource; onClose: () => void }) {
+export function ImmersiveGallery({ source, onClose, guest = false, showcaseStudio }: { source: GallerySource; onClose: () => void; guest?: boolean; showcaseStudio?: boolean }) {
   const { t } = useLanguage();
-  const [preferences, setPreferences] = useState(initialPreferences);
-  const viewer = useImmersiveViewer({ source, onClose, playback: preferences });
+  const preferenceKey = guest ? `${galleryPreferenceKey}-guest` : galleryPreferenceKey;
+  const [preferences, setPreferences] = useState(() => initialPreferences(preferenceKey));
+  const router = useRouter();
+  const viewer = useImmersiveViewer({ source, onClose, playback: guest ? { ...preferences, excludeSold: false } : preferences });
   const update = (patch: Partial<GalleryPreferences>) => { viewer.pause(); setPreferences(value => normalizeGalleryPreferences({ ...value, ...patch })); };
   const save = (interval: number) => {
     const saved = normalizeGalleryPreferences({ ...preferences, interval, allImages: viewer.allImages, excludeSold: source.spec ? preferences.excludeSold : viewer.excludeSold });
-    try { localStorage.setItem(galleryPreferenceKey, JSON.stringify(saved)); setPreferences(saved); return true; }
+    try { localStorage.setItem(preferenceKey, JSON.stringify(saved)); setPreferences(saved);
+      if (showcaseStudio !== undefined && Boolean(saved.studioImage) !== showcaseStudio) {
+        rememberShowcaseSource(guest, Boolean(saved.studioImage)); router.refresh();
+      }
+      return true; }
     catch { return false; }
   };
   const position = galleryPosition(viewer.session?.index, viewer.session?.ids.length);
@@ -36,7 +44,7 @@ export function ImmersiveGallery({ source, onClose }: { source: GallerySource; o
     <div ref={viewer.surface} className="immersive-surface">
     <div className="gallery-architecture" aria-hidden="true"><div className="gallery-spotlight" /><div className="gallery-floor" /><div className="gallery-wall-seam" /></div>
     <header className="immersive-top" onFocus={viewer.showControls}>
-      <div className="gallery-wordmark">CARD VAULT</div>
+      <div className="gallery-wordmark">{guest ? t("访客浏览") : "CARD VAULT"}</div>
       {sceneLabel ? <div className="gallery-collection-heading">{sceneLabel}</div> : <span />}
       <div className="gallery-window-actions">
         <button ref={viewer.settingsToggle} type="button" className="gallery-icon-button" title={t("展馆设置")} aria-label={t("展馆设置")} aria-expanded={viewer.settingsOpen} aria-controls="gallery-settings" onClick={() => { viewer.pause(); viewer.setSettingsOpen(value => !value); viewer.showControls(); }}><ShowcaseIcon name="settings" /></button>
@@ -78,7 +86,7 @@ export function ImmersiveGallery({ source, onClose }: { source: GallerySource; o
       </div>
     </footer>
     {viewer.message ? <p className="gallery-notice" role="status">{t(viewer.message)}<button type="button" onClick={() => viewer.setRetry(value => value + 1)}>{t("重试")}</button></p> : null}
-    <ImmersiveGallerySettings viewer={viewer} allowSoldFilter={!source.spec} preferences={preferences} update={update} save={save} />
+    <ImmersiveGallerySettings viewer={viewer} allowSoldFilter={!guest && !source.spec} preferences={preferences} update={update} save={save} />
     </div>
   </dialog>;
 }

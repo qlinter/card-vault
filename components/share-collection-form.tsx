@@ -1,3 +1,6 @@
+import { existingStudioFile, studioImageUrl } from "@/lib/studio-images";
+import { prefersStudioImages } from "@/lib/showcase-source-server";
+import { ShowcaseSourceSwitch } from "./showcase-source-switch";
 import { ShareCollection, ShareCollectionItem, ShareSection } from "@prisma/client";
 import type { ShareCatalogCard } from "@/lib/share-card-catalog";
 import { homeThumbnailPublicPath } from "@/lib/card-thumbnail-core.js";
@@ -67,14 +70,14 @@ function cardSummary(card: CardOption): ShareThemeCard {
   };
 }
 
-function toPickerCard(card: CardOption, item: (ShareCollectionItem & { card: CardOption }) | undefined): SharePickerCard {
+function toPickerCard(studio: boolean, card: CardOption, item: (ShareCollectionItem & { card: CardOption }) | undefined): SharePickerCard {
   return {
     ...cardCatalogFields(card),
     visibility: card.visibility,
     tags: card.tags,
-    imagePath: card.images[0]?.path ?? null,
-    thumbnailPath: card.images[0] ? homeThumbnailPublicPath(card.images[0].path) : null,
-    imageRotation: card.images[0]?.rotation ?? 0,
+    imagePath: studio ? studioImageUrl(card.id) : card.images[0]?.path ?? null,
+    thumbnailPath: studio ? studioImageUrl(card.id, true) : card.images[0] ? homeThumbnailPublicPath(card.images[0].path) : null,
+    imageRotation: studio ? 0 : card.images[0]?.rotation ?? 0,
     selected: Boolean(item),
     sortOrder: item?.sortOrder ?? 0,
     displayTitle: item?.displayTitle ?? "",
@@ -82,7 +85,7 @@ function toPickerCard(card: CardOption, item: (ShareCollectionItem & { card: Car
   };
 }
 
-export function ShareCollectionForm({ action, cards, share, error }: ShareCollectionFormProps) {
+export async function ShareCollectionForm({ action, cards, share, error }: ShareCollectionFormProps) {
   const selected = shareItemMap(share);
   const sortedCards = [...cards].sort((a, b) => {
     const aItem = selected.get(a.id);
@@ -98,7 +101,8 @@ export function ShareCollectionForm({ action, cards, share, error }: ShareCollec
     }
     return a.playerName.localeCompare(b.playerName);
   });
-  const pickerCards = sortedCards.map((card) => toPickerCard(card, selected.get(card.id)));
+  const studio = await prefersStudioImages();
+  const pickerCards = await Promise.all(sortedCards.map(async card => toPickerCard(studio && Boolean(await existingStudioFile(card)), card, selected.get(card.id))));
   const presentation = sanitizeSharePresentationCards(
     parseSharePresentation(share?.presentationConfig),
     share?.items.map((item) => item.cardId) ?? []
@@ -119,6 +123,7 @@ export function ShareCollectionForm({ action, cards, share, error }: ShareCollec
   const initialSections = storedSections;
 
   return (
+    <><ShowcaseSourceSwitch studio={studio} guest={false} />
     <ShareCollectionWizard
       action={action}
       editVersion={share ? shareEditVersion(share) : ""}
@@ -139,6 +144,6 @@ export function ShareCollectionForm({ action, cards, share, error }: ShareCollec
         sections: initialSections
       }}
       error={error}
-    />
+    /></>
   );
 }

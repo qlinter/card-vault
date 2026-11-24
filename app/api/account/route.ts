@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ACCOUNT_COOKIE, AccountError, createAccountStore } from "@/lib/account-store";
+import { ACCOUNT_COOKIE, GUEST_COOKIE, AccountError, createAccountStore } from "@/lib/account-store";
 import { localRequestOrigin } from "@/lib/local-session-security";
 
 export const runtime = "nodejs";
@@ -7,13 +7,13 @@ export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "no-store, private", "Pragma": "no-cache" };
 
 export function GET(request: NextRequest) {
-  const status = createAccountStore().status(request.cookies.get(ACCOUNT_COOKIE)?.value);
+  const status = createAccountStore().status(request.cookies.get(ACCOUNT_COOKIE)?.value, request.cookies.get(GUEST_COOKIE)?.value);
   return NextResponse.json(status, { headers, status: status.state === "unavailable" ? 503 : 200 });
 }
 
 export async function POST(request: NextRequest) {
   const expectedOrigin = localRequestOrigin(request.headers.get("host"), request.nextUrl.protocol, process.env.CARD_VAULT_ALLOWED_ORIGIN);
-  if (request.headers.get("origin") !== expectedOrigin || request.headers.get("content-type")?.split(";")[0].trim() !== "application/json") {
+  if (!expectedOrigin || request.headers.get("origin") !== expectedOrigin || request.headers.get("content-type")?.split(";")[0].trim() !== "application/json") {
     return NextResponse.json({ error: "invalid-origin" }, { status: 403, headers });
   }
   try {
@@ -31,13 +31,17 @@ export async function POST(request: NextRequest) {
     let input;
     try { input = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw new AccountError("invalid-request"); }
     if (!input || typeof input !== "object" || Array.isArray(input) || typeof input.action !== "string") throw new AccountError("invalid-request");
-    const result = await createAccountStore().execute(input.action, input, request.cookies.get(ACCOUNT_COOKIE)?.value);
-    const { token, ...payload } = result;
+    const result = await createAccountStore().execute(input.action, input, request.cookies.get(ACCOUNT_COOKIE)?.value, request.cookies.get(GUEST_COOKIE)?.value);
+    const { token, guestToken, clearGuest, ...payload } = result;
     const response = NextResponse.json(payload, { headers });
-    if (token || result.logout) response.headers.set("Clear-Site-Data", '"cache"');
+    const cookieOptions = { httpOnly: true, sameSite: "strict" as const, secure: request.nextUrl.protocol === "https:", path: "/" };
+    if (token || result.logout || clearGuest) response.headers.set("Clear-Site-Data", '"cache"');
     if (token || result.logout) response.cookies.set(ACCOUNT_COOKIE, token || "", {
-      httpOnly: true, sameSite: "strict", secure: request.nextUrl.protocol === "https:", path: "/",
+      ...cookieOptions,
       ...(result.logout ? { maxAge: 0 } : {})
+    });
+    if (guestToken || clearGuest || token || result.logout) response.cookies.set(GUEST_COOKIE, guestToken || "", {
+      ...cookieOptions, ...(!guestToken ? { maxAge: 0 } : {})
     });
     return response;
   } catch (error) {

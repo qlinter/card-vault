@@ -20,11 +20,19 @@ export type CardEntryDraftSummary = {
   updatedAt: string;
 };
 
+function readDraftFront(json: string) {
+  try {
+    const value = JSON.parse(json)?.frontChoice;
+    return typeof value === "string" ? value : undefined;
+  } catch { return undefined; }
+}
+
 export async function saveCardEntryDraft(input: {
   id?: string;
   values: unknown;
   images?: File[];
   imageRotations?: unknown;
+  frontChoice?: unknown;
 }) {
   const id = input.id ? normalizeCardEntryId(input.id) : undefined;
   if (input.id && !id) throw new Error("草稿编号无效。");
@@ -49,7 +57,8 @@ export async function saveCardEntryDraft(input: {
       const rotations = Array.isArray(input.imageRotations) ? input.imageRotations : undefined;
       const images = uploaded ? uploaded.map((path, index) => ({ path, name: input.images![index].name, rotation: normalizeCardImageRotation(rotations?.[index]) }))
         : previous.map((image, index) => ({ ...image, rotation: rotations ? normalizeCardImageRotation(rotations[index]) : image.rotation }));
-      const merged = { ...data, valuesJson: JSON.stringify({ ...JSON.parse(data.valuesJson), draftImages: images }) };
+      const frontChoice = typeof input.frontChoice === "string" ? input.frontChoice.slice(0, 140) : current && readDraftFront(current.valuesJson);
+      const merged = { ...data, valuesJson: JSON.stringify({ ...JSON.parse(data.valuesJson), frontChoice, draftImages: images }) };
       return current ? tx.cardEntryDraft.update({ where: { id: current.id }, data: merged }) : tx.cardEntryDraft.create({ data: merged });
     });
     if (uploaded) await Promise.all(previous.map(image => removeCardImageIfExists(image.path)));
@@ -62,7 +71,7 @@ export async function saveCardEntryDraft(input: {
 
 export async function getCardEntryDraft(
   id: string
-): Promise<{ id: string; values: CardFormValues; images: DraftImage[] } | null> {
+): Promise<{ id: string; values: CardFormValues; images: DraftImage[]; frontChoice?: string } | null> {
   const normalizedId = normalizeCardEntryId(id);
   if (!normalizedId) return null;
   const draft = await prisma.cardEntryDraft.findFirst({
@@ -72,7 +81,7 @@ export async function getCardEntryDraft(
       schemaVersion: cardEntryDraftSchemaVersion
     }
   });
-  return draft ? { id: draft.id, values: parseCardEntryDraftValues(draft.valuesJson), images: readDraftImages(draft.valuesJson) } : null;
+  return draft ? { id: draft.id, values: parseCardEntryDraftValues(draft.valuesJson), frontChoice: readDraftFront(draft.valuesJson), images: readDraftImages(draft.valuesJson) } : null;
 }
 
 export async function listRecentCardEntryDrafts(limit = 8): Promise<CardEntryDraftSummary[]> {

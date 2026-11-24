@@ -22,17 +22,20 @@ export function showcasePageForIndex(index: number): number {
 }
 
 const searchableColumns = ["playerName", "cardTitle", "team", "productLine", "cardNumber", "tags", "sport", "year", "grade"] as const;
+const guestSearchableColumns = ["playerName", "cardTitle", "brand", "productLine", "parallel", "cardNumber", "grade", "year"] as const;
+export const guestShowcaseVisibility = "public";
 
-export function toShowcaseWhere(input: ShowcaseQuery): Prisma.CardWhereInput {
+export function toShowcaseWhere(input: ShowcaseQuery, guest = false): Prisma.CardWhereInput {
   const andParts: Prisma.CardWhereInput[] = [];
 
+  if (guest) andParts.push({ visibility: guestShowcaseVisibility });
   if (input.group) {
     andParts.push({ playerName: input.group });
   }
 
   if (input.q) {
     andParts.push({
-      OR: searchableColumns.map(column => ({ [column]: { contains: input.q } }))
+      OR: (guest ? guestSearchableColumns : searchableColumns).map(column => ({ [column]: { contains: input.q } }))
     });
   }
 
@@ -83,12 +86,14 @@ export function buildShowcaseCardHref(cardId: string, query: ShowcaseQuery, base
 }
 
 /** Mirrors toShowcaseWhere for bounded rank/neighbor queries against raw SQLite timestamps. */
-export function showcaseSqlScope(query: ShowcaseQuery): Prisma.Sql {
+export function showcaseSqlScope(query: ShowcaseQuery, guest = false): Prisma.Sql {
   const clauses: Prisma.Sql[] = [Prisma.sql`1=1`];
+  if (guest) clauses.push(Prisma.sql`candidate.visibility = ${guestShowcaseVisibility}`);
   if (query.group) clauses.push(Prisma.sql`candidate.playerName = ${query.group}`);
   if (query.q) {
     const pattern = `%${query.q}%`;
-    clauses.push(Prisma.sql`(${Prisma.join(searchableColumns.map(column => Prisma.sql`${Prisma.raw(`candidate.${column}`)} LIKE ${pattern}`), " OR ")})`);
+    const columns = guest ? guestSearchableColumns : searchableColumns;
+    clauses.push(Prisma.sql`(${Prisma.join(columns.map(column => Prisma.sql`${Prisma.raw(`candidate.${column}`)} LIKE ${pattern}`), " OR ")})`);
   }
   return Prisma.sql`${Prisma.join(clauses, " AND ")}`;
 }

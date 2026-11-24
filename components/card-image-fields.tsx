@@ -38,6 +38,7 @@ type CardImageFieldsProps = {
   existingImages: ExistingImage[];
   queuedImages: QueuedImage[];
   draftImages?: DraftImage[];
+  initialFrontChoice?: string;
 };
 
 function RotationButtons({ label, onLeft, onRight }: { label: string; onLeft: () => void; onRight: () => void }) {
@@ -49,7 +50,7 @@ function RotationButtons({ label, onLeft, onRight }: { label: string; onLeft: ()
   );
 }
 
-export function CardImageFields({ mode, cardTitle, existingImages, queuedImages, draftImages, children }: CardImageFieldsProps) {
+export function CardImageFields({ mode, cardTitle, existingImages, queuedImages, draftImages, initialFrontChoice, children }: CardImageFieldsProps) {
   const [existingRotations, setExistingRotations] = useState<Record<string, number>>(() => Object.fromEntries(
     existingImages.map((image) => [image.id, normalizeCardImageRotation(image.rotation)])
   ));
@@ -57,6 +58,24 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages,
     queuedImages.map((image) => [image.id, 0])
   ));
   const [newImages, setNewImages] = useState<NewImagePreview[]>([]);
+  const [choice, setChoice] = useState(initialFrontChoice ?? "");
+  const [removed, setRemoved] = useState<string[]>([]);
+  const available = [
+    ...existingImages.filter(image => !removed.includes(image.id)).map(image => "existing:" + image.id),
+    ...queuedImages.map(image => "queued:" + image.id),
+    ...newImages.map((_, index) => "new:" + index)
+  ];
+  const front = available.includes(choice) ? choice : available[0] ?? "";
+  function selectFront(key: string) {
+    setChoice(key);
+    fileInput.current?.form?.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  function frontButton(key: string) {
+    const selected = front === key;
+    return <button type="button" className="card-front-choice" aria-pressed={selected} disabled={!available.includes(key)} onClick={() => selectFront(key)}>
+      {selected && <span aria-hidden="true">✓</span>}<UiText text={selected ? "首图" : "设为首图"} />
+    </button>;
+  }
   const [selectionError, setSelectionError] = useState("");
   const objectUrls = useRef<string[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -106,6 +125,7 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages,
   }, []);
 
   function selectNewImages(event: ChangeEvent<HTMLInputElement>) {
+    if (choice.startsWith("new:")) setChoice("");
     event.target.dataset.draftRestored = "selected";
     selectedFiles.current = Array.from(event.target.files ?? []);
     const error = cardImageSelectionError(selectedFiles.current);
@@ -147,7 +167,7 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages,
         <small><UiText text="支持 JPG、PNG、WebP，单张最多 15MB，总计最多 5 张。" /></small>
         {selectionError ? <span role="alert" className="note-error"><UiText text={selectionError} /></span> : null}
       </label>
-      {children}
+      <input type="hidden" name="frontChoice" value={front} />
 
       <input type="hidden" name="existingImageRotations" value={JSON.stringify(Object.fromEntries(
         Object.entries(existingRotations).map(([id, rotation]) => [id, toPersistedCardImageRotation(rotation)])
@@ -168,8 +188,9 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages,
                 <div className="card-image-preview-frame">
                   <img src={image.url} alt={`${cardTitle || "卡牌"} 新增图片 ${index + 1}`} style={cardImageRotationStyle(image.rotation, { continuous: true })} />
                 </div>
-                <figcaption>{image.name}</figcaption>
+                {frontButton("new:" + index)}
                 <RotationButtons label={`第 ${index + 1} 张新增图片`} onLeft={() => rotateNew(image.id, -1)} onRight={() => rotateNew(image.id, 1)} />
+                <figcaption><span title={image.name}>{image.name}</span></figcaption>
               </figure>
             ))}
           </div>
@@ -185,8 +206,9 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages,
                 <div className="card-image-preview-frame">
                   <img src={image.url} alt={`${image.side === "front" ? "正面" : "背面"}：${image.originalName}`} style={cardImageRotationStyle(queuedRotations[image.id], { continuous: true })} />
                 </div>
-                <figcaption>{image.side === "front" ? <UiText text={"正面"} /> : <UiText text={"背面"} />}</figcaption>
+                {frontButton("queued:" + image.id)}
                 <RotationButtons label={`队列第 ${index + 1} 张图片`} onLeft={() => rotateQueued(image.id, -1)} onRight={() => rotateQueued(image.id, 1)} />
+                <figcaption><span><UiText text={image.side === "front" ? "正面" : "背面"} /></span></figcaption>
               </figure>
             ))}
           </div>
@@ -202,14 +224,20 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages,
                 <div className="card-image-preview-frame">
                   <img src={image.url} alt={`${cardTitle} 图片 ${index + 1}`} style={cardImageRotationStyle(existingRotations[image.id], { continuous: true })} />
                 </div>
+                {frontButton("existing:" + image.id)}
                 <RotationButtons label={`第 ${index + 1} 张现有图片`} onLeft={() => rotateExisting(image.id, -1)} onRight={() => rotateExisting(image.id, 1)} />
                 <label>
-                  <input type="checkbox" name="removeImageIds" value={image.id} /><UiText text={"删除此图"} /></label>
+                  <input type="checkbox" name="removeImageIds" value={image.id} checked={removed.includes(image.id)} onChange={event => {
+                    const checked = event.target.checked;
+                    event.currentTarget.defaultChecked = checked;
+                    setRemoved(ids => checked ? [...ids, image.id] : ids.filter(id => id !== image.id));
+                  }} /><UiText text={"删除此图"} /></label>
               </figure>
             ))}
           </div>
         </section>
       ) : null}
+      {children}
     </>
   );
 }

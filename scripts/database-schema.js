@@ -96,6 +96,7 @@ function createCurrentSchema(db) {
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
     CREATE TABLE IF NOT EXISTS CardImage (
+      sortOrder INTEGER NOT NULL DEFAULT 0,
       id TEXT PRIMARY KEY NOT NULL, cardId TEXT NOT NULL, path TEXT NOT NULL,
       rotation INTEGER NOT NULL DEFAULT 0 CHECK (rotation IN (0, 90, 180, 270)),
       createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -289,6 +290,14 @@ function initializeDatabase(dbPath) {
   const db = new DatabaseSync(dbPath);
   try {
     initialized = applicationTableNames(db).length === 0;
+    if (!initialized && !db.prepare("PRAGMA table_info(CardImage)").all().some(column => column.name === "sortOrder")) {
+      validateDatabase(dbPath);
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        if (!db.prepare("PRAGMA table_info(CardImage)").all().some(column => column.name === "sortOrder")) db.exec("ALTER TABLE CardImage ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0");
+        db.exec("COMMIT");
+      } catch (error) { db.exec("ROLLBACK"); throw error; }
+    }
     if (initialized) {
       db.exec("PRAGMA foreign_keys = ON; BEGIN IMMEDIATE;");
       try {

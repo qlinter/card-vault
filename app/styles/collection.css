@@ -88,13 +88,11 @@ form.home-filter-form > .filters { grid-template-columns: minmax(220px, 3fr) rep
 .header-utilities .header-tool { position: relative; display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 1px solid var(--line); border-radius: 50%; color: var(--slate); background: rgba(var(--theme-surface-rgb, 255, 255, 255), .72); transition: background 150ms ease, border-color 150ms ease; text-decoration: none; }
 .header-utilities .header-tool:is(:hover, :focus-visible, [aria-current="page"], [aria-expanded="true"]) { border-color: var(--line-strong); color: var(--ink); background: var(--surface-soft); }
 .header-utilities .header-tool:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
-.showcase-heading { align-items: center; flex-wrap: wrap; gap: .5rem 1rem; }
-.showcase-action { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: .4rem; min-height: 36px; padding: .4rem .65rem; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--slate); font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium); line-height: 1.4; white-space: nowrap; text-decoration: none; cursor: pointer; }
+.showcase-action { display: inline-flex; flex-direction: row-reverse; align-items: center; justify-content: center; flex-shrink: 0; gap: .4rem; min-height: 36px; padding: .4rem calc(var(--showcase-label-inset) - 1px); border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--slate); font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium); line-height: 1.4; white-space: nowrap; text-decoration: none; cursor: pointer; }
 .showcase-action:not(:disabled):hover { background: var(--surface); border-color: var(--line); color: var(--ink); text-decoration: none; }
 .showcase-action svg { width: 16px; height: 16px; }
 .showcase-action:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
 .showcase-action:disabled { opacity: .45; cursor: default; }
-.showcase-shares { margin-right: auto; }
 .collection-follow-up { margin-top: .75rem; border-top: 1px solid var(--line); font-size: var(--text-base); }
 .collection-follow-up-toggle { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; width: 100%; padding: 1rem 0; border: 0; background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
 .collection-follow-up-toggle > span:last-child { display: inline-flex; align-items: center; gap: .3rem; color: var(--muted); font-size: var(--text-sm); }

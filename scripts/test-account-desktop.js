@@ -100,8 +100,25 @@ async function main() {
     await expect(reopened).toHaveURL(/\/login$/);
     await signInTestPage(reopened); await reopened.goto(new URL(reopened.url()).origin);
     await expect(reopened.getByText("Desktop Protected Card", { exact: true }).first()).toBeVisible();
+    const guestOrigin = new URL(reopened.url()).origin;
+    await reopened.goto(guestOrigin + "/settings");
+    await reopened.getByRole("button", { name: "展开账户与安全", exact: true }).click();
+    await reopened.getByLabel("允许访客浏览").check();
+    await reopened.getByRole("button", { name: "进入访客浏览", exact: true }).click();
+    await expect(reopened).toHaveURL(guestOrigin + "/showcase");
+    await expect(reopened.getByText("暂无可浏览的公开卡牌")).toBeVisible();
+    for (const method of ["getBackupSettings", "getAiSettings", "signOutAccount"]) {
+      assert.equal(await reopened.evaluate(name => window.cardVaultDesktop[name]().then(() => false, () => true), method), true, method);
+    }
+    const guest = (await reopened.context().cookies()).find(item => item.name === "card-vault-guest");
+    assert.ok(guest);
+    await app.evaluate(({ powerMonitor }) => powerMonitor.emit("lock-screen"));
+    await expect(reopened).toHaveURL(guestOrigin + "/login");
+    await app.evaluate(({ powerMonitor }) => powerMonitor.emit("unlock-screen"));
+    await reopened.context().addCookies([guest]);
+    assert.equal((await reopened.request.get(guestOrigin + "/api/immersive")).status(), 401);
     assert.deepEqual(errors, []);
-    console.log("Account desktop passed: anonymous IPC denial, protected collection, refresh, simulated Windows lock/unlock, native CSV form, backup/service restart, account-free backup, sign-out service reconnection and full-restart token rejection.");
+    console.log("Account desktop passed: owner and guest IPC isolation, protected collection, refresh, simulated Windows lock/unlock, native CSV form, backup/service restart, account-free backup, sign-out service reconnection and token rejection.");
   } finally {
     if (app) await app.close();
     assert.equal(path.dirname(path.resolve(root)), path.resolve(os.tmpdir()));

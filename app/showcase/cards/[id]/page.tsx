@@ -1,13 +1,18 @@
+import { cardImageOrder } from "@/lib/card-image-order";
 import { UiText } from "@/components/ui-text";
 import Link from "next/link";
+import { prefersStudioImages } from "@/lib/showcase-source-server";
+import { showcasePhotos } from "@/lib/studio-images";
+import { ShowcaseSourceSwitch } from "@/components/showcase-source-switch";
 import { ShowcaseGallery } from "@/components/showcase-gallery";
 import { prisma } from "@/lib/prisma";
-import { buildShowcaseCardHref, buildShowcaseHref, parseShowcasePage, showcasePageForIndex, showcaseSqlScope, toShowcaseWhere } from "@/lib/showcase";
+import { buildShowcaseCardHref, buildShowcaseHref, guestShowcaseVisibility, parseShowcasePage, showcasePageForIndex, showcaseSqlScope, toShowcaseWhere } from "@/lib/showcase";
 import { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
 import { toScalar } from "@/lib/query-params";
 import { showcaseFacts } from "@/lib/showcase-presentation";
 import { ShowcaseIcon } from "@/components/showcase-icon";
+import { requireShowcaseAccess } from "@/lib/account-server";
 
 type ShowcaseCardPageProps = {
   params: Promise<{ id: string }>;
@@ -15,6 +20,8 @@ type ShowcaseCardPageProps = {
 };
 
 export default async function ShowcaseCardPage({ params, searchParams }: ShowcaseCardPageProps) {
+  const { guest } = await requireShowcaseAccess();
+  const studio = await prefersStudioImages(guest);
   const { id } = await params;
   const queryParams = await searchParams;
   const query = {
@@ -23,18 +30,19 @@ export default async function ShowcaseCardPage({ params, searchParams }: Showcas
   };
 
   const card = await prisma.card.findUnique({
-      where: { id },
+      where: { id, ...(guest ? { visibility: guestShowcaseVisibility } : {}) },
       select: { id: true, playerName: true, cardTitle: true, publicDescription: true, year: true, brand: true, productLine: true, parallel: true, cardNumber: true, gradingCompany: true, grade: true, serialNumber: true, serialRange: true,
-        images: { orderBy: { createdAt: "asc" }, select: { id: true, path: true, rotation: true } } }
+        images: { orderBy: cardImageOrder, select: { id: true, path: true, rotation: true } } }
     });
 
   if (!card) {
     notFound();
   }
 
-  const where = toShowcaseWhere(query);
+  const images = await showcasePhotos(card, studio);
+  const where = toShowcaseWhere(query, guest);
   const inContext = !(query.group || query.q) || Boolean(await prisma.card.findFirst({ where: { AND: [where, { id }] }, select: { id: true } }));
-  const scope = showcaseSqlScope(query);
+  const scope = showcaseSqlScope(query, guest);
   // Compare stored timestamp values in SQLite. This matches ORDER BY even for older text-formatted rows.
   const before = Prisma.sql`(candidate.playerName < anchor.playerName OR
     (candidate.playerName = anchor.playerName AND candidate.createdAt > anchor.createdAt) OR
@@ -55,7 +63,7 @@ export default async function ShowcaseCardPage({ params, searchParams }: Showcas
   return (
     <div className="page showcase-page showcase-backdrop">
       <div className="showcase-detail-top">
-        <Link href={returnHref} className="showcase-tool showcase-return"><ShowcaseIcon name="previous" /><UiText text="返回展墙" /></Link>
+        <Link href={returnHref} className="showcase-tool showcase-return"><ShowcaseIcon name="previous" /><span><UiText text="返回展墙" /></span></Link>
         <div className="showcase-switches">
           {previousCard ? (
             <Link href={buildShowcaseCardHref(previousCard.id, { ...query, page: showcasePageForIndex(previousCount - 1) })} className="showcase-tool"><ShowcaseIcon name="previous" /><UiText text={"上一张卡"} /></Link>
@@ -69,7 +77,7 @@ export default async function ShowcaseCardPage({ params, searchParams }: Showcas
 
       <section className="showcase-detail">
         <div className="showcase-detail-gallery">
-          <ShowcaseGallery key={card.id} cardId={card.id} cardTitle={card.cardTitle} images={card.images} />
+          <ShowcaseGallery sourceSwitch={<ShowcaseSourceSwitch studio={studio} guest={guest} />} key={card.id + images[0]?.path} cardId={card.id} cardTitle={card.cardTitle} images={images} guest={guest} />
         </div>
 
         <div className="showcase-detail-copy">

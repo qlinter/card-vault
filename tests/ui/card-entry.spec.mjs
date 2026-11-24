@@ -59,7 +59,9 @@ test("entry types update attributes immediately within ordered sections", async 
   }
   await expect(form.locator(".form-section-heading h2")).toHaveText(["AI 识图录入", "卡牌信息"]);
   await expect(page.locator(".entry-page > .title-row")).toHaveCount(0);
-  await expect(form.locator(".card-image-upload + .entry-ai-primary")).toBeVisible();
+  const upload = await form.locator(".card-image-upload").boundingBox();
+  const ai = await form.locator(".entry-ai-primary").boundingBox();
+  expect(ai.y).toBeGreaterThanOrEqual(upload.y + upload.height - 1);
   const position = async selector => (await form.locator(selector).boundingBox()).y;
   expect(await position('[name="patchType"]')).toBeLessThan(await position(".card-attribute-options"));
   expect(await position(".card-attribute-options")).toBeLessThan(await position('[name="gradingCompany"]'));

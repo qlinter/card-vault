@@ -1,12 +1,12 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { validateDatabase } = require("../../scripts/database-schema");
+const { initializeDatabase, validateDatabase } = require("../../scripts/database-schema");
 const { dateFolderName, uniqueBackupTarget } = require("./backup");
 const { isSubPath, pathsEqual } = require("./file-utils");
 const { inspectDataFolder } = require("./health");
 const { mapProgress, reportProgress } = require("./progress");
 const { verifyBackupManifest, writeBackupManifest, databaseCounts } = require("./backup-manifest");
-const { saveRestoreJournal, clearRestoreJournal, recoverInterruptedRestore } = require("./restore-journal");
+const { saveRestoreJournal, clearRestoreJournal, recoverInterruptedRestore, moveEntries } = require("./restore-journal");
 const { directoryBytes, ensureFreeSpace } = require("./free-space");
 
 function resolveRestoreSourcePath(selectedPath) {
@@ -52,24 +52,34 @@ function createRestoreService({ config, backupDataFolder, ensureDataLayout }) {
       verifyBackupManifest(stagingDir);
       if (inspectDataFolder(stagingDir, mapProgress(onProgress, 64, 80)).integrity !== "ok") throw new Error("备份复制到临时目录后完整性检查失败。");
       reportProgress(onProgress, 81, "正在验证恢复数据的数据库结构...");
-      schema = validateDatabase(path.join(stagingDir, "dev.db"));
+      schema = initializeDatabase(path.join(stagingDir, "dev.db"));
       if (inspectDataFolder(stagingDir, mapProgress(onProgress, 82, 86)).integrity !== "ok") throw new Error("备份数据库结构验证后的完整性检查失败。");
       const report = { version: 1, restoredAt: new Date().toISOString(), verification, afterCounts: databaseCounts(stagingDir), schemaVersion: schema.schemaVersion, safetyBackupPath };
       fs.writeFileSync(path.join(stagingDir, "restore-report.json"), JSON.stringify(report, null, 2));
       writeBackupManifest(stagingDir);
       journal = saveRestoreJournal(targetDataDir, journal, "prepared");
-      if (fs.existsSync(targetDataDir)) { reportProgress(onProgress, 84, "正在保留当前数据以便回滚..."); fs.renameSync(targetDataDir, rollbackDir); }
+      if (fs.existsSync(targetDataDir)) {
+        reportProgress(onProgress, 84, "正在保留当前数据以便回滚...");
+        try { fs.renameSync(targetDataDir, rollbackDir); }
+        catch (error) {
+          if (process.platform !== "win32" || !["EPERM", "EBUSY", "EACCES"].includes(error.code)) throw error;
+          journal = saveRestoreJournal(targetDataDir, { ...journal, moveEntries: true }, "prepared");
+          fs.mkdirSync(rollbackDir);
+          moveEntries(targetDataDir, rollbackDir);
+        }
+      }
       journal = saveRestoreJournal(targetDataDir, journal, "original-preserved");
       try {
         reportProgress(onProgress, 88, "正在切换到恢复后的数据目录...");
-        fs.renameSync(stagingDir, targetDataDir);
+        if (journal.moveEntries) moveEntries(stagingDir, targetDataDir);
+        else fs.renameSync(stagingDir, targetDataDir);
         journal = saveRestoreJournal(targetDataDir, journal, "switched");
         ensureDataLayout(targetDataDir, { recover: false });
         restoredHealth = inspectDataFolder(targetDataDir, mapProgress(onProgress, 92, 99));
         if (restoredHealth.integrity !== "ok") throw new Error("恢复后的数据库校验失败，正在还原原数据。");
         saveRestoreJournal(targetDataDir, journal, "verified");
       } catch (error) {
-        if (fs.existsSync(rollbackDir)) {
+        if (!journal.moveEntries && fs.existsSync(rollbackDir)) {
           if (fs.existsSync(targetDataDir)) fs.renameSync(targetDataDir, stagingDir);
           fs.renameSync(rollbackDir, targetDataDir);
         }
@@ -80,6 +90,7 @@ function createRestoreService({ config, backupDataFolder, ensureDataLayout }) {
         catch { retainedRollbackPath = rollbackDir; }
       }
       clearRestoreJournal(targetDataDir);
+      if (journal.moveEntries) fs.rmdirSync(stagingDir);
     } catch (error) {
       if (fs.existsSync(rollbackDir)) {
         // This also covers journal writes failing immediately after preserving the original.

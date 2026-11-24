@@ -37,7 +37,7 @@ html[data-app-theme]:not([data-app-theme="classic"]) :is(.nav-links a.active, .f
   border-color: var(--accent);
 }
 html[data-app-theme]:not([data-app-theme="classic"]) :is(input, select, textarea) { accent-color: var(--teal); }
-html[data-app-theme]:not([data-app-theme="classic"]) select:not([multiple]) { background-image: var(--theme-select-arrow); }
+html[data-app-theme]:not([data-app-theme="classic"]) select:not([multiple]):where(:not(.immersive-settings select)) { background-image: var(--theme-select-arrow); }
 html[data-app-theme]:not([data-app-theme="classic"]) .share-wizard-step.active span { color: var(--theme-on-strong); }
 html[data-app-theme]:not([data-app-theme="classic"]) :is(input, textarea)::placeholder { color: var(--muted-ink); opacity: 1; }
 html[data-app-theme]:not([data-app-theme="classic"]) :is(input, select, textarea):focus {

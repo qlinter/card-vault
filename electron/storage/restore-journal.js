@@ -7,7 +7,7 @@ const { pathsEqual } = require("./file-utils");
 function journalPath(target) { return path.join(path.dirname(target), `.${path.basename(target)}-restore-journal.json`); }
 function validateJournal(target, journal) {
   const parent = path.dirname(target), base = path.basename(target);
-  if (journal.version !== 1 || !pathsEqual(journal.target, target) || !/^\d+-\d+$/.test(journal.suffix) || !["prepared", "original-preserved", "switched", "verified"].includes(journal.stage)) throw new Error("恢复操作记录无效，未修改任何数据。请保留目录并检查日志。");
+  if (journal.version !== 1 || !pathsEqual(journal.target, target) || !/^\d+-\d+$/.test(journal.suffix) || !["prepared", "original-preserved", "switched", "verified", "return-original"].includes(journal.stage)) throw new Error("恢复操作记录无效，未修改任何数据。请保留目录并检查日志。");
   for (const [key, kind] of [["staging", "staging"], ["rollback", "rollback"]]) {
     const expected = path.join(parent, `.${base}-restore-${kind}-${journal.suffix}`);
     if (typeof journal[key] !== "string" || !pathsEqual(journal[key], expected)) throw new Error("恢复操作记录路径无效，未修改任何数据。");
@@ -20,6 +20,20 @@ function saveRestoreJournal(target, journal, stage) {
   return record;
 }
 function clearRestoreJournal(target) { fs.rmSync(journalPath(path.resolve(target)), { force: true }); }
+
+// Moving children keeps the root directory handle valid on Windows. Each rename
+// is atomic; the entries still in the source describe what remains after a crash.
+function moveEntries(source, destination) {
+  for (const name of fs.readdirSync(source)) {
+    const to = path.join(destination, name);
+    if (fs.existsSync(to)) throw new Error(`恢复目录中已存在同名项目：${name}`);
+    try { fs.renameSync(path.join(source, name), to); }
+    catch (error) {
+      if (!["EPERM", "EBUSY", "EACCES"].includes(error.code)) throw error;
+      throw new Error(`Windows 无法移动「${name}」，请检查该项目的占用和修改权限。`, { cause: error });
+    }
+  }
+}
 
 // A terminated process cannot run catch/finally. Recover before creating an empty data folder.
 function recoverInterruptedRestore(targetPath) {
@@ -36,6 +50,13 @@ function recoverInterruptedRestore(targetPath) {
     if (fs.existsSync(journal.rollback)) {
       try { fs.rmSync(journal.rollback, { recursive: true, force: true }); } catch { retained.push(journal.rollback); }
     }
+  } else if (journal.moveEntries && fs.existsSync(journal.rollback)) {
+    if (["original-preserved", "switched", "verified"].includes(journal.stage)) {
+      moveEntries(target, journal.staging);
+      saveRestoreJournal(target, journal, "return-original");
+    }
+    moveEntries(journal.rollback, target);
+    fs.rmdirSync(journal.rollback);
   } else if (fs.existsSync(journal.rollback)) {
     if (fs.existsSync(target)) {
       const interrupted = path.join(path.dirname(target), `.${path.basename(target)}-restore-interrupted-${journal.suffix}`);
@@ -50,4 +71,4 @@ function recoverInterruptedRestore(targetPath) {
   clearRestoreJournal(target);
   return { recovered: true, keptVerifiedRestore: verified, retainedPaths: retained };
 }
-module.exports = { journalPath, saveRestoreJournal, clearRestoreJournal, recoverInterruptedRestore };
+module.exports = { journalPath, saveRestoreJournal, clearRestoreJournal, recoverInterruptedRestore, moveEntries };

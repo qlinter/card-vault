@@ -33,6 +33,7 @@ type CreateCardFormProps = {
   initialValues: CardFormValues;
   initialDraftId?: string;
   initialImages?: DraftImage[];
+  initialFrontChoice?: string;
   initialMessage?: string;
   recentDrafts: CardEntryDraftSummary[];
   queueItem?: CardEntryQueueItemSummary;
@@ -71,6 +72,7 @@ export function CreateCardForm({
   initialValues,
   initialDraftId,
   initialImages = [],
+  initialFrontChoice,
   initialMessage,
   recentDrafts,
   queueItem,
@@ -129,16 +131,18 @@ export function CreateCardForm({
     if (savedImages.current === undefined && restored) savedImages.current = signature;
     const manageImages = !initialImages.length || Boolean(imageInput?.dataset.draftRestored) || images.length > 0;
     const changedImages = manageImages && savedImages.current !== signature;
+    const frontChoice = manageImages ? (formRef.current?.elements.namedItem("frontChoice") as HTMLInputElement | null)?.value : undefined;
     const rotations = manageImages ? JSON.parse(String((formRef.current?.elements.namedItem("newImageRotations") as HTMLInputElement | null)?.value || "[]")) : undefined;
     if (announce && mountedRef.current) setDraftStatus("正在保存草稿...");
 
     const body = new FormData();
     if (draftIdRef.current) body.set("id", draftIdRef.current);
     body.set("values", JSON.stringify(values));
+    if (frontChoice !== undefined) body.set("frontChoice", frontChoice);
     body.set("imageRotations", JSON.stringify(rotations || []));
     if (changedImages) images.forEach(file => body.append("images", file));
     const response = await fetch("/api/card-entry/drafts", changedImages ? { method: "POST", body } : {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: draftIdRef.current, values, imageRotations: rotations })
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: draftIdRef.current, values, frontChoice, imageRotations: rotations })
     });
     const result = (await response.json()) as DraftSaveResponse;
     if (!response.ok || !result.id || !result.updatedAt) {
@@ -433,7 +437,7 @@ export function CreateCardForm({
           values={state.values}
           formRef={formRef}
           draftId={draftId}
-          draftImages={initialImages}
+          draftImages={initialImages} initialFrontChoice={initialFrontChoice}
           onSubmit={prepareSubmit}
           onInvalid={(event) => {
             event.preventDefault();

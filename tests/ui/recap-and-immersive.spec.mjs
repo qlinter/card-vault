@@ -141,6 +141,9 @@ test("immersive viewer uses all matching cards beyond showcase pagination and pr
 test("immersive random history, image controls, pause on blur, temporary rotation and fullscreen escape", async ({ page }) => {
   await page.goto("/showcase?q=RecapFixture Alpha"); await page.getByRole("button", { name: "浏览", exact: true }).click();
   const viewer = page.getByRole("dialog", { name: "沉浸式赏卡", exact: true }), stage = viewer.locator(".immersive-stage");
+  await viewer.getByRole("button", { name: "展馆设置", exact: true }).click();
+  await viewer.getByRole("combobox", { name: "播放模式", exact: true }).selectOption("all");
+  await viewer.getByRole("button", { name: "关闭设置", exact: true }).click();
   await expect(viewer.getByRole("button", { name: "播放", exact: true })).toBeEnabled();
   await page.keyboard.press("ArrowDown"); await expect(viewer.locator(".showcase-media-image")).toHaveAttribute("src", "/media/ui-card-2.webp");
   await page.keyboard.press("+"); await expect(viewer.getByRole("button", { name: "重置缩放", exact: true })).toHaveText("125%");

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react"
 import { advancePlayback, startPlayback, type Playback } from "@/lib/immersive-playback";
 import type { GallerySource, GalleryCard, GalleryPreferences } from "@/lib/immersive-presentation";
 
-export function useImmersiveViewer({ source, onClose, playback }: { source: GallerySource; onClose: () => void; playback: Pick<GalleryPreferences, "interval" | "allImages" | "random" | "excludeSold"> }) {
+export function useImmersiveViewer({ source, onClose, playback }: { source: GallerySource; onClose: () => void; playback: Pick<GalleryPreferences, "studioImage" | "interval" | "allImages" | "random" | "excludeSold"> }) {
   const [excludeSold, setExcludeSold] = useState(playback.excludeSold);
   const dialog = useRef<HTMLDialogElement>(null);
   const surface = useRef<HTMLDivElement>(null);
@@ -27,6 +27,12 @@ export function useImmersiveViewer({ source, onClose, playback }: { source: Gall
     if (value.ids) params.set("ids", JSON.stringify(value.ids));
     return params;
   }, [sourceKey, excludeSold]);
+  const cardQuery = useCallback((id: string) => {
+    const params = query();
+    params.set("id", id);
+    if (playback.studioImage) params.set("studio", "1");
+    return params;
+  }, [query, playback.studioImage]);
   const pause = useCallback(() => setPlaying(false), []);
   const updateSoldFilter = (exclude: boolean) => {
     pause();
@@ -76,7 +82,7 @@ export function useImmersiveViewer({ source, onClose, playback }: { source: Gall
     requestPosition.current = position;
     setZoom(1); setRotation(0); setLoaded(false); setBroken(false);
     if (!cardId) return;
-    const controller = new AbortController(), params = query(); params.set("id", cardId);
+    const controller = new AbortController(), params = cardQuery(cardId);
     fetch(`/api/immersive?${params}`, { signal: controller.signal }).then(async response => {
       if (!response.ok) throw new Error("卡牌已删除或不在当前范围。");
       const result = await response.json();
@@ -86,19 +92,19 @@ export function useImmersiveViewer({ source, onClose, playback }: { source: Gall
       }
     }).catch(() => { if (!controller.signal.aborted) { setBroken(true); setPlaying(false); badCards.current.add(cardId); } });
     return () => controller.abort();
-  }, [cardId, session?.index, query, imageRetry]);
+  }, [cardId, session?.index, cardQuery, imageRetry]);
 
   // Only preload the next card's first image; abort the metadata request and
   // release the image reference whenever the current slide or scope changes.
   useEffect(() => {
     const next = session?.history[(session?.index ?? 0) + 1] ?? session?.remaining[0];
     if (!next || !loaded) return;
-    const controller = new AbortController(), params = query(); params.set("id", next); let preload: HTMLImageElement | undefined;
+    const controller = new AbortController(), params = cardQuery(next); let preload: HTMLImageElement | undefined;
     fetch(`/api/immersive?${params}`, { signal: controller.signal }).then(response => response.ok ? response.json() : undefined).then(result => {
       if (!controller.signal.aborted && result?.card.images[0]) { preload = new Image(); preload.src = result.card.images[0].path; }
     }).catch(() => {});
     return () => { controller.abort(); if (preload) preload.src = ""; };
-  }, [session, loaded, query]);
+  }, [session, loaded, cardQuery]);
 
   useEffect(() => {
     if (!playing || !loaded || broken) return;

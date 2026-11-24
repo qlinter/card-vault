@@ -1,3 +1,4 @@
+import { cardImageOrder } from "./card-image-order.ts";
 import "server-only";
 import { Prisma } from "@prisma/client";
 import { setImmediate as yieldToRequests } from "node:timers/promises";
@@ -10,7 +11,7 @@ export const recapActivitySelect = {
 } satisfies Prisma.CardSelect;
 
 export const recapCardSelect = { id: true, playerName: true, cardTitle: true, sport: true, productLine: true, isAutograph: true, grade: true, collectionStatus: true, visibility: true, createdAt: true,
-  images: { take: 1, orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: { id: true, path: true, rotation: true } } } satisfies Prisma.CardSelect;
+  images: { take: 1, orderBy: cardImageOrder, select: { id: true, path: true, rotation: true } } } satisfies Prisma.CardSelect;
 
 export function recapWhere(spec: RecapSpec, includePrivate = true): Prisma.CardWhereInput {
   return { AND: [buildCardFilters(spec.scope), ...(includePrivate ? [] : [{ visibility: { not: "private" } }])] };

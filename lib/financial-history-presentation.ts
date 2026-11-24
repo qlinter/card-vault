@@ -31,14 +31,6 @@ export const expenseContextInputLabels: Record<string, string> = {
   sale: "计入卖出成本"
 };
 
-export const positionEventLabels: Record<string, string> = {
-  purchase: "购入",
-  sale: "售出",
-  inventory_expense: "成本费用",
-  sale_expense: "出售费用",
-  valuation: "估值"
-};
-
 export function formatHistoryDateInput(date = new Date()): string {
   return date.toISOString().slice(0, 10);
 }

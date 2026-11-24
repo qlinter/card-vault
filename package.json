@@ -90,6 +90,7 @@
     "tinyglobby": "file:tools/build-glob"
   },
   "overrides": {
+    "@prisma/config": { "effect": "3.22.5" },
     "minimatch@^9": "11.0.5",
     "minimatch@^10": "11.0.5",
     "node-gyp": { "tinyglobby": "$tinyglobby" },

@@ -1,29 +1,25 @@
 import { cardImageOrder } from "./card-image-order.ts";
 import "server-only";
-import { createHash, randomUUID } from "node:crypto";
-import { access, mkdir, open, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { studioFilename, oversized } from "./studio-file.js";
+import { randomUUID } from "node:crypto";
+import { lstat, realpath, mkdir, open, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { getStudioAiSettings } from "./ai-settings";
+import { getStudioAiSettings, hasStudioKey } from "./ai-settings";
 import { inspectStudioOrientation } from "./studio-orientation";
 import { fetchAi } from "./ai-fetch";
 import { prisma } from "./prisma";
-import { getUploadsDir, resolveDataDir } from "./storage-paths";
+import { getUploadsDir, getThumbnailsDir, resolveDataDir } from "./storage-paths";
 
 const select = {
   id: true, cardTitle: true, gradingCompany: true, grade: true,
   images: { take: 1, orderBy: cardImageOrder, select: { id: true, path: true, rotation: true } }
 };
-type StudioCard = { id: string; cardTitle: string; images: { id: string; path: string; rotation: number }[] };
+import type { StudioCard } from "./studio-file.js";
 const directory = () => path.join(resolveDataDir(), "studio-images");
-function oversized(card: StudioCard) {
-  return card.id === "cmniroib20006aulo4cvtlxn2" || /^2016[-–]17 Panini Immaculate Special Event Materials Manu Ginobili\s*\/\s*Tim Duncan\s*\/\s*Tony(?: Parker)?$/i.test(card.cardTitle.trim());
-}
 export function studioFile(card: StudioCard) {
-  const front = card.images[0];
-  if (!front) return null;
-  const digest = createHash("sha256").update(JSON.stringify([card.id, front.id, front.path, front.rotation, oversized(card)])).digest("hex");
-  return path.join(directory(), digest + ".png");
+  const name = studioFilename(card);
+  return name ? path.join(directory(), name) : null;
 }
 export async function removeStudioFile(file: string | null) {
   if (file) await unlink(file).catch((error: NodeJS.ErrnoException) => {
@@ -33,11 +29,7 @@ export async function removeStudioFile(file: string | null) {
 
 export async function existingStudioFile(card: StudioCard) {
   const file = studioFile(card);
-  if (!file) return null;
-  try { await access(file); return file; } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-    throw error;
-  }
+  return file && (await fileStat(file))?.isFile() ? file : null;
 }
 export function studioImageUrl(id: string, thumbnail = false) {
   return "/api/immersive?studio=" + (thumbnail ? "thumbnail" : "png") + "&id=" + encodeURIComponent(id);
@@ -60,25 +52,72 @@ export async function studioInventory() {
   return { ready, pending, missingFront };
 }
 
-export async function generateStudioImage(id: string) {
+async function fileForCard(id: string) {
   const card = await prisma.card.findUnique({ where: { id }, select });
-  if (!card || !card.images.length) throw new Error("卡牌没有可用的正面图。");
-  const file = studioFile(card)!;
-  if (await existingStudioFile(card)) return;
-  const settings = getStudioAiSettings();
-  if (!settings.apiKey) throw new Error("请先在设置中保存 OpenAI API Key。");
-  await mkdir(directory(), { recursive: true });
+  return card && studioFile(card);
+}
+
+async function fileStat(file: string) {
+  try { return await stat(file); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return null; throw error; }
+}
+const lockTimeout = 15 * 60_000;
+async function lockStudioFile(file: string) {
   const lock = file + ".lock";
   // Each desktop instance can resume work abandoned by a previous process.
-  const stale = await stat(lock).catch(() => null);
-  if (stale && Date.now() - stale.mtimeMs > 15 * 60_000) await unlink(lock).catch(() => {});
+  const stale = await fileStat(lock);
+  if (stale && Date.now() - stale.mtimeMs > lockTimeout) await unlink(lock).catch(() => {});
   const handle = await open(lock, "wx").catch((error: NodeJS.ErrnoException) => {
     if (error.code === "EEXIST") throw new Error("这张卡牌正在生成。");
     throw error;
   });
+  return async () => { await handle.close(); await unlink(lock).catch(() => {}); };
+}
+
+export async function singleStudioStatus(id: string) {
+  const file = await fileForCard(id);
+  if (!file) return null;
+  const [ready, lock, candidate, failure] = await Promise.all(["", ".lock", ".preview", ".error"].map(suffix => fileStat(file + suffix)));
+  return { version: path.basename(file), ready: Boolean(ready), generating: Boolean(lock && Date.now() - lock.mtimeMs < lockTimeout),
+    candidate: candidate ? String(candidate.mtimeMs) : null, failure: failure ? await readFile(file + ".error", "utf8").catch(() => "") || "generation" : null, hasKey: hasStudioKey() };
+}
+
+export async function reviewStudioImage(id: string, version: string, candidate: string, adopt: boolean) {
+  const file = await fileForCard(id);
+  if (!file || path.basename(file) !== version) throw new Error("首图已更改，请刷新后重试。");
+  const unlock = await lockStudioFile(file);
+  try {
+    const preview = file + ".preview";
+    const current = await fileStat(preview);
+    if (!current || String(current.mtimeMs) !== candidate) throw new Error("预览已更新，请刷新后重试。");
+    if (adopt) {
+      await rename(preview, file);
+      await removeStudioFile(path.join(getThumbnailsDir(), "studio", path.basename(file) + ".webp"));
+    } else await unlink(preview);
+  } finally { await unlock(); }
+}
+
+export async function readStudioPreview(name: string, candidate: boolean) {
+  if (!name.endsWith(".png") || name !== path.basename(name) || /[\\/:]/.test(name) || [...name].some(char => char.charCodeAt(0) < 32)) return null;
+  const file = path.join(directory(), name + (candidate ? ".preview" : ""));
+  const entry = await lstat(file).catch(() => null);
+  if (!entry?.isFile() || path.dirname(await realpath(file)) !== await realpath(directory())) return null;
+  return readFile(file);
+}
+
+export async function generateStudioImage(id: string, previewVersion?: string) {
+  const card = await prisma.card.findUnique({ where: { id }, select });
+  if (!card || !card.images.length) throw new Error("卡牌没有可用的正面图。");
+  const file = studioFile(card)!;
+  if (previewVersion && previewVersion !== path.basename(file)) throw new Error("首图已更改，请刷新后重试。");
+  if (!previewVersion && await existingStudioFile(card)) return;
+  await mkdir(directory(), { recursive: true });
+  const unlock = await lockStudioFile(file);
   const temp = file + "." + randomUUID() + ".tmp";
   try {
-    if (await existingStudioFile(card)) return;
+    if (previewVersion ? await fileStat(file + ".preview") : await existingStudioFile(card)) return;
+    const settings = getStudioAiSettings();
+    if (!settings.apiKey) throw new Error("请先在设置中保存 OpenAI API Key。");
     const front = card.images[0];
     if (!/^\/media\/[\w.-]+\.(?:webp|jpe?g|png)$/i.test(front.path)) throw new Error("无法读取卡牌正面图。");
     const oriented = await sharp(path.join(getUploadsDir(), path.basename(front.path))).autoOrient().toBuffer();
@@ -112,13 +151,20 @@ export async function generateStudioImage(id: string) {
     if (typeof encoded !== "string" || !encoded.length) throw new Error("OpenAI 未返回图片。");
     const png = await sharp(Buffer.from(encoded, "base64")).png().toBuffer();
     await writeFile(temp, png);
-    await rename(temp, file);
+    const destination = previewVersion ? file + ".preview" : file;
+    await rename(temp, destination);
+    await removeStudioFile(file + ".error");
     // Another edit may have retired this upload while the external request was running.
     const current = await prisma.cardImage.findUnique({ where: { id: front.id }, select: { path: true } });
-    if (current?.path !== front.path) await removeStudioFile(file);
+    if (current?.path !== front.path) await removeStudioFile(destination);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const reason = message.includes("API Key") ? "key" : message.includes("HTTP 429") ? "quota"
+      : /HTTP 40[13]/.test(message) ? "access" : "generation";
+    await writeFile(file + ".error", reason).catch(() => {});
+    throw error;
   } finally {
-    await handle.close();
-    await unlink(lock).catch(() => {});
+    await unlock();
     await unlink(temp).catch(() => {});
   }
 }

@@ -12,6 +12,7 @@ type DesktopDataHealth = {
   missingFiles: DesktopMediaFile[];
   orphanFiles: DesktopMediaFile[];
   issues: string[];
+  studio?: { ready: number; missing: {id: string; title: string}[]; damaged: {id: string; title: string}[]; historical: string[] };
 };
 
 type DesktopStorageProgress = {
@@ -43,6 +44,7 @@ declare global {
         cancelled: boolean;
         restoredFrom?: string;
         restoredTo?: string;
+        retainedPaths?: string[];
         safetyBackupPath?: string | null;
         schemaVersion?: string;
       }>;

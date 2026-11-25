@@ -170,10 +170,12 @@ npm.cmd run release:win
 <a id="windows-发布流程"></a>
 ### 发布流程
 
+正式发布顺序为：先推送最终提交，确认该提交在 GitHub Quality 检查通过；发布脚本通过 GitHub CLI 核对 master 上同一提交的 Quality 结果和干净工作区；检查通过后生成并验证两个产物，核对校验值，最后创建版本标签并发布。补丁改变源码或锁文件时，重复上述流程。
+
 `npm run release:win` 会依次：
 
 1. 检查签名配置；没有凭据时选择未签名模式，有完整凭据时选择对应签名模式。
-2. 执行完整测试、编码检查和生产构建；CI 额外执行全部依赖审计，本地发布前运行 `npm run audit:all`。
+2. 本地与 CI 先运行全部依赖审计，达到 high 门槛即停止。审计通过后执行完整测试、编码检查和生产构建。仅打包模式也会先执行审计。
 3. 使用 electron-builder 生成 Windows 安装版。
 4. 签名模式验证安装器和主程序的签名者与 RFC 3161 时间戳；未签名模式验证两者均为 `NotSigned`。
 5. 验证打包文件，运行卡牌、分享、数据管理、流式导出 HTTP 流程及包内健康端点冒烟测试；启动实际桌面，检查安全设置和编辑返回筛选结果。
@@ -216,3 +218,5 @@ Get-AuthenticodeSignature -LiteralPath ".\dist\card-vault-$releaseVersion-setup.
 - [Microsoft：SmartScreen reputation for Windows app developers](https://learn.microsoft.com/windows/apps/package-and-deploy/smartscreen-reputation)
 - [Microsoft：Time Stamping Authenticode Signatures](https://learn.microsoft.com/windows/win32/seccrypto/time-stamping-authenticode-signatures)
 - [electron-builder：Windows Code Signing](https://www.electron.build/docs/features/code-signing/code-signing-win/)
+
+后续候选：v1.7.2 可评估卡面细节标注，范围与实现待确认。

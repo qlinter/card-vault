@@ -1,7 +1,7 @@
 const { sha256File } = require("../lib/file-hash");
 const fs = require("node:fs");
 const path = require("node:path");
-const { spawnSync } = require("node:child_process");
+const { execFileSync, spawnSync } = require("node:child_process");
 const {
   assertArtifactSize,
   defaultArtifactLimits,
@@ -136,7 +136,18 @@ async function main() {
   const signing = resolveWindowsSigning(process.env);
   process.stdout.write(`Windows signing mode: ${signing.description}\n`);
 
+  const options = { cwd: rootDir, encoding: "utf8", windowsHide: true };
+  const commit = execFileSync("git", ["rev-parse", "HEAD"], options).trim();
+  if (execFileSync("git", ["status", "--porcelain"], options).trim()) {
+    throw new Error("正式打包需要干净的工作区，以确保产物对应已检查的提交。");
+  }
+  const checks = JSON.parse(execFileSync("gh", ["run", "list", "--workflow", "quality.yml", "--event", "push",
+    "--branch", "master", "--commit", commit, "--limit", "1", "--json", "headSha,status,conclusion"], options));
+  if (checks[0]?.headSha !== commit || checks[0].status !== "completed" || checks[0].conclusion !== "success") {
+    throw new Error("当前提交的 GitHub Quality 检查尚未通过。");
+  }
   const versions = verifyInstalledDependencies(rootDir);
+  if (plan.checks !== "required") run("npm.cmd", ["run", "audit:all"]);
   if (plan.checks === "required") run("npm.cmd", ["run", "check:release"], { env: { CARD_VAULT_UI_SCREENSHOT_MODE: "compare" } });
   else {
     process.stdout.write("Package-only mode: source quality checks and packaged runtime suites are explicitly skipped.\n");

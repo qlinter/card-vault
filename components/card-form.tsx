@@ -4,6 +4,7 @@ import { cardCollectionStatuses, collectionStatusText } from "@/lib/card-domain"
 import { UiText } from "@/components/ui-text";
 import { useEffect, useRef } from "react";
 import { AiRecognitionPanel } from "@/components/ai-recognition-panel";
+import { CardStudioPanel } from "./card-studio-panel";
 import { CardImageFields } from "@/components/card-image-fields";
 import { CardEntryDuplicatePanel } from "@/components/card-entry-duplicate-panel";
 import { CardEntryFinancialRecords } from "@/components/card-entry-financial-records";
@@ -103,20 +104,20 @@ export function CardForm({
   const recognitionPanel = <AiRecognitionPanel mode={mode} defaultImageUrls={defaultAiImageUrls} queueItemId={queueItemId} persistedRecognition={queueRecognition} />;
 
   return (
-    <form ref={formRef} action={action} onSubmit={onSubmit} onInvalid={onInvalid} onInvalidCapture={event => { if (event.target instanceof HTMLElement) revealCardField(event.target); }} className={mode === "create" ? "panel card-entry-form" : "panel"} encType="multipart/form-data" data-card-entry-form={mode === "create" ? "true" : undefined}>
+    <form ref={formRef} action={action} onSubmit={onSubmit} onInvalid={onInvalid} onInvalidCapture={event => { if (event.target instanceof HTMLElement) revealCardField(event.target); }} className="panel card-entry-form" encType="multipart/form-data" data-card-entry-form={mode === "create" ? "true" : undefined}>
       {mode === "edit" && error ? <p className="note-error" role="alert"><UiText text={error} /></p> : null}
       {mode === "edit" && returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       {mode === "edit" ? <input type="hidden" name="editVersion" value={editVersion ?? ""} /> : null}
       {mode === "create" && draftId ? <input type="hidden" name="draftId" value={draftId} /> : null}
       {mode === "create" && queueItemId ? <input type="hidden" name="queueItemId" value={queueItemId} /> : null}
 
-      {mode === "edit" ? <details className="entry-ai-tools" open={queueRecognition?.status === "review" || undefined}><summary><UiText text="AI 识图填充" /></summary>{recognitionPanel}</details> : null}
 
       {mode === "create" ? <CardEntryDuplicatePanel /> : null}
 
       <div className="form-grid">
         <CardImageFields
           mode={mode}
+          studioPanel={mode === "edit" && card ? <CardStudioPanel id={card.id} /> : undefined}
           cardTitle={pickValue(values?.cardTitle, card?.cardTitle ?? "")}
           existingImages={(card?.images ?? []).map((image) => ({
             id: image.id,
@@ -126,11 +127,9 @@ export function CardForm({
           queuedImages={queuedImages}
           draftImages={draftImages} initialFrontChoice={initialFrontChoice}
         >
-          {mode === "create" ? <section className="entry-ai-primary full">{recognitionPanel}</section> : null}
+          <section className="entry-ai-primary full">{recognitionPanel}</section>
         </CardImageFields>
-        {mode === "create" ? (
-          <div className="form-section-heading full"><div><h2><UiText text="卡牌信息" /></h2></div></div>
-        ) : null}
+        <div className="form-section-heading full"><div><h2><UiText text="卡牌信息" /></h2></div></div>
         <CardArchiveFields values={values} card={card} numberedRef={numberedRef} afterBasicFields={mode === "create" ? statusFields : undefined} />
 
         <CardGradingFields values={values} card={card} mode={mode} />

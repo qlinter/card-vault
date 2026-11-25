@@ -15,7 +15,7 @@ import { guestShowcaseVisibility } from "@/lib/showcase";
 
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ section?: string }> }) {
   const account = await requireAccount();
   const [financialConfig, publicCardCount] = await Promise.all([
     loadFinancialSettings(),
@@ -30,7 +30,7 @@ export default async function SettingsPage() {
         <AccountSettings username={account.username || ""} initialGuestEnabled={account.guestEnabled === true} publicCardCount={publicCardCount} />
         <ThemeSettings />
         <DataSettings><DataWorkspace embedded /></DataSettings>
-        <AiSettings />
+        <AiSettings defaultOpen={(await searchParams).section === "ai"} />
         <FinancialSettings config={financialConfig} />
       </div>
       <SettingsHelp defaultVersion={packageInfo.version} action={<SettingsSignOut />} />

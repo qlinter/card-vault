@@ -56,6 +56,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
     notFound();
   }
 
+  const studioReady = Boolean(await existingStudioFile(card));
   const tags = splitTagString(card.tags);
   const gradingLink = normalizeHttpUrl(card.gradingLink);
   const facts = [
@@ -82,7 +83,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
       </div>
 
       {success ? <p className="note-ok"><UiText text={success} /></p> : null}
-      {["created", "updated"].includes(toScalar(query.success) ?? "") && !hasStudioKey() && !await existingStudioFile(card) ? <p className="muted"><UiText text="未配置 OpenAI Key，展馆暂用首图。可在设置中补生成。" /></p> : null}
+      {["created", "updated"].includes(toScalar(query.success) ?? "") && !hasStudioKey() && !studioReady ? <p className="muted"><UiText text="未配置 OpenAI Key，展馆暂用首图。可在设置中补生成。" /></p> : null}
       {error ? <p className="note-error"><UiText text={error} /></p> : null}
 
       <div className="details">
@@ -102,6 +103,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
             <div className="info-item"><strong><UiText text="收藏状态" /></strong><span><UiText text={collectionStatusText(card.collectionStatus)} /></span></div>
             <div className="info-item"><strong><UiText text="持有数量" /></strong><span>{card.holdingQuantity}</span></div>
             {facts.map(([label, value]) => <div className="info-item" key={label}><strong><UiText text={label!} /></strong><span>{value}</span></div>)}
+            {card.images.length > 0 && <div className="info-item"><strong><UiText text="AI 展馆图" /></strong><a href={`/cards/${card.id}/edit${encodeReturnTo(returnTo)}#studio-image`}><UiText text={studioReady ? "已生成" : "待生成"} /></a></div>}
             {gradingLink ? <div className="info-item"><strong><UiText text="评级链接" /></strong><a href={gradingLink} target="_blank" rel="noreferrer"><UiText text="查看评级页面" /></a></div> : null}
             {tags.length ? <div className="info-item"><strong><UiText text="标签" /></strong><span>{tags.join(", ")}</span></div> : null}
           </div>

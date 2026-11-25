@@ -1,15 +1,15 @@
 export const currentReleaseNotes = {
-  "date": "2026-11-23",
+  "date": "2026-11-25",
   "highlights": {
     "zh": [
-      "访客模式浏览公开卡牌。",
-      "单卡财务图展示持仓成本与估值走势。",
-      "展馆支持统一摄影风格的 PNG，新卡保存后可自动生成。"
+      "恢复完成后单独报告清理结果。",
+      "检查展馆图健康，在单卡编辑页查看状态并重做。",
+      "本地发布前执行全部依赖审计。"
     ],
     "en": [
-      "Guest mode for public cards.",
-      "Holding charts compare remaining cost and value.",
-      "AI studio PNGs for gallery playback and automatic generation after card entry."
+      "Report cleanup separately after a successful restore.",
+      "Check studio image health and review regenerated photos in the card editor.",
+      "Audit dependencies before local releases."
     ]
   }
 };

@@ -1,6 +1,6 @@
 ﻿import { expect, test } from "@playwright/test";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { uiDatabasePath, withUiDatabase } from "./database-fixture.mjs";
@@ -66,4 +66,41 @@ test("Showcase shares the studio or original source across wall, detail, lightbo
     withUiDatabase(db => { db.prepare("DELETE FROM ShareCollection WHERE id=?").run(id); db.prepare("DELETE FROM Card WHERE id=?").run(id); });
     await rm(file, { force: true });
   }
+});
+
+test("card editor preserves the accepted image until an owner adopts its current preview", async ({ page, request }) => {
+  const id = "ui-card-1", endpoint = "/api/studio";
+  const status = async () => (await request.get(endpoint + "?id=" + id)).json();
+  const { version } = await status();
+  const folder = path.join(path.dirname(uiDatabasePath), "studio-images");
+  const accepted = path.join(folder, version), preview = accepted + ".preview";
+  await mkdir(folder, { recursive: true });
+  const before = await sharp({ create: { width: 6, height: 8, channels: 3, background: "red" } }).png().toBuffer();
+  const after = await sharp({ create: { width: 6, height: 8, channels: 3, background: "blue" } }).png().toBuffer();
+  try {
+    await writeFile(accepted, before); await writeFile(preview, after);
+    await page.goto("/cards/" + id + "/edit#studio-image");
+    const panel = page.locator("#studio-image");
+    await expect(panel.getByText("待确认新图")).toBeVisible();
+    for (const width of [1440, 768, 320]) {
+      await page.setViewportSize({ width, height: 900 });
+      const originals = await page.locator(".card-image-workspace .card-image-editor").boundingBox();
+      const studio = await panel.boundingBox();
+      if (width > 760) {
+        expect(studio.x).toBeGreaterThan(originals.x + originals.width);
+        expect(Math.abs(studio.y - originals.y)).toBeLessThan(1);
+      } else expect(studio.y).toBeGreaterThan(originals.y + originals.height);
+      expect(studio.x + studio.width).toBeLessThanOrEqual(width);
+    }
+    expect((await readFile(accepted)).equals(before)).toBe(true);
+    const stale = await request.post(endpoint, { data: { id, action:"adopt", version:"stale", candidate:(await status()).candidate } });
+    expect(stale.ok()).toBe(false);
+    await panel.getByRole("button", { name:"放弃新图" }).click();
+    await expect(panel.getByText("已生成", { exact:true })).toBeVisible();
+    expect((await readFile(accepted)).equals(before)).toBe(true);
+    await writeFile(preview, after); await page.reload();
+    await panel.getByRole("button", { name:"采用新图" }).click();
+    await expect(panel.getByText("已生成", { exact:true })).toBeVisible();
+    expect((await readFile(accepted)).equals(after)).toBe(true);
+  } finally { await rm(accepted,{force:true}); await rm(preview,{force:true}); }
 });

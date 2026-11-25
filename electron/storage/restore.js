@@ -6,7 +6,7 @@ const { isSubPath, pathsEqual } = require("./file-utils");
 const { inspectDataFolder } = require("./health");
 const { mapProgress, reportProgress } = require("./progress");
 const { verifyBackupManifest, writeBackupManifest, databaseCounts } = require("./backup-manifest");
-const { saveRestoreJournal, clearRestoreJournal, recoverInterruptedRestore, moveEntries } = require("./restore-journal");
+const { journalPath, saveRestoreJournal, clearRestoreJournal, recoverInterruptedRestore, moveEntries } = require("./restore-journal");
 const { directoryBytes, ensureFreeSpace } = require("./free-space");
 
 function resolveRestoreSourcePath(selectedPath) {
@@ -43,6 +43,7 @@ function createRestoreService({ config, backupDataFolder, ensureDataLayout }) {
     let journal = { suffix, staging: stagingDir, rollback: rollbackDir };
     let schema = { schemaVersion: null };
     let restoredHealth = null;
+    const retainedPaths = [];
     let retainedRollbackPath = null;
     if (pathsEqual(targetDataDir, path.parse(targetDataDir).root)) throw new Error("不能将文件系统根目录作为恢复目标。");
     fs.mkdirSync(parentDir, { recursive: true });
@@ -85,12 +86,6 @@ function createRestoreService({ config, backupDataFolder, ensureDataLayout }) {
         }
         throw error;
       }
-      if (fs.existsSync(rollbackDir)) {
-        try { fs.rmSync(rollbackDir, { recursive: true, force: true }); }
-        catch { retainedRollbackPath = rollbackDir; }
-      }
-      clearRestoreJournal(targetDataDir);
-      if (journal.moveEntries) fs.rmdirSync(stagingDir);
     } catch (error) {
       if (fs.existsSync(rollbackDir)) {
         // This also covers journal writes failing immediately after preserving the original.
@@ -101,7 +96,16 @@ function createRestoreService({ config, backupDataFolder, ensureDataLayout }) {
       if (!fs.existsSync(rollbackDir) && fs.existsSync(stagingDir)) fs.rmSync(stagingDir, { recursive: true, force: true });
       throw error;
     }
-    const result = { restoredFrom: sourceDataDir, restoredTo: targetDataDir, safetyBackupPath, retainedRollbackPath, schemaVersion: schema.schemaVersion, health: restoredHealth };
+    // The verified collection is already live. Cleanup failures must never trigger rollback.
+    if (fs.existsSync(rollbackDir)) {
+      try { fs.rmSync(rollbackDir, { recursive: true, force: true }); }
+      catch { retainedRollbackPath = rollbackDir; retainedPaths.push(rollbackDir); }
+    }
+    if (journal.moveEntries) {
+      try { fs.rmdirSync(stagingDir); } catch { retainedPaths.push(stagingDir); }
+    }
+    try { clearRestoreJournal(targetDataDir); } catch { retainedPaths.push(journalPath(targetDataDir)); }
+    const result = { retainedPaths, restoredFrom: sourceDataDir, restoredTo: targetDataDir, safetyBackupPath, retainedRollbackPath, schemaVersion: schema.schemaVersion, health: restoredHealth };
     reportProgress(onProgress, 100, "数据恢复完成。");
     return result;
   }

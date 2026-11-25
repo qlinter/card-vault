@@ -6,9 +6,9 @@ Card Vault 是本地优先的 Windows 球星卡收藏管理应用，基于 Next.
 
 ## 当前版本
 
-当前源码版本为 `1.7.0`。访客模式、单卡财务折线图及 AI 展馆图见 [v1.7.0 版本说明](./docs/release-v1.7.0.md)。
+当前源码版本为 `1.7.1`。更新内容见 [v1.7.1 版本说明](./docs/release-v1.7.1.md)。
 
-在 [v1.7.0 下载页](https://github.com/qlinter/card-vault/releases/tag/v1.7.0) 获取 Windows x64 安装包 `card-vault-1.7.0-setup.exe`、便携包 `card-vault-1.7.0-portable.zip` 及 SHA-256 校验清单。本版未签名。
+在 [v1.7.1 下载页](https://github.com/qlinter/card-vault/releases/tag/v1.7.1) 获取 Windows x64 安装包 `card-vault-1.7.1-setup.exe`、便携包 `card-vault-1.7.1-portable.zip` 及 SHA-256 校验清单。本版未签名。
 
 ## 主要能力
 

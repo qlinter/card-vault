@@ -62,7 +62,7 @@ function finishHistoryMutation(cardId: string, success: string, returnTo?: strin
   redirect(`/cards/${cardId}?success=${success}${returnQuery}#financial-history`);
 }
 
-export async function saveFinancialRecordFormAction(cardId: string, type: FinancialRecordType, recordId: string | null, returnTo: string | undefined, _previousState: { error: string }, formData: FormData, stayOnPage = false): Promise<{ error: string }> {
+export async function saveFinancialRecordFormAction(cardId: string, type: FinancialRecordType, recordId: string | null, returnTo: string | undefined, _previousState: { error: string }, formData: FormData): Promise<{ error: string }> {
   await requireAccount();
   const expectedVersion = String(formData.get("editVersion") ?? "");
   try {
@@ -72,7 +72,6 @@ export async function saveFinancialRecordFormAction(cardId: string, type: Financ
       return recordId ? updateCardValuation(transaction, cardId, recordId, valuationInput(formData), expectedVersion) : createCardValuation(transaction, { cardId, ...valuationInput(formData), externalKey: optionalText(formData, "submissionId") });
     });
   } catch (error) { return { error: errorMessage(error, "财务记录操作失败，请稍后重试。") }; }
-  if (stayOnPage) { revalidateHistory(cardId); return { error: "" }; }
   finishHistoryMutation(cardId, recordId ? "history-updated" : "history-added", returnTo);
 }
 

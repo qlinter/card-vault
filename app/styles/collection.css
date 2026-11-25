@@ -37,7 +37,7 @@ form.home-filter-form > .filters { grid-template-columns: minmax(220px, 3fr) rep
 .card-entry-form .card-status-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .card-entry-form label.field:has(> input[name="tags"]) { align-self: start; }
 .card-entry-form label.field > input[name="tags"] { margin-top: 0; }
-.entry-draft-panel > summary, .entry-tools > summary, .entry-ai-tools > summary,
+.entry-draft-panel > summary, .entry-tools > summary,
 .share-custom-tools > summary, .share-visual-details > summary, .share-ai-assistance > summary,
 .financial-chart-details > summary, .financial-history-details > summary, .card-detail-visibility > summary {
   cursor: pointer;
@@ -50,11 +50,7 @@ form.home-filter-form > .filters { grid-template-columns: minmax(220px, 3fr) rep
 .entry-tools > summary { width: fit-content; }
 .entry-tools[open] { padding-bottom: .5rem; }
 .entry-tools .entry-template-panel { margin: .4rem 0 .6rem; }
-.entry-ai-tools { margin: 0 0 .5rem; }
-.entry-ai-tools[open] > summary { margin-bottom: .5rem; }
-.entry-ai-tools .ai-recognition-panel { margin-bottom: .5rem; }
 .card-entry-form .entry-duplicate-slot:empty { display: none; }
-.entry-page > .financial-history { margin-top: 1rem; }
 .card-detail-attributes, .card-detail-note, .card-detail-visibility { margin-top: .8rem; }
 .card-detail-page .details { align-items: start; }
 .card-detail-page .gallery:has(> img:only-child) { grid-template-columns: minmax(0, 1fr); }

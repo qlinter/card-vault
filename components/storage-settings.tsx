@@ -166,6 +166,11 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
           <strong>{health.ok ? <UiText text={"数据状态正常"} /> : <UiText text={"数据需要处理"} />}</strong>
           <p><UiText text="数据库：{0}；卡牌 {1} 张；图片记录 {2} 条；待处理项目 {3} 个；分享集 {4} 个。" values={[health.integrity, health.counts.cards, health.counts.images, health.counts.queueItems, health.counts.shares]} /></p>
           <p><UiText text="缺失文件 {0} 个；未被数据库引用的文件 {1} 个。" values={[health.missingFiles.length, health.orphanFiles.length]} /></p>
+          {health.studio && <details>
+            <summary><UiText text="AI 展馆图" /> · <UiText text="已生成" /> {health.studio.ready} · <UiText text="待生成" /> {health.studio.missing.length} · <UiText text="损坏" /> {health.studio.damaged.length} · <UiText text="历史图片" /> {health.studio.historical.length}</summary>
+            {(["damaged", "missing"] as const).map(kind => health.studio?.[kind].map(card => <p key={card.id}><UiText text={kind === "damaged" ? "损坏" : "待生成"} /> · <a href={"/cards/" + encodeURIComponent(card.id) + "/edit#studio-image"}>{card.title}</a></p>))}
+            {health.studio.historical.map(name => <p className="settings-path" key={name}><UiText text="历史图片" /> · <a href={"/api/studio?image=" + encodeURIComponent(name)} target="_blank" rel="noreferrer">{name}</a></p>)}
+          </details>}
           {health.issues.map((issue) => <p key={issue}>{issue}</p>)}
           {health.orphanFiles.length > 0 ? (
             <div className="orphan-cleanup-panel">

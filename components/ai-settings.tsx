@@ -270,7 +270,7 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   const selectedModel = selectedSettings?.model || "";
 
   return (
-    <section className="panel settings-section ai-settings-panel">
+    <section id="ai-settings" className="panel settings-section ai-settings-panel">
       <UiElement as="button" uiAttributes={["aria-label"]} type="button" className="ai-settings-toggle"
         onClick={() => { setPendingDeleteId(null); setIsOpen(value => !value); }} aria-expanded={isOpen} aria-label={isOpen ? "收起 AI" : "展开 AI"}>
         <span><strong>AI</strong></span><DisclosureIcon expanded={isOpen} />

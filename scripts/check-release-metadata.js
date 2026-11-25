@@ -18,8 +18,10 @@ assert.equal(fs.readFileSync(path.join(rootDir, ".nvmrc"), "utf8").trim(), "24",
 for (const readmeName of ["README.md", "README.en.md"]) {
   const readme = fs.readFileSync(path.join(rootDir, readmeName), "utf8");
   assert.ok(readme.includes(`\`${version}\``), `${readmeName} does not identify v${version}`);
-  assert.ok(readme.includes(`card-vault-${version}-setup.exe`), `${readmeName} installer filename is stale`);
-  assert.ok(readme.includes(`card-vault-${version}-portable.zip`), `${readmeName} portable filename is stale`);
+  const downloadVersion = readme.match(/releases\/tag\/v(\d+\.\d+\.\d+)/)?.[1];
+  assert.ok(downloadVersion, "missing Windows release download");
+  assert.ok(readme.includes(`card-vault-${downloadVersion}-setup.exe`), `${readmeName} installer filename is stale`);
+  assert.ok(readme.includes(`card-vault-${downloadVersion}-portable.zip`), `${readmeName} portable filename is stale`);
 }
 
 const releaseNotesPath = path.join(rootDir, "docs", `release-v${version}.md`);

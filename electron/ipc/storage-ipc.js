@@ -51,7 +51,7 @@ function registerStorageIpc({ ipcMain, app, dialog, shell, storage, runtime, log
       throw error;
     }
   }));
-  trustedHandle("card-vault:check-data-health", async (event) => withStorageOperation(event, "health", async (sender) => { try { const result = await runStorageWorker(sender, "health"); logger.appendLog("desktop.log", `Data health check completed: ${result.ok ? "ok" : "issues found"}.`); return result; } catch (error) { logger.appendLog("desktop.log", `Data health check failed: ${error instanceof Error ? error.message : "Unknown data health error."}`); throw error; } }));
+  trustedHandle("card-vault:check-data-health", async (event) => withStorageOperation(event, "health", async (sender) => { try { const result = await runStorageWorker(sender, "health", { includeStudio: true }); logger.appendLog("desktop.log", `Data health check completed: ${result.ok ? "ok" : "issues found"}.`); return result; } catch (error) { logger.appendLog("desktop.log", `Data health check failed: ${error instanceof Error ? error.message : "Unknown data health error."}`); throw error; } }));
   trustedHandle("card-vault:show-orphan-file-in-folder", async (event, file) => {
     try {
       const result = await withStorageOperation(event, "reveal", (sender) => runStorageWorker(sender, "resolveOrphan", { file }, { start: 0, end: 100 }, "reveal"));

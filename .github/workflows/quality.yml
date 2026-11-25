@@ -21,7 +21,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install chromium
-      - run: npm run audit:all
       - name: Run npm run check:release
         run: |
           New-Item -ItemType Directory -Force -Path logs | Out-Null

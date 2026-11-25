@@ -110,7 +110,7 @@ export function BackupSettings() {
         setBusyAction(null);
         setProgress(null);
       } else {
-        window.sessionStorage.setItem(restoreMessageKey, "恢复完成，当前页面已加载备份中的数据。");
+        window.sessionStorage.setItem(restoreMessageKey, result.retainedPaths?.length ? "恢复完成，以下临时路径仍然保留：" + result.retainedPaths.join("、") : "恢复完成，当前页面已加载备份中的数据。");
         setMessage("恢复完成，正在刷新当前页面...");
         window.location.reload();
       }

@@ -97,7 +97,6 @@ export function AiRecognitionPanel({
     return () => images.removeEventListener("change", cancelStaleRequest);
   }, [mode, queueItemId]);
   const [overwrite, setOverwrite] = useState(false);
-  const [useExistingImages, setUseExistingImages] = useState(defaultImageUrls.length > 0);
   const [isPending, setIsPending] = useState(false);
   const [messageIsError, setMessageIsError] = useState(false);
   const [message, setMessage] = useState<string | null>(() => {
@@ -110,16 +109,16 @@ export function AiRecognitionPanel({
   function handleImageSelectionChange(event: React.ChangeEvent<HTMLInputElement>) {
     setMessageIsError(false);
     activeRequest.current?.abort();
+    if (mode === "edit") { setMessage(null); return; }
     clearRecognizedFields(event.currentTarget);
     const count = event.currentTarget.files?.length ?? 0;
-    setUseExistingImages(false);
     setMessage(count > 0 ? "已清空旧识别信息，请重新识别当前图片。" : "已清空旧识别信息。");
   }
 
   async function handleRecognize() {
     if (activeRequest.current) return;
     const useCardImages = mode === "create" && !alternateSource.current?.open;
-    const useSavedImages = mode === "edit" ? useExistingImages : useCardImages && defaultImageUrls.length > 0;
+    const useSavedImages = !alternateSource.current?.open && defaultImageUrls.length > 0;
     const archiveInput = actionButtonRef.current?.form?.elements.namedItem("images");
     const files = useCardImages && archiveInput instanceof HTMLInputElement
       ? Array.from(archiveInput.files ?? []).slice(0, 2)
@@ -210,41 +209,39 @@ export function AiRecognitionPanel({
   }
 
   const recognitionPicker = <label className="field">
-    {mode === "edit" ? <span><UiText text="识别图片" /></span> : null}
-    <UiElement as="input" uiAttributes={["aria-label"]} aria-label={mode === "create" ? "识别图片" : undefined} ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleImageSelectionChange} />
+    <UiElement as="input" uiAttributes={["aria-label"]} aria-label="识别图片" ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleImageSelectionChange} />
   </label>;
 
   return (
     <div className="ai-recognition-panel">
-      <div className={mode === "create" ? "form-section-heading" : "title-row"} style={mode === "edit" ? { marginBottom: "0.6rem" } : undefined}>
+      <div className="form-section-heading">
         <div>
-          {mode === "create" ? <h2 className="ai-recognition-heading">
+          <h2 className="ai-recognition-heading">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 6.3L21 12l-6.3 2.7L12 21l-2.7-6.3L3 12l6.3-2.7L12 3Z" /></svg>
-            <UiText text="AI 识图录入" />
-          </h2> : <strong><UiText text="AI 识图填充" /></strong>}
+            <UiText text={mode === "edit" ? "AI 识图填充" : "AI 识图录入"} />
+          </h2>
         </div>
-        {mode === "edit" ? <Link href="/settings" className="btn btn-secondary"><UiText text="AI 设置" /></Link> : null}
       </div>
 
       <div className="ai-recognition-grid">
-        {mode === "create" ? <details ref={alternateSource} className="ai-alternate-source" onToggle={() => {
+        <details ref={alternateSource} className="ai-alternate-source" onToggle={() => {
           activeRequest.current?.abort();
           setMessage(null);
         }}>
           <summary><UiText text="另选识别图片" /></summary>
           {recognitionPicker}
-        </details> : recognitionPicker}
+        </details>
 
         <label className="field ai-checkbox-field">
           <span>
             <input type="checkbox" checked={overwrite} onChange={(event) => setOverwrite(event.target.checked)} /><UiText text={"覆盖当前字段"} /></span>
         </label>
         <div className="ai-actions">
-          {mode === "create" ? <Link href="/settings" className="btn btn-secondary btn-quiet"><UiText text="AI 设置" /></Link> : null}
+          <Link href="/settings?section=ai#ai-settings" className="btn btn-secondary btn-quiet"><UiText text="AI 设置" /></Link>
           <button
             ref={actionButtonRef}
             type="button"
-            className={mode === "create" ? "btn btn-secondary btn-quiet btn-soft" : "btn btn-primary"}
+            className="btn btn-secondary btn-quiet btn-soft"
             onClick={handleRecognize}
             disabled={isPending}
           >
@@ -254,12 +251,6 @@ export function AiRecognitionPanel({
         </div>
       </div>
 
-      {mode === "edit" && defaultImageUrls.length > 0 ? (
-        <label className="field ai-existing-image-option">
-          <span>
-            <input type="checkbox" checked={useExistingImages} onChange={(event) => setUseExistingImages(event.target.checked)} /><UiText text={" 使用"} /><UiText text={"已有默认"} /><UiText text={"图片识别"} /></span>
-        </label>
-      ) : null}
 
       {message ? (
         <p className={messageIsError ? "note-error" : "muted"} role={messageIsError ? "alert" : "status"} style={{ margin: "0.65rem 0 0" }}>

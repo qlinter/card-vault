@@ -19,7 +19,7 @@ process.on("message", async (request) => {
   started = true;
 
   try {
-    const result = runStorageTask(request, (progress) => {
+    const result = await runStorageTask(request, (progress) => {
       void send({ type: "progress", progress });
     });
     await send({ type: "result", result, workerPid: process.pid });

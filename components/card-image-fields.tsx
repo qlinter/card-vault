@@ -33,6 +33,7 @@ type NewImagePreview = {
 
 type CardImageFieldsProps = {
   children?: ReactNode;
+  studioPanel?: ReactNode;
   mode: "create" | "edit";
   cardTitle: string;
   existingImages: ExistingImage[];
@@ -50,7 +51,7 @@ function RotationButtons({ label, onLeft, onRight }: { label: string; onLeft: ()
   );
 }
 
-export function CardImageFields({ mode, cardTitle, existingImages, queuedImages, draftImages, initialFrontChoice, children }: CardImageFieldsProps) {
+export function CardImageFields({ mode, cardTitle, existingImages, queuedImages, draftImages, initialFrontChoice, children, studioPanel }: CardImageFieldsProps) {
   const [existingRotations, setExistingRotations] = useState<Record<string, number>>(() => Object.fromEntries(
     existingImages.map((image) => [image.id, normalizeCardImageRotation(image.rotation)])
   ));
@@ -216,26 +217,30 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages,
       ) : null}
 
       {mode === "edit" && existingImages.length > 0 ? (
-        <section className="card-image-editor full">
-          <h3><UiText text={"现有图片"} /></h3>
-          <div className="gallery">
-            {existingImages.map((image, index) => (
-              <figure className="card-image-edit-item" key={image.id}>
-                <div className="card-image-preview-frame">
-                  <img src={image.url} alt={`${cardTitle} 图片 ${index + 1}`} style={cardImageRotationStyle(existingRotations[image.id], { continuous: true })} />
-                </div>
-                {frontButton("existing:" + image.id)}
-                <RotationButtons label={`第 ${index + 1} 张现有图片`} onLeft={() => rotateExisting(image.id, -1)} onRight={() => rotateExisting(image.id, 1)} />
-                <label>
-                  <input type="checkbox" name="removeImageIds" value={image.id} checked={removed.includes(image.id)} onChange={event => {
-                    const checked = event.target.checked;
-                    event.currentTarget.defaultChecked = checked;
-                    setRemoved(ids => checked ? [...ids, image.id] : ids.filter(id => id !== image.id));
-                  }} /><UiText text={"删除此图"} /></label>
-              </figure>
-            ))}
-          </div>
-        </section>
+        <div className="full card-image-workspace">
+          <section className="card-image-editor">
+            <h3><UiText text={"现有图片"} /></h3>
+            <div className="gallery">
+              {existingImages.map((image, index) => (
+                <figure className="card-image-edit-item" key={image.id}>
+                  <div className="card-image-preview-frame">
+                    <img src={image.url} alt={`${cardTitle} 图片 ${index + 1}`} style={cardImageRotationStyle(existingRotations[image.id], { continuous: true })} />
+                  </div>
+                  {frontButton("existing:" + image.id)}
+                  <RotationButtons label={`第 ${index + 1} 张现有图片`} onLeft={() => rotateExisting(image.id, -1)} onRight={() => rotateExisting(image.id, 1)} />
+                  <label>
+                    <input type="checkbox" name="removeImageIds" value={image.id} checked={removed.includes(image.id)} onChange={event => {
+                      const checked = event.target.checked;
+                      event.currentTarget.defaultChecked = checked;
+                      setRemoved(ids => checked ? [...ids, image.id] : ids.filter(id => id !== image.id));
+                    }} /><UiText text={"删除此图"} /></label>
+                </figure>
+              ))}
+            </div>
+          </section>
+          {studioPanel}
+        </div>
+
       ) : null}
       {children}
     </>

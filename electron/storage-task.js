@@ -22,8 +22,12 @@ function runStorageTask(request, reportProgress = () => {}) {
   switch (request?.operation) {
     case "backup":
       return storage.backupDataFolder(reportProgress);
-    case "health":
-      return storage.inspectDataFolder(payload.dataDir || storage.getDataDir(), reportProgress);
+    case "health": {
+      const dir = payload.dataDir || storage.getDataDir();
+      const health = storage.inspectDataFolder(dir, reportProgress);
+      if (!payload.includeStudio || health.integrity !== "ok") return health;
+      return require("./storage/studio-health").inspectStudioHealth(dir).then(studio => ({ ...health, studio, ok: health.ok && !studio.damaged.length }));
+    }
     case "cleanup":
       return storage.cleanOrphanFiles(reportProgress);
     case "resolveOrphan":

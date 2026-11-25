@@ -7,72 +7,27 @@ test.beforeEach(() => fixture(db => {
 }));
 test.afterEach(() => fixture(db => db.prepare("DELETE FROM Card WHERE id='editor-finance'").run()));
 
-test('edit-page financial records save independently while preserving unsaved archive fields', async ({ page }) => {
-  const returnTo = '/portfolio?tab=details&q=Editor';
-  await page.goto('/cards/editor-finance/edit?returnTo=' + encodeURIComponent(returnTo), { waitUntil: 'networkidle' });
-  const archive = page.locator('.entry-page > form');
-  const finance = page.locator('.entry-page > .financial-history');
-  await expect(finance.locator('.financial-history-actions button')).toHaveText(['新增财务记录']);
-  await expect(page.locator('form form')).toHaveCount(0);
-  await archive.locator('[name="playerName"]').fill('Unsubmitted archive draft');
-  await archive.locator('[name="cardTitle"]').fill('Unsubmitted card title');
-  async function open(label) {
-    await finance.getByRole('button', { name: '新增财务记录', exact: true }).click();
-    await finance.getByRole('combobox', { name: '录入类型', exact: true }).selectOption({ label });
-    return finance.locator('form:visible');
-  }
-  async function saved() {
-    await expect(finance.getByRole('status')).toHaveText('财务记录已保存。');
-    expect(new URL(page.url()).pathname).toBe('/cards/editor-finance/edit');
-    await expect(archive.locator('[name="playerName"]')).toHaveValue('Unsubmitted archive draft');
-    await expect(archive.locator('[name="cardTitle"]')).toHaveValue('Unsubmitted card title');
-    expect(fixture(db => db.prepare("SELECT playerName FROM Card WHERE id='editor-finance'").get().playerName)).toBe('Editor Player');
-  }
-  const purchaseDraft = await open('买入');
-  await purchaseDraft.locator('[name="amount"]').fill('55');
-  await finance.getByRole('combobox', { name: '录入类型', exact: true }).selectOption('expense');
-  await finance.locator('form:visible [name="amount"]').fill('12');
-  await finance.getByRole('combobox', { name: '录入类型', exact: true }).selectOption('purchase');
-  await expect(purchaseDraft.locator('[name="amount"]')).toHaveValue('55');
-  await expect(purchaseDraft.locator('select[name="kind"]')).toHaveCount(0);
-  await finance.getByRole('button', { name: '收起', exact: true }).click();
-  await open('买入');
-  await expect(purchaseDraft.locator('[name="amount"]')).toHaveValue('55');
-  await finance.getByRole('button', { name: '收起', exact: true }).click();
-  for (const [index, quantity] of [2, 1].entries()) {
-    const form = await open('买入');
-    await form.locator('[name="amount"]').fill('100');
-    await form.locator('[name="quantity"]').fill(String(quantity));
-    await form.locator('[name="occurredAt"]').fill(`2026-09-0${index + 1}`);
-    await form.getByRole('button', { name: '保存交易' }).click();
-    await saved();
-  }
-  let form = await open('费用');
-  await form.locator('[name="amount"]').fill('10');
-  await form.locator('[name="occurredAt"]').fill('2026-09-03');
-  await form.getByRole('button', { name: '保存费用' }).click();
-  await saved();
-  form = await open('估值');
-  await form.locator('[name="amount"]').fill('250');
-  await form.locator('[name="valuedAt"]').fill('2026-09-04');
-  await form.getByRole('button', { name: '保存估值' }).click();
-  await saved();
-  form = await open('卖出');
-  await form.locator('[name="amount"]').fill('400');
-  await form.locator('[name="quantity"]').fill('4');
-  await form.locator('[name="occurredAt"]').fill('2026-09-05');
-  await form.getByRole('button', { name: '保存交易' }).click();
-  await expect(form.getByRole('alert')).toBeVisible();
-  await expect(form.locator('[name="quantity"]')).toHaveValue('4');
-  await expect(form.locator('[name="amount"]')).toHaveValue('400');
+test('financial records are managed on card details and image tools belong to the archive form', async ({ page }) => {
+  await page.goto('/cards/editor-finance');
+  const finance = page.locator('#financial-history');
+  await finance.getByRole('button', { name: '新增财务记录' }).click();
+  const form = finance.locator('form:visible');
+  await form.locator('[name="amount"]').fill('100');
   await form.locator('[name="quantity"]').fill('1');
+  await form.locator('[name="occurredAt"]').fill('2026-09-01');
   await form.getByRole('button', { name: '保存交易' }).click();
-  await saved();
-  await archive.getByRole('button', { name: '保存修改' }).click();
-  await expect(page).toHaveURL(/\/cards\/editor-finance\?/);
-  expect(new URL(page.url()).searchParams.get('returnTo')).toBe(returnTo);
-  expect(fixture(db => db.prepare("SELECT playerName,holdingQuantity FROM Card WHERE id='editor-finance'").get())).toMatchObject({ playerName: 'Unsubmitted archive draft', holdingQuantity: 2 });
-  expect(fixture(db => ['CardTransaction', 'CardExpense', 'CardValuation'].map(table => db.prepare(`SELECT COUNT(*) n FROM ${table} WHERE cardId='editor-finance'`).get().n))).toEqual([3, 1, 1]);
+  await expect(finance.locator('.financial-history-count')).toContainText('1');
+  await finance.locator('.financial-history-details > summary').click();
+  await expect(finance.locator('.financial-timeline-item')).toHaveCount(1);
+  await page.getByRole('link', { name: '待生成', exact: true }).click();
+  await expect(page).toHaveURL(/\/edit(?:\?[^#]*)?#studio-image$/);
+  await expect(page.locator('#financial-history')).toHaveCount(0);
+  const editor = page.locator('.entry-page > form');
+  await expect(editor.locator('#studio-image')).toBeVisible();
+  await expect(editor.locator('#studio-image button:not([type="button"])')).toHaveCount(0);
+  await editor.getByText('另选识别图片', { exact:true }).click();
+  await editor.getByLabel('识别图片', { exact:true }).setInputFiles('tests/fixtures/ui-media/showcase-bg.webp');
+  await expect(editor.locator('[name="playerName"]')).toHaveValue('Editor Player');
 });
 
 test('entry AI emphasis and unified edit actions fit all themes and both languages', async ({ page, context }, testInfo) => {
@@ -89,13 +44,11 @@ test('entry AI emphasis and unified edit actions fit all themes and both languag
     await expect(page.locator('.ai-recognition-panel')).toBeVisible();
     expect(await page.locator('.entry-ai-primary').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     await page.goto('/cards/editor-finance/edit', { waitUntil: 'networkidle' });
-    const panel = page.locator('.entry-page > .financial-history');
-    await expect(panel.locator('.financial-history-actions button')).toHaveText([locale === 'en' ? 'Add Financial Record' : '新增财务记录']);
-    await panel.locator('.financial-add-trigger').click();
-    const type = panel.getByRole('combobox', { name: locale === 'en' ? 'Record type' : '录入类型', exact: true });
-    await expect(type.locator('option')).toHaveText(locale === 'en' ? ['Purchase', 'Sale', 'Expense', 'Valuation'] : ['买入', '卖出', '费用', '估值']);
-    expect(await panel.evaluate(element => [...element.querySelectorAll('button')].filter(button => button.checkVisibility()).every(button => { const b = button.getBoundingClientRect(), p = element.getBoundingClientRect(); return b.left >= p.left && b.right <= p.right; }))).toBe(true);
-    if (theme === 'classic' && width === 1100) await panel.screenshot({ path: testInfo.outputPath(`edit-finance-${locale}.png`) });
+    const panel = page.locator('.entry-ai-primary');
+    await expect(panel.locator('h2')).toHaveText(locale === 'en' ? 'AI Image Fill' : 'AI 识图填充');
+    await expect(panel.locator('h2')).toHaveCSS('font-size', '18px');
+    expect(await panel.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    await expect(page.locator('form #studio-image')).toBeVisible();
   }
   await page.goto('/', { waitUntil: 'networkidle' });
   await expect(page.locator('.collection-shortcuts a')).toHaveText(['Goals & search']);

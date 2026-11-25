@@ -784,7 +784,7 @@ textarea {
 .card-studio-panel { align-self: stretch; display: flex; flex-direction: column; gap: .55rem; min-width: 0; padding-inline-start: 1.25rem; border-inline-start: 1px solid var(--line); }
 .studio-panel-heading, .studio-panel-tools { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .6rem; }
 .studio-panel-tools { margin-inline-start: auto; justify-content: flex-end; }
-.studio-panel-tools .btn { min-height: var(--control-height-compact); }
+.studio-panel-tools .btn { min-height: var(--control-height-compact); font-size: var(--text-sm); }
 .studio-key-link { align-self: flex-end; }
 .card-studio-panel [role=status], .studio-compare figcaption { font-size: var(--text-sm); color: var(--muted-ink); }
 .studio-photo-frame { position: relative; flex: 1 0 auto; width: 100%; aspect-ratio: 1088 / 1456; background: var(--surface-soft); border-radius: var(--control-radius); overflow: hidden; }

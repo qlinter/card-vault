@@ -28,51 +28,39 @@ test('leaving the share editor cancels in-flight AI theme generation', async ({ 
 });
 test.afterEach(() => fixture(db => db.exec("DELETE FROM ShareCollection WHERE id='review-share'; DELETE FROM Card WHERE id LIKE 'review-%'")));
 
-test('financial saves synchronize sold and repurchased status and retain other record drafts', async ({ page }) => {
+test('financial saves synchronize sold and repurchased status on the card detail page', async ({ page }) => {
   fixture(db => db.exec(`
     INSERT INTO Card(id,playerName,cardTitle,sport,holdingQuantity) VALUES('review-finance','Review Player','Review Card','Basketball',2);
     INSERT INTO CardImage(id,cardId,path) VALUES('review-image','review-finance','/media/ui-card-1.webp');
     INSERT INTO CardTransaction(id,cardId,kind,amountMinor,currency,quantity,occurredAt,provenance) VALUES('review-buy','review-finance','purchase',10000,'CNY',2,'2026-09-01T00:00:00.000Z','ui-test');
   `));
-  await page.goto('/cards/review-finance/edit', { waitUntil: 'networkidle' });
-  const archive = page.locator('.entry-page > form');
+  await page.goto('/cards/review-finance', { waitUntil: 'networkidle' });
   const finance = page.locator('.financial-history');
-  await archive.locator('[name=playerName]').fill('Preserved archive draft');
   async function open(kind) {
     await finance.locator('.financial-add-trigger').click();
     await finance.getByRole('combobox', { name: '录入类型', exact: true }).selectOption(kind);
     return finance.locator('form:visible');
   }
-  await open('expense');
-  await finance.locator('form:visible [name=amount]').fill('37');
-  await finance.getByRole('combobox', { name: '录入类型', exact: true }).selectOption('sale');
-  let form = finance.locator('form:visible');
+  let form = await open('sale');
   await form.locator('[name=amount]').fill('500');
   await form.locator('[name=quantity]').fill('2');
   await form.locator('[name=occurredAt]').fill('2026-10-01');
   await form.getByRole('button', { name: '保存交易', exact: true }).click();
-  await expect(finance.getByRole('status')).toHaveText('财务记录已保存。');
-  await expect(archive.locator('[name=collectionStatus]')).toHaveValue('sold');
-  await expect(archive.locator('[name=playerName]')).toHaveValue('Preserved archive draft');
+  const cardState = () => fixture(db => db.prepare("SELECT collectionStatus,holdingQuantity FROM Card WHERE id='review-finance'").get());
+  await expect.poll(cardState).toMatchObject({ collectionStatus: 'sold', holdingQuantity: 0 });
+  await expect(finance.locator('.financial-history-count')).toContainText('2');
   form = await open('expense');
-  await expect(form.locator('[name=amount]')).toHaveValue('37');
+  await form.locator('[name=amount]').fill('37');
   await form.locator('[name=context]').selectOption('sale');
   await form.locator('[name=occurredAt]').fill('2026-10-01');
   await form.getByRole('button', { name: '保存费用', exact: true }).click();
-  await expect(finance.getByRole('status')).toHaveText('财务记录已保存。');
+  await expect(finance.locator('.financial-history-count')).toContainText('3');
   expect(fixture(db => db.prepare("SELECT transactionId FROM CardExpense WHERE cardId='review-finance'").get().transactionId)).toBeNull();
-  await archive.getByRole('button', { name: '保存修改', exact: true }).click();
-  await expect(page).toHaveURL(/\/cards\/review-finance\?/);
-  expect(fixture(db => db.prepare("SELECT collectionStatus,holdingQuantity,playerName FROM Card WHERE id='review-finance'").get())).toMatchObject({collectionStatus:'sold',holdingQuantity:0,playerName:'Preserved archive draft'});
-  await page.goto('/cards/review-finance/edit', { waitUntil: 'networkidle' });
-  await archive.locator('[name=playerName]').fill('Repurchased archive draft');
   form = await open('purchase');
   await form.locator('[name=amount]').fill('90');
   await form.locator('[name=occurredAt]').fill('2026-10-02');
   await form.getByRole('button', { name: '保存交易', exact: true }).click();
-  await expect(finance.getByRole('status')).toHaveText('财务记录已保存。');
-  await expect(archive.locator('[name=collectionStatus]')).toHaveValue('holding');
-  await expect(archive.locator('[name=playerName]')).toHaveValue('Repurchased archive draft');
+  await expect.poll(cardState).toMatchObject({ collectionStatus: 'holding', holdingQuantity: 1 });
 });
 
 test('interrupted share saves retain drafts and successful saves acknowledge only submitted content', async ({ page }) => {

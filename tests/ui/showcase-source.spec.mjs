@@ -69,7 +69,11 @@ test("Showcase shares the studio or original source across wall, detail, lightbo
 });
 
 test("card editor preserves the accepted image until an owner adopts its current preview", async ({ page, request }) => {
-  const id = "ui-card-1", endpoint = "/api/studio";
+  const id = "studio-review-fixture", endpoint = "/api/studio";
+  withUiDatabase(db => {
+    db.prepare("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES(?,?,?,'Basketball')").run(id, "Studio Review", "Review fixture");
+    db.prepare("INSERT INTO CardImage(id,cardId,path) VALUES(?,?,?)").run("studio-review-front", id, "/media/ui-card-1.webp");
+  });
   const status = async () => (await request.get(endpoint + "?id=" + id)).json();
   const { version } = await status();
   const folder = path.join(path.dirname(uiDatabasePath), "studio-images");
@@ -102,5 +106,12 @@ test("card editor preserves the accepted image until an owner adopts its current
     await panel.getByRole("button", { name:"采用新图" }).click();
     await expect(panel.getByText("已生成", { exact:true })).toBeVisible();
     expect((await readFile(accepted)).equals(after)).toBe(true);
-  } finally { await rm(accepted,{force:true}); await rm(preview,{force:true}); }
+  } finally {
+    await page.close();
+    withUiDatabase(db => db.prepare("DELETE FROM Card WHERE id=?").run(id));
+    // Windows can still hold the last image request briefly after the page closes.
+    for (const file of [accepted, preview]) {
+      await expect(async () => { await rm(file, { force: true }); }).toPass({ timeout: 5000 });
+    }
+  }
 });

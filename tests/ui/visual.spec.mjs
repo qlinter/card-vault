@@ -302,16 +302,17 @@ test("showcase grid hides missing facts and list restores their columns", async 
 
 test("narrow statistics details keep the card name in view while scrolling amounts", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 700 });
-  await page.goto("/portfolio?tab=details");
+  await page.goto("/portfolio?tab=details", { waitUntil: "networkidle" });
   const table = page.getByTestId("data-details").locator("table");
   const name = table.locator("tbody tr").first().locator("td").first();
+  await expect(name).toBeVisible();
+  await expect(name).toHaveCSS("position", "sticky");
   const before = await name.boundingBox();
-  const moved = await table.evaluate(el => {
+  await expect.poll(() => table.evaluate(el => {
     const wrapper = el.parentElement;
-    wrapper.scrollLeft = wrapper.scrollWidth;
+    wrapper.scrollTo({ left: wrapper.scrollWidth, behavior: "instant" });
     return wrapper.scrollLeft;
-  });
-  expect(moved).toBeGreaterThan(100);
+  })).toBeGreaterThan(100);
   const after = await name.boundingBox();
   expect(Math.abs(after.x - before.x)).toBeLessThan(2);
   expect(after.width).toBeLessThan(160);

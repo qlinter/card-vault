@@ -34,7 +34,7 @@ async function signIn(page, pass = password, name = 'Collector') {
   await expect(page.locator('.topbar')).toBeVisible();
 }
 
-test('setup, privacy gate, refresh, sign-out, account changes and one-use recovery work end to end', async ({ page }) => {
+test('setup, privacy gate, refresh, sign-out, account changes and one-use recovery work end to end', async ({ page, browser }) => {
   test.setTimeout(120000);
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto(origin);
@@ -182,13 +182,16 @@ test('setup, privacy gate, refresh, sign-out, account changes and one-use recove
   await expect(page).toHaveURL(origin + '/login');
   await signIn(page, nextPassword, 'New Collector');
   await page.getByRole('link', { name: '设置', exact: true }).click();
+  // Inspect the anonymous server-rendered form without hydrating it.
+  const coldLogin = await browser.newPage({ javaScriptEnabled: false });
+  try {
+    await coldLogin.goto(origin + '/login');
+    await expect(coldLogin.locator('.account-text-button')).toBeDisabled();
+    await expect(coldLogin.locator('#account-password')).toBeDisabled();
+  } finally {
+    await coldLogin.close();
+  }
   await page.getByRole('button', { name: '退出登录', exact: true }).click();
-  // A cold login navigation can paint its server HTML before React handles clicks.
-  const loginHtml = await (await page.request.get(origin + '/login')).text();
-  expect(await page.evaluate(html => {
-    const login = new DOMParser().parseFromString(html, 'text/html');
-    return login.querySelector('.account-text-button')?.disabled && login.querySelector('.account-form fieldset')?.disabled;
-  }, loginHtml)).toBe(true);
   await page.getByRole('button', { name: '忘记密码', exact: true }).click();
   await expect(page.locator('#recovery-code')).toBeVisible();
   for (const english of [true, false]) {

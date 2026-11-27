@@ -1,13 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { withUiDatabase as fixture } from "./database-fixture.mjs";
+import { withUiDatabase as fixture, deleteTestDraft } from "./database-fixture.mjs";
 
 test.afterEach(async ({ page, request, baseURL }) => {
   const draftId = new URL(page.url()).searchParams.get("draft");
   if (!draftId) return;
   await page.goto("about:blank");
-  const response = await request.delete(`/api/card-entry/drafts/${encodeURIComponent(draftId)}`, {
-    headers: { Origin: baseURL }
-  });
+  const response = await deleteTestDraft(request, baseURL, draftId);
   expect(response.ok()).toBeTruthy();
 });
 

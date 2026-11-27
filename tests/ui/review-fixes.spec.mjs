@@ -44,7 +44,7 @@ test('financial saves synchronize sold and repurchased status on the card detail
   let form = await open('sale');
   await form.locator('[name=amount]').fill('500');
   await form.locator('[name=quantity]').fill('2');
-  await form.locator('[name=occurredAt]').fill('2026-10-01');
+  await form.locator('[name=occurredAt]').fill('2026-09-02');
   await form.getByRole('button', { name: '保存交易', exact: true }).click();
   const cardState = () => fixture(db => db.prepare("SELECT collectionStatus,holdingQuantity FROM Card WHERE id='review-finance'").get());
   await expect.poll(cardState).toMatchObject({ collectionStatus: 'sold', holdingQuantity: 0 });
@@ -52,13 +52,13 @@ test('financial saves synchronize sold and repurchased status on the card detail
   form = await open('expense');
   await form.locator('[name=amount]').fill('37');
   await form.locator('[name=context]').selectOption('sale');
-  await form.locator('[name=occurredAt]').fill('2026-10-01');
+  await form.locator('[name=occurredAt]').fill('2026-09-02');
   await form.getByRole('button', { name: '保存费用', exact: true }).click();
   await expect(finance.locator('.financial-history-count')).toContainText('3');
   expect(fixture(db => db.prepare("SELECT transactionId FROM CardExpense WHERE cardId='review-finance'").get().transactionId)).toBeNull();
   form = await open('purchase');
   await form.locator('[name=amount]').fill('90');
-  await form.locator('[name=occurredAt]').fill('2026-10-02');
+  await form.locator('[name=occurredAt]').fill('2026-09-03');
   await form.getByRole('button', { name: '保存交易', exact: true }).click();
   await expect.poll(cardState).toMatchObject({ collectionStatus: 'holding', holdingQuantity: 1 });
 });

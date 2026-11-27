@@ -10,7 +10,8 @@ import {
 import { prisma } from "@/lib/prisma";
 import { createInitialFinancialHistory } from "@/lib/card-entry-finance-service";
 import { readDraftImages, type DraftImage } from "./card-entry-draft-images.js";
-import { cardIdForSubmission } from "./card-write-guards";
+import { draftImageContext } from "./card-entry-drafts";
+import { assertDraftVersion, cardIdForSubmission } from "./card-write-guards";
 
 export async function createCardEntry(input: {
   submissionId: string;
@@ -20,6 +21,7 @@ export async function createCardEntry(input: {
   newImageRotations?: CardImageRotation[];
   queuedImageRotations?: Record<string, CardImageRotation>;
   draftId?: string;
+  draftVersion?: string;
   queueItemId?: string;
 }) {
   const { submissionId, values, files, newImageRotations = [], queuedImageRotations = {}, draftId, queueItemId } = input;
@@ -42,7 +44,7 @@ export async function createCardEntry(input: {
   const queuedPaths = queuedItem?.images.flatMap((image) =>
     image.processedPath ? [image.processedPath] : []
   ) ?? [];
-  if (queuedItem && queuedPaths.length !== queuedItem.images.length) {
+  if (queuedItem && (!queuedPaths.length || queuedPaths.length !== queuedItem.images.length)) {
     throw new Error("队列项目缺少预处理图片，请重试或重新导入。");
   }
   const totalImageCount = queuedPaths.length + files.length;
@@ -64,7 +66,7 @@ export async function createCardEntry(input: {
             include: { images: { orderBy: { sortOrder: "asc" } } }
           })
         : null;
-      if (queueItemId && !transactionQueueItem) {
+      if (queueItemId && !transactionQueueItem?.images.length) {
         throw new Error("队列项目已在其他录入流程中处理。");
       }
       const transactionQueueImages = transactionQueueItem?.images.map((image) => {
@@ -91,7 +93,12 @@ export async function createCardEntry(input: {
       );
       if (draftId) {
         const draft = await transaction.cardEntryDraft.findUnique({ where: { id: draftId } });
-        completedDraftImages = draft ? readDraftImages(draft.valuesJson) : [];
+        assertDraftVersion(draft, input.draftVersion);
+        if (draft) {
+          const context = await draftImageContext(transaction, draft.valuesJson);
+          if (context.missingQueue || (context.queueItemId && context.queueItemId !== queueItemId)) throw new Error("草稿关联的队列项目已变化，请重新打开草稿。");
+          completedDraftImages = readDraftImages(draft.valuesJson);
+        }
         await transaction.cardEntryDraft.deleteMany({ where: { id: draftId } });
       }
       if (transactionQueueItem) {

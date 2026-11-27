@@ -3,25 +3,10 @@
 import { UiText, UiElement } from "@/components/ui-text";
 import { useMemo, useState } from "react";
 
-export type SharePickerCard = {
-  id: string;
-  playerName: string;
-  cardTitle: string;
-  sport: string;
-  team: string | null;
-  year: string | null;
-  brand: string | null;
-  productLine: string | null;
-  subsetName: string | null;
-  parallel: string | null;
-  cardNumber: string | null;
-  serialNumber: string | null;
-  serialRange: string | null;
-  gradingCompany: string | null;
-  grade: string | null;
-  certNumber: string | null;
+import type { ShareThemeCard } from "@/lib/share-theme-domain";
+
+export type SharePickerCard = ShareThemeCard & {
   visibility: string;
-  publicDescription: string | null;
   tags: string | null;
   imagePath: string | null;
   thumbnailPath?: string | null;

@@ -196,12 +196,45 @@ test("transaction amounts are complete without a checkbox and historical unknown
   await record.getByRole("button", { name: "编辑", exact: true }).click();
   const editor = record.locator("form.financial-form");
   await expect(editor.locator('[name="amountUnknown"]')).toHaveCount(0);
+  await expect(editor.locator('[name="amount"]')).toHaveValue("");
+  await editor.locator('[name="notes"]').fill("Only the note changed");
+  await editor.getByRole("button", { name: "保存修改", exact: true }).click();
+  await expect.poll(() => fixtureDb(db => db.prepare("SELECT notes,amountMinor,amountKnown FROM CardTransaction WHERE id='unknown-purchase'").get())).toEqual({notes:"Only the note changed",amountMinor:10000,amountKnown:0});
+  await page.goto("/cards/finance-ui");
+  await revealHistory(page);
+  await record.getByRole("button", { name: "编辑", exact: true }).click();
   await editor.locator('[name="amount"]').fill("120");
   await editor.getByRole("button", { name: "保存修改", exact: true }).click();
   await expect.poll(() => fixtureDb(db => db.prepare("SELECT amountKnown FROM CardTransaction WHERE id='unknown-purchase'").get().amountKnown)).toBe(1);
   await expect(page.locator(".financial-key-metrics")).toContainText("CNY 120.00");
   await expect(page.locator(".financial-key-metrics")).toContainText("+CNY 180.00");
   await testInfo.attach("transaction-without-incomplete-option", { body: await page.locator("#financial-history").screenshot(), contentType: "image/png" });
+});
+
+test("editing an unknown purchase keeps a closed card's profit pending until an explicit zero", async ({page}) => {
+  fixtureDb(db => db.exec(`
+    UPDATE Card SET collectionStatus='sold' WHERE id='finance-ui';
+    INSERT INTO CardTransaction(id,cardId,kind,amountMinor,currency,quantity,occurredAt,provenance,amountKnown)
+    VALUES('pending-buy','finance-ui','purchase',0,'CNY',1,'2026-01-01T00:00:00Z','manual',0),
+          ('pending-sale','finance-ui','sale',30000,'CNY',1,'2026-02-01T00:00:00Z','manual',1);`));
+  const record = page.locator(".financial-timeline-transaction").filter({has:page.locator('time[datetime="2026-01-01"]')});
+  const editor = record.locator("form.financial-form");
+  async function edit() {
+    await page.goto("/cards/finance-ui");
+    await revealHistory(page);
+    await record.getByRole("button",{name:"编辑",exact:true}).click();
+  }
+  await edit();
+  await expect(editor.locator('[name="amount"]')).toHaveValue("");
+  await editor.locator('[name="source"]').fill("Archive");
+  await editor.getByRole("button",{name:"保存修改",exact:true}).click();
+  await expect.poll(() => fixtureDb(db => db.prepare("SELECT amountKnown,source FROM CardTransaction WHERE id='pending-buy'").get())).toEqual({amountKnown:0, source:"Archive"});
+  await expect(page.locator(".financial-key-metrics").filter({hasText:"+CNY 300.00"})).toHaveCount(0);
+  await edit();
+  await editor.locator('[name="amount"]').fill("0");
+  await editor.getByRole("button",{name:"保存修改",exact:true}).click();
+  await expect.poll(() => fixtureDb(db => db.prepare("SELECT amountKnown FROM CardTransaction WHERE id='pending-buy'").get().amountKnown)).toBe(1);
+  await expect(page.locator(".financial-key-metrics")).toContainText("+CNY 300.00");
 });
 
 async function saveRate(page, rate = "7") {

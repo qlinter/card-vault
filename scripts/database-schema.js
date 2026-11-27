@@ -81,6 +81,10 @@ function validateCurrentSchema(db) {
   }
 }
 
+const oldTradeRule = "kind IN ('purchase', 'sale')";
+const tradeRule = "kind IN ('purchase', 'sale', 'gift_in', 'gift_out') AND (kind NOT IN ('gift_in','gift_out') OR (amountMinor = 0 AND amountKnown = 1 AND paymentsJson IS NULL))";
+function tradeDefinition(db) { return db.prepare("SELECT sql FROM sqlite_master WHERE name='CardTransaction'").get()?.sql ?? ""; }
+
 function createCurrentSchema(db) {
   db.exec(`
     PRAGMA foreign_keys = ON;
@@ -104,7 +108,7 @@ function createCurrentSchema(db) {
     );
     CREATE TABLE IF NOT EXISTS CardTransaction (
       id TEXT PRIMARY KEY NOT NULL, cardId TEXT NOT NULL,
-      kind TEXT NOT NULL CHECK (kind IN ('purchase', 'sale')),
+      kind TEXT NOT NULL CHECK (${tradeRule}),
       amountMinor INTEGER NOT NULL CHECK (typeof(amountMinor) = 'integer' AND amountMinor >= 0),
       currency TEXT NOT NULL DEFAULT 'CNY' CHECK (length(currency) = 3 AND currency = upper(currency)),
       quantity INTEGER NOT NULL DEFAULT 1 CHECK (typeof(quantity) = 'integer' AND quantity > 0),
@@ -284,12 +288,33 @@ function validateDatabase(dbPath) {
   } finally { db.close(); }
 }
 
+// SQLite cannot extend a CHECK in place. Copy rows before restoring the original indexes and triggers.
+function enableGiftTransactions(db) {
+  db.exec("PRAGMA foreign_keys=OFF; PRAGMA legacy_alter_table=ON; BEGIN IMMEDIATE");
+  try {
+    const sql = tradeDefinition(db);
+    if (sql.includes(oldTradeRule)) {
+      const objects = db.prepare("SELECT sql FROM sqlite_master WHERE tbl_name='CardTransaction' AND type IN ('index','trigger') AND sql IS NOT NULL").all();
+      db.exec(sql.replace(/CREATE TABLE ["`]?CardTransaction["`]?/i,"CREATE TABLE GiftTransactionUpgrade").replace(oldTradeRule,tradeRule));
+      db.exec("INSERT INTO GiftTransactionUpgrade SELECT * FROM CardTransaction ORDER BY rowid; DROP TABLE CardTransaction; ALTER TABLE GiftTransactionUpgrade RENAME TO CardTransaction");
+      for (const object of objects) db.exec(object.sql);
+      if (db.prepare("PRAGMA foreign_key_check").get()) throw new Error("交易记录关联校验失败。");
+    }
+    db.exec("COMMIT");
+  } catch (error) { db.exec("ROLLBACK"); throw error; }
+  finally { db.exec("PRAGMA legacy_alter_table=OFF; PRAGMA foreign_keys=ON"); }
+}
+
 function initializeDatabase(dbPath) {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   let initialized;
   const db = new DatabaseSync(dbPath);
   try {
     initialized = applicationTableNames(db).length === 0;
+    if (!initialized && tradeDefinition(db).includes(oldTradeRule)) {
+      validateDatabase(dbPath);
+      enableGiftTransactions(db);
+    }
     if (!initialized && !db.prepare("PRAGMA table_info(CardImage)").all().some(column => column.name === "sortOrder")) {
       validateDatabase(dbPath);
       db.exec("BEGIN IMMEDIATE");

@@ -5,9 +5,10 @@ import fs from "node:fs";
 import path from "node:path";
 
 test.beforeEach(() => fixture(db => db.exec(`
-  INSERT INTO Card(id,playerName,cardTitle,sport,holdingQuantity) VALUES('conflict-card','Conflict Player','Conflict card','Basketball',1);
+  INSERT INTO Card(id,playerName,cardTitle,sport,holdingQuantity) VALUES('conflict-card','Conflict Player','Conflict card','Basketball',2);
   INSERT INTO CardImage(id,cardId,path) VALUES('conflict-image','conflict-card','/media/ui-card-1.webp');
   INSERT INTO CardTransaction(id,cardId,kind,amountMinor,currency,quantity,occurredAt,provenance,notes) VALUES('conflict-transaction','conflict-card','purchase',10000,'CNY',1,'2026-01-01T00:00:00.000Z','test','original');
+  INSERT INTO CardTransaction(id,cardId,kind,amountMinor,currency,quantity,occurredAt,provenance) VALUES('earlier-acquisition','conflict-card','gift_in',0,'CNY',1,'2025-12-15T00:00:00.000Z','test');
   INSERT INTO CardExpense(id,cardId,kind,context,amountMinor,currency,occurredAt,provenance,notes) VALUES('conflict-expense','conflict-card','grading','grading',1000,'CNY','2026-01-02T00:00:00.000Z','test','original');
   INSERT INTO CardValuation(id,cardId,amountMinor,currency,valuedAt,source,provenance,notes) VALUES('conflict-valuation','conflict-card',15000,'CNY','2026-01-03T00:00:00.000Z','个人估计','test','original');
   INSERT INTO ShareCollection(id,title,slug) VALUES('conflict-share','Original gallery','conflict-gallery');

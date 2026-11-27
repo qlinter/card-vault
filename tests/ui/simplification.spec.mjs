@@ -90,7 +90,7 @@ test("folded finance, images and zero purchase price survive draft recovery and 
   await page.locator('input[name="sport"]').blur();
   await page.getByText("财务记录（可选）", { exact: true }).click();
   await page.locator('input[name="purchasePrice"]').fill("0");
-  await page.locator('input[name="purchaseDate"]').fill("2026-10-20");
+  await page.locator('input[name="purchaseDate"]').fill("2026-08-20");
   await expect(page.locator(".entry-draft-status")).toContainText("已保存");
   await expect.poll(() => new URL(page.url()).searchParams.get("draft")).toBeTruthy();
   await page.reload({ waitUntil: "networkidle" });
@@ -206,7 +206,7 @@ test("stage 1 pages fit the minimum desktop window in every theme and translate 
   await page.getByRole('button', { name: 'Add Financial Record', exact: true }).click();
   await page.getByRole('combobox', { name: 'Record type', exact: true }).selectOption('sale');
   await expect(page.locator('#financial-add-record form:visible [name="kind"]')).toHaveValue("sale");
-  await expect(page.locator('.info-grid')).not.toContainText("证书号");
+  await expect(page.locator('.archive-info')).not.toContainText("Certificate Number");
   await page.goto("/cards/new", { waitUntil: "networkidle" });
   await expect(page.getByText("Entry tools", { exact: true })).toBeVisible();
   await expect(page.getByText("Financial records (optional)", { exact: true })).toBeVisible();

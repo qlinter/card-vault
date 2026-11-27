@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingsSubsection } from "./settings-subsection";
+import { useLanguage } from "./language-provider";
 import { UiText } from "@/components/ui-text";
 import { useEffect, useState } from "react";
 import { OperationProgress } from "@/components/operation-progress";
@@ -30,6 +32,7 @@ function orphanTypeLabel(file: OrphanFile) {
 }
 
 export function StorageSettings({ currentPath }: StorageSettingsProps) {
+  const { t } = useLanguage();
   const [displayedPath, setDisplayedPath] = useState(currentPath);
   const [busyAction, setBusyAction] = useState<"storage" | "health" | "cleanup" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -143,11 +146,7 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
   const busy = busyAction !== null || revealingPath !== null || activeStorageOperation !== null;
 
   return (
-    <section id="storage" className="panel settings-section">
-      <div className="title-row" style={{ marginBottom: "0.4rem" }}>
-        <div>
-          <h2><UiText text={"存储"} /></h2>
-        </div>
+    <SettingsSubsection id="data-maintenance" className="storage-settings" title={t("维护")} meta={
         <div className="storage-actions">
           <button type="button" className="btn btn-secondary" onClick={handleChooseDirectory} disabled={busy}>
             {busyAction === "storage" ? <UiText text={"处理中..."} /> : <UiText text={"更改存储路径"} />}
@@ -156,8 +155,8 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
             {busyAction === "health" ? <UiText text={"检查中..."} /> : <UiText text={"检查数据健康"} />}
           </button>
         </div>
-      </div>
-      <p className="settings-path">
+    }>
+      <p id="storage" className="settings-path">
         <UiText text={"当前路径："} /><span data-testid="storage-path">{displayedPath}</span>
       </p>
       <OperationProgress progress={progress} />
@@ -202,6 +201,6 @@ export function StorageSettings({ currentPath }: StorageSettingsProps) {
         </div>
       ) : null}
       {message ? <p className="muted backup-message"><UiText text={message} /></p> : null}
-    </section>
+    </SettingsSubsection>
   );
 }

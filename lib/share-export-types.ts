@@ -1,3 +1,4 @@
+import type { ShareThemeCard } from "./share-theme-domain.ts";
 import type { Card, CardImage, ShareCollection, ShareCollectionItem, ShareSection } from "@prisma/client";
 import type { SharePresentation } from "@/lib/share-presentation";
 import type { ShareSectionLayout } from "@/lib/share-sections";
@@ -23,30 +24,9 @@ export type ShareCollectionWithItems = ShareCollection & {
   >;
 };
 
-export type ExportCard = {
-  id: string;
-  playerName: string;
-  cardTitle: string;
+export type ExportCard = Omit<ShareThemeCard, "publicDescription"> & {
   displayTitle: string;
   description: string;
-  sport: string;
-  team: string | null;
-  year: string | null;
-  brand: string | null;
-  productLine: string | null;
-  subsetName: string | null;
-  parallel: string | null;
-  cardNumber: string | null;
-  serialNumber: string | null;
-  serialRange: string | null;
-  isRookie: boolean;
-  isAutograph: boolean;
-  autoType: string | null;
-  isPatch: boolean;
-  patchType: string | null;
-  gradingCompany: string | null;
-  grade: string | null;
-  certNumber: string | null;
   href: string;
   images: ExportImage[];
 };
@@ -67,7 +47,7 @@ export type ExportSubject = {
 };
 
 export type ExportCardInput = {
-  item: ShareCollectionWithItems["items"][number];
+  item: { card: ShareThemeCard; displayTitle?: string | null; displayDescription?: string | null };
   href: string;
   images: ExportImage[];
 };

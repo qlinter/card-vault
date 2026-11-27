@@ -1,7 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
-const { resolveShareBackgroundsDir, resolveShareCoversDir, resolveThumbnailsDir, resolveUploadsDir } = require("./storage-paths");
+const { resolveShareBackgroundsDir, resolveShareCoversDir, resolveThumbnailsDir, resolveUploadsDir } = require("../lib/storage-paths-core.js");
 
 const rootDir = path.resolve(__dirname, "..");
 const envExamplePath = path.join(rootDir, ".env.example");

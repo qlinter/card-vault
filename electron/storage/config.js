@@ -1,5 +1,5 @@
 const path = require("node:path");
-const { resolveDbPath, resolveShareBackgroundsDir, resolveShareCoversDir, resolveThumbnailsDir, resolveUploadsDir } = require("../../scripts/storage-paths");
+const { resolveDbPath, resolveShareBackgroundsDir, resolveShareCoversDir, resolveThumbnailsDir, resolveUploadsDir } = require("../../lib/storage-paths-core.js");
 const { isSubPath, loadJson, pathsEqual, saveJson } = require("./file-utils");
 const { ensureDataLayout } = require("./layout");
 

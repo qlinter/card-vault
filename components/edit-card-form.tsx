@@ -6,7 +6,7 @@ import type { CreateCardFormState } from "@/app/actions/cards";
 import { CardForm } from "./card-form";
 import { normalizeCardFormValues } from "@/lib/card-entry-domain";
 
-export function EditCardForm({ card, action: saveAction, version, archiveVersion, error, returnTo }: { card: Card & { images: CardImage[] }; action: (previous: CreateCardFormState, data: FormData) => Promise<CreateCardFormState>; version: string; archiveVersion: string; error?: string; returnTo?: string }) {
+export function EditCardForm({ card, ledgerStatus, action: saveAction, version, archiveVersion, error, returnTo }: { card: Card & { images: CardImage[] }; ledgerStatus?: string; action: (previous: CreateCardFormState, data: FormData) => Promise<CreateCardFormState>; version: string; archiveVersion: string; error?: string; returnTo?: string }) {
   const initial: CreateCardFormState = { values: normalizeCardFormValues(card), error };
   const [state, action, pending] = useActionState(saveAction, initial);
   const [expectedVersion, setExpectedVersion] = useState(state.expectedVersion ?? version);
@@ -22,5 +22,5 @@ export function EditCardForm({ card, action: saveAction, version, archiveVersion
     }
     previous.current = { status: card.collectionStatus, version, archiveVersion };
   }, [card.collectionStatus, version, archiveVersion, expectedVersion]);
-  return <CardForm formRef={form} mode="edit" card={card} editVersion={expectedVersion} action={action} error={state.error} values={state.error ? state.values : undefined} returnTo={returnTo} submitDisabled={pending} />;
+  return <CardForm formRef={form} mode="edit" card={card} ledgerStatus={ledgerStatus} editVersion={expectedVersion} action={action} error={state.error} values={state.error ? state.values : undefined} returnTo={returnTo} submitDisabled={pending} />;
 }

@@ -47,7 +47,7 @@ test("cost sorting uses current reports with stable ordering", () => {
   assert.deepEqual(buildCardSorting("yearAsc"), [{ year: "asc" }, { createdAt: "desc" }, { id: "asc" }]);
   assert.deepEqual(buildCardSorting("yearDesc"), [{ year: "desc" }, { createdAt: "desc" }, { id: "asc" }]);
   const filter = buildCardFilters({ q: "dealer" });
-  assert.ok(JSON.stringify(filter).includes(JSON.stringify({ transactions: { some: { kind: "purchase", source: { contains: "dealer" } } } })));
+  assert.ok(JSON.stringify(filter).includes(JSON.stringify({ transactions: { some: { kind: {in:["purchase","gift_in"]}, source: { contains: "dealer" } } } })));
 });
 
 test("serial-numbered filtering uses the derived boolean instead of numbering text", () => {

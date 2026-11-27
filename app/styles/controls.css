@@ -325,29 +325,6 @@ textarea {
   font-size: var(--text-md);
 }
 
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem;
-}
-
-.info-item {
-  background: var(--surface-soft);
-  border: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.06);
-  border-radius: 10px;
-  padding: 0.68rem;
-}
-
-.info-item strong {
-  display: block;
-  font-size: var(--text-sm);
-  color: var(--theme-text, #4a5769);
-}
-
-.info-item span {
-  font-weight: var(--weight-bold);
-}
-
 .form-section-heading {
   margin-top: 0.45rem;
   padding: 0.9rem 1rem;
@@ -667,8 +644,7 @@ textarea {
   .filters,
   .cards-grid,
   .details,
-  .form-grid,
-  .info-grid {
+  .form-grid {
     grid-template-columns: 1fr;
   }
 

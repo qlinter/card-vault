@@ -12,8 +12,7 @@ for (const locale of ["zh", "en"]) test("AI proxy settings preserve per-device d
   await page.goto("/settings", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: locale === "en" ? "Expand AI" : "展开 AI", exact: true }).click();
   const proxy = page.locator(".ai-proxy-settings");
-  await expect(proxy.locator("summary")).toHaveText(locale === "en" ? "Network & proxy" : "网络与代理");
-  await proxy.locator("summary").click();
+  await expect(proxy.getByRole("heading", { level: 3 })).toHaveText(locale === "en" ? "Network & proxy" : "网络与代理");
   const mode = proxy.locator("select").first();
   await expect(mode).toHaveValue("auto");
   await expect(mode.locator('option[value="auto"]')).toHaveText(locale === "en" ? "Automatic" : "自动");

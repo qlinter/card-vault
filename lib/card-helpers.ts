@@ -78,7 +78,7 @@ export function buildCardFilters(input: CardFilterInput): Prisma.CardWhereInput 
         { certNumber: { contains: term } },
         { autoType: { contains: term } },
         { patchType: { contains: term } },
-        { transactions: { some: { kind: "purchase", source: { contains: term } } } },
+        { transactions: { some: { kind: {in:["purchase","gift_in"]}, source: { contains: term } } } },
         { tags: { contains: term } },
         { publicDescription: { contains: term } },
         { notes: { contains: term } }

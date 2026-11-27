@@ -1,4 +1,6 @@
 "use client";
+import { historicalStatusLabel } from "@/lib/card-domain";
+
 
 import { useRouter } from "next/navigation";
 import { rememberShowcaseSource } from "@/lib/showcase-source";
@@ -99,6 +101,6 @@ function GalleryCaption({ card }: { card: GalleryCard }) {
     <h1 title={card.playerName}>{card.playerName}</h1>
     {subtitle ? <p className="gallery-work-title" title={subtitle}>{subtitle}</p> : null}
     {facts.length ? <dl className="gallery-work-facts">{facts.map(fact => <div key={fact.label}><dt>{t(fact.label)}</dt><dd>{fact.value}</dd></div>)}</dl> : null}
-    {card.collectionStatus === "sold" ? <p className="gallery-current-status">{t("当前已售出")}</p> : null}
+    {historicalStatusLabel(card.collectionStatus) ? <p className="gallery-current-status">{t(historicalStatusLabel(card.collectionStatus))}</p> : null}
   </aside>;
 }

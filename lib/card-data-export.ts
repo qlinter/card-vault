@@ -8,7 +8,7 @@ import { formatMinorMoney } from "./financial-history";
 import { bufferedFile, writeStreamingXlsx } from "./streaming-xlsx.js";
 import { exportFromSnapshot } from "./export-workspace";
 
-const initialFinancialFields = new Set(["initialQuantity", "purchasePrice", "purchaseDate", "currentValue", "historyCurrency", "valuationDate", "valuationSource"]);
+const initialFinancialFields = new Set(["acquisitionMethod", "initialQuantity", "purchasePrice", "purchaseDate", "currentValue", "historyCurrency", "valuationDate", "valuationSource"]);
 const ledgerHeaders = ["cardId", "recordId", "type", "kind", "amount", "currency", "quantity", "date", "source", "amountKnown", "secondaryPayments", "context", "notes", "amountMinor", "transactionId", "provenance", "externalKey", "createdAt", "updatedAt"];
 const pageSize = 250;
 

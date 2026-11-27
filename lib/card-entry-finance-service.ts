@@ -1,3 +1,4 @@
+import { localBusinessDay } from "./financial-business-day.ts";
 import "server-only";
 import type { CardFormValues } from "./card-form-values";
 import { optionalCardDate } from "./card-domain";
@@ -35,7 +36,10 @@ export async function createInitialFinancialHistory(
   gradingCompany: string | null,
   quantity: number
 ) {
-  const purchaseAmount = normalizeOptionalHistoryText(values.purchasePrice);
+  const gift = values.acquisitionMethod === "gift_in";
+  if (values.acquisitionMethod && !gift && values.acquisitionMethod !== "purchase") throw new Error("取得方式无效。");
+  if (gift && (!values.purchaseDate || quantity < 1)) throw new Error("获赠需要填写日期和正数数量。");
+  const purchaseAmount = gift ? "0" : normalizeOptionalHistoryText(values.purchasePrice);
   const gradingAmount = normalizeOptionalHistoryText(values.gradingFee);
   const valuationAmount = normalizeOptionalHistoryText(values.currentValue);
   const purchaseDate = optionalCardDate(values.purchaseDate, "购买日期");
@@ -56,12 +60,12 @@ export async function createInitialFinancialHistory(
   if (quantity > 0) {
     await createCardTransaction(transaction, {
       cardId,
-      kind: "purchase",
+      kind: gift ? "gift_in" : "purchase",
       amount: purchaseAmount ?? "0",
       amountKnown: purchaseAmount !== null,
       currency,
       quantity,
-      occurredAt: purchaseDate ?? new Date(),
+      occurredAt: purchaseDate ?? localBusinessDay(),
       source: normalizeOptionalHistoryText(values.purchaseSource),
       provenance: "initial_card_entry"
     });

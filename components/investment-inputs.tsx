@@ -7,6 +7,7 @@ import { useLanguage } from "./language-provider";
 import { defaultInitialQuantityForStatus } from "@/lib/card-quantity";
 
 type InvestmentInputsProps = {
+  gift?: boolean;
   initialQuantity: string;
   collectionStatus: string;
   purchasePrice: string;
@@ -32,6 +33,7 @@ function formatMoneyInput(value: number): string {
 }
 
 export function InvestmentInputs({
+  gift = false,
   initialQuantity,
   collectionStatus,
   purchasePrice,
@@ -51,7 +53,7 @@ export function InvestmentInputs({
   const previousCollectionStatusRef = useRef(collectionStatus);
   const [purchasePriceValue, setPurchasePriceValue] = useState(purchasePrice);
   const [gradingFeeValue, setGradingFeeValue] = useState(gradingFee);
-  const totalCostValue = formatMoneyInput(parseMoney(purchasePriceValue) + parseMoney(gradingFeeValue));
+  const totalCostValue = formatMoneyInput((gift ? 0 : parseMoney(purchasePriceValue)) + parseMoney(gradingFeeValue));
 
   useEffect(() => {
     const form = quantityInputRef.current?.form;
@@ -95,7 +97,7 @@ export function InvestmentInputs({
         />
       </label>
 
-      <label className="field">
+      {!gift && <label className="field">
         <span><UiText text={"购买价格"} /></span>
         <input
           name="purchasePrice"
@@ -104,7 +106,7 @@ export function InvestmentInputs({
           value={purchasePriceValue}
           onChange={(event) => setPurchasePriceValue(event.target.value)}
         />
-      </label>
+      </label>}
 
       <label className="field">
         <span><UiText text={"评级费用"} /></span>

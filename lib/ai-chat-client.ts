@@ -38,6 +38,13 @@ export class AiUpstreamError extends Error {
   }
 }
 
+function isQuotaError(detail: string): boolean {
+  try {
+    const error = JSON.parse(detail)?.error;
+    return error?.code === "insufficient_quota" || error?.type === "insufficient_quota";
+  } catch { return false; }
+}
+
 export function aiProviderName(provider: string, customName?: string): string {
   if (provider === "custom") return safeText(customName) || "自定义 AI";
   if (provider === "deepseek") return "DeepSeek";
@@ -130,7 +137,7 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
           compatibilityRetryCount += 1;
           continue;
         }
-        if (transientStatuses.has(response.status) && transientRetryCount < 2) {
+        if (transientStatuses.has(response.status) && transientRetryCount < 2 && !isQuotaError(detail)) {
           await wait(retryDelay(response, transientRetryCount), signal);
           transientRetryCount += 1;
           continue;
@@ -149,7 +156,11 @@ export async function requestAiChat(settings: ActiveAiSettings, request: AiChatR
       );
     }
 
-    return await response.json();
+    try { return await response.json(); }
+    catch (error) {
+      if (error instanceof SyntaxError) throw new AiUpstreamError(`${activeProviderName(settings)} 返回了无效 JSON。`);
+      throw error;
+    }
   } catch (error) {
     if (request.signal?.aborted) throw new DOMException("已取消 AI 请求。", "AbortError");
     if (error instanceof AiUpstreamError) {

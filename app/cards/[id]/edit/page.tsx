@@ -1,4 +1,5 @@
 import { cardImageOrder } from "@/lib/card-image-order";
+import { resolvePositionCollectionStatus } from "@/lib/position-accounting";
 import { EditCardForm } from "@/components/edit-card-form";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
@@ -23,12 +24,14 @@ export default async function EditCardPage({ params, searchParams }: EditProps) 
     notFound();
   }
 
+  const transactions = card.holdingQuantity === 0 ? await prisma.cardTransaction.findMany({where:{cardId:id}}) : [];
+  const ledgerStatus = transactions.length ? resolvePositionCollectionStatus(card.collectionStatus,{transactions,expenses:[]}) : undefined;
   const error = toScalar(query.error);
   const returnTo = normalizeReturnTo(toScalar(query.returnTo));
 
   return (
     <div className="page entry-page">
-      <EditCardForm card={card} action={updateCardFormAction.bind(null, card.id)} {...cardEditVersions(card)} error={error} returnTo={returnTo} />
+      <EditCardForm card={card} ledgerStatus={ledgerStatus} action={updateCardFormAction.bind(null, card.id)} {...cardEditVersions(card)} error={error} returnTo={returnTo} />
     </div>
   );
 }

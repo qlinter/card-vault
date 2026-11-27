@@ -335,10 +335,11 @@ test('guest mode shows public exhibits and blocks owner pages, data, and media',
   expect(guestStatus).toMatchObject({ authenticated: false, guest: true });
   expect(guestStatus).not.toHaveProperty('username');
 
-  for (const route of ['/cards/guest-public', '/portfolio', '/settings', '/api/cards', '/api/data-center?export=csv', '/api/collection-recaps', '/api/cards/guest-public/images/export', '/share-covers/public.webp']) {
+  for (const route of ['/showcase/group-photo', '/cards/guest-public', '/portfolio', '/settings', '/api/cards', '/api/data-center?export=csv', '/api/collection-recaps', '/api/cards/guest-public/images/export', '/share-covers/public.webp']) {
     expect((await get(route)).status(), route).toBe(403);
   }
   expect((await post('set-guest', { enabled: false })).status()).toBe(401);
+  expect((await page.request.post(origin + '/api/studio/group-photo', { headers: { Origin: origin }, data: {} })).status()).toBe(403);
   expect((await page.request.post(origin + '/showcase', { headers: { Origin: origin }, data: {} })).status()).toBe(403);
   const replayOwner = await page.request.get(origin + '/api/cards', { headers: { Cookie: oldOwner.name + '=' + oldOwner.value } });
   expect(replayOwner.status()).toBe(401);
@@ -361,7 +362,7 @@ test('guest mode shows public exhibits and blocks owner pages, data, and media',
   await other.getByRole('button', { name: '浏览', exact: true }).click();
   await expect(other.locator('.immersive-stage')).toHaveAttribute('data-card-id', 'guest-public');
   await other.getByRole('button', { name: '展馆设置', exact: true }).click();
-  await expect(other.getByLabel('排除已售')).toHaveCount(0);
+  await expect(other.getByLabel('仅看在藏')).toHaveCount(0);
   await other.keyboard.press('Escape');
   await expect(other.locator('#gallery-settings')).toBeHidden();
   await other.getByRole('button', { name: '退出赏卡' }).click();

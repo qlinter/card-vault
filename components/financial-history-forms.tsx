@@ -1,4 +1,6 @@
 "use client";
+import type { TransactionKind } from "@/lib/financial-history";
+
 
 import { PersistentForm, type PersistentFormAction } from "./persistent-form";
 import { UiText } from "@/components/ui-text";
@@ -33,24 +35,25 @@ function HistorySubmit({ editing, label }: { editing: boolean; label: string }) 
   return <button className={editing ? "btn btn-secondary" : "btn btn-primary"} type="submit" disabled={pending}><UiText text={label} /></button>;
 }
 
-function HistoryRecordForm({ action, submitLabel, marker, type, values, editing, version, transactionKind }: SharedFormProps & {
+function HistoryRecordForm({ action, submitLabel, marker, type, values, editing, version, transactionKind, unknownAmount }: SharedFormProps & {
   version?: string;
   type: EntryFinanceRecord["type"];
   values: EntryFinanceValues;
   editing: boolean;
-  transactionKind?: "purchase" | "sale";
+  unknownAmount?: boolean;
+  transactionKind?: TransactionKind;
 }) {
   return <PersistentForm action={action} className="financial-form">
     <FormMarker value={marker} version={version} />
-    <FinancialRecordFields type={type} values={values} prefix="" compactCurrency={type === "transaction"} transactionKind={transactionKind} />
+    <FinancialRecordFields type={type} values={values} prefix="" compactCurrency={type === "transaction"} transactionKind={transactionKind} unknownAmount={unknownAmount} />
     <HistorySubmit editing={editing} label={submitLabel} />
   </PersistentForm>;
 }
 
-export function TransactionForm({ record, transactionKind, ...props }: SharedFormProps & { record?: CardTransaction; transactionKind?: "purchase" | "sale" }) {
-  return <HistoryRecordForm {...props} version={record ? recordVersion(record) : undefined} type="transaction" editing={Boolean(record)} transactionKind={record ? undefined : transactionKind} values={{
+export function TransactionForm({ record, transactionKind, ...props }: SharedFormProps & { record?: CardTransaction; transactionKind?: TransactionKind }) {
+  return <HistoryRecordForm {...props} version={record ? recordVersion(record) : undefined} type="transaction" editing={Boolean(record)} transactionKind={record ? undefined : transactionKind} unknownAmount={record?.amountKnown === false} values={{
     kind: record?.kind ?? transactionKind ?? "purchase",
-    amount: record ? amountInput(record.amountMinor, record.currency) : "",
+    amount: record?.amountKnown ? amountInput(record.amountMinor, record.currency) : "",
     currency: record?.currency ?? "CNY",
     quantity: String(record?.quantity ?? 1),
     occurredAt: formatHistoryDateInput(record?.occurredAt),

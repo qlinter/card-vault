@@ -986,7 +986,7 @@ AI 默认展示当前服务、模型和密钥；Endpoint、自定义服务增删
 - 新增 `design-tokens.css`，集中页面、模块、卡牌、正文、字段标签、辅助文字和数字层级，字重统一为 400／500／600／700；各功能样式及 CSS Module 使用公共变量。迁移 373 处字号、字重和字体声明，移除局部按钮重复规则和录入页的独立高度覆盖。
 - 默认与次要按钮共用中性配色和状态，保留主要／危险动作的语义差异；常规／紧凑按钮使用 40／36px，工具图标 32px。字段标签 13px、输入和普通按钮 14px，修正统计趋势筛选、设置、录入、回顾等局部差异。
 - 网格／列表切换共用尺寸，组合分析关闭键改为共享 SVG；正文、代码与键位、展示作品标题分别使用公共无衬线／等宽／衬线字体栈。展馆的功能字段也使用公共字体和尺寸，保留其细线、色样与艺术配色。
-- 管理界面调整不改写卡图、回顾 PNG 或用户选择的分享成品主题。完整规则、角色边界和新增样式要求见[版式与字体规范](../design-system.md)。
+- 管理界面调整不改写卡图、回顾 PNG 或用户选择的分享成品主题。完整规则、角色边界和新增样式要求见[版式与字体规范](../development.md#design-system)。
 - 补齐复选／单选的 18px 规格和文件选择按钮的公共规则；弹窗标题使用 24px／600，经典主题主按钮白字对比度由约 4.03:1 提高到约 4.87:1。页面主题背景、收藏资料和分享作品设计不受影响。
 
 验证：397 项模块测试通过，行覆盖率 95.23%；230 项完整界面回归通过（本轮因全局样式调整而更新相关截图）。随后对最终的对比度、复选框及文件选择器整理执行 44 项界面规范与严格截图比较，全部通过，包含中英文 18 类页面、四主题标题、真实计算字号／字重／尺寸、图标同形、主按钮对比度与弹窗字体。逐项检查发现并清除了回顾页残留的复选框宽度覆盖。
@@ -1194,7 +1194,7 @@ Feature details, source checks and packaged-runtime results for v1.3.1–v1.3.4 
 <a id="product-roadmap-en--v136-historical-consolidation"></a>
 ### v1.3.6 historical consolidation
 
-v1.3.6 consolidates the earlier development and code organization in the [release notes](releases.md#release-v1-3-6). See [application themes](../design-system.md#themes) for extension rules. Earlier theme, interface and AI settings release facts remain in [v1.3.5](releases.md#release-v1-3-5); the roadmap records capability status and future priorities.
+v1.3.6 consolidates the earlier development and code organization in the [release notes](releases.md#release-v1-3-6). See [application themes](../development.md#themes) for extension rules. Earlier theme, interface and AI settings release facts remain in [v1.3.5](releases.md#release-v1-3-5); the roadmap records capability status and future priorities.
 
 <a id="product-roadmap-en--v140-implemented"></a>
 ### v1.4.0 implemented
@@ -1279,7 +1279,7 @@ v1.3.1–v1.3.4 的功能明细、源码及包内验收统一保存在各版发�
 <a id="product-roadmap--v136-历史整理"></a>
 ### v1.3.6 历史整理
 
-v1.3.6 收录此前开发改动与结构整理，详见[发布说明](releases.md#release-v1-3-6)。现行主题扩展约定见[应用主题](../design-system.md#themes)；上一版主题、界面与 AI 设置的发布事实保留在 [v1.3.5](releases.md#release-v1-3-5)，路线图只记录能力状态与后续优先级。
+v1.3.6 收录此前开发改动与结构整理，详见[发布说明](releases.md#release-v1-3-6)。现行主题扩展约定见[应用主题](../development.md#themes)；上一版主题、界面与 AI 设置的发布事实保留在 [v1.3.5](releases.md#release-v1-3-5)，路线图只记录能力状态与后续优先级。
 
 <a id="product-roadmap--v140-已完成"></a>
 ### v1.4.0 已完成

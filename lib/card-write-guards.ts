@@ -1,8 +1,21 @@
+import { draftConflictMessage } from "./card-entry-domain.ts";
 import { createHash } from "node:crypto";
 import type { Card, CardImage, Prisma } from "@prisma/client";
 import { recordVersion } from "./record-version.ts";
 
 export const cardEditConflictMessage = "卡牌资料或图片已在其他操作中更新，未覆盖最新内容。当前输入已保留，请重新打开编辑页核对后再保存。";
+
+export class DraftConflictError extends Error {
+  constructor() { super(draftConflictMessage); }
+}
+
+export function draftVersion(valuesJson: string) {
+  return createHash("sha256").update(valuesJson).digest("hex");
+}
+
+export function assertDraftVersion(draft: { valuesJson: string; status: string } | null, expected: unknown) {
+  if (!draft || draft.status !== "draft" || draftVersion(draft.valuesJson) !== expected) throw new DraftConflictError();
+}
 
 /** The existing primary key makes retries atomic without changing the database format. */
 export function cardIdForSubmission(submissionId: string, draftId?: string, queueItemId?: string): string {

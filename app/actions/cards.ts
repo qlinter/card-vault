@@ -3,7 +3,8 @@
 import { cardImageOrder } from "@/lib/card-image-order";
 import { requireAccount } from "@/lib/account-server";
 
-import { assertCollectionStatusQuantity } from "@/lib/card-quantity";
+import { resolvePositionCollectionStatus } from "@/lib/position-accounting";
+import { closedStatusMessage, assertCollectionStatusQuantity } from "@/lib/card-quantity";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { generateStudioImage, studioFile, removeStudioFile } from "@/lib/studio-images";
@@ -65,6 +66,7 @@ export async function createCardFormAction(
       newImageRotations: readNewCardImageRotations(formData, files.length),
       queuedImageRotations: readCardImageRotationRecord(formData, "queuedImageRotations"),
       draftId,
+      draftVersion: String(formData.get("draftVersion") ?? ""),
       queueItemId
     });
     scheduleStudioImage(card.id);
@@ -151,6 +153,12 @@ export async function updateCardFormAction(cardId: string, _previousState: Creat
         assertCardEditVersion(current, expectedVersion);
         if (current.collectionStatus !== cardData.collectionStatus) {
           assertCollectionStatusQuantity(cardData.collectionStatus, current.holdingQuantity);
+          if (!current.holdingQuantity) {
+            const transactions = await transaction.cardTransaction.findMany({where:{cardId}});
+            if (resolvePositionCollectionStatus(cardData.collectionStatus, {transactions, expenses:[]}) !== cardData.collectionStatus) {
+              throw new Error(closedStatusMessage);
+            }
+          }
         }
         await transaction.card.update({
           where: { id: cardId },

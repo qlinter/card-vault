@@ -1,3 +1,4 @@
+import { currentFinancialCutoff } from "./financial-business-day.ts";
 import "server-only";
 import { createRevisionCache } from "./revision-cache";
 import { createPortfolioCacheBoundary } from "./portfolio-cache-boundary";
@@ -22,8 +23,9 @@ export async function loadPortfolioData(value: unknown, state: Record<string, st
     const before = await revision();
     const load = async () => {
       const asOf = new Date(), boundary = createPortfolioCacheBoundary(asOf);
-      const collector = createDataCollector(asOf);
-      const result = await loadPortfolioSnapshot(query, { asOf, allowEmpty: true, includeDetails,
+      const cutoff = currentFinancialCutoff(asOf);
+      const collector = createDataCollector(cutoff);
+      const result = await loadPortfolioSnapshot(query, { asOf: cutoff, allowEmpty: true, includeDetails,
         onReportingBatch: (reporting, originals) => { collector.add(reporting, originals); boundary.add(originals); } });
       if (await revision() !== before) throw new OperationError("data_changed", operationMessages.dataChanged);
       if (Date.now() >= boundary.expiresAt() || Date.now() < asOf.getTime()) throw new OperationError("data_changed", operationMessages.dataChanged);

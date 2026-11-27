@@ -69,6 +69,25 @@ function collect(cards: PortfolioCardRecord[], includeRows = true) {
   assert.deepEqual(enhanced.finish(), plain.finish(), "UI collection must preserve the entire financial result");
   return collector.finish({ kind: "all" });
 }
+test("latest activity includes all ledger kinds, local archive dates and quotes in either currency", () => {
+  const rows = ["gift_in", "gift_out", "purchase", "sale", "expense", "valuation", "archive", "none"].map((kind, i) => {
+    const item = card(kind, 1), when = new Date(Date.UTC(2026, 9, i + 10));
+    item.valuations = [];
+    if (kind === "archive") item.createdAt = new Date(2026, 9, i + 10, 12);
+    else if (kind === "expense") item.expenses.push({kind:"grading",context:"grading",amountMinor:100n,currency:"CNY",occurredAt:when});
+    else if (kind === "valuation") item.valuations.push(
+      {amountMinor:100n,currency:"CNY",valuedAt:new Date("2026-01-01Z"),createdAt:when,source:"eBay"},
+      {amountMinor:100n,currency:"USD",valuedAt:when,createdAt:when,source:"eBay"},
+      {amountMinor:200n,currency:"USD",valuedAt:new Date("2027-01-01Z"),createdAt:when,source:"eBay"});
+    else if (kind === "none") item.transactions = [];
+    else item.transactions.push({kind, quantity:1, currency:"CNY", amountMinor:0n, occurredAt:when});
+    return item;
+  });
+  const sorted = selectDataRows(collect(rows).rows, {order:"dateDesc"}).rows;
+  assert.deepEqual(sorted.map(row => row.id), ["archive","valuation","expense","sale","purchase","gift_out","gift_in","none"]);
+  assert.deepEqual(sorted.map(row => row.lastActivityDay), ["2026-10-16","2026-10-15","2026-10-14","2026-10-13","2026-10-12","2026-10-11","2026-10-10",null]);
+});
+
 test("data rows retain exact IDs, physical quantity, cost and value without changing financial output", () => {
   const workspace = collect([card("copy-a"), card("copy-b", 3)]);
   assert.equal(workspace.quantity, 5);

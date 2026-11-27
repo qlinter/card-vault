@@ -15,7 +15,7 @@ test("representatives prioritize subject and month coverage with stable tie orde
 import { advancePlayback, changePlaybackOrder, startPlayback } from "../lib/immersive-playback.ts";
 
 const now = new Date("2026-11-05T00:00:00Z");
-const card = { id: "a", playerName: "Player A", sport: "Basketball", productLine: "Series", isAutograph: true, grade: "10", createdAt: new Date("2026-03-01T00:00:00Z") };
+const card = { id: "a", playerName: "Player A", sport: "Basketball", productLine: "Series", isAutograph: true, grade: "10", createdAt: new Date(2026, 2, 1, 12) };
 const purchase = (date: string, quantity = 1) => ({ occurredAt: new Date(date), quantity });
 
 test("monthly activity groups Monday weeks clipped to the month including leap days", () => {
@@ -48,6 +48,34 @@ test("recap bounds handle month/year boundaries and exclude future records", () 
   assert.equal(recapActivity(spec, { createdAt: card.createdAt, transactions: [purchase("2026-12-01Z"), purchase("2027-01-01Z")] }, new Date("2027-01-03Z")).length, 1);
   assert.equal(recapActivity(normalizeRecapSpec({ year: 2026 }), { createdAt: card.createdAt, transactions: [purchase("2026-11-06Z")] }, now).length, 0);
   assert.throws(() => normalizeRecapSpec({ month: 13 })); assert.throws(() => normalizeRecapSpec({ year: "bad" })); assert.throws(() => normalizeRecapSpec({ basis: "guessed" }));
+});
+
+test("entry instants and financial dates follow the local reporting month at midnight", () => {
+  const previous = process.env.TZ;
+  try {
+    for (const tz of ["Asia/Shanghai", "America/Los_Angeles"]) {
+      process.env.TZ = tz;
+      const midnight = new Date(2027, 0, 1, 0, 30);
+      assert.equal(normalizeRecapSpec({}, midnight).year, 2027);
+      for (const basis of ["entry", "purchase", "outgoing"]) {
+        const january = normalizeRecapSpec({year:2027, month:1, basis});
+        const accumulator = createRecapAccumulator(january, midnight);
+        accumulator.add({...card, createdAt:midnight}, [purchase("2027-01-01Z"),purchase("2027-01-02Z")]);
+        const summary = accumulator.finish();
+        assert.equal(summary.quantity, 1);
+        assert.equal(summary.inProgress, true);
+        assert.equal(summary.months[0], 1);
+        assert.equal(summary.weeks[0].count, 1);
+      }
+      const december = normalizeRecapSpec({year:2026, month:12, basis:"entry"});
+      assert.equal(recapActivity(december, {createdAt:midnight, transactions:[]}, midnight).length, 0);
+      const january = normalizeRecapSpec({year:2027, month:1, basis:"entry"});
+      assert.equal(recapActivity(january, {createdAt:new Date(2027,0,1,1), transactions:[]}, midnight).length, 0);
+    }
+  } finally {
+    if (previous === undefined) delete process.env.TZ;
+    else process.env.TZ = previous;
+  }
 });
 
 test("recap scope preserves card year independently of recap year and validates representatives", () => {

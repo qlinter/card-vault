@@ -6,7 +6,7 @@ import type { ShareCatalogCard } from "@/lib/share-card-catalog";
 import { homeThumbnailPublicPath } from "@/lib/card-thumbnail-core.js";
 import { SharePickerCard } from "@/components/share-card-picker";
 import { ShareCollectionWizard } from "@/components/share-collection-wizard";
-import { ShareThemeCard } from "@/lib/share-theme-domain";
+import { toShareThemeCard } from "@/lib/share-theme-domain";
 import { normalizeShareTheme } from "@/lib/share-themes";
 import { parseSharePresentation, sanitizeSharePresentationCards } from "@/lib/share-presentation";
 import { type ShareSectionDraft } from "@/lib/share-sections";
@@ -14,17 +14,16 @@ import { scoutIdentity } from "@/lib/scout-identity";
 import { shareEditVersion } from "@/lib/share-write-guards";
 import type { PersistentFormAction } from "./persistent-form";
 
-type CardOption = ShareCatalogCard;
 type ShareWithItems =
   | (ShareCollection & {
-      items: Array<ShareCollectionItem & { card: CardOption }>;
+      items: Array<ShareCollectionItem & { card: ShareCatalogCard }>;
       sections: ShareSection[];
     })
   | null;
 
 type ShareCollectionFormProps = {
   action: PersistentFormAction;
-  cards: CardOption[];
+  cards: ShareCatalogCard[];
   share?: ShareWithItems;
   error?: string;
 };
@@ -33,46 +32,9 @@ function value(input: string | null | undefined, fallback = ""): string {
   return input ?? fallback;
 }
 
-function shareItemMap(share?: ShareWithItems): Map<string, ShareCollectionItem & { card: CardOption }> {
-  return new Map((share?.items ?? []).map((item) => [item.cardId, item]));
-}
-
-function cardCatalogFields(card: CardOption) {
+function toPickerCard(studio: boolean, card: ShareCatalogCard, item: (ShareCollectionItem & { card: ShareCatalogCard }) | undefined): SharePickerCard {
   return {
-    id: card.id,
-    playerName: card.playerName,
-    cardTitle: card.cardTitle,
-    sport: card.sport,
-    team: card.team,
-    year: card.year,
-    brand: card.brand,
-    productLine: card.productLine,
-    subsetName: card.subsetName,
-    parallel: card.parallel,
-    cardNumber: card.cardNumber,
-    serialNumber: card.serialNumber,
-    serialRange: card.serialRange,
-    gradingCompany: card.gradingCompany,
-    grade: card.grade,
-    certNumber: card.certNumber,
-    publicDescription: card.publicDescription
-  };
-}
-
-function cardSummary(card: CardOption): ShareThemeCard {
-  return {
-    ...cardCatalogFields(card),
-    isRookie: card.isRookie,
-    isAutograph: card.isAutograph,
-    autoType: card.autoType,
-    isPatch: card.isPatch,
-    patchType: card.patchType
-  };
-}
-
-function toPickerCard(studio: boolean, card: CardOption, item: (ShareCollectionItem & { card: CardOption }) | undefined): SharePickerCard {
-  return {
-    ...cardCatalogFields(card),
+    ...toShareThemeCard(card),
     visibility: card.visibility,
     tags: card.tags,
     imagePath: studio ? studioImageUrl(card.id) : card.images[0]?.path ?? null,
@@ -86,23 +48,9 @@ function toPickerCard(studio: boolean, card: CardOption, item: (ShareCollectionI
 }
 
 export async function ShareCollectionForm({ action, cards, share, error }: ShareCollectionFormProps) {
-  const selected = shareItemMap(share);
-  const sortedCards = [...cards].sort((a, b) => {
-    const aItem = selected.get(a.id);
-    const bItem = selected.get(b.id);
-    if (aItem && bItem) {
-      return aItem.sortOrder - bItem.sortOrder;
-    }
-    if (aItem) {
-      return -1;
-    }
-    if (bItem) {
-      return 1;
-    }
-    return a.playerName.localeCompare(b.playerName);
-  });
+  const selected = new Map((share?.items ?? []).map(item => [item.cardId, item]));
   const studio = await prefersStudioImages();
-  const pickerCards = await Promise.all(sortedCards.map(async card => toPickerCard(studio && Boolean(await existingStudioFile(card)), card, selected.get(card.id))));
+  const pickerCards = await Promise.all(cards.map(async card => toPickerCard(studio && Boolean(await existingStudioFile(card)), card, selected.get(card.id))));
   const presentation = sanitizeSharePresentationCards(
     parseSharePresentation(share?.presentationConfig),
     share?.items.map((item) => item.cardId) ?? []
@@ -129,7 +77,6 @@ export async function ShareCollectionForm({ action, cards, share, error }: Share
       editVersion={share ? shareEditVersion(share) : ""}
       draftId={`${scoutIdentity()}:${share?.id ?? "new"}`}
       cards={pickerCards}
-      aiCards={cards.map(cardSummary)}
       initialValues={{
         title: value(share?.title, "我的球星卡展馆"),
         theme: normalizeShareTheme(share?.theme),

@@ -52,12 +52,12 @@ export function CollectionRecapEditor({ initial }: { initial: Initial }) {
         {Object.entries(spec.scope).map(([key, value]) => value ? <input key={key} type="hidden" name={key} value={value} /> : null)}
         <label>{t("年份")}<input aria-label={t("年份")} type="number" name="recapYear" min="1900" max="2200" defaultValue={spec.year} required /></label>
         <label>{t("月份")}<select aria-label={t("月份")} name="recapMonth" defaultValue={spec.month ?? ""}><option value="">{t("全年")}</option>{Array.from({ length: 12 }, (_, index) => <option key={index} value={index + 1}>{index + 1}</option>)}</select></label>
-        <label>{t("回顾口径")}<select aria-label={t("回顾口径")} name="recapBasis" defaultValue={spec.basis}><option value="purchase">{t("购入回顾")}</option><option value="entry">{t("录入回顾")}</option></select></label>
+        <label>{t("回顾口径")}<select aria-label={t("回顾口径")} name="recapBasis" defaultValue={spec.basis}><option value="purchase">{t("取得回顾")}</option><option value="outgoing">{t("转出回顾")}</option><option value="entry">{t("录入回顾")}</option></select></label>
         {scope.isFiltered ? <Link href={`/portfolio/recap?${recapQuery({ ...spec, scope: {} })}`}>{t("切换全部收藏")}</Link> : null}
         <Link href={`/portfolio?${new URLSearchParams(Object.entries(spec.scope).filter((entry): entry is [string, string] => Boolean(entry[1])))}`} className="scope-navigation-link recap-return">{t("返回统计")}</Link>
       </form>
       <p className="recap-muted">{t(scope.isFiltered ? "当前范围：已筛选" : "当前范围：全部收藏")}{scope.criteria.map(item => ` · ${t(item.label)}: ${t(item.value)}`).join("")}</p>
-      {summary.missingPurchases ? <p className="recap-muted">{t("范围内 {0} 个档案没有购入记录，未纳入购入回顾。").replace("{0}", String(summary.missingPurchases))}</p> : null}
+      {summary.missingPurchases ? <p className="recap-muted">{t("范围内 {0} 个档案没有取得记录，未纳入取得回顾。").replace("{0}", String(summary.missingPurchases))}</p> : null}
     </section>
     <div className="recap-content" inert={switching}>
     <section className="recap-panel recap-story">

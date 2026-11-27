@@ -12,6 +12,7 @@ import {
 import { normalizeHttpUrl } from "./http-url.ts";
 import { readEntryFinance } from "./card-entry-finance.ts";
 
+export const draftConflictMessage = "草稿已在其他窗口更改或结束，当前输入已保留。";
 export const cardEntryDraftSchemaVersion = 1;
 
 const cardFormStringFields = [
@@ -33,7 +34,7 @@ const cardFormStringFields = [
   "gradingLink",
   "visibility",
   "collectionStatus",
-  "purchaseDate",
+  "acquisitionMethod", "purchaseDate",
   "initialQuantity",
   "purchasePrice",
   "gradingFee",

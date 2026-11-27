@@ -1,10 +1,10 @@
-import { withUiDatabase as fixture } from './database-fixture.mjs';
+import { withUiDatabase as fixture, deleteTestDraft } from './database-fixture.mjs';
 import { expect, test } from "@playwright/test";
 const title="Entry finance v134 test";
 test.afterEach(async ({ page, request, baseURL }) => {
   const draft=new URL(page.url()).searchParams.get("draft");
   await page.goto("about:blank");
-  if(draft) await request.delete(`/api/card-entry/drafts/${draft}`,{headers:{Origin:baseURL}});
+  if(draft) await deleteTestDraft(request, baseURL, draft);
   fixture(db=>db.prepare("DELETE FROM Card WHERE cardTitle=?").run(title));
 });
 async function addRecord(page,type) {
@@ -85,11 +85,11 @@ test("invalid supplementary finance cannot overwrite a recoverable draft",async(
   const headers={Origin:baseURL};
   const created=await request.post("/api/card-entry/drafts",{headers,data:{values:{cardTitle:title,financialRecords:"[]"}}});
   expect(created.ok()).toBeTruthy();
-  const {id}=await created.json();
+  const {id,version}=await created.json();
   try {
-    const rejected=await request.post("/api/card-entry/drafts",{headers,data:{id,values:{cardTitle:title,financialRecords:'{"invalid":true}'}}});
+    const rejected=await request.post("/api/card-entry/drafts",{headers,data:{id,expectedVersion:version,values:{cardTitle:title,financialRecords:'{"invalid":true}'}}});
     expect(rejected.ok()).toBeFalsy();
     const saved=fixture(db=>db.prepare("SELECT valuesJson FROM CardEntryDraft WHERE id=?").get(id));
     expect(JSON.parse(saved.valuesJson).financialRecords).toBe("[]");
-  } finally {await request.delete(`/api/card-entry/drafts/${id}`,{headers});}
+  } finally {await deleteTestDraft(request, baseURL, id);}
 });

@@ -2,14 +2,14 @@
 
 import { UiText, UiElement } from "@/components/ui-text";
 import type { FormEvent, MouseEvent } from "react";
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import type { PersistentFormAction } from "./persistent-form";
 import { flushSync } from "react-dom";
 import type { ShareGalleryEditorPanel } from "./share-gallery-editor-types";
 import { ShareCardPicker, type ShareCardDraft, type SharePickerCard } from "@/components/share-card-picker";
 import { ShareGalleryEditor } from "@/components/share-gallery-editor";
 import { ShareThemeGenerator } from "@/components/share-theme-generator";
-import { type ShareThemeCard, type ShareThemeField, shareThemeFields } from "@/lib/share-theme-domain";
+import { type ShareThemeField, shareThemeFields } from "@/lib/share-theme-domain";
 import { useShareDraftPersistence } from "@/components/use-share-draft-persistence";
 import { useShareEditorHistory } from "@/components/use-share-editor-history";
 import { useShareEditorState, type ShareEditorInitialValues } from "@/components/use-share-editor-state";
@@ -24,7 +24,6 @@ type ShareCollectionWizardProps = {
   editVersion?: string;
   draftId: string;
   cards: SharePickerCard[];
-  aiCards: ShareThemeCard[];
   initialValues: ShareEditorInitialValues;
   error?: string;
 };
@@ -40,11 +39,16 @@ function safeText(value: unknown): string {
   return "";
 }
 
-export function ShareCollectionWizard({ action, editVersion, draftId, cards, aiCards, initialValues, error }: ShareCollectionWizardProps) {
+export function ShareCollectionWizard({ action, editVersion, draftId, cards: catalog, initialValues, error }: ShareCollectionWizardProps) {
   const [state, submit, pending] = useActionState(action, { error: "" });
   const [activePanel, setActivePanel] = useState<ShareGalleryEditorPanel>("content");
   const [openedVersion, setOpenedVersion] = useState(editVersion ?? "");
-  const editor = useShareEditorState(cards, aiCards, initialValues);
+  const cards = useMemo(() => [...catalog].sort((a, b) => {
+    if (a.selected && b.selected) return a.sortOrder - b.sortOrder;
+    if (a.selected !== b.selected) return a.selected ? -1 : 1;
+    return a.playerName.localeCompare(b.playerName);
+  }), [catalog]);
+  const editor = useShareEditorState(cards, catalog, initialValues);
   const { activeStep, setActiveStep, message, setMessage, goNext, goPrevious, goToStep } = useShareWizardNavigation(steps.length, editor.selectedIds.length);
   const applySnapshot = (snapshot: ShareEditorSnapshot) => {
     editor.setSelectedIds(snapshot.selectedIds);

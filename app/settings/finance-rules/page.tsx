@@ -11,23 +11,24 @@ export default function FinanceRulesPage() {
     ["累计出售金额", "Total sales", "所有出售交易的收款总额，尚未扣除出售费用。", "All sale proceeds before sale expenses."],
     ["净现金投入", "Net cash invested", "累计买入金额 + 累计费用 − 累计出售金额。负数表示累计收回现金超过投入。", "Purchases + all expenses − sales. A negative amount means more cash has been recovered than paid out."],
     ["累计费用", "Total expenses", "买入、评级、出售费用的合计；出售费用只抵减出售收入，不加入剩余持仓成本。", "Purchase, grading and sale expenses combined. Sale expenses reduce sale proceeds and do not increase remaining inventory cost."],
-    ["剩余成本", "Remaining cost", "尚未出售卡牌分摊的购买金额、买入费用和评级费用。", "Purchase payments and purchase/grading expenses allocated to unsold cards."],
-    ["已实现盈亏", "Realized profit", "出售金额 − 出售费用 − 卖出卡牌结转的成本。", "Sale proceeds − sale expenses − the cost allocated to sold cards."],
+    ["剩余成本", "Remaining cost", "仍在持有的卡牌分摊的购买金额、买入费用和评级费用。", "Purchase payments and purchase/grading expenses allocated to cards still held."],
+    ["已实现盈亏", "Realized profit", "出售金额 − 出售费用 − 卖出和赠送卡牌结转的成本。赠送收入按零计算。", "Sale proceeds − sale expenses − the cost allocated to cards sold or given away. Gifts have zero proceeds."],
     ["未实现盈亏", "Unrealized profit", "持仓估值 − 对应的剩余成本。", "Holding value − the corresponding remaining cost."],
-    ["总盈亏", "Total profit", "已实现盈亏 + 未实现盈亏。全部售出时，仅保留已实现盈亏。", "Realized + unrealized profit. Once fully sold, only realized profit remains."],
+    ["总盈亏", "Total profit", "已实现盈亏 + 未实现盈亏。持仓归零时，仅保留已实现盈亏。", "Realized + unrealized profit. When no cards remain, only realized profit remains."],
     ["未实现回报率", "Unrealized return", "未实现盈亏 ÷ 对应剩余成本 × 100%；成本为零或资料不完整时显示“–”。", "Unrealized profit ÷ corresponding remaining cost × 100%. Shown as unavailable when the cost is zero or data are incomplete."]
   ];
   return <div className="page finance-rules-page" data-i18n-skip>
     <div className="title-row"><h1 className="h1">{t("财务计算规则", "Financial calculation rules")}</h1><Link className="btn btn-secondary" href="/settings#financial-settings">{t("返回财务", "Back to Finance")}</Link></div>
-    <p className="muted">{t("先保留原币记录，再按主币种汇总。交易决定数量与成本，估值用于衡量尚未出售的持仓。", "Original-currency records are retained and aggregated in the primary currency. Transactions determine quantities and costs; valuations measure unsold holdings.")}</p>
+    <p className="muted">{t("先保留原币记录，再按主币种汇总。交易决定数量与成本，估值用于衡量当前持仓。", "Original-currency records are retained and aggregated in the primary currency. Transactions determine quantities and costs; valuations measure current holdings.")}</p>
     <section className="panel"><h2>{t("1. 单卡：数量与成本", "1. Individual cards: quantities and costs")}</h2>
-      <p>{t("当前持有 = 累计买入张数 − 累计出售张数。每笔交易填写一种币种的完整金额，不同交易可以分别使用 CNY 或 USD；填写 0 表示零金额。交易金额是整笔总额；估值金额是单张价格。", "Holding quantity = cards purchased − cards sold. Each transaction records its complete amount in one currency; separate transactions may use CNY or USD. Entering 0 confirms a zero amount. Transaction amounts are totals; valuation amounts are per card.")}</p>
+      <p>{t("当前持有 = 买入张数 + 获赠张数 − 卖出张数 − 赠送张数。每笔买卖填写一种币种的完整金额，不同交易可以分别使用 CNY 或 USD；填写 0 表示零金额。交易金额是整笔总额；估值金额是单张价格。", "Holding quantity = purchases + gifts received − sales − gifts given. Each purchase or sale records its complete amount in one currency; separate transactions may use CNY or USD. Entering 0 confirms a zero amount. Transaction amounts are totals; valuation amounts are per card.")}</p>
       <p>{t("成本采用移动平均法。买入和持仓费用先计入成本，出售时按出售前的平均单张成本结转，剩余成本留给未售卡牌。费用统一按卡牌档案和发生日期记录，出售费用扣减该档案的出售收入。", "Moving-average costing adds purchases and inventory expenses to the cost pool. Each sale takes its share at the average unit cost immediately before sale. Expenses are recorded by card archive and date. Sale expenses reduce the archive's sale proceeds.")}</p>
+      <p>{t("获赠以零取得价入库；赠送按当时的平均成本结转，与销售合计已实现盈亏。两种赠与均不计入买卖数量。入库和转出按业务日期核算，同日先入库后转出。交易日期最晚为今天。最后一张卖出记为已售，最后一张赠送记为已赠出。", "Gifts received enter at zero acquisition price. Gifts given release average cost into the same realized result as sales. Gift quantities are excluded from purchase and sales volumes. Acquisitions come before disposals on the same business day. Trades can be dated up to today. The final disposal determines whether the card is marked Sold or Gifted.")}</p>
     </section>
     <section className="panel"><h2>{t("2. 投入、成本与盈亏", "2. Investment, costs and profit")}</h2><dl className="finance-rules-metrics">{metrics.map(([zh, en, zhRule, enRule]) => <div key={en}><dt>{t(zh, en)}</dt><dd>{t(zhRule, enRule)}</dd></div>)}</dl></section>
     <section className="panel"><h2>{t("3. 双币估值怎么选", "3. Choosing between currency quotes")}</h2>
       <p>{t("优先使用主币种最新的直接估值，即使另一币种报价更晚。没有主币种报价时，才折算另一币种的最新报价。相同估值日期按录入时间取较新记录。CNY 与 USD 报价是同一资产的两种价格，不能相加。", "The latest direct quote in the primary currency takes priority, even if another currency has a newer quote. Only when no direct quote exists is the latest alternative quote converted. Ties use the later entry time. CNY and USD quotes price the same asset and are never added together.")}</p>
-      <p>{t("持仓估值 = 选定的单张估值 × 剩余张数。持有、待送评、送评中和待售均计入当前持仓；已售不计入当前持仓估值，但保留历史现金流与已实现盈亏。", "Holding value = selected unit quote × remaining quantity. Holding, Awaiting Grading, At Grading and Pending Sale all count as owned. Sold cards contribute no current holding value, but retain historical cash flows and realized profit.")}</p>
+      <p>{t("持仓估值 = 选定的单张估值 × 剩余张数。持有、待送评、送评中和待售均计入当前持仓；已售和已赠出不计入当前持仓估值，但保留历史现金流与已实现盈亏。", "Holding value = selected unit quote × remaining quantity. Holding, Awaiting Grading, At Grading and Pending Sale all count as owned. Cards sold or given away contribute no current holding value, but retain historical cash flows and realized profit.")}</p>
     </section>
     <section className="panel"><h2>{t("4. 主币种与人工汇率", "4. Primary currency and manual exchange rates")}</h2>
       <p>{t("主币种可选 CNY 或 USD。人工汇率固定填写“1 USD = 多少 CNY”：美元转人民币乘以该汇率，人民币转美元除以该汇率。系统不自动获取汇率；来源说明可留空。", "Choose CNY or USD as the primary currency. Enter rates as 1 USD = an amount of CNY: multiply to convert USD to CNY, divide for CNY to USD. Rates are entered manually; source notes are optional.")}</p>

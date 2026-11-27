@@ -129,7 +129,10 @@ for (const [label, change] of [
 ]) {
   test(`incomplete format is rejected without writes: ${label}`, t => {
     const dbPath = temporaryDatabase(t);
-    initializeDatabase(dbPath);
+    if (label === "pre-payment facts") {
+      const legacy = new DatabaseSync(dbPath);
+      try { legacy.exec(fs.readFileSync(path.join(__dirname,"fixtures/current-format-v1.5.1.sql"),"utf8")); } finally { legacy.close(); }
+    } else initializeDatabase(dbPath);
     const db = new DatabaseSync(dbPath);
     db.exec("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES('kept','A','B','Basketball');");
     db.exec(change);

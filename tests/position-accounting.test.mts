@@ -6,6 +6,8 @@ import {
   resolvePositionCollectionStatus
 } from "../lib/position-accounting.ts";
 
+import { localBusinessDay, storedBusinessDay, transactionDate, currentFinancialCutoff } from "../lib/financial-business-day.ts";
+
 const at = (value: string) => new Date(`${value}T00:00:00.000Z`);
 
 test("moving average allocates inventory cost across partial sales", () => {
@@ -114,4 +116,39 @@ test("collection status follows a fully sold or repurchased position", () => {
     transactions: [...soldHistory.transactions, { kind: "purchase", amountMinor: 12000n, currency: "CNY", quantity: 1, occurredAt: at("2026-01-03") }],
     expenses
   }), "holding");
+});
+
+test("gifts share realized P&L with sales without changing sales or purchase volume", () => {
+  const trade = (kind:string, amountMinor:bigint, quantity:number,day:number) => ({kind,amountMinor,quantity,currency:"CNY",occurredAt:at("2026-01-0"+day)});
+  const history = {expenses:[],transactions:[trade("purchase",20000n,2,1),trade("gift_out",0n,1,2)]};
+  const partial = calculateCurrencyPosition(history,"CNY");
+  assert.deepEqual([partial.remainingQuantity,partial.realizedProfitMinor,partial.remainingCostMinor,partial.soldQuantity],[1,-10000n,10000n,0]);
+  history.transactions.push(trade("gift_in",0n,1,3),trade("sale",16000n,1,4),trade("gift_out",0n,1,5));
+  const closed = calculateCurrencyPosition(history,"CNY");
+  assert.deepEqual([closed.purchasedQuantity,closed.soldQuantity,closed.grossSaleAmountMinor,closed.realizedProfitMinor,closed.remainingQuantity],[2,1,16000n,-4000n,0]);
+  assert.equal(resolvePositionCollectionStatus("holding",history),"gifted");
+  history.transactions.push(trade("gift_in",0n,1,6));
+  assert.equal(resolvePositionCollectionStatus("gifted",history),"holding");
+  assert.equal(calculateCurrencyPosition({transactions:[trade("gift_in",0n,1,1)],expenses:[]},"CNY").costComplete,true);
+  assert.throws(()=>calculateCurrencyPosition({transactions:[trade("gift_out",0n,1,1)],expenses:[]},"CNY"));
+});
+
+test("daily reports acquire before transferring, regardless of legacy time-of-day", () => {
+  const day = at("2026-02-20");
+  const history = {expenses:[],transactions:[
+    {kind:"gift_out",amountMinor:0n,quantity:1,currency:"CNY",occurredAt:day},
+    {kind:"purchase",amountMinor:10000n,quantity:1,currency:"CNY",occurredAt:new Date("2026-02-20T18:00:00Z")}
+  ]};
+  assert.equal(calculateCurrencyPosition(history,"CNY").realizedProfitMinor,-10000n);
+  assert.equal(calculateHoldingSnapshots(history,"CNY").at(-1)?.remainingQuantity,0);
+  assert.equal(resolvePositionCollectionStatus("holding",history),"gifted");
+});
+
+test("transaction dates use the device calendar and reject dates beyond it", () => {
+  const now = new Date(2026,0,1,0,10);
+  const today = localBusinessDay(now);
+  assert.equal(today.toISOString(),"2026-01-01T00:00:00.000Z");
+  assert.equal(storedBusinessDay(currentFinancialCutoff(now)),today.getTime());
+  assert.equal(transactionDate(new Date("2026-01-01T11:12:00Z"),today).getTime(),today.getTime());
+  assert.throws(()=>transactionDate(at("2026-01-02"),today),/晚于今天/);
 });

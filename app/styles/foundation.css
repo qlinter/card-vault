@@ -730,7 +730,20 @@ form.panel {
   font-size: var(--text-xs);
 }
 
-.entry-draft-item button {
+.draft-delete-review {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.68rem 0.62rem;
+  font-size: var(--text-sm);
+}
+.draft-delete-review > div { display: flex; gap: 0.4rem; }
+.entry-draft-item:has(.draft-delete-review) > a { grid-column: 1 / -1; }
+.entry-draft-item:has(.draft-delete-review) > a strong { white-space: normal; overflow-wrap: anywhere; }
+.entry-draft-item > button {
   width: 30px;
   height: 30px;
   margin-right: 0.35rem;
@@ -741,7 +754,7 @@ form.panel {
   cursor: pointer;
 }
 
-.entry-draft-item button:hover {
+.entry-draft-item > button:hover {
   color: var(--theme-negative, #b12026);
   background: rgba(177, 32, 38, 0.08);
 }

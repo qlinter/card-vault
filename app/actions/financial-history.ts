@@ -20,18 +20,22 @@ import { transactionInput, expenseInput, valuationInput } from "@/lib/financial-
 import { prisma } from "@/lib/prisma";
 import { errorMessage } from "@/lib/feedback-messages";
 import { normalizeReturnTo } from "@/lib/query-params";
+import { isIncoming } from "@/lib/financial-history";
+import { lastAcquisitionMessage } from "@/lib/card-quantity";
 import { calculatePositions, resolvePositionCollectionStatus } from "@/lib/position-accounting";
 
 type FinancialRecordType = "transaction" | "expense" | "valuation";
 
 async function mutateHistory(
   cardId: string,
-  mutation: (transaction: Prisma.TransactionClient) => Promise<unknown>
+  mutation: (transaction: Prisma.TransactionClient) => Promise<unknown>,
+  deletingTrade = false
 ) {
   await prisma.$transaction(async (transaction) => {
     await mutation(transaction);
     const history = await getCardFinancialHistory(transaction, cardId);
-    const card = await transaction.card.findUniqueOrThrow({ where: { id: cardId }, select: { collectionStatus: true } });
+    const card = await transaction.card.findUniqueOrThrow({ where: { id: cardId }, select: { collectionStatus: true, holdingQuantity: true } });
+    if (deletingTrade && card.holdingQuantity > 0 && !history.transactions.some(row => isIncoming(row.kind))) throw new Error(lastAcquisitionMessage);
     await transaction.card.update({
       where: { id: cardId },
       data: {
@@ -67,7 +71,7 @@ export async function saveFinancialRecordFormAction(cardId: string, type: Financ
   const expectedVersion = String(formData.get("editVersion") ?? "");
   try {
     await mutateHistory(cardId, async (transaction) => {
-      if (type === "transaction") return recordId ? updateCardTransaction(transaction, cardId, recordId, transactionInput(formData), expectedVersion) : createCardTransaction(transaction, { cardId, ...transactionInput(formData), externalKey: optionalText(formData, "submissionId") });
+      if (type === "transaction") return recordId ? updateCardTransaction(transaction, cardId, recordId, transactionInput(formData, true), expectedVersion) : createCardTransaction(transaction, { cardId, ...transactionInput(formData), externalKey: optionalText(formData, "submissionId") });
       if (type === "expense") return recordId ? updateCardExpense(transaction, cardId, recordId, expenseInput(formData), expectedVersion) : createCardExpense(transaction, { cardId, ...expenseInput(formData), externalKey: optionalText(formData, "submissionId") });
       return recordId ? updateCardValuation(transaction, cardId, recordId, valuationInput(formData), expectedVersion) : createCardValuation(transaction, { cardId, ...valuationInput(formData), externalKey: optionalText(formData, "submissionId") });
     });
@@ -84,7 +88,7 @@ export async function deleteFinancialRecordAction(
 ): Promise<void> {
   await requireAccount();
   try {
-    await mutateHistory(cardId, (transaction) => deleteCardFinancialRecord(transaction, cardId, recordType, recordId, expectedVersion));
+    await mutateHistory(cardId, (transaction) => deleteCardFinancialRecord(transaction, cardId, recordType, recordId, expectedVersion), recordType === "transaction");
   } catch (error) {
     finishHistoryMutation(cardId, "", returnTo, error);
   }

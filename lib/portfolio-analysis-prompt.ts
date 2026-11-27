@@ -45,7 +45,7 @@ export function buildPortfolioAnalysisInput(snapshot: PortfolioSnapshot) {
     accounting: snapshot.accounting ? { ...snapshot.accounting, missing: snapshot.accounting.missing.slice(0, 20), rates: snapshot.accounting.rates.slice(-40) } : undefined,
     cardCount: snapshot.cardCount,
     activeCount: snapshot.activeCount,
-    collectionStatusRules: "holding、pending_grading、grading、listed 均为持仓；sold 仅保留历史现金流和已实现盈亏。cardCount 为档案数，activeCount 为持仓条目数，财务金额按实物剩余数量计算。估值覆盖率分母为 financials.valuationEligibleCount。",
+    collectionStatusRules: "holding、pending_grading、grading、listed 均为持仓；sold 和 gifted 都表示已清仓；仅实际出售计入销量，赠送转出的成本与销售共同计入已实现盈亏。cardCount 为档案数，activeCount 为持仓条目数，财务金额按实物剩余数量计算。估值覆盖率分母为 financials.valuationEligibleCount。",
     soldCount: snapshot.soldCount,
     pendingGradingCount: snapshot.pendingGradingCount,
     playerCount: snapshot.playerCount,

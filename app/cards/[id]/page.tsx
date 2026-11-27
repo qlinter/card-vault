@@ -1,12 +1,15 @@
 import { cardImageOrder } from "@/lib/card-image-order";
+import type { ReactNode } from "react";
 import { existingStudioFile } from "@/lib/studio-images";
 import { hasStudioKey } from "@/lib/ai-settings";
+import { CardLifecycle } from "@/components/card-lifecycle";
+import { cardLifecycle } from "@/lib/card-lifecycle";
 import { CardImageExport } from "@/components/card-image-export";
 import { collectionStatusText } from "@/lib/card-domain";
 import { UiText } from "@/components/ui-text";
 import { BackButton } from "@/components/back-button";
 import { CardFinancialHistory } from "@/components/card-financial-history";
-import { cardImageRotationStyle } from "@/lib/card-image-rotation";
+import { CardDetailGallery } from "@/components/card-detail-gallery";
 import { splitTagString } from "@/lib/card-helpers";
 import { normalizeHttpUrl } from "@/lib/http-url";
 import { prisma } from "@/lib/prisma";
@@ -19,6 +22,14 @@ type DetailProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+function CardFacts({ entries }: { entries: [string, ReactNode][] }) {
+  const present = entries.filter(([, value]) => typeof value === "string" ? value.trim() : value != null);
+  if (!present.length) return null;
+  return <dl className="archive-facts">{present.map(([label, value]) =>
+    <div key={label}><dt><UiText text={label} /></dt><dd>{value}</dd></div>
+  )}</dl>;
+}
 
 function visibilityText(value: string): string {
   switch (value) {
@@ -59,14 +70,7 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
   const studioReady = Boolean(await existingStudioFile(card));
   const tags = splitTagString(card.tags);
   const gradingLink = normalizeHttpUrl(card.gradingLink);
-  const facts = [
-    ["运动类型", card.sport], ["Team", card.team], ["年份", card.year],
-    ["品牌", card.brand], ["产品线", card.productLine], ["子系列", card.subsetName],
-    ["平行版本", card.parallel], ["卡号", card.cardNumber], ["编号", card.serialNumber], ["编号范围", card.serialRange],
-    ["评级机构", card.gradingCompany], ["评级", card.grade], ["证书号", card.certNumber],
-    ["签字类型", card.autoType], ["Patch 类型", card.patchType]
-  ].filter(([, value]) => Boolean(value?.trim()));
-  const attributes = [["Rookie", card.isRookie], ["签名卡", card.isAutograph], ["Patch/Jersey", card.isPatch]] as const;
+  const attributes = [card.isRookie && "Rookie", card.isAutograph && "签名卡", card.isPatch && "Patch/Jersey"].filter((label): label is string => Boolean(label));
 
   return (
     <div className="page card-detail-page">
@@ -86,33 +90,46 @@ export default async function CardDetailPage({ params, searchParams }: DetailPro
       {["created", "updated"].includes(toScalar(query.success) ?? "") && !hasStudioKey() && !studioReady ? <p className="muted"><UiText text="未配置 OpenAI Key，展馆暂用首图。可在设置中补生成。" /></p> : null}
       {error ? <p className="note-error"><UiText text={error} /></p> : null}
 
-      <div className="details">
-        <section className="panel">
-          <div className="card-images-heading"><h2><UiText text="图片展示" /></h2>{card.images.length ? <CardImageExport cardId={card.id} /> : null}</div>
-          {!card.images.length ? <p className="muted"><UiText text="暂无图片" /></p> : null}
-          <div className="gallery">
-            {card.images.map((image) => (
-              <img key={image.id} src={image.path} alt={card.cardTitle} style={cardImageRotationStyle(image.rotation)} />
-            ))}
-          </div>
-        </section>
-
-        <section className="panel">
-          <h2><UiText text={"卡牌信息"} /></h2>
-          <div className="info-grid">
-            <div className="info-item"><strong><UiText text="收藏状态" /></strong><span><UiText text={collectionStatusText(card.collectionStatus)} /></span></div>
-            <div className="info-item"><strong><UiText text="持有数量" /></strong><span>{card.holdingQuantity}</span></div>
-            {facts.map(([label, value]) => <div className="info-item" key={label}><strong><UiText text={label!} /></strong><span>{value}</span></div>)}
-            {card.images.length > 0 && <div className="info-item"><strong><UiText text="AI 展馆图" /></strong><a href={`/cards/${card.id}/edit${encodeReturnTo(returnTo)}#studio-image`}><UiText text={studioReady ? "已生成" : "待生成"} /></a></div>}
-            {gradingLink ? <div className="info-item"><strong><UiText text="评级链接" /></strong><a href={gradingLink} target="_blank" rel="noreferrer"><UiText text="查看评级页面" /></a></div> : null}
-            {tags.length ? <div className="info-item"><strong><UiText text="标签" /></strong><span>{tags.join(", ")}</span></div> : null}
-          </div>
-          {attributes.some(([, enabled]) => enabled) ? <div className="tags card-detail-attributes">{attributes.filter(([, enabled]) => enabled).map(([label]) => <span className="tag" key={label}><UiText text={label} /></span>)}</div> : null}
-          {card.publicDescription ? <div className="card-detail-note"><strong><UiText text="展示描述" /></strong><p>{card.publicDescription}</p></div> : null}
-          {card.notes ? <div className="card-detail-note"><strong><UiText text="备注" /></strong><p>{card.notes}</p></div> : null}
-          <details className="card-detail-visibility"><summary><UiText text="公开状态" /></summary><p><UiText text={visibilityText(card.visibility)} /></p></details>
+      <div className={card.images.length ? "details archive-overview" : "archive-overview"}>
+        {card.images.length > 0 && <section className="panel archive-image-panel">
+          <div className="card-images-heading"><h2><UiText text="图片展示" /></h2><CardImageExport cardId={card.id} /></div>
+          <CardDetailGallery title={card.cardTitle} images={card.images.map(({id,path,rotation})=>({id,path,rotation}))} />
+        </section>}
+        <section className="panel archive-info" aria-labelledby="archive-info-title">
+          <header className="archive-info-heading">
+            <h2 id="archive-info-title"><UiText text="卡牌信息" /></h2>
+            <dl className="archive-status">
+              <div><dt><UiText text="收藏状态" /></dt><dd><UiText text={collectionStatusText(card.collectionStatus)} /></dd></div>
+              <div><dt><UiText text="持有数量" /></dt><dd>{card.holdingQuantity}</dd></div>
+            </dl>
+          </header>
+          <CardFacts entries={[
+            ["运动类型", card.sport], ["Team", card.team], ["年份", card.year], ["品牌", card.brand],
+            ["产品线", card.productLine], ["子系列", card.subsetName], ["平行版本", card.parallel],
+            ["卡号", card.cardNumber], ["编号", card.serialNumber], ["编号范围", card.serialRange]
+          ]} />
+          <CardFacts entries={[
+            ["评级机构", card.gradingCompany], ["评级", card.grade], ["证书号", card.certNumber],
+            ["评级链接", gradingLink && <a href={gradingLink} target="_blank" rel="noreferrer"><UiText text="查看评级页面" /></a>]
+          ]} />
+          <CardFacts entries={[
+            ["签字类型", card.autoType], ["Patch 类型", card.patchType],
+            ["卡牌属性", attributes.length ? <ul className="archive-terms">{attributes.map(label => <li key={label}><UiText text={label} /></li>)}</ul> : null],
+            ["标签", tags.length ? <ul className="archive-terms">{tags.map((tag, index) => <li key={index}>{tag}</li>)}</ul> : null]
+          ]} />
+          <CardFacts entries={[
+            ["AI 展馆图", card.images.length > 0 ? <a href={`/cards/${card.id}/edit${encodeReturnTo(returnTo)}#studio-image`}><UiText text={studioReady ? "已生成" : "待生成"} /></a> : null],
+            ["公开状态", <UiText text={visibilityText(card.visibility)} />]
+          ]} />
+          {card.images.length === 0 && <a className="btn btn-secondary" href={`/cards/${card.id}/edit${encodeReturnTo(returnTo)}#archive-images`}><UiText text="添加图片" /></a>}
         </section>
       </div>
+
+      {(card.publicDescription || card.notes) && <section className="panel archive-notes">
+          {card.publicDescription ? <div className="card-detail-note"><strong><UiText text="展示描述" /></strong><p>{card.publicDescription}</p></div> : null}
+          {card.notes ? <div className="card-detail-note"><strong><UiText text="备注" /></strong><p>{card.notes}</p></div> : null}
+      </section>}
+      <div className="panel archive-history"><CardLifecycle events={cardLifecycle(card)} /></div>
 
         <CardFinancialHistory
           key={card.updatedAt.toISOString()}

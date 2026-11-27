@@ -1,4 +1,5 @@
 ﻿import sharp from "sharp";
+import { studioVisionSettings } from "./studio-provider";
 import { requestAiChatText } from "./ai-chat-client";
 import { extractJsonRecord } from "./ai-response-parsing";
 import type { getStudioAiSettings } from "./ai-settings";
@@ -14,9 +15,7 @@ export async function inspectStudioOrientation(source: Buffer, settings: ReturnT
   })));
   const sheet = await sharp({ create: { width: 840, height: 840, channels: 3, background: "#ddd" } }).composite(tiles).jpeg().toBuffer();
   try {
-    const result = await requestAiChatText({
-      provider: "openai", endpoint: "https://api.openai.com/v1/chat/completions", ...settings
-    }, {
+    const result = await requestAiChatText(studioVisionSettings(settings), {
       operation: "卡面方向识别", timeoutMs: 25000, maxTokens: 500, responseFormat: "json_object",
       messages: [{ role: "user", content: [
         { type: "text", text: "Four orientations of the same collectible. Pick the view where the INNER PRINTED CARD (player, printed name, artwork) reads upright. Ignore the scan shape, mount and PSA/BGS label; the grading label can correctly read sideways. Positions: 0 upper left, 1 upper right, 2 lower left, 3 lower right. Return JSON only: {view: 0|1|2|3, layout: 'landscape'|'portrait'}. Layout describes the printed card in the chosen orientation, never the square tile or outer canvas." },

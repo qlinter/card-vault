@@ -185,7 +185,6 @@ test("failed financial record preserves entered values and leaves history unchan
 });
 test("import preview applies a card and a confirmed undo removes it", async ({ page }) => {
   await page.goto("/settings/data", { waitUntil: "networkidle" });
-  await page.locator('#data-transfer > button').click();
   await page.getByLabel("选择文件").setInputFiles({ name: "cards.csv", mimeType: "text/csv", buffer: Buffer.from("playerName,cardTitle,sport\nImport UI,00123,Basketball") });
   await page.getByRole("button", { name: "建立导入预演" }).click(); await expect(page.getByRole("heading", { name: "批次预演与结果" })).toBeVisible();
   await page.getByRole("button", { name: "执行 / 重试失败行" }).click(); await expect(page.locator("tbody tr").first()).toContainText("已完成");
@@ -278,11 +277,9 @@ test("Settings groups data management and fits the minimum Windows window", asyn
   await page.getByRole("button", { name: "展开数据", exact: true }).click();
   await expect(page).toHaveURL(/settings$/);
   await expect(page.getByRole("heading", { name: "备份与恢复", exact: true })).toBeVisible();
-  await expect(page.locator('#data-maintenance-content')).toBeHidden();
-  await expect(page.locator('#data-transfer-content')).toBeHidden();
-  await page.locator('#data-transfer > button').click();
-  await page.locator('#data-maintenance > button').click();
-  await expect(page.getByRole("heading", { name: "存储", exact: true })).toBeVisible();
+  await expect(page.locator('.data-subsections > section h3').first()).toBeVisible();
+  await expect(page.locator('.data-subsections > section > header h3')).toHaveText(['备份与恢复', '维护', '导入与导出']);
+  await expect(page.getByRole("heading", { name: "维护", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "导入", exact: true })).toBeVisible();
   await expect(page.locator('.header-settings[aria-current="page"]')).toHaveAccessibleName("设置");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

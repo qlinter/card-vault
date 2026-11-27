@@ -10,6 +10,7 @@
 
 | 版本 | 中文摘要 | English summary | 记录 |
 | --- | --- | --- | --- |
+| `1.7.1` | 展馆图维护与恢复结果修正。 | Studio image management and restore feedback. | [发布说明](./releases.md#release-v1-7-1) |
 | `1.7.0` | 访客浏览、财务折线图和 AI 展馆图。 | Guest browsing, holding charts and studio images. | [发布说明](./releases.md#release-v1-7-0) |
 | `1.6.1` | 卡牌录入、财务与展馆改进。 | Card entry, finance and gallery improvements. | [发布说明](./releases.md#release-v1-6-1) |
 | `1.6.0` | 本地单账户登录、恢复码、账户与安全设置及 Windows 分发。 | Offline local sign-in, recovery codes, account settings and Windows distributions. | [发布说明](./releases.md#release-v1-6-0) |

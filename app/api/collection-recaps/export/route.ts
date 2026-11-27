@@ -8,11 +8,12 @@ import { exportFileResponse, exportInWorkspace, ExportLimitError } from "@/lib/e
 export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
-    const value = await request.json(), draft = recapDraft(value), includePrivate = value.includePrivate === true;
+    const now = new Date();
+    const value = await request.json(), draft = recapDraft(value, now), includePrivate = value.includePrivate === true;
     let count = 0, quantity = 0;
     const result = await exportInWorkspace(async ({ directory, signal }) => {
       const revision = async () => (await prisma.dataRevision.findUniqueOrThrow({ where: { id: 1 } })).revision;
-      const before = await revision(), summary = await loadRecapSummary(draft.spec, includePrivate), cards = await recapCards(draft.spec, { ids: draft.ids, includePrivate });
+      const before = await revision(), summary = await loadRecapSummary(draft.spec, includePrivate, now), cards = await recapCards(draft.spec, { ids: draft.ids, includePrivate }, now);
       count = summary.cardCount; quantity = summary.quantity;
       if (await revision() !== before) throw new Error("收藏数据刚刚发生变化，请重新生成预览。");
       const ordered = draft.ids.flatMap(id => { const card = cards.find(row => row.id === id); return card ? [card] : []; });

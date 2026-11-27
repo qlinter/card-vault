@@ -200,3 +200,18 @@ test("unreadable legacy Azure credentials migrate without losing their original 
   broken.save({ proxy: { mode: "direct" } });
   assert.equal(restored.getRuntimeEnv().CARD_VAULT_CUSTOM_AI_PROFILES_JSON.includes("key-only-test"), true);
 });
+
+test("studio inherits by default and preserves encrypted independent credentials across provider switches", t => {
+  const { configPath, manager } = testConfig(t);
+  const old = manager.save({ openai: { apiKey: "fixture-chat" } });
+  assert.deepEqual(old.studio, { keySource: "openai", model: "gpt-image-2", hasApiKey: false });
+  manager.save({ studio: { keySource: "independent", model: "fixture-image", apiKey: "fixture-studio" } });
+  const changed = manager.save({ provider: "deepseek", openai: { model: "other-chat" } });
+  assert.deepEqual(changed.studio, { keySource: "independent", model: "fixture-image", hasApiKey: true });
+  assert.equal(manager.getRuntimeEnv().CARD_VAULT_STUDIO_API_KEY, "fixture-studio");
+  assert.equal(manager.getRuntimeEnv().OPENAI_API_KEY, "fixture-chat");
+  assert.ok(!fs.readFileSync(configPath, "utf8").includes("fixture-studio"));
+  assert.ok(!JSON.stringify(changed).includes("fixture-studio"));
+  assert.equal(manager.save({ studio: { apiKey: "" } }).studio.hasApiKey, false);
+  assert.equal(manager.getRuntimeEnv().OPENAI_API_KEY, "fixture-chat");
+});

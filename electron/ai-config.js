@@ -52,6 +52,7 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
     return normalizeSettings({
       provider: raw.provider,
       proxy: { ...raw.proxy, password: raw.proxy?.passwordEncrypted ? decryptKey(raw.proxy.passwordEncrypted) : "" },
+      studio: { ...raw.studio, apiKey: decryptKey(raw.studio?.apiKeyEncrypted) },
       activeCustomId: raw.activeCustomId,
       azure: {
         endpoint: azureRaw.endpoint,
@@ -82,6 +83,8 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
     const stored = {
       version: 5,
       ...(raw.azure?.apiKeyEncrypted && !legacy ? { azure: raw.azure } : {}),
+      studio: { model: settings.studio.model, keySource: settings.studio.keySource,
+        apiKeyEncrypted: credential(settings.studio.apiKey, raw.studio?.apiKeyEncrypted, draft.studio?.apiKey) },
       provider: settings.provider,
       proxy: (({ password, ...fields }) => ({ ...fields, passwordEncrypted: credential(password, raw.proxy?.passwordEncrypted, draft.proxy?.password) }))(settings.proxy),
       activeCustomId: settings.activeCustomId,
@@ -113,6 +116,7 @@ function createAiConfigManager(configPath, cryptoAdapter = {}) {
     return {
       CARD_VAULT_AI_PROVIDER: settings.provider,
       CARD_VAULT_AI_PROXY_JSON: JSON.stringify(settings.proxy),
+      CARD_VAULT_STUDIO_API_KEY: settings.studio.apiKey,
       OPENAI_API_ENDPOINT: settings.openai.endpoint,
       OPENAI_API_KEY: settings.openai.apiKey,
       OPENAI_MODEL: settings.openai.model,

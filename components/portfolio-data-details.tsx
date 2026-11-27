@@ -32,7 +32,7 @@ export function PortfolioDataDetails({ workspace, query, state, returnTo }: { wo
         <UiElement as="optgroup" uiAttributes={["label"]} label="收藏状态">{cardCollectionStatuses.map(status => <option key={status} value={status}><UiText text={collectionStatusText(status)} /></option>)}</UiElement>
       </UiElement>
       <UiElement as="input" uiAttributes={["placeholder", "aria-label"]} type="search" name="search" placeholder="搜索卡牌" aria-label="搜索卡牌" defaultValue={state.search} maxLength={160} />
-      <UiElement as="select" uiAttributes={["aria-label"]} name="order" aria-label="明细排序" defaultValue={state.order || "valueDesc"}>{[["valueDesc", "估值从高到低"], ["costDesc", "成本从高到低"], ["profitDesc", "已实现盈亏从高到低"], ["dateDesc", "最近日期"], ["nameAsc", "主体名称"]].map(([value, label]) => <option key={value} value={value}><UiText text={label} /></option>)}</UiElement>
+      <UiElement as="select" uiAttributes={["aria-label"]} name="order" aria-label="明细排序" defaultValue={state.order || "valueDesc"}>{[["valueDesc", "估值从高到低"], ["costDesc", "成本从高到低"], ["profitDesc", "已实现盈亏从高到低"], ["dateDesc", "最近活动"], ["nameAsc", "主体名称"]].map(([value, label]) => <option key={value} value={value}><UiText text={label} /></option>)}</UiElement>
       <button className="btn btn-secondary"><UiText text="筛选" /></button><span className={styles.note}>{workspace.total} <UiText text="项" /> · {workspace.currency}</span>
     </form>}
     <div className={styles.tableWrap}><table className={`${styles.table} ${quality ? "" : styles.detailsTable}`}>
@@ -44,8 +44,8 @@ export function PortfolioDataDetails({ workspace, query, state, returnTo }: { wo
         {quality ? <><td className={styles.numeric}>{row.quantity}</td><td><div className={styles.issues}>{row.issues.map(issue => <span key={issue.key}><UiText text={issue.label} /></span>)}</div></td><td>{date(row.valuedAt, "–")}</td></> : <>
           <td><dl className={styles.rowMetrics}><RowMetric label="持有数量">{row.quantity}</RowMetric><RowMetric label="出售数量">{row.soldQuantity}</RowMetric></dl></td>
           <td><dl className={styles.rowMetrics}><RowMetric label="估值">{money(row.value, workspace.currency)}</RowMetric><RowMetric label="剩余成本">{money(row.cost, workspace.currency)}</RowMetric></dl></td>
-          <td>{row.soldQuantity > 0 ? <dl className={styles.rowMetrics}><RowMetric label="已实现盈亏" tone={styles[profitTone(row.realized)]}>{signed(row.realized, workspace.currency)}</RowMetric><RowMetric label="净出售金额">{money(row.netSales, workspace.currency)}</RowMetric><RowMetric label="结转成本">{money(row.soldCost, workspace.currency)}</RowMetric><RowMetric label="回报率">{formatPercentage(row.returnRate, { fractionDigits: 2, signed: true })}</RowMetric></dl> : <span className={styles.note}>–</span>}</td>
-          <td><dl className={`${styles.rowMetrics} ${styles.rowDates}`}><RowMetric label="最新估值">{date(row.valuedAt, "–")}</RowMetric><RowMetric label="出售日期">{date(row.soldAt, "–")}</RowMetric></dl></td>
+          <td>{(row.soldQuantity > 0 || row.givenQuantity) ? <dl className={styles.rowMetrics}><RowMetric label="已实现盈亏" tone={styles[profitTone(row.realized)]}>{signed(row.realized, workspace.currency)}</RowMetric><RowMetric label="净出售金额">{money(row.netSales, workspace.currency)}</RowMetric><RowMetric label="结转成本">{money(row.soldCost, workspace.currency)}</RowMetric><RowMetric label="回报率">{formatPercentage(row.returnRate, { fractionDigits: 2, signed: true })}</RowMetric></dl> : <span className={styles.note}>–</span>}</td>
+          <td><dl className={`${styles.rowMetrics} ${styles.rowDates}`}><RowMetric label="最近活动">{row.lastActivityDay ?? "–"}</RowMetric><RowMetric label="最新估值">{date(row.valuedAt, "–")}</RowMetric><RowMetric label="出售日期">{date(row.soldAt, "–")}</RowMetric></dl></td>
         </>}
       </tr>)}</tbody>
     </table></div>

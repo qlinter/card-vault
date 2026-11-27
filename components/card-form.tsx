@@ -2,13 +2,14 @@
 
 import { cardCollectionStatuses, collectionStatusText } from "@/lib/card-domain";
 import { UiText } from "@/components/ui-text";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AiRecognitionPanel } from "@/components/ai-recognition-panel";
 import { CardStudioPanel } from "./card-studio-panel";
 import { CardImageFields } from "@/components/card-image-fields";
 import { CardEntryDuplicatePanel } from "@/components/card-entry-duplicate-panel";
 import { CardEntryFinancialRecords } from "@/components/card-entry-financial-records";
 import { InvestmentInputs } from "@/components/investment-inputs";
+import { formatHistoryDateInput } from "@/lib/financial-history-presentation";
 import { defaultInitialQuantityForStatus } from "@/lib/card-quantity";
 import { CardArchiveFields } from "./card-archive-fields";
 import { CardGradingFields } from "./card-grading-fields";
@@ -33,9 +34,9 @@ export function CardForm({
   values,
   returnTo,
   formRef,
-  draftId,
+  draftId, draftVersion,
   draftImages, initialFrontChoice,
-  editVersion,
+  editVersion, ledgerStatus,
   onSubmit,
   onInvalid,
   submitDisabled = false,
@@ -43,6 +44,8 @@ export function CardForm({
   queuedImages = [],
   queueRecognition
 }: CardFormProps) {
+  const [method,setMethod] = useState(values?.acquisitionMethod || "purchase");
+  const gift = method === "gift_in";
   const defaultAiImageUrls = queuedImages.length > 0
     ? queuedImages.slice(0, 2).map((image) => image.url)
     : card?.images.slice(0, 2).map((image) => image.path) ?? [];
@@ -58,8 +61,8 @@ export function CardForm({
     </label>
     <label className="field">
       <span><UiText text="收藏状态" /></span>
-      <select name="collectionStatus" defaultValue={collectionStatus}>
-        {cardCollectionStatuses.map(status => <option key={status} value={status}><UiText text={collectionStatusText(status)} /></option>)}
+      <select name="collectionStatus" defaultValue={ledgerStatus ?? collectionStatus}>
+        {cardCollectionStatuses.map(status => <option key={status} value={status} disabled={!!ledgerStatus && (status === "sold" || status === "gifted") && status !== ledgerStatus}><UiText text={collectionStatusText(status)} /></option>)}
       </select>
     </label>
   </div>;
@@ -108,6 +111,7 @@ export function CardForm({
       {mode === "edit" && error ? <p className="note-error" role="alert"><UiText text={error} /></p> : null}
       {mode === "edit" && returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       {mode === "edit" ? <input type="hidden" name="editVersion" value={editVersion ?? ""} /> : null}
+      {mode === "create" && <input type="hidden" name="draftVersion" value={draftVersion ?? ""} />}
       {mode === "create" && draftId ? <input type="hidden" name="draftId" value={draftId} /> : null}
       {mode === "create" && queueItemId ? <input type="hidden" name="queueItemId" value={queueItemId} /> : null}
 
@@ -135,20 +139,21 @@ export function CardForm({
         <CardGradingFields values={values} card={card} mode={mode} />
 
         {mode === "create" ? (
-          <OptionalCardFields title="财务记录（可选）" initialOpen={hasOptionalCardData(values, undefined, ["purchaseDate", "purchaseSource", "purchasePrice", "gradingFee", "currentValue", "valuationDate"]) || Boolean(values?.financialRecords && values.financialRecords !== "[]") || Boolean(values?.initialQuantity && values.initialQuantity !== String(defaultInitialQuantityForStatus(collectionStatus)))}>
+          <OptionalCardFields title="财务记录（可选）" initialOpen={gift || hasOptionalCardData(values, undefined, ["purchaseDate", "purchaseSource", "purchasePrice", "gradingFee", "currentValue", "valuationDate"]) || Boolean(values?.financialRecords && values.financialRecords !== "[]") || Boolean(values?.initialQuantity && values.initialQuantity !== String(defaultInitialQuantityForStatus(collectionStatus)))}>
 
             <div className="form-grid card-finance-grid full">
+              <label className="field"><span><UiText text="取得方式" /></span><select name="acquisitionMethod" value={method} onChange={e=>setMethod(e.target.value)}><option value="purchase"><UiText text="买入" /></option><option value="gift_in"><UiText text="获赠" /></option></select></label>
               <label className="field">
-                <span><UiText text={"购买日期"} /></span>
-                <input name="purchaseDate" type="date" defaultValue={values?.purchaseDate ?? ""} />
+                <span><UiText text={gift ? "获赠日期" : "购买日期"} /></span>
+                <input name="purchaseDate" type="date" max={formatHistoryDateInput()} required={gift} defaultValue={values?.purchaseDate ?? ""} />
               </label>
 
               <label className="field">
-                <span><UiText text={"购买渠道"} /></span>
+                <span><UiText text={gift ? "赠予人" : "购买渠道"} /></span>
                 <input name="purchaseSource" defaultValue={values?.purchaseSource ?? ""} />
               </label>
 
-              <InvestmentInputs
+              <InvestmentInputs gift={gift}
                 initialQuantity={values?.initialQuantity ?? String(defaultInitialQuantityForStatus(collectionStatus))}
                 collectionStatus={collectionStatus}
                 purchasePrice={values?.purchasePrice ?? ""}

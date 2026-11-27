@@ -57,18 +57,15 @@
 .settings-surface .settings-help-content { margin-top: .75rem; padding: 1rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .settings-surface .settings-help-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .settings-surface .settings-help-copyright { margin: 1rem 0 0; color: var(--muted-ink); font-size: var(--text-xs); }
-.settings-surface .data-workspace > .settings-section, .data-workspace.settings-surface > .settings-section { margin-block: 1rem 0; box-shadow: none; }
-.settings-surface .data-workspace .settings-section .ai-settings-toggle strong, .data-workspace.settings-surface .settings-section .ai-settings-toggle strong { font-size: var(--text-md); font-weight: var(--weight-semibold); }
 
 /* The same Data controls are used inside Settings and on /settings/data. */
-.settings-surface .data-workspace .management-section, .data-workspace.settings-surface .management-section { margin-block: 1rem; }
+.settings-surface .data-workspace .management-section, .data-workspace.settings-surface .management-section { margin-block: 1rem; padding: 0; }
 .settings-surface .data-workspace .management-section:first-child, .data-workspace.settings-surface .management-section:first-of-type { margin-top: 0; }
-.data-workspace .import-file-field { margin-bottom: .85rem; }
 .data-workspace .import-mapping-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
 .data-workspace .import-mapping-grid > label { display: flex; flex-direction: column; padding: .8rem; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); }
 .data-workspace .import-mapping-grid > label > span { flex: 1; min-height: 2.8em; overflow-wrap: anywhere; }
 .data-workspace .import-mapping-grid small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-height: 2.8em; max-height: none; overflow: hidden; font-size: var(--text-xs); line-height: 1.4; }
-.data-workspace .import-options { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; margin-top: 1rem; }
+.data-workspace .import-options { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
 .data-workspace .import-options > label { flex: 1 1 280px; }
 .data-workspace .management-table { max-width: 100%; border: 1px solid var(--line); border-radius: 8px; }
 .data-workspace .management-table table { table-layout: fixed; font-size: var(--text-sm); }
@@ -86,17 +83,39 @@
   .settings-surface .orphan-reveal-button { grid-column: 1; justify-self: start; }
 }
 .ai-settings-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
-.studio-recovery { display: grid; justify-items: start; gap: .5rem; margin-top: 1rem; padding-top: .8rem; border-top: 1px solid var(--line); }
-.studio-recovery-heading { display: flex; width: 100%; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; }
-.studio-recovery-heading h3 { margin: 0; font-size: var(--text-base); font-weight: var(--weight-semibold); }
-.studio-recovery p { margin: 0; font-size: var(--text-sm); }
 .studio-recovery-counts { display: flex; flex-wrap: wrap; gap: .25rem 1rem; color: var(--muted-ink); }
 .studio-recovery-counts span { white-space: nowrap; }
 .studio-recovery-counts strong { color: var(--ink); font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; }
 .ai-delete-confirmation { margin: .8rem 0; padding: .8rem; border: 1px solid var(--line); border-radius: .65rem; overflow-wrap: anywhere; }
 .ai-delete-confirmation p { margin: 0 0 .6rem; }
 
-.ai-proxy-settings { margin: 1rem 0; border-top: 1px solid var(--line); padding-top: .8rem; }
-.ai-proxy-settings summary { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; cursor: pointer; }
-.ai-proxy-settings .field { min-width: 0; }
-.ai-proxy-settings small { overflow-wrap: anywhere; line-height: 1.6; }
+
+.studio-configuration { width: 100%; }
+.studio-configuration .form-grid { margin-bottom: .75rem; }
+
+.settings-subsection { min-width: 0; }
+.settings-subsection + .settings-subsection { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.settings-subsection-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; margin-bottom: .75rem; }
+.settings-subsection-heading h3 { margin: 0; font: var(--weight-semibold) var(--text-md)/var(--leading-heading) var(--font-ui); }
+.settings-subsection .field { min-width: 0; }
+.settings-surface .settings-subsection .ai-provider-picker { margin-top: 0; }
+.studio-recovery p { margin: 0; font-size: var(--text-sm); }
+.studio-recovery > :is(p,button) { margin-top: .6rem; }
+
+.data-subsections .management-section h4 { margin: 0 0 .55rem; font-size: var(--text-base); font-weight: var(--weight-semibold); }
+.data-subsections .settings-subsection { scroll-margin-top: 5rem; }
+.data-subsections #data-export { scroll-margin-top: 5rem; }
+
+/* Give the import and export controls one shared pair of edges. */
+.data-subsections #data-transfer { display: grid; min-width: 0; gap: 1rem; }
+#data-transfer > .settings-subsection-heading { margin: 0; }
+#data-transfer > .transfer-block { display: grid; min-width: 0; gap: .5rem; margin: 0; }
+#data-transfer .transfer-block > :is(h4, p, .import-mapping-grid), #data-transfer .transfer-heading h4 { margin: 0; }
+.transfer-heading, .transfer-export-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .4rem 1rem; }
+#data-export .scope-navigation-link { min-height: 0; white-space: normal; text-align: end; margin-inline-start: auto; font-size: var(--text-sm); }
+.transfer-formats { display: flex; gap: .5rem; margin-inline-start: auto; }
+.transfer-formats .btn { min-width: 4rem; }
+@media (max-width: 480px) {
+  .transfer-export-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+  .transfer-formats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; }
+}

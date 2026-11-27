@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingsSubsection } from "./settings-subsection";
+import { useLanguage } from "./language-provider";
 import { UiText } from "@/components/ui-text";
 import { useEffect, useState } from "react";
 import { OperationProgress } from "@/components/operation-progress";
@@ -13,6 +15,7 @@ function desktopApi() {
 const restoreMessageKey = "card-vault:restore-completed";
 
 export function BackupSettings() {
+  const { t } = useLanguage();
   const [backupPath, setBackupPath] = useState("正在读取...");
   const [lastBackup, setLastBackup] = useState<Awaited<ReturnType<NonNullable<Window["cardVaultDesktop"]>["getBackupSettings"]>>["lastBackup"]>(null);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -124,11 +127,7 @@ export function BackupSettings() {
   const busy = busyAction !== null || activeStorageOperation !== null;
 
   return (
-    <section className="panel settings-section backup-settings">
-      <div className="title-row" style={{ marginBottom: "0.4rem" }}>
-        <div>
-          <h2><UiText text={"备份与恢复"} /></h2>
-        </div>
+    <SettingsSubsection id="data-backup" className="backup-settings" title={t("备份与恢复")} meta={
         <div className="backup-actions">
           <button type="button" className="btn btn-secondary" onClick={handleChooseDirectory} disabled={busy}>
             {busyAction === "choose" ? <UiText text={"选择中..."} /> : <UiText text={"设置备份路径"} />}
@@ -140,7 +139,7 @@ export function BackupSettings() {
             {busyAction === "restore" ? <UiText text={"恢复中..."} /> : <UiText text={"备份恢复"} />}
           </button>
         </div>
-      </div>
+    }>
       <p className="settings-path">
         <UiText text={"备份路径："} />{["正在读取...", "当前运行环境不支持本地备份。", "读取备份路径失败。"].includes(backupPath) ? <UiText text={backupPath} /> : backupPath}
       </p>
@@ -150,6 +149,6 @@ export function BackupSettings() {
       </p> : settingsLoaded ? <p className="muted" role="status"><UiText text="当前收藏库尚无成功备份记录。" /></p> : null}
       <OperationProgress progress={progress} />
       {message ? <p className="muted backup-message"><UiText text={message} /></p> : null}
-    </section>
+    </SettingsSubsection>
   );
 }

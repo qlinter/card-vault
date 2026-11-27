@@ -1,3 +1,5 @@
+import { currentFinancialCutoff } from "./financial-business-day.ts";
+import { isOutgoing } from "./financial-history.ts";
 import { normalizeCurrency } from "./financial-history.ts";
 import { convertMoney, paymentComponents, type FinancialHistory, type FinancialConfig, type FxRate, type MoneyComponent } from "./financial-currency.ts";
 import { projectValuations } from "./financial-valuation-projection.ts";
@@ -8,7 +10,7 @@ function businessDate(row: {
 }): Date {
   return row.occurredAt ?? row.createdAt ?? new Date(0);
 }
-export function reportingHistory<T extends FinancialHistory>(history: T, config: FinancialConfig, asOf = new Date()) {
+export function reportingHistory<T extends FinancialHistory>(history: T, config: FinancialConfig, asOf = currentFinancialCutoff()) {
   const target = normalizeCurrency(config.reportingCurrency);
   const missing = new Set<string>();
   const evidence = new Map<string, FxRate>();
@@ -33,10 +35,10 @@ export function reportingHistory<T extends FinancialHistory>(history: T, config:
     return { ...row, currency: target, amountMinor: amount ?? 0n, amountKnown: amount !== null && row.amountKnown !== false };
   });
   const holdingQuantity = history.transactions.length > 0
-    ? transactions.reduce((quantity, row) => quantity + (row.kind === "sale" ? -1 : 1) * (row.quantity ?? 1), 0)
+    ? transactions.reduce((quantity, row) => quantity + (isOutgoing(row.kind) ? -1 : 1) * (row.quantity ?? 1), 0)
     : history.holdingQuantity;
-  const collectionStatus = history.collectionStatus === "sold" && (holdingQuantity ?? 0) > 0 ? "holding" : history.collectionStatus;
-  if (history.transactions.length === 0 && ((holdingQuantity ?? 0) > 0 || expenses.length > 0 || history.collectionStatus === "sold"))
+  const collectionStatus = (history.collectionStatus === "sold" || history.collectionStatus === "gifted") && (holdingQuantity ?? 0) > 0 ? "holding" : history.collectionStatus;
+  if (history.transactions.length === 0 && ((holdingQuantity ?? 0) > 0 || expenses.length > 0 || (history.collectionStatus === "sold" || history.collectionStatus === "gifted")))
     missing.add("COST · No purchase history");
   const costMissing = [...missing];
   const { valuations, latestOriginal, evidence: valuationEvidence } = projectValuations(history.valuations, target, config.rates, asOf);

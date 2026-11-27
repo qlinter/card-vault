@@ -1,10 +1,12 @@
 "use client";
 
+import { SettingsSubsection } from "./settings-subsection";
 import { AiProxySettings } from "./ai-proxy-settings";
 
 import { UiText, UiElement } from "@/components/ui-text";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useAiSettingsRequests } from "./use-ai-settings-requests";
+import { StudioConfiguration } from "./studio-configuration";
 import { StudioRecovery } from "./studio-recovery";
 import { useLanguage } from "./language-provider";
 import { DisclosureIcon } from "@/components/disclosure-icon";
@@ -23,6 +25,7 @@ function loadedPublicSettings(value: Partial<PublicSettings>): PublicSettings {
     provider: value.provider ?? emptySettings.provider,
     activeCustomId: value.activeCustomId ?? "",
     keyRecoveryRequired: Boolean(value.keyRecoveryRequired),
+    studio: { ...emptySettings.studio, ...value.studio },
     proxy: { ...emptySettings.proxy, ...value.proxy },
     openai: { ...emptySettings.openai, ...value.openai },
     minimax: { ...emptySettings.minimax, ...value.minimax },
@@ -58,6 +61,16 @@ type AiSettingsProps = { defaultOpen?: boolean };
 export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   const { locale, t } = useLanguage();
   const [settings, setSettings] = useState<PublicSettings>(emptySettings);
+  const [studioKey, setStudioKey] = useState("");
+  const [clearStudioKey, setClearStudioKey] = useState(false);
+  const [savedStudioKey, setSavedStudioKey] = useState(false);
+  const [saveRevision, setSaveRevision] = useState(0);
+  function applySavedSettings(value: PublicSettings) {
+    const loaded = loadedPublicSettings(value);
+    setSettings(loaded);
+    setSavedStudioKey(loaded.studio.keySource === "openai" ? loaded.openai.hasApiKey : loaded.studio.hasApiKey);
+    setSaveRevision(revision => revision + 1);
+  }
   const [apiKeys, setApiKeys] = useState(emptyApiKeys);
   const [proxyPassword, setProxyPassword] = useState("");
   const [clearProxyPassword, setClearProxyPassword] = useState(false);
@@ -84,9 +97,8 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
           ? await desktopApi.getAiSettings()
           : ((await fetch("/api/ai/settings").then((response) => response.json())) as PublicSettings);
         if (!cancelled) {
-          const loadedSettings = loadedPublicSettings(nextSettings);
-          setSettings(loadedSettings);
-          if (loadedSettings.keyRecoveryRequired) {
+          applySavedSettings(nextSettings);
+          if (nextSettings.keyRecoveryRequired) {
             setMessage("检测到已保存的 AI 凭据无法由当前设备解密，请重新输入 API Key 或代理密码并保存；其他设置已保留。");
           }
         }
@@ -226,8 +238,13 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
     setPendingDeleteId(null);
     setMessage(null);
     try {
-      const saved = await window.cardVaultDesktop.saveAiSettings(buildDraftPayload());
-      setSettings(loadedPublicSettings(saved));
+      const saved = await window.cardVaultDesktop.saveAiSettings({
+        ...buildDraftPayload(),
+        studio: { model: settings.studio.model, keySource: settings.studio.keySource, apiKey: clearStudioKey ? "" : studioKey || undefined }
+      });
+      applySavedSettings(saved);
+      setStudioKey("");
+      setClearStudioKey(false);
       setProxyPassword("");
       setClearProxyPassword(false);
       setApiKeys(emptyApiKeys);
@@ -277,61 +294,71 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
       </UiElement>
 
       {isOpen ? <fieldset className="ai-settings-fields" disabled={isSaving}>
-        <div className="ai-provider-picker">
-          <label className="field"><span><UiText text="当前服务" /></span>
-            <select ref={providerSelect} title={settings.provider === "custom" ? currentCustom?.name : providerName(settings.provider)} value={selectedProviderValue} onChange={event => handleProviderChange(event.target.value)} disabled={!isDesktop}>
-              {Object.entries(builtInAiProviders).map(([id, provider]) => <option key={id} value={id}>{provider.name}</option>)}
-              {settings.customProviders.map(item => <option key={item.id} value={"custom:" + item.id}>{item.name || <UiText text="未命名配置" />}</option>)}
-            </select>
-          </label>
-          <div className="ai-provider-actions">
-            <button type="button" className="btn btn-secondary" onClick={addCustomProvider} disabled={!isDesktop}><UiText text="新增自定义 AI" /></button>
-            {settings.provider === "custom" && currentCustom ? <button ref={deleteButton} type="button" className="btn btn-secondary" onClick={() => setPendingDeleteId(currentCustom.id)} disabled={!isDesktop}><UiText text="删除当前配置" /></button> : null}
+        <SettingsSubsection title={locale === "en" ? "Recognition and analysis" : "识别与分析"}>
+          <div className="ai-provider-picker">
+            <label className="field"><span><UiText text="当前服务" /></span>
+              <select ref={providerSelect} title={settings.provider === "custom" ? currentCustom?.name : providerName(settings.provider)} value={selectedProviderValue} onChange={event => handleProviderChange(event.target.value)} disabled={!isDesktop}>
+                {Object.entries(builtInAiProviders).map(([id, provider]) => <option key={id} value={id}>{provider.name}</option>)}
+                {settings.customProviders.map(item => <option key={item.id} value={"custom:" + item.id}>{item.name || <UiText text="未命名配置" />}</option>)}
+              </select>
+            </label>
+            <div className="ai-provider-actions">
+              <button type="button" className="btn btn-secondary" onClick={addCustomProvider} disabled={!isDesktop}><UiText text="新增自定义 AI" /></button>
+              {settings.provider === "custom" && currentCustom ? <button ref={deleteButton} type="button" className="btn btn-secondary" onClick={() => setPendingDeleteId(currentCustom.id)} disabled={!isDesktop}><UiText text="删除当前配置" /></button> : null}
+            </div>
           </div>
-        </div>
 
-        {settings.provider === "custom" && currentCustom && pendingDeleteId === currentCustom.id ? <div className="ai-delete-confirmation" role="group" aria-label={t("删除自定义配置确认")}>
-          <p>{t("确认删除自定义配置“{0}”吗？保存设置后删除生效。").replace("{0}", currentCustom.name)}</p>
-          <div className="ai-provider-actions">
-            <button type="button" className="btn btn-secondary" onClick={deleteCurrentCustomProvider} onKeyDown={handleDeleteKey}><UiText text="确认删除" /></button>
-            <button ref={cancelDeleteButton} type="button" className="btn btn-secondary btn-quiet" onClick={cancelDelete} onKeyDown={handleDeleteKey}><UiText text="取消" /></button>
+          {settings.provider === "custom" && currentCustom && pendingDeleteId === currentCustom.id ? <div className="ai-delete-confirmation" role="group" aria-label={t("删除自定义配置确认")}>
+            <p>{t("确认删除自定义配置“{0}”吗？保存设置后删除生效。").replace("{0}", currentCustom.name)}</p>
+            <div className="ai-provider-actions">
+              <button type="button" className="btn btn-secondary" onClick={deleteCurrentCustomProvider} onKeyDown={handleDeleteKey}><UiText text="确认删除" /></button>
+              <button ref={cancelDeleteButton} type="button" className="btn btn-secondary btn-quiet" onClick={cancelDelete} onKeyDown={handleDeleteKey}><UiText text="取消" /></button>
+            </div>
+          </div> : null}
+
+          <div className="form-grid ai-common-fields">
+            {settings.provider === "custom" && currentCustom ? <label className="field full"><span><UiText text="显示名称 *" /></span><UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.name} onChange={event => updateCurrentCustom({ name: event.target.value })} placeholder="例如 OpenRouter、DeepSeek 或本地模型" disabled={!isDesktop} /></label> : null}
+            {builtInProvider && builtInSettings ? <label className="field full"><span>Endpoint</span><UiElement as="input" uiAttributes={["placeholder"]} value={builtInSettings.endpoint} onChange={event => setSettings(current => ({ ...current, [builtInProvider]: { ...current[builtInProvider], endpoint: event.target.value } }))} placeholder={emptySettings[builtInProvider].endpoint} disabled={!isDesktop} /></label>
+              : currentCustom ? <label className="field full"><span>Endpoint</span><input value={currentCustom.endpoint} onChange={event => updateCurrentCustom({ endpoint: event.target.value })} placeholder="https://example.com/v1/chat/completions" disabled={!isDesktop} /></label> : null}
+            {builtInProvider && builtInSettings ? <>
+              <label className="field"><span>Model</span><UiElement as="input" uiAttributes={["placeholder"]} value={builtInSettings.model} onChange={event => setSettings(current => ({ ...current, [builtInProvider]: { ...current[builtInProvider], model: event.target.value } }))} placeholder={emptySettings[builtInProvider].model} disabled={!isDesktop} /></label>
+              <label className="field"><span>API Key</span><UiElement as="input" uiAttributes={["placeholder"]} value={apiKeys[builtInProvider]} type="password" onChange={event => setApiKeys(current => ({ ...current, [builtInProvider]: event.target.value }))} placeholder={builtInSettings.hasApiKey ? "已保存；留空则不修改" : "请输入 API Key"} disabled={!isDesktop} /></label>
+            </> : currentCustom ? <>
+              <label className="field"><span>Model *</span><UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.model} onChange={event => updateCurrentCustom({ model: event.target.value })} placeholder="服务商提供的模型 ID" disabled={!isDesktop} /></label>
+              <label className="field"><span>API Key</span><UiElement as="input" uiAttributes={["placeholder"]} value={customApiKeys[currentCustom.id] || ""} type="password"
+                onChange={event => { setCustomApiKeys(current => ({ ...current, [currentCustom.id]: event.target.value })); setClearCustomApiKeys(current => ({ ...current, [currentCustom.id]: false })); }}
+                placeholder={currentCustom.hasApiKey ? "已保存；留空则不修改" : "本地无鉴权服务可留空"} disabled={!isDesktop} /></label>
+            </> : null}
+            {modelOptions.length > 0 ? <label className="field full"><span><UiText text="选择模型" /></span>
+              <select title={selectedModel} value={selectedModel} onChange={event => handleModelOptionChange(event.target.value)}><option value=""><UiText text="请选择" /></option>{modelOptions.map(model => <option key={model} value={model}>{model}</option>)}</select>
+            </label> : null}
+            {settings.provider === "custom" && currentCustom ? <>
+                {currentCustom.hasApiKey ? <label className="field ai-key-status-field"><span><UiText text="已保存密钥" /></span><span><input type="checkbox" checked={Boolean(clearCustomApiKeys[currentCustom.id])}
+                  onChange={event => { setClearCustomApiKeys(current => ({ ...current, [currentCustom.id]: event.target.checked })); if (event.target.checked) setCustomApiKeys(current => ({ ...current, [currentCustom.id]: "" })); }} disabled={!isDesktop} /> <UiText text="保存时清除 API Key" /></span></label> : null}
+                <label className="field full"><span><UiText text="模型列表 Endpoint（可选）" /></span><UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.modelsEndpoint} onChange={event => updateCurrentCustom({ modelsEndpoint: event.target.value })} placeholder="留空时从 /chat/completions 自动推断 /models" disabled={!isDesktop} /></label>
+              </> : settings.provider === "custom" ? <p className="muted full"><UiText text="尚未创建自定义配置，请点击“新增自定义 AI”。" /></p> : null}
           </div>
-        </div> : null}
-
-        <div className="form-grid ai-common-fields">
-          {settings.provider === "custom" && currentCustom ? <label className="field full"><span><UiText text="显示名称 *" /></span><UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.name} onChange={event => updateCurrentCustom({ name: event.target.value })} placeholder="例如 OpenRouter、DeepSeek 或本地模型" disabled={!isDesktop} /></label> : null}
-          {builtInProvider && builtInSettings ? <label className="field full"><span>Endpoint</span><UiElement as="input" uiAttributes={["placeholder"]} value={builtInSettings.endpoint} onChange={event => setSettings(current => ({ ...current, [builtInProvider]: { ...current[builtInProvider], endpoint: event.target.value } }))} placeholder={emptySettings[builtInProvider].endpoint} disabled={!isDesktop} /></label>
-            : currentCustom ? <label className="field full"><span>Endpoint</span><input value={currentCustom.endpoint} onChange={event => updateCurrentCustom({ endpoint: event.target.value })} placeholder="https://example.com/v1/chat/completions" disabled={!isDesktop} /></label> : null}
-          {builtInProvider && builtInSettings ? <>
-            <label className="field"><span>Model</span><UiElement as="input" uiAttributes={["placeholder"]} value={builtInSettings.model} onChange={event => setSettings(current => ({ ...current, [builtInProvider]: { ...current[builtInProvider], model: event.target.value } }))} placeholder={emptySettings[builtInProvider].model} disabled={!isDesktop} /></label>
-            <label className="field"><span>API Key</span><UiElement as="input" uiAttributes={["placeholder"]} value={apiKeys[builtInProvider]} type="password" onChange={event => setApiKeys(current => ({ ...current, [builtInProvider]: event.target.value }))} placeholder={builtInSettings.hasApiKey ? "已保存；留空则不修改" : "请输入 API Key"} disabled={!isDesktop} /></label>
-          </> : currentCustom ? <>
-            <label className="field"><span>Model *</span><UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.model} onChange={event => updateCurrentCustom({ model: event.target.value })} placeholder="服务商提供的模型 ID" disabled={!isDesktop} /></label>
-            <label className="field"><span>API Key</span><UiElement as="input" uiAttributes={["placeholder"]} value={customApiKeys[currentCustom.id] || ""} type="password"
-              onChange={event => { setCustomApiKeys(current => ({ ...current, [currentCustom.id]: event.target.value })); setClearCustomApiKeys(current => ({ ...current, [currentCustom.id]: false })); }}
-              placeholder={currentCustom.hasApiKey ? "已保存；留空则不修改" : "本地无鉴权服务可留空"} disabled={!isDesktop} /></label>
-          </> : null}
-          {modelOptions.length > 0 ? <label className="field full"><span><UiText text="选择模型" /></span>
-            <select title={selectedModel} value={selectedModel} onChange={event => handleModelOptionChange(event.target.value)}><option value=""><UiText text="请选择" /></option>{modelOptions.map(model => <option key={model} value={model}>{model}</option>)}</select>
-          </label> : null}
-          {settings.provider === "custom" && currentCustom ? <>
-              {currentCustom.hasApiKey ? <label className="field ai-key-status-field"><span><UiText text="已保存密钥" /></span><span><input type="checkbox" checked={Boolean(clearCustomApiKeys[currentCustom.id])}
-                onChange={event => { setClearCustomApiKeys(current => ({ ...current, [currentCustom.id]: event.target.checked })); if (event.target.checked) setCustomApiKeys(current => ({ ...current, [currentCustom.id]: "" })); }} disabled={!isDesktop} /> <UiText text="保存时清除 API Key" /></span></label> : null}
-              <label className="field full"><span><UiText text="模型列表 Endpoint（可选）" /></span><UiElement as="input" uiAttributes={["placeholder"]} value={currentCustom.modelsEndpoint} onChange={event => updateCurrentCustom({ modelsEndpoint: event.target.value })} placeholder="留空时从 /chat/completions 自动推断 /models" disabled={!isDesktop} /></label>
-            </> : settings.provider === "custom" ? <p className="muted full"><UiText text="尚未创建自定义配置，请点击“新增自定义 AI”。" /></p> : null}
-        </div>
-        <StudioRecovery hasKey={settings.openai.hasApiKey} />
+          <div className="ai-actions">
+            <button type="button" className="btn btn-secondary" onClick={handleTest} disabled={isTesting || !testable}>{isTesting ? <UiText text="测试中..." /> : <UiText text="测试连接" />}</button>
+            <button type="button" className="btn btn-secondary" onClick={handleLoadModels} disabled={isLoadingModels || !modelsReadable}>{isLoadingModels ? <UiText text="读取中..." /> : <UiText text="读取模型" />}</button>
+          </div>
+          {testRoute ? <p className="muted ai-route-result"><UiText text={{ direct: "直连设置", bypass: "绕过规则", manual: "手动代理", environment: "环境代理", system: "系统规则" }[testRoute.source]} /> · <UiText text={testRoute.connection === "direct" ? "直连" : "经代理连接"} />{testRoute.protocol ? ` (${testRoute.protocol.toUpperCase()})` : ""}</p> : null}
+          {textTestPassed ? <p className="muted ai-capability-result"><UiText text="文本连接通过；图片识别能力需另行确认。" /></p> : null}
+        </SettingsSubsection>
+        <StudioRecovery hasKey={savedStudioKey}>
+          <StudioConfiguration key={saveRevision}
+            value={settings.studio} onChange={patch => setSettings(current => ({ ...current, studio: { ...current.studio, ...patch } }))}
+            secret={studioKey} onSecret={value => { setStudioKey(value); setClearStudioKey(false); }}
+            clear={clearStudioKey} onClear={value => { setClearStudioKey(value); if (value) setStudioKey(""); }}
+            disabled={!isDesktop} />
+        </StudioRecovery>
         <AiProxySettings value={settings.proxy} onChange={patch => setSettings(current => ({ ...current, proxy: { ...current.proxy, ...patch } }))} password={proxyPassword} onPassword={setProxyPassword} clearPassword={clearProxyPassword} onClearPassword={setClearProxyPassword} disabled={!isDesktop} />
         <div className="ai-actions">
           <button type="button" className="btn btn-secondary" onClick={handleSave} disabled={isDesktop !== true || isSaving}>{isSaving ? <UiText text="保存中..." /> : <UiText text="保存设置" />}</button>
-          <button type="button" className="btn btn-secondary" onClick={handleTest} disabled={isTesting || !testable}>{isTesting ? <UiText text="测试中..." /> : <UiText text="测试连接" />}</button>
-          <button type="button" className="btn btn-secondary" onClick={handleLoadModels} disabled={isLoadingModels || !modelsReadable}>{isLoadingModels ? <UiText text="读取中..." /> : <UiText text="读取模型" />}</button>
         </div>
         {isDesktop === false ? <p className="muted" style={{ margin: "0.65rem 0 0" }}><UiText text="当前不是桌面端环境，界面内保存不可用；开发态可通过 .env.local 配置 AI 服务商。" /></p> : null}
       </fieldset> : null}
       {message ? <p className="muted" role="status" style={{ margin: "0.65rem 0 0" }}><UiText text={message} /></p> : null}
-      {testRoute ? <p className="muted ai-route-result"><UiText text={{ direct: "直连设置", bypass: "绕过规则", manual: "手动代理", environment: "环境代理", system: "系统规则" }[testRoute.source]} /> · <UiText text={testRoute.connection === "direct" ? "直连" : "经代理连接"} />{testRoute.protocol ? ` (${testRoute.protocol.toUpperCase()})` : ""}</p> : null}
-      {textTestPassed ? <p className="muted ai-capability-result"><UiText text="文本连接通过；图片识别能力需另行确认。" /></p> : null}
     </section>
   );
 }

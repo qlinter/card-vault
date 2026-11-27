@@ -1,12 +1,12 @@
-import { withUiDatabase as fixture } from './database-fixture.mjs';
+import { withUiDatabase as fixture, deleteTestDraft } from './database-fixture.mjs';
 import { expect, test } from "@playwright/test";
 
-const statuses = ["holding", "pending_grading", "grading", "listed", "sold"];
-const labels = ["持有", "待送评", "送评中", "待售", "已售"];
+const statuses = ["holding", "pending_grading", "grading", "listed", "sold", "gifted"];
+const labels = ["持有", "待送评", "送评中", "待售", "已售", "已赠出"];
 test.afterEach(async ({ page, request, baseURL }) => {
   const draft = new URL(page.url()).searchParams.get("draft");
   await page.goto("about:blank");
-  if (draft) await request.delete(`/api/card-entry/drafts/${draft}`, { headers: { Origin: baseURL } });
+  if (draft) await deleteTestDraft(request, baseURL, draft);
   fixture(db => {
     db.prepare("UPDATE Card SET collectionStatus='holding' WHERE id='ui-card-1'").run();
     db.prepare("DELETE FROM Card WHERE cardTitle='Collection status test'").run();

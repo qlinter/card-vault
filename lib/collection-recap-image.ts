@@ -1,3 +1,5 @@
+import { localBusinessDay } from "./financial-business-day";
+import { historicalStatusLabel } from "./card-domain";
 import "server-only";
 import sharp, { type OverlayOptions } from "sharp";
 import { lstat, realpath } from "node:fs/promises";
@@ -23,7 +25,7 @@ export async function renderRecapImage(input: { spec: RecapSpec; summary: RecapS
   const text = (value: string, x: number, at: number, size = 26, weight = 400, fill = "#283141", anchor = "start") => `<text x="${x}" y="${at}" font-size="${size}" font-weight="${weight}" fill="${fill}" text-anchor="${anchor}">${escape(value)}</text>`;
   const lines = (value: string, size: number, columns: number, weight = 400) => { for (const line of wrap(value, columns)) { parts.push(text(line, margin, y, size, weight)); y += size * 1.5; } };
   lines(input.title, 50, 21, 700); y += 12;
-  lines(`${spec.year}${spec.month ? ` / ${spec.month}` : ""} · ${t(spec.basis === "purchase" ? "购入回顾" : "录入回顾")}${summary.inProgress ? ` · ${t("截至当前")} ${summary.asOf.slice(0, 10)}` : ""}`, 24, 43);
+  lines(`${spec.year}${spec.month ? ` / ${spec.month}` : ""} · ${t(spec.basis === "purchase" ? "取得回顾" : spec.basis === "outgoing" ? "转出回顾" : "录入回顾")}${summary.inProgress ? ` · ${t("截至当前")} ${localBusinessDay(new Date(summary.asOf)).toISOString().slice(0, 10)}` : ""}`, 24, 43);
   lines(t(input.includePrivate ? "包含私密卡牌" : "已排除私密卡牌"), 22, 48); y += 28;
   const stats = recapStats(spec, summary);
   for (const [index, stat] of stats.entries()) { const x = margin + (index % 3) * 355 + 165, at = y + Math.floor(index / 3) * 100; parts.push(text(String(stat.value), x, at + 36, 40, 700, "#283141", "middle"), text(t(stat.label), x, at + 74, 23, 400, "#283141", "middle")); }
@@ -31,7 +33,7 @@ export async function renderRecapImage(input: { spec: RecapSpec; summary: RecapS
   const chart = recapChart(spec, summary), step = (width - margin * 2) / chart.length, maximum = Math.max(1, ...chart.map(row => row.count));
   for (const [index, item] of chart.entries()) { const x = margin + index * step + (step - 40) / 2, height = Math.max(3, 80 * item.count / maximum); parts.push(`<rect x="${x}" y="${y - height}" width="40" height="${height}" rx="5" fill="#78889a"/>`, text(String(item.count), x + 20, y - height - 10, 19, 400, "#283141", "middle"), text(item.label + t(spec.month ? "日" : "月"), x + 20, y + 30, 20, 400, "#283141", "middle")); }
   y += 68;
-  if (summary.missingPurchases) lines(t("范围内 {0} 个档案没有购入记录，未纳入购入回顾。").replace("{0}", String(summary.missingPurchases)), 22, 48);
+  if (summary.missingPurchases) lines(t("范围内 {0} 个档案没有取得记录，未纳入取得回顾。").replace("{0}", String(summary.missingPurchases)), 22, 48);
   y += 16; lines(t("代表卡牌"), 30, 35, 700);
   const uploads = await realpath(getUploadsDir());
   for (const [index, card] of cards.entries()) {
@@ -48,7 +50,7 @@ export async function renderRecapImage(input: { spec: RecapSpec; summary: RecapS
     if (!available) parts.push(text(t("暂无卡图"), x + 150, top + 230, 26));
     parts.push(text(wrap(card.playerName, 22)[0] ?? "", x, top + 482, 27, 700));
     for (const [line, title] of wrap(card.cardTitle, 27).slice(0, 2).entries()) parts.push(text(title, x, top + 518 + line * 31, 23));
-    if (card.collectionStatus === "sold") parts.push(text(t("当前已售出"), x, top + 579, 20));
+    if (historicalStatusLabel(card.collectionStatus)) parts.push(text(t(historicalStatusLabel(card.collectionStatus)), x, top + 579, 20));
   }
   y += Math.ceil(cards.length / 2) * 590 + 30;
   lines(t("数据按当前档案重新计算"), 21, 50);

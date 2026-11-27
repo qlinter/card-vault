@@ -18,6 +18,7 @@
   gradingLink: string;
   visibility: string;
   collectionStatus: string;
+  acquisitionMethod: string;
   purchaseDate: string;
   initialQuantity: string;
   purchasePrice: string;
@@ -58,6 +59,7 @@ export const emptyCardFormValues: CardFormValues = {
   gradingLink: "",
   visibility: "private",
   collectionStatus: "holding",
+  acquisitionMethod: "purchase",
   purchaseDate: "",
   initialQuantity: "1",
   purchasePrice: "",

@@ -1,7 +1,7 @@
 const path = require("node:path");
 const { initializeDatabase } = require("./database-schema");
 const { generateHomeThumbnails } = require("./generate-home-thumbnails");
-const { resolveDbPath } = require("./storage-paths");
+const { resolveDbPath } = require("../lib/storage-paths-core.js");
 
 const rootDir = path.resolve(__dirname, "..");
 

@@ -1,3 +1,4 @@
+import { localBusinessDay } from "./financial-business-day.ts";
 import type { PortfolioCardRecord } from "./portfolio-analysis-types.ts";
 import type { buildReportingPortfolio } from "./portfolio-reporting.ts";
 import { assessPortfolioCardQuality } from "./portfolio-quality.ts";
@@ -10,6 +11,20 @@ function incrementGroup(groups: DataWorkspace["physical"], field: StructureField
   const values = groups[field] ||= {};
   // User-entered names may match Object.prototype properties, including __proto__.
   Object.defineProperty(values, name, { value: dataGroupCount(groups, field, name) + amount, enumerable: true, writable: true, configurable: true });
+}
+
+function lastActivityDay(card: PortfolioCardRecord, asOf: Date) {
+  let latest = "";
+  const include = (date?: Date) => {
+    if (!date || date > asOf) return;
+    const day = date.toISOString().slice(0, 10);
+    if (day > latest) latest = day;
+  };
+  if (card.createdAt) include(localBusinessDay(card.createdAt));
+  for (const row of card.transactions) include(row.occurredAt ?? row.createdAt);
+  for (const row of card.expenses) include(row.occurredAt ?? row.createdAt);
+  for (const row of card.valuations) include(row.valuedAt);
+  return latest || null;
 }
 
 /** Reuse the financial pass; summary tabs retain aggregates and five positions only. */
@@ -42,6 +57,8 @@ export function createDataCollector(asOf = new Date(), { includeRows = true }: {
         netSales: position && position.profitComplete && card.costMissing.length === 0 ? minorMoneyToNumber(position.netSaleAmountMinor, currency) : null,
         soldCost: position && position.costComplete && card.costMissing.length === 0 ? minorMoneyToNumber(position.realizedCostMinor, currency) : null,
         returnRate: position && position.profitComplete && card.costMissing.length === 0 && position.realizedCostMinor > 0n ? Number(position.realizedProfitMinor) / Number(position.realizedCostMinor) * 100 : null,
+        lastActivityDay: lastActivityDay(original, asOf),
+        givenQuantity: position?.givenQuantity ?? 0,
         soldQuantity: position?.soldQuantity || 0,
         soldAt: card.transactions.filter(item => item.kind === "sale").map(item => (item.occurredAt || item.createdAt)?.toISOString() || "").sort().at(-1) || null,
         valuedAt: fact.valuation?.valuedAt.toISOString() || null, issues: [...new Map(issues.map(issue => [issue.key, issue])).values()]

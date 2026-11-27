@@ -4,7 +4,7 @@ import { UiText } from "@/components/ui-text";
 import { useEffect, useRef, useState } from "react";
 import { errorMessage } from "@/lib/feedback-messages";
 
-import { type ShareThemeCard, type ShareThemeField, type ShareThemeValues } from "@/lib/share-theme-domain";
+import { toShareThemeCard, type ShareThemeCard, type ShareThemeField, type ShareThemeValues } from "@/lib/share-theme-domain";
 
 type ShareThemeGeneratorProps = {
   cards: ShareThemeCard[];
@@ -53,7 +53,7 @@ export function ShareThemeGenerator({ cards, currentValues, onApplySuggestion }:
         signal: controller.signal,
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ current: currentValues, cards })
+        body: JSON.stringify({ current: currentValues, cards: cards.map(toShareThemeCard) })
       });
       const data = (await response.json()) as { suggestion?: Partial<Record<ShareThemeField, unknown>>; error?: string };
       if (controller.signal.aborted) return;

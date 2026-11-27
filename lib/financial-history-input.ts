@@ -1,3 +1,4 @@
+import { isGift } from "./financial-history.ts";
 import type { UpdateExpenseInput, UpdateTransactionInput, UpdateValuationInput } from "./financial-history-store.ts";
 import { optionalText } from "./form-data.ts";
 
@@ -20,12 +21,13 @@ function positiveInteger(formData: FormData, name: string): number {
   return value;
 }
 
-export function transactionInput(formData: FormData): UpdateTransactionInput {
+export function transactionInput(formData: FormData, editing = false): UpdateTransactionInput {
   if (optionalText(formData, "secondaryAmount")) throw new Error("每笔交易只能填写一种币种的金额。");
+  const kind = requiredText(formData, "kind", "交易类型");
   return {
-    kind: requiredText(formData, "kind", "交易类型"),
-    amount: requiredText(formData, "amount", "金额"),
-    currency: requiredText(formData, "currency", "币种"),
+    kind,
+    amount: isGift(kind) ? "0" : editing ? optionalText(formData, "amount") ?? "" : requiredText(formData, "amount", "金额"),
+    currency: isGift(kind) ? "CNY" : requiredText(formData, "currency", "币种"),
     quantity: positiveInteger(formData, "quantity"),
     amountKnown: true,
     occurredAt: requiredDate(formData, "occurredAt"),

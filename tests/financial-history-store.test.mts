@@ -128,3 +128,17 @@ test("sale expenses save at card level without a transaction lookup", async () =
   assert.equal(calls[0].data.amountMinor, 1200n);
   assert.ok(!("transactionId" in calls[0].data));
 });
+
+test("all four inventory transaction types reject future dates on creation and correction", async () => {
+  const current = {currency:"CNY",paymentsJson:null};
+  const {client,calls} = captureClient();
+  client.cardTransaction.findFirst = (async () => current) as typeof client.cardTransaction.findFirst;
+  const future = new Date();
+  future.setUTCFullYear(future.getUTCFullYear()+1);
+  for (const kind of ["purchase","gift_in","sale","gift_out"]) {
+    const input = {kind, amount:"0", currency:"CNY", quantity:1, occurredAt:future};
+    await assert.rejects(createCardTransaction(client,{cardId:"one",...input}),/交易日期不能晚于今天/);
+    await assert.rejects(updateCardTransaction(client,"one","trade",input,recordVersion(current)),/交易日期不能晚于今天/);
+  }
+  assert.equal(calls.length,0);
+});

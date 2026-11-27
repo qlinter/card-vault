@@ -8,8 +8,8 @@ export function ImportJobResults({ job, busy, paused, stop, ...actions }: Props)
   const l = (zh: string, en: string) => locale === "en" ? en : zh;
   const { onMore, onRepreview, onApply, onPause, onUndoRequest, onUndoConfirm, onUndoCancel } = actions;
   const statusLabel = (status: string) => ({ preview: l("待预演确认", "Preview ready"), running: l("执行中", "Running"), complete: l("已完成", "Complete"), partial: l("部分完成", "Partially complete"), "undo-running": l("撤销中", "Undoing"), "undo-partial": l("部分撤销", "Partially undone"), pending: l("待执行", "Pending"), applied: l("已完成", "Applied"), failed: l("失败", "Failed"), skipped: l("跳过", "Skipped"), undone: l("已撤销", "Undone"), "undo-failed": l("撤销冲突", "Undo conflict") }[status] ?? status);
-  return <section className="panel management-section" aria-live="polite">
-      <h2>{l("批次预演与结果", "Batch preview & results")}</h2>
+  return <section className="management-section" aria-live="polite">
+      <h4>{l("批次预演与结果", "Batch preview & results")}</h4>
       <p>{job.id} · {statusLabel(job.status)} · {job.total}</p>
       {paused ? <p role="status">{l("已在当前批次完成后暂停，可继续执行。", "Paused after the current chunk. You can continue.")}</p> : null}
       <div className="management-toolbar">{["pending", "applied", "failed", "skipped", "undone", "undo-failed"].map(status => <span key={status}>{statusLabel(status)}: {job.counts[status] || 0}</span>)}</div>

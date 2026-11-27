@@ -75,9 +75,9 @@ function showcaseQuerySuffix(query: ShowcaseQuery): string {
   return params.toString();
 }
 
-export function buildShowcaseHref(query: ShowcaseQuery): string {
+export function buildShowcaseHref(query: ShowcaseQuery, basePath = "/showcase"): string {
   const suffix = showcaseQuerySuffix(query);
-  return suffix ? `/showcase?${suffix}` : "/showcase";
+  return suffix ? `${basePath}?${suffix}` : basePath;
 }
 
 export function buildShowcaseCardHref(cardId: string, query: ShowcaseQuery, basePath = "/showcase/cards"): string {

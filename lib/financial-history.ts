@@ -4,7 +4,10 @@ export { valuationSources };
 export const defaultHistoryCurrency = "CNY";
 export const supportedHistoryCurrencies = ["CNY", "USD"] as const;
 
-export const transactionKinds = ["purchase", "sale"] as const;
+export const transactionKinds = ["purchase", "sale", "gift_in", "gift_out"] as const;
+export const isGift = (kind: string) => kind === "gift_in" || kind === "gift_out";
+export const isOutgoing = (kind: string) => kind === "sale" || kind === "gift_out";
+export const isIncoming = (kind: string) => kind === "purchase" || kind === "gift_in";
 export const expenseKinds = [
   "grading",
   "shipping",

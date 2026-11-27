@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { DraftConflictError } from "@/lib/card-write-guards";
 import { saveCardEntryDraft } from "@/lib/card-entry-drafts";
 import { normalizeCardEntryId } from "@/lib/card-entry-domain";
 import { cardEntryErrorResponse } from "@/lib/card-entry-route";
@@ -11,7 +12,7 @@ class DraftRequestTooLargeError extends Error {}
 
 async function readDraftPayload(
   request: NextRequest
-): Promise<{ id?: unknown; values?: unknown; frontChoice?: unknown; imageRotations?: unknown }> {
+): Promise<{ id?: unknown; expectedVersion?: unknown; queueItemId?: unknown; queuedImageRotations?: unknown; values?: unknown; frontChoice?: unknown; imageRotations?: unknown }> {
   if (!request.body) return {};
   const reader = request.body.getReader();
   const decoder = new TextDecoder();
@@ -29,7 +30,7 @@ async function readDraftPayload(
     body += decoder.decode(value, { stream: true });
   }
   body += decoder.decode();
-  return JSON.parse(body) as { id?: unknown; values?: unknown; imageRotations?: unknown };
+  return JSON.parse(body);
 }
 
 export async function POST(request: NextRequest) {
@@ -43,8 +44,8 @@ export async function POST(request: NextRequest) {
       const id = normalizeCardEntryId(form.get("id"));
       if (form.has("id") && !id) throw new Error("草稿编号无效。");
       const images = form.getAll("images").filter((file): file is File => file instanceof File);
-      const draft = await saveCardEntryDraft({ id, frontChoice: form.get("frontChoice"), values: JSON.parse(values), images, imageRotations: JSON.parse(String(form.get("imageRotations") || "[]")) });
-      return NextResponse.json({ id: draft.id, updatedAt: draft.updatedAt.toISOString() });
+      const draft = await saveCardEntryDraft({ id, queueItemId: form.get("queueItemId"), queuedImageRotations: JSON.parse(String(form.get("queuedImageRotations") ?? "null")), expectedVersion: form.get("expectedVersion"), frontChoice: form.get("frontChoice"), values: JSON.parse(values), images, imageRotations: JSON.parse(String(form.get("imageRotations") || "[]")) });
+      return NextResponse.json(draft);
     }
     if (contentLength > maxDraftRequestBytes) {
       return NextResponse.json({ error: "草稿内容过大。" }, { status: 413 });
@@ -54,9 +55,10 @@ export async function POST(request: NextRequest) {
     if (payload.id !== undefined && !id) {
       return NextResponse.json({ error: "草稿编号无效。" }, { status: 400 });
     }
-    const draft = await saveCardEntryDraft({ id, frontChoice: payload.frontChoice, values: payload.values, imageRotations: payload.imageRotations });
-    return NextResponse.json({ id: draft.id, updatedAt: draft.updatedAt.toISOString() });
+    const draft = await saveCardEntryDraft({ id, queueItemId: payload.queueItemId, queuedImageRotations: payload.queuedImageRotations, expectedVersion: payload.expectedVersion, frontChoice: payload.frontChoice, values: payload.values, imageRotations: payload.imageRotations });
+    return NextResponse.json(draft);
   } catch (error) {
+    if (error instanceof DraftConflictError) return NextResponse.json({ error: error.message }, { status: 409 });
     if (error instanceof DraftRequestTooLargeError) {
       return NextResponse.json({ error: error.message }, { status: 413 });
     }

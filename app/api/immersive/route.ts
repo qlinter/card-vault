@@ -3,7 +3,8 @@ import path from "node:path";
 import { getThumbnailsDir } from "@/lib/storage-paths";
 import { ensureHomeThumbnail } from "@/lib/card-thumbnail-core.js";
 import { existingStudioFile, studioImageUrl } from "@/lib/studio-images";
-import { readFile } from "node:fs/promises";
+import { studioAssetVersion } from "@/lib/studio-crop";
+import { open, readFile } from "node:fs/promises";
 import type { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -39,7 +40,8 @@ export async function GET(request: NextRequest) {
     if (guest && (rawSpec !== null || rawIds !== null || params.has("excludeSold"))) {
       return NextResponse.json({ error: "guest-read-only" }, { ...responseOptions, status: 403 });
     }
-    const spec = rawSpec === null ? undefined : normalizeRecapSpec(JSON.parse(rawSpec));
+    const now = new Date();
+    const spec = rawSpec === null ? undefined : normalizeRecapSpec(JSON.parse(rawSpec), now);
     const id = params.get("id");
     const cursor = params.get("cursor");
     const scope = spec ? recapWhere(spec) : toShowcaseWhere({
@@ -49,7 +51,7 @@ export async function GET(request: NextRequest) {
     if (guest && cursor && !id && !await prisma.card.findFirst({ where: { AND: [scope, { id: cursor }] }, select: { id: true } })) {
       return NextResponse.json({ ids: [], nextCursor: null }, responseOptions);
     }
-    if (!spec && params.get("excludeSold") === "1") conditions.push({ collectionStatus: { not: "sold" } });
+    if (!spec && params.get("excludeSold") === "1") conditions.push({ holdingQuantity: { gt: 0 } });
     if (rawIds !== null) conditions.push({ id: { in: representativeIds(JSON.parse(rawIds)) } });
     if (id) conditions.push({ id });
     else if (cursor && spec) conditions.push({ id: { gt: cursor } });
@@ -66,12 +68,12 @@ export async function GET(request: NextRequest) {
     // Recap periods are evaluated on decoded dates, including legacy SQLite timestamp formats.
     // Advance the cursor over the scanned rows even if no card in the batch matches the period.
     const recapBatch = spec
-      ? await prisma.card.findMany({ ...query, select: { ...select, ...recapActivitySelect } })
+      ? await prisma.card.findMany({ ...query, select: { ...select, ...recapActivitySelect(spec) } })
       : null;
     const batch = recapBatch ?? await prisma.card.findMany({ ...query, select });
     const matching = spec && recapBatch
       ? recapBatch.flatMap(({ createdAt, transactions, ...card }) =>
-          recapActivity(spec, { createdAt, transactions }).length ? [card] : [])
+          recapActivity(spec, { createdAt, transactions }, now).length ? [card] : [])
       : batch;
     if (id) {
       const card = matching[0];
@@ -85,7 +87,12 @@ export async function GET(request: NextRequest) {
         }
         if (params.get("studio") === "png") {
           if (!file) return new Response(null, { status: 404 });
-          return new Response(new Uint8Array(await readFile(file)), { headers: { "Content-Type": "image/png", "Cache-Control": "private, no-store" } });
+          const handle = await open(file);
+          try {
+            const version = params.get("v");
+            if (version && version !== studioAssetVersion(file, await handle.stat())) return new Response(null, {status:409});
+            return new Response(new Uint8Array(await handle.readFile()), {headers:{"Content-Type":"image/png","Cache-Control":"private, no-store"}});
+          } finally { await handle.close(); }
         }
         const images = file ? [{ id: "studio-" + card.images[0].id, path: studioImageUrl(id), rotation: 0 }] : card.images.slice(0, 1);
         return NextResponse.json({ card: { ...card, images } }, responseOptions);

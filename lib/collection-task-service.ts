@@ -5,7 +5,7 @@ import type { TaskCard } from "./collection-tasks";
 
 export const taskCardSelect = {
   id: true, playerName: true, cardTitle: true, collectionStatus: true, createdAt: true, updatedAt: true, tracking: true,
-  _count: { select: { images: true, transactions: { where: { kind: "purchase", amountKnown: true } } } },
+  _count: { select: { images: true, transactions: { where: { kind: {in:["purchase","gift_in"]}, amountKnown: true } } } },
   transactions: { where: { kind: "purchase", amountKnown: false }, take: 1, select: { id: true } }
 } as const satisfies Prisma.CardSelect;
 

@@ -1,7 +1,7 @@
 import { DataCenter } from "./data-center";
 import { StorageSettings } from "./storage-settings";
 import { BackupSettings } from "./backup-settings";
-import { resolveConfiguredDataDir } from "@/lib/storage-resolver";
+import { resolveConfiguredDataDir } from "@/lib/storage-paths";
 
 export function DataWorkspace({ embedded = false }: { embedded?: boolean }) {
   return (

@@ -12,7 +12,8 @@ test('database preparation failure preserves the previous build and skips compil
   fs.mkdirSync(path.join(root, '.next'));
   fs.writeFileSync(path.join(root, '.next', 'BUILD_ID'), 'previous-build');
   fs.copyFileSync(path.join(__dirname, '../scripts/prepare-local.js'), path.join(root, 'scripts', 'prepare-local.js'));
-  fs.writeFileSync(path.join(root, 'scripts', 'storage-paths.js'), `module.exports = Object.fromEntries(['resolveShareBackgroundsDir','resolveShareCoversDir','resolveThumbnailsDir','resolveUploadsDir'].map(name => [name, root => require('node:path').join(root,'data',name)]));`);
+  fs.mkdirSync(path.join(root, 'lib'));
+  fs.writeFileSync(path.join(root, 'lib', 'storage-paths-core.js'), `module.exports = Object.fromEntries(['resolveShareBackgroundsDir','resolveShareCoversDir','resolveThumbnailsDir','resolveUploadsDir'].map(name => [name, root => require('node:path').join(root,'data',name)]));`);
   fs.writeFileSync(path.join(root, 'scripts', 'init-db.js'), 'process.stderr.write("Invalid database fixture"); process.exitCode=1;');
   const result = spawnSync(process.execPath, [path.join(root, 'scripts', 'prepare-local.js')], { cwd: root, encoding: 'utf8', windowsHide: true, timeout: 15000 });
   assert.equal(result.status, 1);

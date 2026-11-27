@@ -65,6 +65,7 @@ function getAiSettingsFile(): AiSettingsFile {
 
   return normalizeSettings({
     provider,
+    studio: { ...fileSettings.studio, apiKey: process.env.CARD_VAULT_STUDIO_API_KEY ?? fileSettings.studio.apiKey },
     proxy: runtimeProxySettings() ?? fileSettings.proxy,
     activeCustomId: process.env.CARD_VAULT_CUSTOM_AI_ACTIVE_ID || fileSettings.activeCustomId,
     openai: {
@@ -101,8 +102,8 @@ export function hasStudioKey() {
 }
 
 export function getStudioAiSettings() {
-  const { openai, proxy } = getAiSettingsFile();
-  return { apiKey: openai.apiKey, model: openai.model, proxy };
+  const { studio, openai, proxy } = getAiSettingsFile();
+  return { apiKey: studio.keySource === "independent" ? studio.apiKey : openai.apiKey, imageModel: studio.model, proxy };
 }
 
 export function getAiSettings(): ActiveAiSettings {

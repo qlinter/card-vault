@@ -4,7 +4,8 @@ const day = 86400000;
 
 export function createPortfolioCacheBoundary(asOf: Date) {
   const start = asOf.getTime();
-  let until = Math.min(start + 60000, Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), asOf.getUTCDate() + 1));
+  const midnight = new Date(asOf); midnight.setHours(24, 0, 0, 0);
+  let until = Math.min(midnight.getTime(), start + 60000, Date.UTC(asOf.getUTCFullYear(), asOf.getUTCMonth(), asOf.getUTCDate() + 1));
   const consider = (time: number) => { if (Number.isFinite(time) && time > start) until = Math.min(until, time); };
   function add(cards: PortfolioCardRecord[]) {
     for (const card of cards) {

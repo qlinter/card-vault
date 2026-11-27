@@ -9,7 +9,7 @@ const {
   resolveDbPath,
   resolveThumbnailsDir,
   resolveUploadsDir
-} = require("./storage-paths");
+} = require("../lib/storage-paths-core.js");
 
 const rootDir = path.resolve(__dirname, "..");
 

@@ -200,7 +200,7 @@ async function main() {
       db.prepare("UPDATE CardValuation SET valuedAt=? WHERE cardId='perf-00001'").run(today + "T00:00:00.000Z");
       await get("/api/cards");
       db.exec("UPDATE CardReport SET valueMinor=NULL WHERE cardId='perf-00001'; DELETE FROM ReportWrites");
-      db.prepare("UPDATE DataRevision SET projectionDay=? WHERE id=1").run(yesterday);
+      db.prepare("UPDATE DataRevision SET projectionDay=? WHERE id=1").run("business-day-v1:" + yesterday);
       await get("/api/cards");
       assert.equal(db.prepare("SELECT valueMinor FROM CardReport WHERE cardId='perf-00001'").get().valueMinor, 123456);
       assert.deepEqual(db.prepare("SELECT cardId FROM ReportWrites").all().map(row => row.cardId), ["perf-00001"]);

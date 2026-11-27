@@ -5,7 +5,7 @@ const image = 'tests/fixtures/ui-media/showcase-bg.webp';
 
 test('recognition uses the first two archive files and restores them after closing the alternate source', async ({ page }) => {
   const names = [];
-  await page.route('**/api/card-entry/drafts', route => route.fulfill({ json: { id: 'recognition-source-draft', updatedAt: new Date().toISOString() } }));
+  await page.route('**/api/card-entry/drafts', route => route.fulfill({ json: { id: 'recognition-source-draft', version: 'mock', updatedAt: new Date().toISOString() } }));
   await page.route('**/api/ai/recognize-card', async route => {
     const body = route.request().postDataBuffer().toString('latin1');
     names.push(Array.from(body.matchAll(/filename="([^"]+)"/g), match => match[1]));
@@ -133,7 +133,11 @@ for (const locale of ['zh', 'en']) {
 
   test(`required fields and server failures retain inputs with reachable feedback (${locale})`, async ({ page, context, baseURL }) => {
     if (locale === 'en') await context.addCookies([{ name: 'card_vault_ui_locale', value: 'en', url: baseURL }]);
-    await page.route('**/api/card-entry/drafts', route => route.fulfill({ json: { id: `entry-feedback-${locale}`, updatedAt: new Date().toISOString() } }));
+    // Allow broken image bytes through draft sync to exercise the final card action.
+    const response = await page.request.post('/api/card-entry/drafts', {headers:{Origin:baseURL}, data:{values:{cardTitle:'Feedback validation'}}});
+    expect(response.ok()).toBeTruthy();
+    const draft = await response.json();
+    await page.route('**/api/card-entry/drafts', route => route.fulfill({json:draft}));
     await page.goto('/cards/new', { waitUntil: 'networkidle' });
     const images = page.locator('[data-card-entry-form] [name=images]');
     await images.setInputFiles(image);

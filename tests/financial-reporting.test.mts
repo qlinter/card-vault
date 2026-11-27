@@ -67,9 +67,9 @@ test("组合各维度共用最新持仓事实，下一次计算不会复用旧�
 });
 
 test("四种持有状态共用双币核算、覆盖、部分出售及提醒规则", () => {
-  assert.deepEqual(cardCollectionStatuses.map(collectionStatusText), ["持有", "待送评", "送评中", "待售", "已售"]);
+  assert.deepEqual(cardCollectionStatuses.map(collectionStatusText), ["持有", "待送评", "送评中", "待售", "已售", "已赠出"]);
   assert.throws(() => normalizeCardCollectionStatus("target"), /不支持/);
-  const owned = cardCollectionStatuses.filter(status => status !== "sold");
+  const owned = cardCollectionStatuses.filter(status => status !== "sold" && status !== "gifted");
   const reports = owned.map(collectionStatus => buildReportingPortfolio([{ ...card(), collectionStatus }], { isFiltered: false, criteria: [] }, config, at("2026-04-01")));
   for (const [index, report] of reports.entries()) {
     assert.equal(report.snapshot.activeCount, 1);

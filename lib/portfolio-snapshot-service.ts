@@ -1,3 +1,4 @@
+import { currentFinancialCutoff } from "./financial-business-day.ts";
 import "server-only";
 import { setImmediate as yieldToRequests } from "node:timers/promises";
 import { buildCardFilters } from "./card-helpers";
@@ -30,7 +31,7 @@ export async function loadPortfolioSnapshot(value: unknown, options: LoadPortfol
   const query = normalizePortfolioFilterInput(value);
   const where = buildCardFilters(query);
   const startedAt = performance.now();
-  const asOf = options.asOf ?? new Date();
+  const asOf = options.asOf ?? currentFinancialCutoff();
   const [cardCount, config, dates] = await Promise.all([
     prisma.card.count({ where }), loadFinancialSettings(),
     options.includeDetails === false ? [] : prisma.$queryRaw<Array<{

@@ -47,17 +47,9 @@ async function uniqueSlug(title: string, existingId?: string): Promise<string> {
 }
 
 function selectedCardIds(formData: FormData): string[] {
-  const seen = new Set<string>();
-  return formData
-    .getAll("cardIds")
-    .map((value) => String(value).trim())
-    .filter((value) => {
-      if (!value || seen.has(value)) {
-        return false;
-      }
-      seen.add(value);
-      return true;
-    });
+  const ids = [...new Set(formData.getAll("cardIds").map(value => String(value).trim()).filter(Boolean))];
+  if (!ids.length) throw new Error("请至少选择一张卡牌。");
+  return ids;
 }
 
 async function collectionData(formData: FormData, cardIds: string[]) {
@@ -174,9 +166,6 @@ export async function createShareCollectionAction(_previousState: { error: strin
 
   try {
     const cardIds = selectedCardIds(formData);
-    if (cardIds.length === 0) {
-      throw new Error("请至少选择一张卡牌。");
-    }
 
     const collection = await collectionData(formData, cardIds);
     const data = collection.data;
@@ -213,9 +202,6 @@ export async function updateShareCollectionAction(shareId: string, _previousStat
     assertShareVersion(existing, expectedVersion);
 
     const cardIds = selectedCardIds(formData);
-    if (cardIds.length === 0) {
-      throw new Error("请至少选择一张卡牌。");
-    }
 
     const collection = await collectionData(formData, cardIds);
     const data = collection.data;

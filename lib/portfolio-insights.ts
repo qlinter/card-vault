@@ -1,3 +1,4 @@
+import { isOutgoing } from "./financial-history.ts";
 import { createPortfolioHistoryCursor } from "./portfolio-history-cursor.ts";
 import { isOwnedCollectionStatus } from "./card-stats.ts";
 import { minorMoneyToNumber, normalizeCurrency, selectLatestValuation } from "./financial-history.ts";
@@ -27,7 +28,7 @@ function historicalQuantity(card: PortfolioCardRecord, _currency: string, at: Da
   );
   if (transactions.length > 0) {
     return Math.max(0, transactions.reduce((quantity, transaction) =>
-      quantity + (transaction.kind === "sale" ? -1 : 1) * (transaction.quantity ?? 1), 0));
+      quantity + (isOutgoing(transaction.kind) ? -1 : 1) * (transaction.quantity ?? 1), 0));
   }
   if (card.transactions.length > 0 || !isOwnedCollectionStatus(card.collectionStatus)) return 0;
   return Math.max(0, card.holdingQuantity ?? 1);
@@ -132,7 +133,7 @@ export function buildPortfolioFinancialHistory(
         const fallbackQuantity = card.transactions.length === 0 && isOwnedCollectionStatus(card.collectionStatus)
           ? Math.max(0, card.holdingQuantity ?? 1)
           : 0;
-        const quantity = position.purchasedQuantity > 0 || position.soldQuantity > 0
+        const quantity = position.purchasedQuantity > 0 || position.soldQuantity > 0 || position.remainingQuantity > 0
           ? position.remainingQuantity
           : fallbackQuantity;
         const latestValuation = selectLatestValuation(valuations, position.currency);

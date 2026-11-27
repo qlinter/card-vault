@@ -32,8 +32,6 @@ async function mockDesktop(page, emptyBackup = false) {
 }
 
 async function loadMapping(page) {
-  const toggle = page.locator('#data-transfer > button');
-  if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
   await page.locator('input[type="file"]').setInputFiles({
     name: "settings-layout.csv", mimeType: "text/csv",
     buffer: Buffer.from("playerName,Long external spreadsheet column for collection display notes,cardTitle,grade\nLayout Player,A long preview value with enough detail to wrap naturally across several lines,Collection Card,10\n")
@@ -64,6 +62,38 @@ async function expectUniformButtons(page) {
     return JSON.stringify([style.backgroundColor, style.color, style.borderColor, style.boxShadow]);
   }))])).toHaveLength(1);
 }
+
+test("Data uses the same three visible subsections in Settings and on its own page", async ({ page }) => {
+  await mockDesktop(page, true);
+  for (const route of ["/settings#data-settings", "/settings/data"]) {
+    await page.goto(route, { waitUntil: "networkidle" });
+    const sections = page.locator(".data-subsections");
+    const headings = sections.locator(":scope > section > header h3");
+    await expect(headings).toHaveText(["备份与恢复", "维护", "导入与导出"]);
+    await expect(sections.locator(":scope > section > button[aria-expanded]")).toHaveCount(0);
+    for (const width of [1440, 390, 320]) {
+      await page.setViewportSize({ width, height: 900 });
+      const typography = await headings.evaluateAll(nodes => nodes.map(el => getComputedStyle(el).font));
+      expect(new Set(typography).size).toBe(1);
+      await expectContained(page);
+      const geometry = await sections.locator("#data-transfer").evaluate(root => {
+        const rect = selector => root.querySelector(selector).getBoundingClientRect();
+        const file = rect('input[type="file"]'), title = rect(".transfer-block h4"), heading = rect(".transfer-heading");
+        return {
+          left: [title.left, rect(".transfer-heading h4").left, rect(".export-public input").left].map(x => x - file.left),
+          right: [rect(".scope-navigation-link").right, rect("button[value=xlsx]").right].map(x => x - file.right),
+          gaps: [file.top - title.bottom, rect(".transfer-export-controls").top - heading.bottom]
+        };
+      });
+      expect([...geometry.left, ...geometry.right].every(delta => Math.abs(delta) < 1)).toBe(true);
+      expect(geometry.gaps[0]).toBeGreaterThan(0);
+      expect(Math.abs(geometry.gaps[0] - geometry.gaps[1])).toBeLessThan(1);
+      if (route.includes("#") && width !== 320) {
+        await sections.screenshot({ path: `logs/v172-data-sections-${width}.png`, style: ".topbar { visibility: hidden; }" });
+      }
+    }
+  }
+});
 
 test("backup shows its empty state and import selections retain their state", async ({ page }) => {
   await mockDesktop(page, true);
@@ -99,7 +129,7 @@ test("expanded settings fit all themes, both languages and desktop window sizes"
     ]);
     await page.setViewportSize({ width, height: 1000 });
     await page.goto("/settings", { waitUntil: "networkidle" });
-    for (const id of ["theme-settings", "data-settings", "financial-settings", "data-maintenance"]) await page.locator(`#${id} > button`).click();
+    for (const id of ["theme-settings", "data-settings", "financial-settings"]) await page.locator(`#${id} > button`).click();
     await page.locator(".ai-settings-panel > button").click();
     await page.locator(".settings-help-toggle").click();
     await page.locator(".settings-help-actions button").click();

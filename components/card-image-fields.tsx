@@ -18,6 +18,7 @@ type ExistingImage = {
 };
 
 type QueuedImage = {
+  rotation?: number;
   id: string;
   url: string;
   side: "front" | "back";
@@ -56,7 +57,7 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages,
     existingImages.map((image) => [image.id, normalizeCardImageRotation(image.rotation)])
   ));
   const [queuedRotations, setQueuedRotations] = useState<Record<string, number>>(() => Object.fromEntries(
-    queuedImages.map((image) => [image.id, 0])
+    queuedImages.map((image) => [image.id, normalizeCardImageRotation(image.rotation)])
   ));
   const [newImages, setNewImages] = useState<NewImagePreview[]>([]);
   const [choice, setChoice] = useState(initialFrontChoice ?? "");
@@ -149,6 +150,7 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages,
 
   function rotateQueued(id: string, direction: -1 | 1) {
     setQueuedRotations((current) => ({ ...current, [id]: rotateCardImageDegrees(current[id] ?? 0, direction) }));
+    fileInput.current?.form?.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
   function rotateNew(id: string, direction: -1 | 1) {
@@ -160,7 +162,7 @@ export function CardImageFields({ mode, cardTitle, existingImages, queuedImages,
 
   return (
     <>
-      <label className="field full card-image-upload">
+      <label id="archive-images" className="field full card-image-upload">
         <span>
           {mode === "create" ? queuedImages.length > 0 ? <UiText text={"队列已有 {0} 张图片，可追加至总计 5 张"} values={[queuedImages.length]} /> : <UiText text={"上传图片（1-5 张）*"} /> : <UiText text={"新增图片（可选，单张卡总计最多 5 张）"} />}
         </span>

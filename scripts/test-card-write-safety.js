@@ -61,7 +61,18 @@ async function verifyCardWriteSafety({ baseUrl, dbPath, dataDir }) {
   const draft = await draftResponse.json();
   assert.ok(draftResponse.ok && draft.id);
   const draftPages = await Promise.all([fetchPage(baseUrl, `/cards/new?draft=${draft.id}`), fetchPage(baseUrl, `/cards/new?draft=${draft.id}`)]);
-  const draftSaves = await Promise.all(draftPages.map(html => post("/cards/new", form(html, { draftId: draft.id }))));
+  const changes = await Promise.all(["Window A","Window B"].map(cardTitle => fetchTestServer(baseUrl + "/api/card-entry/drafts", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+      id: draft.id, expectedVersion: draft.version, values: { playerName: "Write Safety Player", cardTitle, sport:"Basketball" }
+    })
+  })));
+  assert.deepEqual(changes.map(result => result.status).sort(), [200,409], "Exactly one concurrent draft save must win");
+  const latest = await changes.find(result => result.ok).json();
+  const staleDraft = await post("/cards/new", form(draftPages[0], {draftId:draft.id, draftVersion:draft.version}));
+  assert.equal(staleDraft.status, 200);
+  assert.ok(staleDraft.text.includes("草稿已在其他窗口更改或结束"));
+  assert.deepEqual(counts(), { cards: 2, images: 2, transactions: 2, valuations: 2 }, "A queued submit must not consume a changed draft");
+  const draftSaves = await Promise.all(draftPages.map(html => post("/cards/new", form(html, { draftId: draft.id, draftVersion: latest.version }))));
   assert.equal(cardId(draftSaves[0]), cardId(draftSaves[1]), "Two pages of one draft must consume it only once");
   assert.deepEqual(counts(), { cards: 3, images: 3, transactions: 3, valuations: 3 });
   assert.equal(database(db => db.prepare("SELECT count(*) n FROM CardEntryDraft WHERE id=?").get(draft.id).n), 0);

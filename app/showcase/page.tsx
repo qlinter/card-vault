@@ -51,6 +51,7 @@ export default async function ShowcasePage({ searchParams }: ShowcasePageProps) 
     <h1 className="sr-only"><UiText text="展示" /></h1>
     <header className="showcase-heading">
       <StartImmersive showcaseStudio={studio} source={query} disabled={!totalCount} appearance="showcase" guest={guest} />
+      {!guest && totalCount > 0 ? <Link className="showcase-action" href={buildShowcaseHref({ ...query, page }, "/showcase/group-photo")}><ShowcaseIcon name="image" /><UiText text="导出合影" /></Link> : null}
       {!guest ? <Link className="showcase-action showcase-shares" href="/shares"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="6" width="14" height="16" rx="2" /><path d="M7 6V2h14v16h-4" /></svg><UiText text="分享集" /></Link> : null}
       <form className="showcase-search" method="get" role="search">
         <ShowcaseIcon name="search" />

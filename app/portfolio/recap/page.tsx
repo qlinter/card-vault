@@ -10,10 +10,11 @@ export const dynamic = "force-dynamic";
 export default async function RecapPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = Object.fromEntries(Object.entries(await searchParams).map(([key, value]) => [key, toScalar(value)]));
   async function load() {
-    const spec = normalizeRecapSpec({ year: params.recapYear, month: params.recapMonth, basis: params.recapBasis, scope: normalizePortfolioFilterInput(params) });
-    const [summary, cards] = await Promise.all([loadRecapSummary(spec), recapCards(spec)]);
+    const now = new Date();
+    const spec = normalizeRecapSpec({ year: params.recapYear, month: params.recapMonth, basis: params.recapBasis, scope: normalizePortfolioFilterInput(params) }, now);
+    const [summary, cards] = await Promise.all([loadRecapSummary(spec, true, now), recapCards(spec, {}, now)]);
     const wanted = summary.representatives;
-    const representatives = await recapCards(spec, { ids: wanted });
+    const representatives = await recapCards(spec, { ids: wanted }, now);
     const ordered = wanted.flatMap(id => { const card = representatives.find(row => row.id === id); return card ? [card] : []; });
     return { spec, summary, cards, representatives: ordered };
   }

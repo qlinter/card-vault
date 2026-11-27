@@ -4,7 +4,8 @@ export type CoreOpenAISettings = { endpoint: string; apiKey: string; model: stri
 export type CoreMiniMaxSettings = { endpoint: string; apiKey: string; model: string };
 export type CoreDeepSeekSettings = CoreMiniMaxSettings;
 export type CoreCustomSettings = { id: string; name: string; endpoint: string; modelsEndpoint: string; apiKey: string; model: string; apiKeyHeader: string; apiKeyPrefix: string };
-export type CoreAiSettings = { provider: CoreAiProvider; activeCustomId: string; proxy: AiProxySettings; openai: CoreOpenAISettings; minimax: CoreMiniMaxSettings; deepseek: CoreDeepSeekSettings; customProviders: CoreCustomSettings[] };
+export type StudioSettings = { model: string; keySource: "openai" | "independent"; apiKey: string };
+export type CoreAiSettings = { studio: StudioSettings; provider: CoreAiProvider; activeCustomId: string; proxy: AiProxySettings; openai: CoreOpenAISettings; minimax: CoreMiniMaxSettings; deepseek: CoreDeepSeekSettings; customProviders: CoreCustomSettings[] };
 
 export function normalizeEndpoint(value: unknown): string;
 export function normalizeProvider(value: unknown): CoreAiProvider;
@@ -15,6 +16,7 @@ export function normalizeSettings(value?: unknown): CoreAiSettings;
 export type BuiltInAiProvider = Exclude<CoreAiProvider, "custom">;
 export const builtInAiProviders: Readonly<Record<BuiltInAiProvider, Readonly<{ name: string; endpoint: string; model: string }>>>;
 export type CorePublicAiSettings = {
+  studio: Omit<StudioSettings, "apiKey"> & { hasApiKey: boolean };
   proxy: PublicAiProxySettings;
   provider: CoreAiProvider;
   activeCustomId: string;
@@ -24,6 +26,7 @@ export type CorePublicAiSettings = {
   customProviders: Array<Omit<CoreCustomSettings, "apiKey"> & { hasApiKey: boolean }>;
 };
 export type CoreAiSettingsDraft = {
+  studio?: Partial<StudioSettings>;
   proxy?: Partial<AiProxySettings>;
   provider?: CoreAiProvider;
   activeCustomId?: string;
@@ -34,3 +37,5 @@ export type CoreAiSettingsDraft = {
 };
 export function publicAiSettings(settings: CoreAiSettings): CorePublicAiSettings;
 export function mergeAiSettings(current: CoreAiSettings, draft?: CoreAiSettingsDraft): CoreAiSettings;
+
+export const studioImageService: Readonly<{ id: "openai"; name: string; defaultModel: string }>;

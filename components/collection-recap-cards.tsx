@@ -1,4 +1,6 @@
 "use client";
+import { historicalStatusLabel } from "@/lib/card-domain";
+
 
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "./language-provider";
@@ -53,7 +55,7 @@ export function CollectionRecapCards({ spec, cardCount, initialCards, representa
       {representatives.map((card, index) => <article key={card.id}>
         <div className="recap-image"><CardImage card={card} /></div>
         <strong>{card.playerName}</strong><span>{card.cardTitle}</span>
-        {card.collectionStatus === "sold" ? <small>{t("当前已售出")}</small> : null}
+        {historicalStatusLabel(card.collectionStatus) ? <small>{t(historicalStatusLabel(card.collectionStatus))}</small> : null}
         <div>
           <button type="button" aria-label={`${t("上移")} ${card.cardTitle}`} disabled={!index} onClick={() => move(index, -1)}>←</button>
           <button type="button" aria-label={`${t("下移")} ${card.cardTitle}`} disabled={index === representatives.length - 1} onClick={() => move(index, 1)}>→</button>

@@ -9,7 +9,7 @@ export function portfolioDetailStatus(params: Record<string, string | undefined>
 }
 
 export function isClosedDataRow(row: Pick<DataRow, "quantity" | "soldQuantity" | "collectionStatus">) {
-  return row.quantity === 0 && (row.soldQuantity > 0 || row.collectionStatus === "sold");
+  return row.quantity === 0 && row.collectionStatus !== "gifted" && (row.soldQuantity > 0 || row.collectionStatus === "sold");
 }
 function sortedDataRows(rows: DataRow[], params: Record<string, string | undefined>) {
   if (params.kind === "quality") return rows.filter(row => row.issues.length > 0).sort((a, b) => a.playerName.localeCompare(b.playerName) || a.id.localeCompare(b.id));
@@ -25,7 +25,7 @@ function sortedDataRows(rows: DataRow[], params: Record<string, string | undefin
   });
   const metric = params.order === "costDesc" ? "cost" : params.order === "profitDesc" ? "realized" : "value";
   filtered.sort((a, b) => params.order === "nameAsc" ? a.playerName.localeCompare(b.playerName) || a.id.localeCompare(b.id)
-    : params.order === "dateDesc" ? [b.soldAt || "", b.valuedAt || ""].sort().at(-1)!.localeCompare([a.soldAt || "", a.valuedAt || ""].sort().at(-1)!) || a.id.localeCompare(b.id)
+    : params.order === "dateDesc" ? (b.lastActivityDay ?? "").localeCompare(a.lastActivityDay ?? "") || a.id.localeCompare(b.id)
       : (b[metric] ?? -Infinity) - (a[metric] ?? -Infinity) || a.id.localeCompare(b.id));
   return filtered;
 }

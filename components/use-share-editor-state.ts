@@ -18,7 +18,7 @@ function initialDrafts(cards: SharePickerCard[]): Record<string, ShareCardDraft>
   return Object.fromEntries(cards.map((card) => [card.id, { sortOrder: String(card.sortOrder), displayTitle: card.displayTitle, displayDescription: card.displayDescription }]));
 }
 
-export function useShareEditorState(cards: SharePickerCard[], aiCards: ShareThemeCard[], initialValues: ShareEditorInitialValues) {
+export function useShareEditorState(cards: SharePickerCard[], catalog: ShareThemeCard[], initialValues: ShareEditorInitialValues) {
   const initialCoverImagePath = initialValues.coverImagePath.startsWith("/share-covers/") ? initialValues.coverImagePath : "";
   const initialBackgroundImagePath = initialValues.backgroundImagePath.startsWith("/share-backgrounds/") ? initialValues.backgroundImagePath : "";
   const [activeStep, setActiveStep] = useState(0);
@@ -44,8 +44,8 @@ export function useShareEditorState(cards: SharePickerCard[], aiCards: ShareThem
 
   const selectedAiCards = useMemo(() => {
     const selectedSet = new Set(selectedIds);
-    return aiCards.filter((card) => selectedSet.has(card.id));
-  }, [aiCards, selectedIds]);
+    return catalog.filter((card) => selectedSet.has(card.id));
+  }, [catalog, selectedIds]);
   const selectedCards = useMemo(() => {
     const selectedSet = new Set(selectedIds);
     const selectedOrder = new Map(selectedIds.map((id, index) => [id, index]));

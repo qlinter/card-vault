@@ -1,3 +1,4 @@
+import { transactionDate } from "./financial-business-day";
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import ExcelJS from "exceljs";
@@ -49,14 +50,19 @@ export async function readImportFile(file: File) {
 
 function normalizeValues(raw: Record<string, string | boolean>) {
   const values = normalizeCardFormValues(raw);
-  if (!("initialQuantity" in raw) && values.collectionStatus === "sold") values.initialQuantity = "0";
+  if (values.acquisitionMethod === "获赠") values.acquisitionMethod = "gift_in";
+  if (values.acquisitionMethod === "买入") values.acquisitionMethod = "purchase";
+  if (!("initialQuantity" in raw) && ["sold","gifted"].includes(values.collectionStatus)) values.initialQuantity = "0";
   return values;
 }
 function validateInitial(raw: Record<string, string | boolean>) {
   const values = normalizeValues(raw), data = buildCardData(values);
   const quantity = parseInitialCardQuantity(values.initialQuantity, data.collectionStatus);
-  if (quantity > 100000 || (data.collectionStatus === "sold" && quantity !== 0)) throw new Error("初始数量与收藏状态不一致或超过限制。");
+  if (quantity > 100000 || (["sold","gifted"].includes(data.collectionStatus) && quantity !== 0)) throw new Error("初始数量与收藏状态不一致或超过限制。");
   const purchaseDate = optionalCardDate(values.purchaseDate, "购买日期"), valuedAt = optionalCardDate(values.valuationDate, "估值日期");
+  if (purchaseDate && quantity > 0) transactionDate(purchaseDate);
+  if (!["purchase","gift_in"].includes(values.acquisitionMethod)) throw new Error("取得方式无效。");
+  if (values.acquisitionMethod === "gift_in" && (!quantity || !purchaseDate || values.purchasePrice && Number(values.purchasePrice) !== 0)) throw new Error("获赠需要日期、正数数量和零取得价。");
   if ((values.purchasePrice || quantity > 1) && !purchaseDate) throw new Error("填写购买价格或多张数量时需要购买日期。");
   if (values.purchasePrice && !quantity) throw new Error("数量为 0 时不能填写购买价格。");
   for (const amount of [values.purchasePrice, values.currentValue].filter(Boolean)) moneyValue({ amount, currency: values.historyCurrency });
@@ -126,7 +132,7 @@ async function createPreview(inputs: Input[], options: Options, newBatch = "") {
         input.existingId = card.id; input.expected = fingerprint(card);
         if (options.policy === "update") {
           metadataPatch(card, input.values);
-          if (["purchasePrice", "purchaseDate", "currentValue", "initialQuantity"].some(key => input.values[key])) throw new Error("更新已有卡牌仅接受档案字段；估值和交易请在详情页记录。");
+          if (["acquisitionMethod", "purchasePrice", "purchaseDate", "currentValue", "initialQuantity"].some(key => input.values[key])) throw new Error("更新已有卡牌仅接受档案字段；估值和交易请在详情页记录。");
         }
       } else validateInitial(input.values);
     } catch (error) { input.validationError = error instanceof Error ? error.message : "预演失败。"; }

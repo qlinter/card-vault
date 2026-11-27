@@ -1,11 +1,12 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { SettingsSubsection } from "./settings-subsection";
 import { useLanguage } from "./language-provider";
 
 type Inventory = { ready: number; pending: string[]; missingFront: number };
 
-export function StudioRecovery({ hasKey }: { hasKey: boolean }) {
+export function StudioRecovery({ hasKey, children }: { hasKey: boolean; children?: ReactNode }) {
   const { locale } = useLanguage(), en = locale === "en";
   const [inventory, setInventory] = useState<Inventory>();
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
@@ -31,16 +32,14 @@ export function StudioRecovery({ hasKey }: { hasKey: boolean }) {
     } catch (problem) { setError(problem instanceof Error ? problem.message : (en ? "Generation failed." : "生成失败。")); }
     finally { setBusy(false); }
   }
-  return <section className="studio-recovery">
-    <div className="studio-recovery-heading">
-      <h3>{en ? "AI studio images" : "AI 展馆图"}</h3>
-      {inventory && <p className="studio-recovery-counts" role="status" aria-atomic="true">
+  return <SettingsSubsection id="studio-photos" title={en ? "Image creation and group photos" : "制图与合影"} className="studio-recovery" meta={inventory && <p className="studio-recovery-counts" role="status" aria-atomic="true">
+        <span>{en ? "Single cards" : "单卡展馆图"}</span>
         <span>{en ? "Ready" : "已生成"} <strong>{inventory.ready}</strong></span>
         <span>{en ? "Pending" : "待生成"} <strong>{inventory.pending.length}</strong></span>
-      </p>}
-    </div>
-    {!hasKey && <p className="muted">{en ? "Save an OpenAI key to generate missing images. Original images remain available." : "配置 OpenAI Key 后可补生成。缺图时展馆使用原始首图。"}</p>}
+      </p>}>
+    {children}
+    {!hasKey && <p className="muted">{en ? "Save an image service key to generate missing images." : "保存生图密钥后可补生成。"}</p>}
     {inventory && inventory.pending.length > 0 && <button type="button" className="btn btn-secondary" disabled={!hasKey || busy} onClick={resume}>{busy ? (en ? "Generating…" : "生成中…") : (en ? "Generate missing images" : "补生成展馆图")}</button>}
     {error && <p role="alert">{error}</p>}
-  </section>;
+  </SettingsSubsection>;
 }

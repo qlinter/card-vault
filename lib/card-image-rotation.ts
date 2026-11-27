@@ -42,6 +42,10 @@ export function readCardImageRotationRecord(formData: FormData, fieldName: strin
   } catch {
     throw new Error("图片旋转信息无效。");
   }
+  return parseCardImageRotations(parsed);
+}
+
+export function parseCardImageRotations(parsed: unknown): Record<string, CardImageRotation> {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("图片旋转信息无效。");
   }

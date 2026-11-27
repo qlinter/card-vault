@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict"), fs = require("node:fs"), os = require("node:os"), path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
+const { testAccountCookies } = require("./test-account-helpers");
 const { chromium } = require("@playwright/test");
 const { fetchTestServer: fetch, fileDatabaseUrl, findAvailablePort, initializeTestDatabase, removeTempRoot, startTestServer, stopServer, waitForServer } = require("./test-http-flow-utils");
 
@@ -23,6 +24,7 @@ async function main() {
     await waitForServer(base, output, server, "Improvements");
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, locale: "zh-CN" });
+    await page.context().addCookies(testAccountCookies(base));
     await page.goto(base);
     await page.locator(".valuation-coverage").waitFor();
     assert.match(await page.locator(".valuation-coverage").innerText(), /1\/2/);
@@ -104,7 +106,11 @@ async function main() {
     await page.getByRole("button", { name: "取消识别", exact: true }).click();
     await page.getByText("已取消识别，可以重新开始。", { exact: true }).waitFor();
     assert.equal(await page.locator('input[name="playerName"]').inputValue(), "Draft subject");
-    const response = await fetch(`${base}/api/card-entry/drafts/${id}`, { method: "DELETE" });
+    const url = `${base}/api/card-entry/drafts/${id}`;
+    const conflict = await fetch(url, { method: "DELETE", headers: {Origin:base} });
+    assert.equal(conflict.status, 409);
+    const {latest} = await conflict.json();
+    const response = await fetch(url, { method: "DELETE", headers: {Origin:base, "x-draft-version":latest.version} });
     assert.equal(response.status, 200);
     assert.ok(!fs.existsSync(path.join(data, "uploads", path.basename(saved.draftImages[0].path))));
     console.log("Improvements passed: valuation coverage, isolated invalid snapshots, historical comparison, scoped drill-down, image draft save/reload/rotation/cleanup, field suggestions and cancelled AI recognition.");

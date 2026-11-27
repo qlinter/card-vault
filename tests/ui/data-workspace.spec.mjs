@@ -13,6 +13,20 @@ test.beforeEach(() => database(db => {
 test.afterEach(() => database(db => { db.exec("DELETE FROM Card WHERE id LIKE 'data-ui-%'; DELETE FROM PortfolioSavedView WHERE name LIKE 'Data UI%'; DELETE FROM PortfolioSnapshotRecord WHERE name LIKE 'Data UI%';"); }));
 const scoped = "/portfolio?q=Data+UI&team=A%26B+%2F+%E9%98%9F";
 
+test("latest activity sorts an unvalued gift above older quotes and shows its activity date", async ({page}) => {
+  database(db => {
+    db.prepare("UPDATE CardTransaction SET kind='gift_in',amountMinor=0,amountKnown=1,occurredAt=? WHERE id='data-ui-44-buy'").run(Date.parse("2026-09-05Z"));
+    db.prepare("UPDATE Card SET cardTitle='Recent gift' WHERE id='data-ui-44'").run();
+  });
+  await page.goto(scoped + "&tab=details&kind=all");
+  await page.getByRole("combobox",{name:"明细排序"}).selectOption({label:"最近活动"});
+  await page.getByRole("button",{name:"筛选",exact:true}).click();
+  await expect(page).toHaveURL(/order=dateDesc/);
+  const first = page.locator("tbody tr").first();
+  await expect(first).toContainText("Recent gift");
+  await expect(first).toContainText("2026-09-05");
+});
+
 for (const locale of ["zh", "en"]) test(`data tabs retain scope, count physical copies and open exact duplicate archives (${locale})`, async ({ page, context }, testInfo) => {
   if (locale === "en") await context.addCookies([{ name: "card_vault_ui_locale", value: "en", url: "http://127.0.0.1:3360" }]);
   await page.goto(scoped, { waitUntil: "networkidle" });

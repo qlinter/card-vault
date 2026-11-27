@@ -194,39 +194,18 @@ export async function exportShareCollection(
     }
   }
 
-  if (collection.backgroundImagePath?.startsWith("/share-backgrounds/")) {
-    const source = backgroundSourcePath(collection.backgroundImagePath);
-    if (fs.existsSync(source)) {
-      const optimized = await createShareExportImageVariants({
-        sourcePath: source,
-        targetDirectory: imageDir,
-        baseName: "background",
-        thumbnail: false,
-        maxWidth: shareExportBackgroundMaxWidth,
-        maxHeight: 1600,
-        quality: 80
-      });
-      backgroundImage = optimized.image.src;
-      imageCount += optimized.fileCount;
-    } else {
-      issues.push({ level: "warning", code: "missing-background", message: "自定义背景文件不存在，导出包将使用主题底色。" });
-    }
-  } else {
-    const themeBackground = shareThemeBackgroundPath(theme);
-    const source = path.join(process.cwd(), "public", themeBackground.replace(/^\/+/, ""));
-    if (fs.existsSync(source)) {
-      const optimized = await createShareExportImageVariants({
-        sourcePath: source,
-        targetDirectory: imageDir,
-        baseName: "theme-background",
-        thumbnail: false,
-        maxWidth: shareExportBackgroundMaxWidth,
-        maxHeight: 1600,
-        quality: 80
-      });
-      backgroundImage = optimized.image.src;
-      imageCount += optimized.fileCount;
-    }
+  const customBackground = collection.backgroundImagePath?.startsWith("/share-backgrounds/") ? collection.backgroundImagePath : null;
+  const backgroundSource = customBackground ? backgroundSourcePath(customBackground)
+    : path.join(process.cwd(), "public", shareThemeBackgroundPath(theme).replace(/^\/+/, ""));
+  if (fs.existsSync(backgroundSource)) {
+    const optimized = await createShareExportImageVariants({
+      sourcePath: backgroundSource, targetDirectory: imageDir, baseName: customBackground ? "background" : "theme-background",
+      thumbnail: false, maxWidth: shareExportBackgroundMaxWidth, maxHeight: 1600, quality: 80
+    });
+    backgroundImage = optimized.image.src;
+    imageCount += optimized.fileCount;
+  } else if (customBackground) {
+    issues.push({ level: "warning", code: "missing-background", message: "自定义背景文件不存在，导出包将使用主题底色。" });
   }
 
   const sectionPageNames = new Set<string>();

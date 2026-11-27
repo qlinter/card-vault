@@ -1,10 +1,9 @@
 const fs = require("fs");
 const path = require("path");
 
-const root = path.resolve(__dirname, "..");
+const root = fs.realpathSync(path.resolve(__dirname, ".."));
 const targets = [
   ".next/cache",
-  "logs",
   "playwright-report",
   "test-results",
   "tsconfig.tsbuildinfo",
@@ -15,7 +14,7 @@ const targets = [
 function removeTarget(relativePath) {
   const absolutePath = path.resolve(root, relativePath);
 
-  if (!absolutePath.startsWith(root + path.sep) && absolutePath !== root) {
+  if (!absolutePath.startsWith(root + path.sep)) {
     throw new Error(`Refusing to remove path outside project: ${absolutePath}`);
   }
 
@@ -23,6 +22,7 @@ function removeTarget(relativePath) {
     return false;
   }
 
+  if (path.relative(absolutePath, fs.realpathSync(absolutePath)) !== "") throw new Error("Refusing to clean a redirected cache path: " + absolutePath);
   fs.rmSync(absolutePath, { recursive: true, force: true });
   return true;
 }

@@ -1,3 +1,4 @@
+import { currentFinancialCutoff } from "./financial-business-day.ts";
 import { isOwnedCollectionStatus } from "./card-stats.ts";
 import { accountingVersion, reportingHistory, type FinancialConfig } from "./financial-reporting.ts";
 import { buildPortfolioSnapshot } from "./portfolio-analysis-snapshot.ts";
@@ -5,7 +6,7 @@ import type { PortfolioCardRecord, PortfolioScope } from "./portfolio-analysis-t
 import { calculateCurrencyPosition } from "./position-accounting.ts";
 import { createPortfolioCardFacts } from "./portfolio-analysis-statistics.ts";
 
-export function buildReportingPortfolio(cards: PortfolioCardRecord[], scope: PortfolioScope, config: FinancialConfig, asOf = new Date(), options: { allGroups?: boolean } = {}) {
+export function buildReportingPortfolio(cards: PortfolioCardRecord[], scope: PortfolioScope, config: FinancialConfig, asOf = currentFinancialCutoff(), options: { allGroups?: boolean } = {}) {
   const projected = cards.map((card) => reportingHistory({ ...card, holdingQuantity: isOwnedCollectionStatus(card.collectionStatus) ? card.holdingQuantity : 0 }, config, asOf));
   const cardFacts = createPortfolioCardFacts(projected);
   const positions = projected.map((card) => cardFacts.get(card)!.positions.find(position => position.currency === config.reportingCurrency) ?? calculateCurrencyPosition(card, config.reportingCurrency));

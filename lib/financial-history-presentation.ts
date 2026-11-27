@@ -1,3 +1,4 @@
+import { localBusinessDay } from "./financial-business-day.ts";
 import { valuationSourceLabels } from "./valuation-sources.js";
 
 export function valuationSourceLabel(source: string): string {
@@ -6,7 +7,7 @@ export function valuationSourceLabel(source: string): string {
 
 export const transactionLabels: Record<string, string> = {
   purchase: "购入",
-  sale: "售出"
+  sale: "售出", gift_in: "获赠", gift_out: "赠送"
 };
 
 export const expenseKindLabels: Record<string, string> = {
@@ -31,7 +32,7 @@ export const expenseContextInputLabels: Record<string, string> = {
   sale: "计入卖出成本"
 };
 
-export function formatHistoryDateInput(date = new Date()): string {
+export function formatHistoryDateInput(date = localBusinessDay()): string {
   return date.toISOString().slice(0, 10);
 }
 

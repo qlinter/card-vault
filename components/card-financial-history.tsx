@@ -5,10 +5,11 @@ import type { CardExpense, CardTransaction, CardValuation } from "@prisma/client
 import { useState } from "react";
 import { paymentComponents, type FinancialConfig } from "@/lib/financial-reporting";
 import { saveFinancialRecordFormAction, deleteFinancialRecordAction } from "@/app/actions/financial-history";
+import { lastAcquisitionMessage } from "@/lib/card-quantity";
 import { recordVersion } from "@/lib/record-version";
 import { ExpenseForm, TransactionForm, ValuationForm } from "@/components/financial-history-forms";
 import { FinancialPositionOverview } from "@/components/financial-position-overview";
-import { formatMinorMoney } from "@/lib/financial-history";
+import { isIncoming, isGift, transactionKinds, type TransactionKind, formatMinorMoney } from "@/lib/financial-history";
 import {
   expenseContextLabels,
   expenseKindLabels,
@@ -35,8 +36,8 @@ type TimelineItem =
   | { type: "valuation"; date: Date; record: CardValuation };
 
 type RecordType = TimelineItem["type"];
-type NewRecordKind = "purchase" | "sale" | "expense" | "valuation";
-const recordActions: Array<{ kind: NewRecordKind; label: string }> = [{ kind: "purchase", label: "买入" }, { kind: "sale", label: "卖出" }, { kind: "expense", label: "费用" }, { kind: "valuation", label: "估值" }];
+type NewRecordKind = TransactionKind | "expense" | "valuation";
+const recordActions: Array<{ kind: NewRecordKind; label: string }> = [{ kind: "purchase", label: "买入" }, { kind: "sale", label: "卖出" }, {kind:"gift_in",label:"获赠"}, {kind:"gift_out",label:"赠送"}, { kind: "expense", label: "费用" }, { kind: "valuation", label: "估值" }];
 type HistoryFilter = "all" | RecordType;
 
 const filterLabels: Record<HistoryFilter, string> = {
@@ -57,6 +58,7 @@ function recordTitle(item: TimelineItem): string {
 }
 
 function recordAmount(item: TimelineItem): string {
+  if (item.type === "transaction" && isGift(item.record.kind)) return "—";
   const amount = item.type === "transaction" ? paymentComponents(item.record).map((payment) => formatMinorMoney(payment.amountMinor, payment.currency)).join(" + ") : formatMinorMoney(item.record.amountMinor, item.record.currency);
   if (item.type === "valuation") return amount;
   if (item.type === "transaction" && item.record.kind === "sale") return `+${amount}`;
@@ -66,6 +68,7 @@ function recordAmount(item: TimelineItem): string {
 function recordImpact(item: TimelineItem): string {
   const amount = item.type === "transaction" ? paymentComponents(item.record).map((payment) => formatMinorMoney(payment.amountMinor, payment.currency)).join(" + ") : formatMinorMoney(item.record.amountMinor, item.record.currency);
   if (item.type === "transaction") {
+    if (isGift(item.record.kind)) return `持仓 ${item.record.kind === "gift_in" ? "+" : "−"}${item.record.quantity} 张`;
     return item.record.kind === "sale"
       ? `持仓 −${item.record.quantity} 张 · 出售收入 +${amount}`
       : `持仓 +${item.record.quantity} 张 · 持仓成本 +${amount}`;
@@ -91,8 +94,7 @@ function AddRecord({ cardId, returnTo, recordKind, open, onKindChange, onClose }
         <button type="button" className="btn btn-secondary" onClick={onClose}><UiText text={"收起"} /></button>
       </div>
       <div className="financial-record-composer">
-        <div hidden={recordKind !== "purchase"}><TransactionForm action={action("transaction")} submitLabel="保存交易" transactionKind="purchase" /></div>
-        <div hidden={recordKind !== "sale"}><TransactionForm action={action("transaction")} submitLabel="保存交易" transactionKind="sale" /></div>
+        {transactionKinds.map(kind => <div key={kind} hidden={recordKind !== kind}><TransactionForm action={action("transaction")} submitLabel="保存交易" transactionKind={kind} /></div>)}
         <div hidden={recordKind !== "expense"}><ExpenseForm action={action("expense")} submitLabel="保存费用" /></div>
         <div hidden={recordKind !== "valuation"}><ValuationForm action={action("valuation")} submitLabel="保存估值" /></div>
       </div>
@@ -100,7 +102,7 @@ function AddRecord({ cardId, returnTo, recordKind, open, onKindChange, onClose }
   );
 }
 
-function TimelineRecord({ cardId, item, returnTo }: { cardId: string; item: TimelineItem; returnTo?: string }) {
+function TimelineRecord({ cardId, item, returnTo, lastAcquisition }: { lastAcquisition:boolean; cardId: string; item: TimelineItem; returnTo?: string }) {
   const [isEditing, setIsEditing] = useState(false);
   const record = item.record;
   const [editVersion] = useState(() => recordVersion(record));
@@ -116,7 +118,7 @@ function TimelineRecord({ cardId, item, returnTo }: { cardId: string; item: Time
         <div><span className={`financial-kind financial-kind-${item.type}`}><UiText text={filterLabels[item.type]} /></span>{recordTitle(item) !== filterLabels[item.type] ? <strong><UiText text={recordTitle(item)} /></strong> : null}</div>
         <small><UiText text={recordImpact(item)} /></small>
       </div>
-      <strong className={`financial-record-amount ${item.type === "valuation" ? "is-neutral" : item.type === "transaction" && item.record.kind === "sale" ? "is-positive" : "is-negative"}`}>{recordAmount(item)}</strong>
+      <strong className={`financial-record-amount ${item.type === "valuation" || (item.type === "transaction" && isGift(item.record.kind)) ? "is-neutral" : item.type === "transaction" && item.record.kind === "sale" ? "is-positive" : "is-negative"}`}>{recordAmount(item)}</strong>
       <button type="button" className="btn btn-secondary financial-edit-trigger" aria-expanded={isEditing} aria-controls={editorId} onClick={() => setIsEditing((open) => !open)}><UiText text={isEditing ? "收起" : "编辑"} /></button>
       <div id={editorId} className="financial-correction-body" hidden={!isEditing}>
           {source || record.notes ? <div className="financial-record-context">{source ? <span><UiText text={"来源 / 服务方："} />{item.type === "valuation" ? <UiText text={source} /> : source}</span> : null}{record.notes ? <span><UiText text={"备注："} />{record.notes}</span> : null}</div> : null}
@@ -124,8 +126,8 @@ function TimelineRecord({ cardId, item, returnTo }: { cardId: string; item: Time
           {item.type === "expense" ? <ExpenseForm action={updateAction} submitLabel="保存修改" marker={`${item.type}-${record.id}`} record={item.record} /> : null}
           {item.type === "valuation" ? <ValuationForm action={updateAction} submitLabel="保存修改" marker={`${item.type}-${record.id}`} record={item.record} /> : null}
           <form action={deleteAction} className="financial-delete-form">
-            <button className="btn btn-danger" type="submit"><UiText text={"删除这条记录"} /></button>
-            <small><UiText text={"删除后将重新计算持仓、成本和盈亏，此操作无法撤销。"} /></small>
+            <button className="btn btn-danger" type="submit" disabled={lastAcquisition}><UiText text={"删除这条记录"} /></button>
+            <small><UiText text={lastAcquisition ? lastAcquisitionMessage : "删除后将重新计算持仓、成本和盈亏，此操作无法撤销。"} /></small>
           </form>
       </div>
     </article>
@@ -141,6 +143,7 @@ export function CardFinancialHistory(props: FinancialHistoryProps) {
     ...props.expenses.map((record) => ({ type: "expense" as const, date: record.occurredAt, record })),
     ...props.valuations.map((record) => ({ type: "valuation" as const, date: record.valuedAt, record }))
   ].sort((left, right) => right.date.getTime() - left.date.getTime());
+  const uniqueAcquisition = props.holdingQuantity > 0 && props.transactions.filter(row => isIncoming(row.kind)).length === 1;
   const visibleTimeline = filter === "all" ? timeline : timeline.filter((item) => item.type === filter);
   const counts: Record<HistoryFilter, number> = {
     all: timeline.length,
@@ -176,7 +179,7 @@ export function CardFinancialHistory(props: FinancialHistoryProps) {
           </UiElement>
         </div>
         {visibleTimeline.length
-          ? visibleTimeline.map((item) => <TimelineRecord key={`${item.type}-${item.record.id}`} cardId={props.cardId} item={item} returnTo={props.returnTo} />)
+          ? visibleTimeline.map((item) => <TimelineRecord key={`${item.type}-${item.record.id}`} cardId={props.cardId} item={item} lastAcquisition={uniqueAcquisition && item.type === "transaction" && isIncoming(item.record.kind)} returnTo={props.returnTo} />)
           : <p className="financial-empty muted"><UiText text={"暂无"} />{filter === "all" ? null : <UiText text={filterLabels[filter]} />}<UiText text={"记录。"} /></p>}
       </div></details> : null}
     </section>

@@ -1,6 +1,7 @@
 import { normalizePortfolioFilterInput, type PortfolioFilterInput } from "./portfolio-analysis-scope.ts";
+import { localBusinessDay } from "./financial-business-day.ts";
 
-export type RecapSpec = { year: number; month?: number; basis: "purchase" | "entry"; scope: PortfolioFilterInput };
+export type RecapSpec = { year: number; month?: number; basis: "purchase" | "entry" | "outgoing"; scope: PortfolioFilterInput };
 export type RecapCard = { id: string; playerName: string; cardTitle: string; sport: string; productLine: string | null; isAutograph: boolean; grade: string | null; collectionStatus: string; visibility: string; createdAt: Date; images: { id: string; path: string; rotation: number }[] };
 export type RecapCandidate = { id: string; playerName: string; month: number };
 export type RecapSummary = { quantity: number; cardCount: number; subjectCount: number; seriesCount: number; subjects: { name: string; count: number }[]; sports: { name: string; count: number }[]; series: { name: string; count: number }[]; autograph: number; graded: number; months: number[]; weeks: { start: number; end: number; count: number }[]; missingPurchases: number; asOf: string; inProgress: boolean; representatives: string[] };
@@ -8,7 +9,7 @@ export type RecapSummary = { quantity: number; cardCount: number; subjectCount: 
 /** The screen and exported image share metric order, labels, and counting rules. */
 export function recapStats(spec: RecapSpec, summary: RecapSummary) {
   return [
-    { label: spec.basis === "purchase" ? "购入张数" : "新增档案", value: summary.quantity },
+    { label: spec.basis === "purchase" ? "取得张数" : spec.basis === "outgoing" ? "转出张数" : "新增档案", value: summary.quantity },
     { label: "涉及档案", value: summary.cardCount },
     { label: "卡牌主体", value: summary.subjectCount },
     { label: "产品线", value: summary.seriesCount },
@@ -19,23 +20,26 @@ export function recapStats(spec: RecapSpec, summary: RecapSummary) {
 
 export function normalizeRecapSpec(value: unknown, now = new Date()): RecapSpec {
   const raw = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
-  const year = raw.year === undefined || raw.year === "" ? now.getUTCFullYear() : Number(raw.year);
+  const year = raw.year === undefined || raw.year === "" ? now.getFullYear() : Number(raw.year);
   const month = raw.month === undefined || raw.month === "" ? undefined : Number(raw.month);
   if (!Number.isInteger(year) || year < 1900 || year > 2200 || (month !== undefined && (!Number.isInteger(month) || month < 1 || month > 12))) throw new Error("回顾日期无效。");
-  if (raw.basis !== undefined && raw.basis !== "purchase" && raw.basis !== "entry") throw new Error("回顾口径无效。");
-  return { year, ...(month ? { month } : {}), basis: raw.basis === "entry" ? "entry" : "purchase", scope: normalizePortfolioFilterInput(raw.scope ?? {}) };
+  if (raw.basis !== undefined && raw.basis !== "purchase" && raw.basis !== "entry" && raw.basis !== "outgoing") throw new Error("回顾口径无效。");
+  return { year, ...(month ? { month } : {}), basis: raw.basis === "entry" || raw.basis === "outgoing" ? raw.basis : "purchase", scope: normalizePortfolioFilterInput(raw.scope ?? {}) };
 }
 
-/** Purchase dates use the same UTC calendar dates as transaction entry. */
+/** Bounds compare calendar days encoded as UTC, including the entire local business day. */
 export function recapPeriod(spec: RecapSpec, now = new Date()) {
   const start = new Date(Date.UTC(spec.year, (spec.month ?? 1) - 1, 1));
   const end = new Date(Date.UTC(spec.year + (spec.month ? 0 : 1), spec.month ?? 0, 1));
-  return { start, end: new Date(Math.min(end.getTime(), now.getTime() + 1)), inProgress: start <= now && end > now };
+  const today = localBusinessDay(now);
+  return { start, end: new Date(Math.min(end.getTime(), today.getTime() + 86_400_000)), inProgress: start <= today && end > today };
 }
 
 export function recapActivity(spec: RecapSpec, card: { createdAt: Date; transactions: { occurredAt: Date; quantity: number }[] }, now = new Date()) {
   const period = recapPeriod(spec, now);
-  return (spec.basis === "entry" ? [{ occurredAt: card.createdAt, quantity: 1 }] : card.transactions).filter(event => event.occurredAt >= period.start && event.occurredAt < period.end);
+  if (spec.basis === "entry" && card.createdAt > now) return [];
+  const events = spec.basis === "entry" ? [{ occurredAt: localBusinessDay(card.createdAt), quantity: 1 }] : card.transactions;
+  return events.filter(event => event.occurredAt >= period.start && event.occurredAt < period.end);
 }
 
 export function recapQuery(spec: RecapSpec): string { return new URLSearchParams({ recapYear: String(spec.year), ...(spec.month ? { recapMonth: String(spec.month) } : {}), recapBasis: spec.basis, ...Object.fromEntries(Object.entries(spec.scope).filter((entry): entry is [string, string] => entry[1] !== undefined)) }).toString(); }

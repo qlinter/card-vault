@@ -13,35 +13,50 @@ function fixture(t, extraTable = false) {
   const file = path.join(data, "dev.db"), db = new DatabaseSync(file);
   db.exec(fs.readFileSync(path.join(__dirname, "fixtures/current-format-v1.5.1.sql"), "utf8"));
   db.exec("INSERT INTO Card(id,playerName,cardTitle,sport) VALUES('kept','Player','Kept card','Basketball')");
+  db.exec("INSERT INTO CardTransaction(id,cardId,kind,quantity,amountMinor,occurredAt,provenance) VALUES('kept-purchase','kept','purchase',1,0,'2026-01-01','manual')");
   if (extraTable) db.exec("CREATE TABLE CollectionRecap(id TEXT PRIMARY KEY, title TEXT); INSERT INTO CollectionRecap VALUES('extra','Unused content')");
   db.close();
   return { root, data, file };
 }
 
-function expectedWithImageOrder(fixture) {
-  const expected = path.join(fixture.root, "expected.db");
-  fs.copyFileSync(fixture.file, expected);
-  const db = new DatabaseSync(expected);
-  try { db.exec("ALTER TABLE CardImage ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0"); }
-  finally { db.close(); }
-  return fs.readFileSync(expected);
+function storedRows(file) {
+  const db = new DatabaseSync(file, {readOnly:true});
+  try {
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all();
+    return tables.map(({name}) => [name, db.prepare('SELECT * FROM "' + name.replaceAll('"','""') + '" ORDER BY rowid').all()]);
+  } finally {db.close();}
+}
+
+function checkGiftSupport(file) {
+  const db = new DatabaseSync(file);
+  try {
+    db.exec("BEGIN");
+    const add = db.prepare("INSERT INTO CardTransaction(id,cardId,kind,quantity,amountMinor,occurredAt,provenance) VALUES(?, 'kept', ?, 1, ?, '2026-02-01', 'manual')");
+    add.run("received","gift_in",0);
+    add.run("given","gift_out",0);
+    assert.throws(() => add.run("invalid","gift_out",100), /CHECK constraint failed/);
+    assert.equal(db.prepare("SELECT kind FROM CardTransaction WHERE id='kept-purchase'").get().kind,"purchase");
+  } finally {db.exec("ROLLBACK"); db.close();}
 }
 
 for (const extraTable of [false, true]) {
-  test(`published 1.5.1 data opens with only the image order column added (extra table: ${extraTable})`, t => {
+  test(`published 1.5.1 data opens with the image order and gift transaction upgrades (extra table: ${extraTable})`, t => {
     const f = fixture(t, extraTable), before = fs.readFileSync(f.file);
-    const expected = expectedWithImageOrder(f);
+    const expected = storedRows(f.file);
     validateDatabase(f.file);
     assert.deepEqual(fs.readFileSync(f.file), before);
     assert.equal(initializeDatabase(f.file).initialized, false);
+    const upgraded = fs.readFileSync(f.file);
     assert.equal(initializeDatabase(f.file).initialized, false);
-    assert.deepEqual(fs.readFileSync(f.file), expected);
+    assert.ok(fs.readFileSync(f.file).equals(upgraded));
+    assert.deepEqual(storedRows(f.file), expected);
+    checkGiftSupport(f.file);
     assert.equal(fs.existsSync(path.join(f.data, "schema-backups")), false);
   });
 
   test(`restore preserves the current format and ignores unused tables (extra table: ${extraTable})`, t => {
     const f = fixture(t, extraTable), before = fs.readFileSync(f.file);
-    const expected = expectedWithImageOrder(f);
+    const expected = storedRows(f.file);
     writeBackupManifest(f.data);
     const target = path.join(f.root, "restored");
     const service = createRestoreService({
@@ -52,7 +67,8 @@ for (const extraTable of [false, true]) {
     service.restoreDataFolder(f.data);
     verifyBackupManifest(f.data); verifyBackupManifest(target);
     assert.deepEqual(fs.readFileSync(f.file), before);
-    assert.deepEqual(fs.readFileSync(path.join(target, "dev.db")), expected);
+    assert.deepEqual(storedRows(path.join(target, "dev.db")), expected);
+    checkGiftSupport(path.join(target,"dev.db"));
   });
 }
 

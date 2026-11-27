@@ -565,8 +565,6 @@ html[data-ui-locale="en"][data-ui-ready="false"] body {
 
 .settings-disclosure-content { margin-top: 1rem; }
 .settings-disclosure-content[hidden] { display: none; }
-.data-workspace .management-section { padding: 1rem; }
-.data-workspace h2 { font-size: var(--text-lg); font-weight: var(--weight-bold); line-height: 1.3; }
 .selection-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; }
 .view-mode-toggle { margin-left: auto; display: inline-flex; align-items: center; flex: 0 0 auto; gap: 2px; }
 .view-mode-toggle button { display: inline-flex; align-items: center; justify-content: center; width: var(--control-size-icon); height: var(--control-size-icon); padding: 0; border: 0; border-radius: var(--control-radius); background: transparent; color: var(--muted-ink); cursor: pointer; }

@@ -83,15 +83,18 @@ async function run(locale) {
     await page.getByRole("button", { name: l("测试连接", "Test Connection"), exact: true }).click();
     await expect(page.locator(".ai-capability-result")).toBeVisible();
     await key.fill(""); // Exercise IPC persistence without depending on device encryption.
-    await page.locator(".ai-proxy-settings > summary").click();
     await page.getByRole("combobox", { name: l("连接方式", "Connection mode"), exact: true }).selectOption("auto");
     await page.getByRole("combobox", { name: l("连接方式", "Connection mode"), exact: true }).selectOption("direct");
+    const studioPanel = page.locator(".studio-configuration");
+    await studioPanel.getByLabel(l("图片模型", "Image model"), { exact: true }).fill("fixture-image");
+    await studioPanel.getByLabel(l("密钥来源", "Key source")).selectOption("independent");
     await service.selectOption("deepseek");
     await page.getByLabel("Model", { exact: true }).fill("fixture-deepseek");
     await page.getByRole("button", { name: l("保存设置", "Save Settings"), exact: true }).click();
     await expect(page.getByRole("status").filter({ hasText: l("AI 设置已保存。", "AI settings saved.") })).toBeVisible({ timeout: 45000 });
     await expect(service).toBeEnabled();
     const saved = await page.evaluate(() => window.cardVaultDesktop.getAiSettings());
+    assert.equal(saved.studio.model, "fixture-image"); assert.equal(saved.studio.keySource, "independent");
     assert.equal(saved.provider, "deepseek"); assert.deepEqual(saved.customProviders, []);
     const input = page.getByLabel("Model", { exact: true });
     await input.click(); await input.press("End"); await input.pressSequentially("-after-save");
@@ -102,6 +105,7 @@ async function run(locale) {
     await expect(reopened.getByRole("combobox", { name: l("当前服务", "Current Service"), exact: true })).toHaveValue("deepseek");
     await expect(reopened.locator('.ai-provider-picker option[value^="custom:"]')).toHaveCount(0);
     await expect(reopened.getByLabel("Model", { exact: true })).toHaveValue("fixture-deepseek");
+    await expect(reopened.getByLabel(l("图片模型", "Image model"), { exact: true })).toHaveValue("fixture-image");
     await reopened.getByRole("button", { name: l("新增自定义 AI", "Add Custom AI"), exact: true }).click();
     const name = reopened.getByLabel(l("显示名称 *", "Display Name *"), { exact: true });
     await name.click(); await name.press("ControlOrMeta+A"); await name.pressSequentially("New editable fixture");

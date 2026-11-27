@@ -51,10 +51,9 @@ test('legacy settings links open the correct tools and help remains reachable', 
   await expect(page.locator('#data-export')).toBeVisible();
   await expect(page.locator('#data-settings > button')).toHaveAttribute('aria-expanded', 'true');
   await page.getByLabel('仅导出公开档案').check();
-  await page.locator('#data-transfer > button').click();
-  await expect(page.locator('#data-export')).toBeHidden();
+  await expect(page.locator('#data-maintenance')).toBeVisible();
   await page.evaluate(() => { location.hash = 'data-maintenance'; });
-  await expect(page.getByRole('heading', { name: '存储', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '维护', exact: true })).toBeVisible();
   await page.evaluate(() => { location.hash = 'data-export'; });
   await expect(page.getByLabel('仅导出公开档案')).toBeChecked();
   await page.evaluate(() => { location.hash = 'about-card-vault-content'; });
@@ -91,7 +90,8 @@ test('AI fields are directly visible and preserve drafts and saved keys across p
   await toggle.click();
   await expect(page.getByLabel('Endpoint', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '新增自定义 AI', exact: true })).toBeVisible();
-  await expect(page.locator('.ai-settings-panel details:not(.ai-proxy-settings)')).toHaveCount(0);
+  await expect(page.locator('.ai-settings-panel details')).toHaveCount(0);
+  await expect(page.locator('.ai-settings-fields > section h3')).toHaveText(['识别与分析','制图与合影','网络与代理']);
   await expect(page.locator('.ai-proxy-settings')).toHaveCount(1);
   await page.getByLabel('Model *', { exact: true }).fill('vision-draft');
   await page.getByLabel('API Key', { exact: true }).fill('new-mock-key');

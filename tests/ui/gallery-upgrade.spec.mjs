@@ -16,7 +16,7 @@ test("Showcase browsing can exclude sold cards in the current scope and save the
     const viewer = page.getByRole("dialog", { name: "沉浸式赏卡" });
     const total = viewer.locator(".gallery-position > span");
     const settings = viewer.getByRole("button", { name: "展馆设置", exact: true });
-    const filter = viewer.getByRole("checkbox", { name: "排除已售", exact: true });
+    const filter = viewer.getByRole("checkbox", { name: "仅看在藏", exact: true });
     await expect(total).toHaveText("002");
     await settings.click();
     await expect(filter).not.toBeChecked();
@@ -156,7 +156,7 @@ for (const locale of ["zh-CN", "en"]) test(`gallery settings persist and Escape 
   const l = (zh, en) => locale === "en" ? en : zh;
   const viewer = await exhibition(page);
   await viewer.getByRole("button", { name: l("展馆设置", "Gallery Settings"), exact: true }).click();
-  await expect(viewer.getByRole("checkbox", { name: l("排除已售", "Exclude Sold"), exact: true })).toBeVisible();
+  await expect(viewer.getByRole("checkbox", { name: l("仅看在藏", "In collection only"), exact: true })).toBeVisible();
   const labelStyles = await viewer.locator(".gallery-settings-section label").evaluateAll(labels => labels.map(label => {
     const style = getComputedStyle(label.querySelector("span") ?? label);
     return [style.fontFamily, style.fontSize, style.fontWeight, style.letterSpacing, style.color].join("|");
@@ -241,7 +241,9 @@ test("compact showcase actions and search align across desktop sizes and app the
     await context.addCookies([{ name: "card_vault_app_theme", value: theme, url: "http://127.0.0.1:3360" }]);
     await page.setViewportSize({ width, height: 760 }); await page.goto("/showcase");
     const actions = await page.locator(".showcase-action").evaluateAll(elements => elements.map(element => { const s = getComputedStyle(element), r = element.getBoundingClientRect(); return { y: r.y, height: r.height, font: s.font, background: s.backgroundColor, border: s.borderColor }; }));
-    expect(actions[0]).toEqual(actions[1]); expect(actions[0].height).toBe(36);
+    expect(actions).toHaveLength(3);
+    for (const action of actions.slice(1)) expect(action).toEqual(actions[0]);
+    expect(actions[0].height).toBe(36);
     expect((await page.locator(".showcase-search").boundingBox()).width).toBeLessThanOrEqual(281);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }

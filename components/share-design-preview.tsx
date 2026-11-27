@@ -7,6 +7,7 @@ import type { ShareThemeValues } from "@/lib/share-theme-domain";
 import { sharePreviewSandboxPolicy } from "@/lib/share-preview-policy";
 import { getSharePreviewDevice, sharePreviewDevices, type SharePreviewDeviceId } from "@/lib/share-preview-devices";
 import { renderPreviewDocument } from "@/lib/share-export-render";
+import { toPublicExportCard } from "@/lib/share-export-data";
 import type { ExportData } from "@/lib/share-export-types";
 import type { SharePresentation } from "@/lib/share-presentation";
 import type { ShareSectionDraft } from "@/lib/share-sections";
@@ -38,30 +39,8 @@ export function ShareDesignPreview({
   const document = useMemo(() => {
     const exportCards = cards.map((card) => {
       const draft = drafts[card.id];
-      return {
-        id: card.id,
-        playerName: card.playerName,
-        cardTitle: card.cardTitle,
-        displayTitle: draft?.displayTitle || card.cardTitle,
-        description: draft?.displayDescription || card.publicDescription || "",
-        sport: card.sport,
-        team: card.team,
-        year: card.year,
-        brand: card.brand,
-        productLine: card.productLine,
-        subsetName: card.subsetName,
-        parallel: card.parallel,
-        cardNumber: card.cardNumber,
-        serialNumber: card.serialNumber,
-        serialRange: card.serialRange,
-        isRookie: false,
-        isAutograph: false,
-        autoType: null,
-        isPatch: false,
-        patchType: null,
-        gradingCompany: card.gradingCompany,
-        grade: card.grade,
-        certNumber: card.certNumber,
+      return toPublicExportCard({
+        item: { card, displayTitle: draft?.displayTitle, displayDescription: draft?.displayDescription },
         href: `#card-${card.id}`,
         images: card.imagePath ? [{
           src: card.imagePath,
@@ -71,8 +50,9 @@ export function ShareDesignPreview({
           rotation: card.imageRotation,
           sourceRotation: card.imageRotation
         }] : []
-      };
+      });
     });
+    const firstImage = exportCards.find(card => card.images.length)?.images[0];
     const data: ExportData = {
       title: values.title || "未命名展馆",
       theme,
@@ -82,8 +62,8 @@ export function ShareDesignPreview({
       themeNarrative: values.themeNarrative || null,
       themeHighlights: values.themeHighlights || null,
       groupNotes: values.groupNotes || null,
-      coverImage: coverImagePath ? coverImagePath : exportCards.find((card) => card.images.length > 0)?.images[0]?.src ?? null,
-      coverRotation: coverImagePath ? 0 : exportCards.find((card) => card.images.length > 0)?.images[0]?.rotation ?? 0,
+      coverImage: coverImagePath ? coverImagePath : firstImage?.src ?? null,
+      coverRotation: coverImagePath ? 0 : firstImage?.rotation ?? 0,
       backgroundImage: backgroundImagePath ? backgroundImagePath : shareThemeBackgroundPath(theme),
       generatedAt: new Date(0).toISOString(),
       mode: "static",

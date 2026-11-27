@@ -51,7 +51,7 @@ export function ImmersiveGallerySettings({ viewer, preferences, update, save, al
         <label className="gallery-setting-field">{t("播放模式")}<select value={preferences.studioImage ? "studio" : viewer.allImages ? "all" : "first"} onChange={event => { viewer.pause(); update({ studioImage: event.target.value === "studio" }); viewer.setAllImages(event.target.value === "all"); }}>
           <option value="studio">{t("AI 展馆图")}</option><option value="first">{t("录入原图 · 首图")}</option><option value="all">{t("录入原图 · 全部")}</option>
         </select></label>
-        {allowSoldFilter ? <label className="gallery-setting-check"><span>{t("排除已售")}</span><input type="checkbox" checked={viewer.excludeSold} onChange={event => viewer.updateSoldFilter(event.target.checked)} /></label> : null}
+        {allowSoldFilter ? <label className="gallery-setting-check"><span>{t("仅看在藏")}</span><input type="checkbox" checked={viewer.excludeSold} onChange={event => viewer.updateSoldFilter(event.target.checked)} /></label> : null}
       </section>
     </div>
     <footer className="gallery-settings-footer">

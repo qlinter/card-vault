@@ -326,6 +326,7 @@ async function main() {
     }
     const imageDraft = new FormData();
     imageDraft.set("id", draftPayload.id);
+    imageDraft.set("expectedVersion", draftPayload.version);
     imageDraft.set("values", JSON.stringify({ playerName: "E2E Draft Player", cardTitle: "E2E Draft Card", sport: "Basketball", isRookie: true }));
     imageDraft.set("imageRotations", "[90]");
     imageDraft.append("images", new Blob([png], { type: "image/png" }), "draft-card.png");
@@ -334,7 +335,7 @@ async function main() {
     db = new DatabaseSync(dbPath, { readOnly: true });
     const storedDraftImages = JSON.parse(db.prepare("SELECT valuesJson FROM CardEntryDraft WHERE id=?").get(draftPayload.id).valuesJson).draftImages;
     if (storedDraftImages.length !== 1 || storedDraftImages[0].rotation !== 90 || !fs.existsSync(path.join(dataDir, "uploads", path.basename(storedDraftImages[0].path)))) throw new Error("Draft image was not persisted with rotation.");
-    const textDraftResponse = await fetch(`${baseUrl}/api/card-entry/drafts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: draftPayload.id, values: { playerName: "E2E Draft Player", cardTitle: "E2E Draft Card", sport: "Basketball", isRookie: true } }) });
+    const textDraftResponse = await fetch(`${baseUrl}/api/card-entry/drafts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: draftPayload.id, expectedVersion: (await imageDraftResponse.json()).version, values: { playerName: "E2E Draft Player", cardTitle: "E2E Draft Card", sport: "Basketball", isRookie: true } }) });
     if (!textDraftResponse.ok || JSON.parse(db.prepare("SELECT valuesJson FROM CardEntryDraft WHERE id=?").get(draftPayload.id).valuesJson).draftImages[0].path !== storedDraftImages[0].path) throw new Error("Saving draft text lost its image.");
     db.close();
     const draftPage = await fetchPage(baseUrl, `/cards/new?draft=${encodeURIComponent(draftPayload.id)}&queue=${encodeURIComponent(readyQueueItem.id)}`);
@@ -351,6 +352,7 @@ async function main() {
     const createForm = new FormData();
     appendServerActionFields(createForm, draftPage);
     createForm.append("draftId", draftPayload.id);
+    createForm.set("draftVersion", (await textDraftResponse.json()).version);
     createForm.append("queueItemId", readyQueueItem.id);
     createForm.append("saveIntent", "view");
     appendCardFields(createForm, {

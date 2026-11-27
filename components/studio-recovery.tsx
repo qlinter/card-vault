@@ -32,14 +32,20 @@ export function StudioRecovery({ hasKey, children }: { hasKey: boolean; children
     } catch (problem) { setError(problem instanceof Error ? problem.message : (en ? "Generation failed." : "生成失败。")); }
     finally { setBusy(false); }
   }
-  return <SettingsSubsection id="studio-photos" title={en ? "Image creation and group photos" : "制图与合影"} className="studio-recovery" meta={inventory && <p className="studio-recovery-counts" role="status" aria-atomic="true">
-        <span>{en ? "Single cards" : "单卡展馆图"}</span>
-        <span>{en ? "Ready" : "已生成"} <strong>{inventory.ready}</strong></span>
-        <span>{en ? "Pending" : "待生成"} <strong>{inventory.pending.length}</strong></span>
-      </p>}>
+  return <SettingsSubsection id="studio-photos" title={en ? "Image creation and group photos" : "制图与合影"} className="studio-recovery" meta={inventory && (
+    <div className="studio-recovery-counts">
+      <span>{en ? "Single cards" : "单卡展馆图"}</span>
+      <span>{en ? "Ready" : "已生成"} <strong>{inventory.ready}</strong></span>
+      <div className="studio-pending-group">
+        <span role="status" aria-atomic="true">{en ? "Pending" : "待生成"} <strong>{inventory.pending.length}</strong></span>
+        {inventory.pending.length > 0 && <button type="button" className="btn btn-secondary studio-generate" disabled={!hasKey || busy} onClick={resume}>
+          {busy ? (en ? "Generating…" : "生成中…") : (en ? "Generate missing images" : "补生成展馆图")}
+        </button>}
+      </div>
+    </div>
+  )}>
     {children}
     {!hasKey && <p className="muted">{en ? "Save an image service key to generate missing images." : "保存生图密钥后可补生成。"}</p>}
-    {inventory && inventory.pending.length > 0 && <button type="button" className="btn btn-secondary" disabled={!hasKey || busy} onClick={resume}>{busy ? (en ? "Generating…" : "生成中…") : (en ? "Generate missing images" : "补生成展馆图")}</button>}
     {error && <p role="alert">{error}</p>}
   </SettingsSubsection>;
 }

@@ -12,7 +12,7 @@ test("cache cleanup preserves studio media, logs, and the usable production buil
   fs.mkdirSync(path.dirname(script));
   fs.copyFileSync(path.join(__dirname, "../scripts/clean-cache.js"), script);
   const keep = ["logs/studio-retouched/12.png", "logs/playwright/version", "data/dev.db", "backups/snapshot", "dist/bundle.zip", ".next/BUILD_ID"];
-  const remove = [".next/cache/entry", "playwright-report/index.html", "test-results/output", "tsconfig.tsbuildinfo"];
+  const remove = [".next/cache/entry", "playwright-report/index.html", "test-results/output", "tests/.ui-test-runtime/data/dev.db", "tests/.ui-test-runtime/auth-state.json", "tsconfig.tsbuildinfo"];
   for (const file of [...keep, ...remove]) {
     const target = path.join(root, file);
     fs.mkdirSync(path.dirname(target), {recursive: true});

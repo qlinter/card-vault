@@ -103,7 +103,7 @@ test('AI ignores late provider responses and confirms saves and custom deletion 
   release();
   await expect(page.getByRole('button',{name:'Load Models',exact:true})).toBeEnabled();
   await expect(page.locator('.ai-settings-panel option', {hasText:'local-only-model'})).toHaveCount(0);
-  await page.getByRole('button',{name:'Save Settings',exact:true}).click();
+  await page.getByRole('button',{name:'Save Settings',exact:true}).and(page.locator('[data-save-section="recognition"]')).click();
   await expect(page.getByRole('status').filter({ hasText: 'AI settings saved.' })).toBeVisible();
   await page.getByRole('button',{name:'Add Custom AI',exact:true}).click();
   await expect(page.getByLabel('Display Name *',{exact:true})).toHaveValue('Custom configuration 2');

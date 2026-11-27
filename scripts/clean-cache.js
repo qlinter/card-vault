@@ -6,6 +6,7 @@ const targets = [
   ".next/cache",
   "playwright-report",
   "test-results",
+  "tests/.ui-test-runtime",
   "tsconfig.tsbuildinfo",
   "e2e-server.log",
   "e2e-server-error.log"

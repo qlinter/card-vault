@@ -39,15 +39,15 @@ for (const locale of ["zh", "en"]) test("AI proxy settings preserve per-device d
     expect(fields.every(Boolean)).toBe(true);
     await page.screenshot({ path: "logs/v1.5.1-ai-proxy-" + locale + "-" + width + ".png", fullPage: true });
   }
-  await page.getByRole("button", { name: locale === "en" ? "Save Settings" : "保存设置", exact: true }).click();
+  await page.getByRole("button", { name: locale === "en" ? "Save Settings" : "保存设置", exact: true }).and(page.locator('[data-save-section="proxy"]')).click();
   await expect(password).toHaveValue("");
   await expect(password).toHaveAttribute("placeholder", locale === "en" ? "Saved; leave blank to keep unchanged" : "已保存；留空则不修改");
   const saved = await page.evaluate(() => window.__proxyDraft);
   expect(saved.proxy).toMatchObject({ mode: "manual", protocol: "socks5", host: "gateway.example.com", port: "1091", password: "proxy-password" });
-  expect(saved.openai.apiKey).toBeUndefined();
+  expect(saved.openai).toBeUndefined();
   await expect(proxy.locator('input[type="checkbox"]')).toBeVisible();
   await proxy.locator('input[type="checkbox"]').check();
-  await page.getByRole("button", { name: locale === "en" ? "Save Settings" : "保存设置", exact: true }).click();
+  await page.getByRole("button", { name: locale === "en" ? "Save Settings" : "保存设置", exact: true }).and(page.locator('[data-save-section="proxy"]')).click();
   expect((await page.evaluate(() => window.__proxyDraft)).proxy.password).toBe("");
   await page.route("**/api/ai/test-settings", route => route.fulfill({ json: { ok: true, capability: "text", route: { source: "system", connection: "proxy", protocol: "https", attempt: 1 } } }));
   await page.getByRole("button", { name: locale === "en" ? "Test Connection" : "测试连接", exact: true }).click();

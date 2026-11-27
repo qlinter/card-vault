@@ -4,9 +4,9 @@ import { useLanguage } from "./language-provider";
 import { UiText, UiElement } from "./ui-text";
 import type { PublicAiProxySettings } from "@/lib/ai-proxy-core";
 
-type Props = { value: PublicAiProxySettings; onChange: (patch: Partial<PublicAiProxySettings>) => void; password: string; onPassword: (value: string) => void; clearPassword: boolean; onClearPassword: (value: boolean) => void; disabled: boolean };
+type Props = { children: React.ReactNode; value: PublicAiProxySettings; onChange: (patch: Partial<PublicAiProxySettings>) => void; password: string; onPassword: (value: string) => void; clearPassword: boolean; onClearPassword: (value: boolean) => void; disabled: boolean };
 const modeNames = { auto: "自动", direct: "直连", manual: "手动代理" };
-export function AiProxySettings({ value, onChange, password, onPassword, clearPassword, onClearPassword, disabled }: Props) {
+export function AiProxySettings({ value, onChange, password, onPassword, clearPassword, onClearPassword, disabled, children }: Props) {
   const { t } = useLanguage();
   return <SettingsSubsection className="ai-proxy-settings" title={t("网络与代理")}>
     <div className="form-grid ai-common-fields">
@@ -23,5 +23,6 @@ export function AiProxySettings({ value, onChange, password, onPassword, clearPa
       </> : null}
       {value.mode !== "direct" ? <label className="field full"><span><UiText text="不经过代理的地址" /></span><UiElement as="input" uiAttributes={["placeholder"]} autoComplete="off" placeholder="多个地址用逗号分隔" value={value.noProxy} disabled={disabled} onChange={event => onChange({ noProxy: event.target.value })} /></label> : null}
     </div>
+    {children}
   </SettingsSubsection>;
 }

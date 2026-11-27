@@ -8,7 +8,6 @@ import { PhotoAiError, requestStagePlate } from "@/lib/group-photo-ai-client";
 import type { StudioStagePlan } from "@/lib/group-photo-stage-plan";
 import { searchTerms } from "@/lib/search-terms";
 import { GroupCropEditor } from "./group-crop-editor";
-import { GroupPhotoCalibration } from "./group-photo-calibration";
 import { useLanguage } from "./language-provider";
 import { ShowcaseImage } from "./showcase-image";
 import { ShowcaseIcon } from "./showcase-icon";
@@ -23,7 +22,6 @@ export function GroupPhotoEditor({ cards }: { cards: Candidate[] }) {
   const [selected, setSelected] = useState(() => new Set(cards.map(card => card.id)));
   const [template, setTemplate] = useState<GroupPhotoStyle | "auto">("auto");
   const [title, setTitle] = useState("");
-  const [ratios, setRatios] = useState<Record<string, number | undefined>>({});
   const [calibrating, setCalibrating] = useState<{ id: string; source: PhotoSource; version: string; revision:string } | null>(null);
   const [preview, setPreview] = useState<{ url: string; width: number; height: number; faceLong: number; refined: boolean } | null>(null);
   const [task, setTask] = useState<"local" | "stage" | null>(null);
@@ -51,7 +49,7 @@ export function GroupPhotoEditor({ cards }: { cards: Candidate[] }) {
   function sourceFor(card: Candidate): PhotoSource {
     if (!card.studio) throw new Error(card.name);
     return { url: card.studio,
-      graded: card.graded, name: card.name, faceRatio: ratios[card.id], crop: card.crop ?? undefined };
+      graded: card.graded, name: card.name, crop: card.crop ?? undefined };
   }
   function move(card: Candidate, delta: number) {
     const next = [...ordered], other = visibleChosen[visibleChosen.indexOf(card) + delta];
@@ -118,8 +116,8 @@ export function GroupPhotoEditor({ cards }: { cards: Candidate[] }) {
               {card.visibility !== "public" && <small>{card.visibility === "private" ? en ? "Private" : "私密" : en ? "Unlisted" : "仅链接可见"}</small>}</span>
           </label>
           {selected.has(card.id) && <div className="group-card-tools">
-            {mosaic && card.crop && <small>{en ? "Saved crop" : "已保存裁切"}</small>}
-            {card.studio ? <button className="showcase-tool" disabled={busy} onClick={() => setCalibrating({id:card.id, source:sourceFor(card), version:card.version!, revision:card.revision})}>{mosaic ? en ? "Adjust crop" : "调整裁切" : ratios[card.id] ? en ? "Calibrated" : "已校准" : en ? "Calibrate" : "校准卡面"}</button>
+            {card.crop && <small>{en ? "Calibrated" : "已较准"}</small>}
+            {card.studio ? <button className="showcase-tool" disabled={busy} onClick={() => setCalibrating({id:card.id, source:sourceFor(card), version:card.version!, revision:card.revision})}>{en ? "Calibrate page" : "较准页面"}</button>
               : <Link className="showcase-tool" href={`/cards/${encodeURIComponent(card.id)}/edit#studio-image`}>{en ? "Generate studio image" : "去补展馆图"}</Link>}
             <button aria-label={en ? "Move up" : "上移"} className="showcase-tool" disabled={card === visibleChosen[0]} onClick={() => move(card, -1)}>↑</button>
             <button aria-label={en ? "Move down" : "下移"} className="showcase-tool" disabled={card === visibleChosen.at(-1)} onClick={() => move(card, 1)}>↓</button>
@@ -134,7 +132,7 @@ export function GroupPhotoEditor({ cards }: { cards: Candidate[] }) {
         {Object.entries(groupStyles).map(([key, item]) => <option key={key} value={key}>{en ? item.en : item.zh} · {item.min}–{item.max} {en ? "cards" : "张"}</option>)}</select></label>
         {mosaic ? <p className="group-mosaic-note">{en ? "All faces are vertical. Landscape faces turn 90° clockwise." : "卡面统一竖排，横版卡顺时针旋转 90°。"}</p>
           : <label>{en ? "Title (optional)" : "标题（选填）"}<input value={title} maxLength={80} onChange={e => { invalidate(); setTitle(e.target.value); }} /></label>}</div>
-      {calibrating && mosaic ? <GroupCropEditor key={JSON.stringify([calibrating.id, calibrating.version, calibrating.revision])} id={calibrating.id} version={calibrating.version} revision={calibrating.revision} source={calibrating.source} en={en}
+      {calibrating ? <GroupCropEditor key={JSON.stringify([calibrating.id, calibrating.version, calibrating.revision])} id={calibrating.id} version={calibrating.version} revision={calibrating.revision} source={calibrating.source} en={en}
         onReload={async () => {
           const {id} = calibrating;
           const response = await fetch("/api/studio/crop?id=" + encodeURIComponent(id), {cache:"no-store"});
@@ -142,10 +140,8 @@ export function GroupPhotoEditor({ cards }: { cards: Candidate[] }) {
           const asset: Pick<Candidate, "crop" | "revision" | "version" | "studio" | "thumb"> = await response.json();
           invalidate();
           setOrdered(previous => previous.map(card => card.id === id ? {...card, ...asset} : card));
-          const newImage = asset.version !== calibrating.version;
-          if (newImage) setRatios(previous => ({...previous, [id]:undefined}));
           setCalibrating(current => current !== calibrating ? current : asset.studio && asset.version
-            ? {...calibrating, revision:asset.revision, version:asset.version, source:{...calibrating.source, url:asset.studio, crop:asset.crop ?? undefined, faceRatio:newImage ? undefined : calibrating.source.faceRatio}}
+            ? {...calibrating, revision:asset.revision, version:asset.version, source:{...calibrating.source, url:asset.studio, crop:asset.crop ?? undefined}}
             : null);
         }}
         onClose={() => setCalibrating(null)} onSaved={(box, revision) => {
@@ -153,15 +149,12 @@ export function GroupPhotoEditor({ cards }: { cards: Candidate[] }) {
           invalidate();
           setOrdered(previous => previous.map(card => card.id === id ? {...card, crop:box, revision} : card));
           setCalibrating(current => current?.id === id ? null : current);
-        }} /> : calibrating ? <GroupPhotoCalibration key={calibrating.id} source={calibrating.source} en={en}
-        onClose={() => setCalibrating(null)} onSave={ratio => {
-          invalidate(); setRatios({...ratios, [calibrating.id]:ratio}); setCalibrating(null);
         }} /> : <div className="group-photo-preview">
         {preview ? <img src={preview.url} alt={en ? "Group photo preview" : "合影预览"} /> : <span>{busy ? en ? "Rendering…" : "合成中…" : en ? "Photo preview" : "合影预览"}</span>}
       </div>}
       <div className="group-photo-actions">
         <button className="btn" disabled={busy || !!calibrating || Boolean(problem)} onClick={() => generate("local")}>{task === "local" ? en ? "Rendering…" : "合成中…" : en ? "Generate preview" : "生成预览"}</button>
-        {!mosaic && <button className="btn btn-secondary" disabled={busy || !!problem} onClick={() => generate("stage")}>{task === "stage" ? en ? "Refining…" : "精修中…" : preview?.refined ? en ? "Generate new set" : "重新生成展台" : en ? "AI studio lighting" : "AI 展台精修"}</button>}
+        {!mosaic && <button className="btn btn-secondary" disabled={busy || !!calibrating || !!problem} onClick={() => generate("stage")}>{task === "stage" ? en ? "Refining…" : "精修中…" : preview?.refined ? en ? "Generate new set" : "重新生成展台" : en ? "AI studio lighting" : "AI 展台精修"}</button>}
         {busy && <>{mosaic && <span role="status">{processed} / {count}</span>}<button className="showcase-tool" onClick={stop}>{en ? "Cancel" : "取消"}</button></>}
         {missing.length > 0 && <button className="showcase-tool" onClick={() => { invalidate(); setSelected(new Set(chosen.filter(card => card.studio).map(card => card.id))); }}>{en ? "Deselect missing images" : "移出缺图卡牌"}</button>}
         {preview && <a className="btn" href={preview.url} download={(mosaic ? "Card Vault Mosaic" : title.trim().replace(/[<>:"/\\|?*]/g, "") || "Card Vault") + ".png"}>{en ? "Download PNG" : "下载 PNG"}</a>}

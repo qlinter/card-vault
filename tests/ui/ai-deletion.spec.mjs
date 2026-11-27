@@ -54,7 +54,7 @@ for (const locale of ['zh', 'en']) test(`AI deletion keeps editing usable withou
   await expect(builtinModel).toHaveValue('fixture-openai');
   await service.selectOption('deepseek');
   await page.getByLabel('Model', { exact: true }).fill('fixture-deepseek');
-  await page.getByRole('button', { name: l('保存设置', 'Save Settings'), exact: true }).click();
+  await page.getByRole('button', { name: l('保存设置', 'Save Settings'), exact: true }).and(page.locator('[data-save-section="recognition"]')).click();
   await expect.poll(() => page.evaluate(() => window.__savedAiDraft?.customProviders)).toEqual([]);
   await expect(service).toBeEnabled();
   expect(await page.evaluate(() => window.__nativeConfirmCalls)).toBe(0);

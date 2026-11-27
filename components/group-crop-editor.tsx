@@ -37,7 +37,7 @@ export function GroupCropEditor({id, version, revision, source, en, onClose, onS
   useEffect(() => {
     const controller = new AbortController();
     let url: string | undefined;
-    calibrationImage(source,controller.signal,true).then(photo => {
+    calibrationImage(source,controller.signal).then(photo => {
       if (controller.signal.aborted) { URL.revokeObjectURL(photo.url); return; }
       url = photo.url;
       setImage(photo);

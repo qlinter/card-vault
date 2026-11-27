@@ -36,12 +36,16 @@ export function CardStudioPanel({ id }: { id: string }) {
   const reasons: Record<string, string> = en
     ? { key: "OpenAI key missing", quota: "Check quota or rate limits", access: "Check key and model access", generation: "Check the network and original image" }
     : { key: "缺少 OpenAI 密钥", quota: "请检查额度或请求频率", access: "请检查密钥与模型权限", generation: "请检查网络与首图" };
+  const [reason, requestId] = (status?.failure ?? "").split(" ");
+  const lastFailure = reason === "moderation_blocked"
+    ? (en ? "Blocked by OpenAI safety review" : "OpenAI 安全审核已拦截") + (requestId ? " · " + requestId : "")
+    : reasons[reason] ?? reasons.generation;
   const image = "/api/studio?image=" + encodeURIComponent(status?.version ?? "");
   return <section id="studio-image" className="card-studio-panel">
     <header className="studio-panel-heading">
       <h3>{en ? "AI studio image" : "AI 展馆图"}</h3>
       {status && <div className="studio-panel-tools">
-        <span role="status">{label}{!working && status.failure && !status.candidate && " · " + (reasons[status.failure] ?? reasons.generation)}</span>
+        <span role="status">{label}{!working && status.failure && !status.candidate && " · " + lastFailure}</span>
         {status.candidate ? <>
           <button type="button" className="btn btn-primary" disabled={working} onClick={() => act("adopt")}>{en ? "Use new image" : "采用新图"}</button>
           <button type="button" className="btn btn-secondary" disabled={working} onClick={() => act("discard")}>{en ? "Discard preview" : "放弃新图"}</button>

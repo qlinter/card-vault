@@ -3,7 +3,7 @@ import { mosaicTileEdge, planMosaic } from "./group-photo-mosaic.ts";
 import type { StudioStagePlan } from "./group-photo-stage-plan.ts";
 import { registerStudioStep, registerStudioTable, studioTableMaterial, type TableMaterial } from "./group-photo-tabletop.ts";
 
-export type PhotoSource = { url: string; graded: boolean; name: string; faceRatio?: number; crop?: Box };
+export type PhotoSource = { url: string; graded: boolean; name: string; crop?: Box };
 
 function surface(w: number, h: number) {
   const canvas = document.createElement("canvas");
@@ -26,13 +26,22 @@ function thumbnail(bitmap: ImageBitmap, max: number) {
   return ctx;
 }
 
+function measureStudioCard(ctx: CanvasRenderingContext2D, graded: boolean) {
+  const { width, height } = ctx.canvas;
+  return measureCard(ctx.getImageData(0, 0, width, height).data, width, height, graded, true);
+}
+
+function cropInPixels(crop: Box, width: number, height: number): Box {
+  return { x: crop.x * width, y: crop.y * height, w: crop.w * width, h: crop.h * height };
+}
+
 async function survey(source: PhotoSource, signal: AbortSignal) {
   const blob = await loadImage(source.url, signal);
   const bitmap = await createImageBitmap(blob);
   try {
     const ctx = thumbnail(bitmap, 273);
     const { width, height } = ctx.canvas;
-    const frame = measureCard(ctx.getImageData(0, 0, width, height).data, width, height, source.graded, true);
+    const frame = measureStudioCard(ctx, source.graded);
     return { source, blob, frame, width, height, survey: ctx.canvas };
   } finally { bitmap.close(); }
 }
@@ -45,9 +54,9 @@ function mosaicFace(frame: Framing): Box {
   return { x: x+w*inset, y: y+h*inset, w: w*(1-2*inset), h: h*(1-2*inset) };
 }
 
-export async function calibrationImage(source: PhotoSource, signal: AbortSignal, cropMode = false) {
-  const { survey: canvas, blob, frame, width, height } = await survey(source, signal);
-  return { url: cropMode ? URL.createObjectURL(blob) : canvas.toDataURL(), face: cropMode ? mosaicFace(frame) : frame.face, width, height };
+export async function calibrationImage(source: PhotoSource, signal: AbortSignal) {
+  const { blob, frame, width, height } = await survey(source, signal);
+  return { url: URL.createObjectURL(blob), face: mosaicFace(frame), width, height };
 }
 
 function jpeg(canvas: HTMLCanvasElement) {
@@ -111,9 +120,7 @@ async function renderMosaic(sources: PhotoSource[], signal: AbortSignal, progres
         const bitmap = await createImageBitmap(await loadImage(source.url, signal));
         try {
           const probe = thumbnail(bitmap, 273), { width, height } = probe.canvas;
-          const manual = source.crop;
-          const face = manual ? { x: manual.x * width, y: manual.y * height, w: manual.w * width, h: manual.h * height }
-            : mosaicFace(measureCard(probe.getImageData(0, 0, width, height).data, width, height, source.graded, true));
+          const face = source.crop ? cropInPixels(source.crop, width, height) : mosaicFace(measureStudioCard(probe, source.graded));
           probe.canvas.width = 1;
           const scale = edge / Math.max(face.w, face.h);
           const turn = face.w > face.h;
@@ -173,10 +180,10 @@ export async function renderGroupPhoto(sources: PhotoSource[], style: GroupPhoto
     try { exhibits.push(await survey(source, signal)); }
     catch { signal.throwIfAborted(); throw new Error(source.name); }
   }
-  const sizes = exhibits.map(({ frame, source, width, height }) => ({
-    width: frame.holder.w, height: frame.foot - topOf(frame),
-    faceLong: source.faceRatio ? source.faceRatio * Math.max(width, height) : Math.max(frame.face.w, frame.face.h)
-  }));
+  const sizes = exhibits.map(({ frame, source, width, height }) => {
+    const face = source.crop ? cropInPixels(source.crop, width, height) : frame.face;
+    return { width: frame.holder.w, height: frame.foot - topOf(frame), faceLong: Math.max(face.w, face.h) };
+  });
   const layout = planGroupPhoto(sizes, style, Boolean(title));
   const ctx = surface(layout.width, layout.height), w = layout.width, wall = style === "wall";
   const inset = wall ? layout.inset : 0;

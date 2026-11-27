@@ -29,7 +29,7 @@ export async function inspectStudioOrientation(source: Buffer, settings: ReturnT
     }
   } catch {
     // Some image-capable accounts restrict the configured chat model. The edit
-    // then receives both references and resolves the card's orientation itself.
+    // then infers orientation from the same front photograph.
   }
   return null;
 }

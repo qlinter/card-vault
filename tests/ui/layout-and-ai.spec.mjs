@@ -29,7 +29,7 @@ test("OpenAI defaults can read models, test vision settings and save without cha
   await page.getByRole("button", { name: "测试连接", exact: true }).click();
   await expect(page.getByText("OpenAI 连接测试通过。", { exact: true })).toBeVisible();
   expect(tested.openai.model).toBe("gpt-5.4");
-  await page.getByRole("button", { name: "保存设置", exact: true }).click();
+  await page.getByRole("button", { name: "保存设置", exact: true }).and(page.locator('[data-save-section="recognition"]')).click();
   const saved = await page.evaluate(() => window.__savedAiDraft);
   expect(saved.azure).toBeUndefined();
   expect(saved.openai.apiKey).toBe("official-mock-key");
@@ -105,7 +105,7 @@ test("DeepSeek settings select, test and save the official defaults without clea
   await page.getByRole("button", { name: "测试连接", exact: true }).click();
   await expect(page.getByText("DeepSeek 连接测试通过。", { exact: true })).toBeVisible();
   expect(tested.deepseek.model).toBe("deepseek-flash");
-  await page.getByRole("button", { name: "保存设置", exact: true }).click();
+  await page.getByRole("button", { name: "保存设置", exact: true }).and(page.locator('[data-save-section="recognition"]')).click();
   await expect(page.getByLabel("API Key", { exact: true })).toHaveValue("");
   const saved = await page.evaluate(() => window.__savedAiDraft);
   expect(saved.provider).toBe("deepseek");

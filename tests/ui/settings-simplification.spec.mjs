@@ -107,7 +107,7 @@ test('AI fields are directly visible and preserve drafts and saved keys across p
   await page.getByRole('combobox', { name: '选择模型', exact: true }).selectOption('vision-next');
   expect(requested.customProviders[0].endpoint).toBe('https://local.example.test/alternate/chat/completions');
   await page.getByLabel('保存时清除 API Key').check();
-  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await page.getByRole('button', { name: '保存设置', exact: true }).and(page.locator('[data-save-section="recognition"]')).click();
   await expect.poll(() => page.evaluate(() => window.__savedAiDraft?.customProviders[0].apiKey)).toBe('');
   const saved = await page.evaluate(() => window.__savedAiDraft);
   expect(saved.customProviders[0]).toMatchObject({ model: 'vision-next', apiKeyHeader: 'X-API-Key', apiKeyPrefix: '' });
@@ -119,10 +119,10 @@ test('AI fields are directly visible and preserve drafts and saved keys across p
   await page.getByLabel('显示名称 *', { exact: true }).fill('New local model');
   await page.getByLabel('Endpoint', { exact: true }).fill('https://new.example.test/v1/chat/completions');
   await page.getByLabel('Model *', { exact: true }).fill('vision-new');
-  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await page.getByRole('button', { name: '保存设置', exact: true }).and(page.locator('[data-save-section="recognition"]')).click();
   await expect.poll(() => page.evaluate(() => window.__savedAiDraft?.customProviders.length)).toBe(2);
   await page.getByRole('button', { name: '删除当前配置', exact: true }).click();
   await page.getByRole('button', { name: '确认删除', exact: true }).click();
-  await page.getByRole('button', { name: '保存设置', exact: true }).click();
+  await page.getByRole('button', { name: '保存设置', exact: true }).and(page.locator('[data-save-section="recognition"]')).click();
   await expect.poll(() => page.evaluate(() => window.__savedAiDraft?.customProviders.map(item => item.id))).toEqual(['local']);
 });

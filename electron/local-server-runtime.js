@@ -11,7 +11,11 @@ const { ACCOUNT_COOKIE, createAccountStore } = require("../lib/account-store");
 function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger, resolveSystemProxy }) {
   const runExclusiveOperation = createOperationCoordinator();
   const nextBuildIdPath = path.join(rootDir, ".next", "BUILD_ID");
-  const nextHealthRoutePath = path.join(rootDir, ".next", "server", "app", "api", "health", "route.js");
+  const requiredBuildFiles = [
+    nextBuildIdPath,
+    path.join(rootDir, ".next", "server", "app", "api", "health", "route.js"),
+    path.join(rootDir, ".next", "server", "preview-props.json")
+  ];
   const nextCliPath = path.join(rootDir, "node_modules", "next", "dist", "bin", "next");
   const initDbScriptPath = path.join(rootDir, "scripts", "init-db.js");
   const prepareLocalScriptPath = path.join(rootDir, "scripts", "prepare-local.js");
@@ -53,7 +57,7 @@ function createLocalServerRuntime({ app, rootDir, storage, aiConfig, logger, res
   }
 
   function isPreparedBuildCurrent() {
-    if (!fs.existsSync(nextBuildIdPath) || !fs.existsSync(nextHealthRoutePath)) return false;
+    if (!requiredBuildFiles.every(file => fs.existsSync(file))) return false;
     if (app.isPackaged) return true;
     const buildTime = fs.statSync(nextBuildIdPath).mtimeMs;
     const latestSourceTime = nextBuildSourcePaths.reduce((latest, sourcePath) => Math.max(latest, getLatestModifiedTime(sourcePath)), 0);

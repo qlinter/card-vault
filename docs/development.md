@@ -8,7 +8,7 @@
 
 本地服务优先使用 3000–3019，端口占用或被 Windows 保留时由系统分配回环端口。开发配置位于 `%APPDATA%\Card Vault Development`；实际收藏路径以设置中的存储信息为准。路径迁移必须使用应用入口，规则见[数据管理](./data-guide.md#backup)。
 
-`npm run clean:cache` 清理 Next 编译缓存、TypeScript 增量信息和测试报告。`logs/` 混存验收记录、可复用的测试浏览器和原始制图素材，应按用途清理。便携包验收使用独立临时目录，退出测试进程后清除解压副本，保留发行附件和校验报告。收藏、备份、配置及已发布分发文件各自独立存放。
+所有测试退出后，可运行 `npm run clean:cache` 清理 Next 编译缓存、TypeScript 增量信息、测试报告，以及界面测试自动创建的模拟收藏库和登录状态。`logs/` 混存验收记录、可复用的测试浏览器和原始制图素材，应按用途清理。便携包验收使用独立临时目录，退出测试进程后清除解压副本，保留发行附件和校验报告。收藏、备份、配置及已发布分发文件各自独立存放。
 
 开发依赖中的 node-gyp 和 TypeScript 项目查找通过 `tools/build-glob` 使用 glob，只提供这两个调用方使用的文件查找方法。升级任一工具后，用 `npm ci`、`node --test tests/build-glob.test.js` 和 `npm run audit:all` 检查实际解析路径和匹配结果。
 

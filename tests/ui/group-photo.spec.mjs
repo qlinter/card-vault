@@ -54,7 +54,7 @@ test("a face-only PNG includes a selection beyond the wall limit and supports cr
     await page.getByLabel("构图").selectOption("mosaic");
     await expect(page.getByLabel("标题（选填）")).toHaveCount(0);
     await expect(page.getByText("用录入首图",{exact:true})).toHaveCount(0);
-    await page.getByRole("button", { name: "调整裁切" }).first().click();
+    await page.getByRole("button", { name: "较准页面" }).first().click();
     const surface = page.locator(".group-crop-surface");
     await expect(surface).toBeVisible();
     const bounds = await surface.boundingBox();
@@ -74,16 +74,16 @@ test("a face-only PNG includes a selection beyond the wall limit and supports cr
     expect((await frame.boundingBox()).x-beforeMove.x).toBeCloseTo(6,0);
     const savedFrame = await frame.getAttribute("style");
     await page.getByRole("button",{name:"保存裁切"}).click();
-    await expect(page.getByText("已保存裁切",{exact:true})).toHaveCount(1);
+    await expect(page.getByText("已较准",{exact:true})).toHaveCount(1);
     await page.reload();
     await page.getByLabel("构图").selectOption("mosaic");
-    const saved = page.locator(".group-photo-list li").filter({hasText:"已保存裁切"});
+    const saved = page.locator(".group-photo-list li").filter({hasText:"已较准"});
     await expect(saved).toHaveCount(1);
-    await saved.getByRole("button",{name:"调整裁切"}).click();
+    await saved.getByRole("button",{name:"较准页面"}).click();
     await expect(frame).toHaveAttribute("style",savedFrame);
     await page.getByRole("button",{name:"调整右边",exact:true}).press("ArrowLeft");
     await page.getByRole("button",{name:"关闭",exact:true}).click();
-    await saved.getByRole("button",{name:"调整裁切"}).click();
+    await saved.getByRole("button",{name:"较准页面"}).click();
     await expect(frame).toHaveAttribute("style",savedFrame);
     await page.getByRole("button",{name:"关闭",exact:true}).click();
     await page.getByRole("button", {name:"生成预览"}).click();
@@ -121,9 +121,9 @@ test("a saved gallery crop can be reset and an old editor cannot overwrite a rep
   const pathToEditor = "/showcase/group-photo?group=Jordan%20Lee";
   const portrait = await readFile("public/studio-style/portrait.png"), landscape = await readFile("public/studio-style/landscape.png");
   let remove = await installStudioPhoto("ui-card-1",portrait);
-  const edit = page.getByRole("button",{name:"调整裁切"});
+  const edit = page.getByRole("button",{name:"较准页面"});
   const save = page.getByRole("button",{name:"保存裁切"});
-  const saved = page.getByText("已保存裁切",{exact:true});
+  const saved = page.getByText("已较准",{exact:true});
   const open = async () => {
     await page.goto(pathToEditor);
     await page.getByLabel("构图").selectOption("mosaic");
@@ -138,7 +138,7 @@ test("a saved gallery crop can be reset and an old editor cannot overwrite a rep
     await stale.getByRole("button",{name:"仅选结果"}).click();
     const selection = await stale.locator(".group-photo-heading small").innerText();
     await stale.getByLabel("构图").selectOption("mosaic");
-    await stale.getByRole("button",{name:"调整裁切"}).click();
+    await stale.getByRole("button",{name:"较准页面"}).click();
     await expect(stale.getByRole("button",{name:"保存裁切"})).toBeEnabled();
     await page.getByRole("button",{name:"调整下边",exact:true}).press("ArrowUp");
     await page.route("**/api/studio/crop", route => route.fulfill({status:503}),{times:1});
@@ -276,13 +276,16 @@ test("filtered owner selection uses only an accepted studio image and downloads 
   try {
     await page.reload();
     await expect(generate).toBeEnabled();
-    await page.getByRole("button", { name: "校准卡面" }).click();
-    const calibration = page.locator(".group-calibration-surface");
-    await expect(calibration).toBeVisible();
-    await calibration.click({ position: { x: 40, y: 30 } });
-    await calibration.click({ position: { x: 40, y: 135 } });
-    await page.getByRole("button", { name: "应用校准" }).click();
-    await expect(page.getByRole("button", { name: "已校准" })).toBeVisible();
+    await page.getByRole("button", {name:"较准页面"}).click();
+    await page.getByRole("button",{name:"调整下边",exact:true}).press("ArrowUp");
+    await page.getByRole("button",{name:"保存裁切"}).click();
+    for (const mode of ["mosaic","wall","tiers","stage"]) {
+      await page.getByLabel("构图").selectOption(mode);
+      await expect(list.getByText("已较准",{exact:true})).toBeVisible();
+      await list.getByRole("button",{name:"较准页面"}).click();
+      await expect(page.getByRole("button",{name:"恢复自动"})).toBeVisible();
+      await page.getByRole("button",{name:"关闭",exact:true}).click();
+    }
     await page.getByLabel("标题（选填）").fill("Test print");
     await page.evaluate(() => {
       const create = URL.createObjectURL;

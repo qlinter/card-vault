@@ -3,21 +3,22 @@ import { studioCropInfo } from "./studio-crop";
 import { cardImageOrder } from "./card-image-order.ts";
 import "server-only";
 import { studioFilename, oversized } from "./studio-file.js";
+import type { StudioCard } from "./studio-file.js";
 import { randomUUID } from "node:crypto";
 import { lstat, realpath, mkdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { getStudioAiSettings, hasStudioKey } from "./ai-settings";
 import { inspectStudioOrientation } from "./studio-orientation";
-import { editStudioImage, studioLighting } from "./studio-provider";
+import { editStudioImage, StudioModerationError } from "./studio-provider";
+import { singleCardStudioEdit, studioReferenceImages } from "./studio-card-edit";
 import { prisma } from "./prisma";
 import { getUploadsDir, getThumbnailsDir, resolveDataDir } from "./storage-paths";
 
 const select = {
-  id: true, cardTitle: true, gradingCompany: true, grade: true,
+  id: true, cardTitle: true, certNumber: true, gradingCompany: true, grade: true,
   images: { take: 1, orderBy: cardImageOrder, select: { id: true, path: true, rotation: true } }
 };
-import type { StudioCard } from "./studio-file.js";
 const directory = () => path.join(resolveDataDir(), "studio-images");
 export function studioFile(card: StudioCard) {
   const name = studioFilename(card);
@@ -119,36 +120,25 @@ export async function generateStudioImage(id: string, previewVersion?: string) {
     const front = card.images[0];
     if (!/^\/media\/[\w.-]+\.(?:webp|jpe?g|png)$/i.test(front.path)) throw new Error("无法读取卡牌正面图。");
     const oriented = await sharp(path.join(getUploadsDir(), path.basename(front.path))).autoOrient().toBuffer();
-    const photo = await sharp(oriented).rotate(front.rotation).resize({ width: 2048, height: 2048, fit: "inside", withoutEnlargement: true }).png().toBuffer({ resolveWithObject: true });
-    const direction = oversized(card) ? { rotation: 0, layout: "portrait" as const } : await inspectStudioOrientation(photo.data, settings);
-    const frontPng = direction?.rotation ? await sharp(photo.data).rotate(direction.rotation).png().toBuffer() : photo.data;
-    const prompt = [
-      "Rephotograph the exact physical card in image one. All subsequent images are references only for studio lighting, support and framing. Inspect the PLAYER, NAME and TYPOGRAPHY printed on the INNER card to establish upright and its native orientation, independently of input file dimensions and the grading label. Rotate the ENTIRE slab and label together. Present landscape card faces horizontally, even when that makes the PSA/BGS label sideways on the left or right. Never rearrange the inner card relative to its holder.",
-      direction ? "The source has been oriented for the printed card. Keep the complete object " + (direction.layout === "landscape" ? "HORIZONTAL, with its long side along the tabletop." : "VERTICAL on its short side.") : "Choose the matching reference by the printed card orientation.",
-      studioLighting,
-      "One front-facing portrait 3:4 studio photograph. Match the appropriate reference staging. Physically relight the card, foil and rigid clear case under this same studio light. Restore clear transmission through the case, subtle edge refraction, coherent specular highlights and soft rightward cast shadows; include contact occlusion at the support. Remove source scanner background and old glare. Preserve printed artwork, serial numbers, signatures, grades, labels, material texture, geometry and the owner's exact physical example. Never substitute the reference cards.",
-      card.gradingCompany?.trim() || card.grade?.trim()
-        ? "Retain the authentic grading slab and its certificate, matching the source exactly."
-        : "For an ungraded standard-size card, replace any sleeve, black or tinted frame, screw-down or nonstandard holder with a plain colorless transparent two-piece magnetic one-touch. Show one round metal magnet centered on a short edge and the studio through the clear perimeter. Do not invent a grading label. If the source visibly contains an authentic labeled grading slab, preserve it even if the grading fields were left blank.",
-      "Use one physical scale for standard sports cards, based on the inner printed 2.5 by 3.5 inch card. In this 1088 by 1456 frame its long edge should span about 750 pixels in BOTH orientations. Keep a fixed camera distance. Let the clear magnetic holder, grading slab, certificate and stand add their actual dimensions outside that face. Keep the entire holder and stand visible. For die-cut openings, show the real studio behind the card through the clear holder; retain opaque black print.",
-      oversized(card) ? "Oversized collectible exception: preserve its original oversized enclosure directly on the plinth. Do not fit a standard one-touch. NO stand, easel or support." : "Set the card on the same small clear acrylic display stand as the reference."
-    ].join(" ");
-    const images = [{ name: "card-front.png", png: frontPng }];
-    for (const example of direction ? [direction.layout] : ["portrait", "landscape"]) {
-      const reference = await readFile(path.join(process.cwd(), "public", "studio-style", example + ".png"));
-      images.push({ name: example + "-reference.png", png: reference });
-    }
-    const png = await editStudioImage(settings, prompt, "1088x1456", images);
+    const photo = await sharp(oriented).rotate(front.rotation).resize({ width: 2048, height: 2048, fit: "inside", withoutEnlargement: true }).png().toBuffer();
+    const isOversized = oversized(card);
+    const direction = isOversized ? { rotation: 0, layout: "portrait" as const } : await inspectStudioOrientation(photo, settings);
+    const frontPng = direction?.rotation ? await sharp(photo).rotate(direction.rotation).png().toBuffer() : photo;
+    const references = await studioReferenceImages(
+      path.join(process.cwd(), "public", "studio-style", "portrait.png")
+    );
+    const edit = singleCardStudioEdit(card, frontPng, references, direction?.layout, isOversized);
+    const png = await editStudioImage(settings, edit.prompt, "1088x1456", edit.images);
     await writeFile(temp, png);
     const destination = previewVersion ? file + ".preview" : file;
     await rename(temp, destination);
     await removeStudioFile(file + ".error");
     // Another edit may have retired this upload while the external request was running.
-    const current = await prisma.cardImage.findUnique({ where: { id: front.id }, select: { path: true } });
-    if (current?.path !== front.path) await removeStudioFile(destination);
+    if (await fileForCard(id) !== file) await removeStudioFile(destination);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    const reason = message.includes("API Key") ? "key" : message.includes("HTTP 429") ? "quota"
+    const reason = error instanceof StudioModerationError ? ["moderation_blocked", error.requestId].filter(Boolean).join(" ")
+      : message.includes("API Key") ? "key" : message.includes("HTTP 429") ? "quota"
       : /HTTP 40[13]/.test(message) ? "access" : "generation";
     await writeFile(file + ".error", reason).catch(() => {});
     throw error;

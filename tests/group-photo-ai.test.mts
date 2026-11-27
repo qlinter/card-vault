@@ -23,3 +23,29 @@ test("stage edit uses the configured image model, two set guides and the origina
   assert.equal(result.format,"png");
   assert.ok(Math.abs(result.width / result.height - 480 / 140) < .01);
 });
+
+test("image edit reports the provider's 400 details and request ID without exposing the key", async t => {
+  const { editStudioImage } = await import("../lib/studio-provider.ts");
+  t.mock.method(globalThis, "fetch", async () => Response.json({
+    error: { message: "Invalid dimensions for " + settings.apiKey, code: "invalid_image", param: "image[1]" }
+  }, { status: 400, headers: { "x-request-id": "req_example" } }));
+  await assert.rejects(editStudioImage(settings, "fixture", "1088x1456", []), (error: Error) => {
+    assert.match(error.message, /HTTP 400.*Invalid dimensions.*invalid_image.*image\[1\].*req_example/);
+    assert.ok(!error.message.includes(settings.apiKey));
+    return true;
+  });
+});
+
+test("moderation rejection retains one support ID even when only the provider message contains it", async t => {
+  const { editStudioImage, StudioModerationError } = await import("../lib/studio-provider.ts");
+  t.mock.method(globalThis, "fetch", async () => Response.json({
+    error: { code: "moderation_blocked", message: "Contact support with request ID req_fixture123." }
+  }, { status: 400 }));
+  await assert.rejects(editStudioImage(settings, "fixture", "1088x1456", []), (error: Error) => {
+    assert.ok(error instanceof StudioModerationError);
+    assert.equal(error.requestId, "req_fixture123");
+    assert.match(error.message, /安全审核/);
+    assert.equal(error.message.split("req_fixture123").length, 2);
+    return true;
+  });
+});

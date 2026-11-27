@@ -17,6 +17,7 @@ import type { AiProvider, PublicAiSettings, PublicCustomProviderSettings } from 
 type PublicSettings = PublicAiSettings & { keyRecoveryRequired?: boolean };
 
 const emptySettings: PublicSettings = publicAiSettings(normalizeSettings());
+type SettingsSection = "recognition" | "studio" | "proxy";
 type BuiltInProvider = Exclude<AiProvider, "custom">;
 const emptyApiKeys: Record<BuiltInProvider, string> = { openai: "", minimax: "", deepseek: "" };
 
@@ -63,14 +64,8 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   const [settings, setSettings] = useState<PublicSettings>(emptySettings);
   const [studioKey, setStudioKey] = useState("");
   const [clearStudioKey, setClearStudioKey] = useState(false);
-  const [savedStudioKey, setSavedStudioKey] = useState(false);
+  const [savedSettings, setSavedSettings] = useState<PublicSettings | null>(null);
   const [saveRevision, setSaveRevision] = useState(0);
-  function applySavedSettings(value: PublicSettings) {
-    const loaded = loadedPublicSettings(value);
-    setSettings(loaded);
-    setSavedStudioKey(loaded.studio.keySource === "openai" ? loaded.openai.hasApiKey : loaded.studio.hasApiKey);
-    setSaveRevision(revision => revision + 1);
-  }
   const [apiKeys, setApiKeys] = useState(emptyApiKeys);
   const [proxyPassword, setProxyPassword] = useState("");
   const [clearProxyPassword, setClearProxyPassword] = useState(false);
@@ -78,7 +73,10 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   const [clearCustomApiKeys, setClearCustomApiKeys] = useState<Record<string, boolean>>({});
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [saving, setSaving] = useState<SettingsSection | null>(null);
+  const loaded = savedSettings !== null;
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveMessages, setSaveMessages] = useState<Partial<Record<SettingsSection, string>>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const providerSelect = useRef<HTMLSelectElement>(null);
@@ -97,13 +95,12 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
           ? await desktopApi.getAiSettings()
           : ((await fetch("/api/ai/settings").then((response) => response.json())) as PublicSettings);
         if (!cancelled) {
-          applySavedSettings(nextSettings);
-          if (nextSettings.keyRecoveryRequired) {
-            setMessage("检测到已保存的 AI 凭据无法由当前设备解密，请重新输入 API Key 或代理密码并保存；其他设置已保留。");
-          }
+          const saved = loadedPublicSettings(nextSettings);
+          setSavedSettings(saved);
+          setSettings(saved);
         }
       } catch (error) {
-        if (!cancelled) setMessage("读取 AI 设置失败：" + errorMessage(error, "请重新启动 Card Vault 后重试。"));
+        if (!cancelled) setLoadError("读取 AI 设置失败：" + errorMessage(error, "请重新启动 Card Vault 后重试。"));
       }
     }
     loadSettings();
@@ -112,6 +109,10 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
     };
   }, []);
 
+  const savedStudioKey = savedSettings?.studio.keySource === "openai"
+    ? savedSettings.openai.hasApiKey : Boolean(savedSettings?.studio.hasApiKey);
+  const loadMessage = loadError ?? (savedSettings?.keyRecoveryRequired
+    ? "检测到已保存的 AI 凭据无法由当前设备解密，请重新输入 API Key 或代理密码并保存；其他设置已保留。" : null);
   const currentCustom = activeCustom(settings);
   const providerContext = JSON.stringify(settings.provider === "custom"
     ? ["custom", currentCustom?.id, currentCustom?.endpoint, currentCustom?.modelsEndpoint, currentCustom?.apiKeyHeader, currentCustom?.apiKeyPrefix, customApiKeys[currentCustom?.id || ""], clearCustomApiKeys[currentCustom?.id || ""]]
@@ -119,14 +120,13 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
   const modelListContext = JSON.stringify([providerContext, settings.proxy, proxyPassword, clearProxyPassword]);
   const requestContext = JSON.stringify([modelListContext, settings.provider === "custom" ? currentCustom?.model : settings[settings.provider].model]);
 
-  function buildDraftPayload() {
+  function recognitionDraft() {
     const builtInDraft = (provider: BuiltInProvider) => ({
       endpoint: settings[provider].endpoint,
       apiKey: apiKeys[provider] || undefined,
       model: settings[provider].model
     });
     return {
-      proxy: { mode: settings.proxy.mode, protocol: settings.proxy.protocol, host: settings.proxy.host, port: settings.proxy.port, username: settings.proxy.username, noProxy: settings.proxy.noProxy, password: clearProxyPassword ? "" : proxyPassword || undefined },
       provider: settings.provider,
       activeCustomId: settings.activeCustomId,
       openai: builtInDraft("openai"),
@@ -143,6 +143,11 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
         apiKeyPrefix: item.apiKeyPrefix
       }))
     };
+  }
+
+  function proxyDraft() {
+    const { mode, protocol, host, port, username, noProxy } = settings.proxy;
+    return { mode, protocol, host, port, username, noProxy, password: clearProxyPassword ? "" : proxyPassword || undefined };
   }
 
   function handleProviderChange(value: string) {
@@ -229,39 +234,57 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
     }));
   }
 
-  async function handleSave() {
-    if (!window.cardVaultDesktop) {
-      setMessage("当前环境不支持在界面中保存设置；开发态请使用 .env.local。");
-      return;
-    }
-    setIsSaving(true);
-    setPendingDeleteId(null);
-    setMessage(null);
+  async function handleSave(section: SettingsSection) {
+    if (!window.cardVaultDesktop || !loaded || saving) return;
+    setSaving(section);
+    setSaveMessages(current => ({ ...current, [section]: "" }));
     try {
-      const saved = await window.cardVaultDesktop.saveAiSettings({
-        ...buildDraftPayload(),
-        studio: { model: settings.studio.model, keySource: settings.studio.keySource, apiKey: clearStudioKey ? "" : studioKey || undefined }
-      });
-      applySavedSettings(saved);
-      setStudioKey("");
-      setClearStudioKey(false);
-      setProxyPassword("");
-      setClearProxyPassword(false);
-      setApiKeys(emptyApiKeys);
-      setCustomApiKeys({});
-      setClearCustomApiKeys({});
-      setMessage(saved.keyRecoveryRequired ? "AI 设置已保存；无法解密的原凭据已保留，请重新输入需要使用的 API Key 或代理密码。" : "AI 设置已保存。");
+      const draft = section === "studio"
+        ? { studio: { model: settings.studio.model, keySource: settings.studio.keySource, apiKey: clearStudioKey ? "" : studioKey || undefined } }
+        : section === "proxy" ? { proxy: proxyDraft() } : recognitionDraft();
+      const saved = loadedPublicSettings(await window.cardVaultDesktop.saveAiSettings(draft));
+      setSavedSettings(saved);
+      if (section === "studio") {
+        setSettings(current => ({ ...current, studio: saved.studio }));
+        setStudioKey("");
+        setClearStudioKey(false);
+        setSaveRevision(revision => revision + 1);
+      } else if (section === "proxy") {
+        setSettings(current => ({ ...current, proxy: saved.proxy }));
+        setProxyPassword("");
+        setClearProxyPassword(false);
+      } else {
+        setSettings(current => ({ ...saved, studio: current.studio, proxy: current.proxy }));
+        setApiKeys(emptyApiKeys);
+        setCustomApiKeys({});
+        setClearCustomApiKeys({});
+        setPendingDeleteId(null);
+        setMessage(null);
+      }
+      setSaveMessages(current => ({ ...current, [section]: "AI 设置已保存。" }));
     } catch (error) {
-      setMessage("保存失败：" + errorMessage(error, "请稍后重试。"));
+      const feedback = "保存失败：" + errorMessage(error, "请稍后重试。");
+      setSaveMessages(current => ({ ...current, [section]: feedback }));
     } finally {
-      setIsSaving(false);
+      setSaving(null);
     }
+  }
+
+  function saveButton(section: SettingsSection) {
+    return <button type="button" className="btn btn-secondary" data-save-section={section}
+      disabled={!isDesktop || !loaded || saving !== null} onClick={() => handleSave(section)}>
+      <UiText text={saving === section ? "保存中..." : "保存设置"} />
+    </button>;
+  }
+
+  function saveFeedback(section: SettingsSection) {
+    return saveMessages[section] && <p className="muted" role="status"><UiText text={saveMessages[section]} /></p>;
   }
 
   const { modelOptions, isTesting, isLoadingModels, testRoute, textTestPassed, handleTest, handleLoadModels } = useAiSettingsRequests({
     modelListContext,
     requestContext,
-    buildDraftPayload,
+    buildDraftPayload: () => ({ ...recognitionDraft(), proxy: proxyDraft() }),
     providerName: settings.provider === "custom" ? currentCustom?.name || "未命名配置" : providerName(settings.provider),
     testFailureMessage: settings.provider === "custom"
       ? "请检查当前自定义配置的 Endpoint、Model 和 API Key。"
@@ -293,7 +316,11 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
         <span><strong>AI</strong></span><DisclosureIcon expanded={isOpen} />
       </UiElement>
 
-      {isOpen ? <fieldset className="ai-settings-fields" disabled={isSaving}>
+      {isOpen ? <fieldset className="ai-settings-fields" disabled={saving !== null || !loaded} onChangeCapture={event => {
+        const row = (event.target as HTMLElement).closest("section");
+        const section = row?.querySelector<HTMLButtonElement>("[data-save-section]")?.dataset.saveSection as SettingsSection | undefined;
+        if (section && saveMessages[section]) setSaveMessages(current => ({ ...current, [section]: "" }));
+      }}>
         <SettingsSubsection title={locale === "en" ? "Recognition and analysis" : "识别与分析"}>
           <div className="ai-provider-picker">
             <label className="field"><span><UiText text="当前服务" /></span>
@@ -339,26 +366,30 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
               </> : settings.provider === "custom" ? <p className="muted full"><UiText text="尚未创建自定义配置，请点击“新增自定义 AI”。" /></p> : null}
           </div>
           <div className="ai-actions">
+            {saveButton("recognition")}
             <button type="button" className="btn btn-secondary" onClick={handleTest} disabled={isTesting || !testable}>{isTesting ? <UiText text="测试中..." /> : <UiText text="测试连接" />}</button>
             <button type="button" className="btn btn-secondary" onClick={handleLoadModels} disabled={isLoadingModels || !modelsReadable}>{isLoadingModels ? <UiText text="读取中..." /> : <UiText text="读取模型" />}</button>
           </div>
           {testRoute ? <p className="muted ai-route-result"><UiText text={{ direct: "直连设置", bypass: "绕过规则", manual: "手动代理", environment: "环境代理", system: "系统规则" }[testRoute.source]} /> · <UiText text={testRoute.connection === "direct" ? "直连" : "经代理连接"} />{testRoute.protocol ? ` (${testRoute.protocol.toUpperCase()})` : ""}</p> : null}
           {textTestPassed ? <p className="muted ai-capability-result"><UiText text="文本连接通过；图片识别能力需另行确认。" /></p> : null}
+          {message && <p className="muted" role="status"><UiText text={message} /></p>}
+          {saveFeedback("recognition")}
         </SettingsSubsection>
         <StudioRecovery hasKey={savedStudioKey}>
-          <StudioConfiguration key={saveRevision}
+          <StudioConfiguration key={saveRevision} saveButton={saveButton("studio")}
             value={settings.studio} onChange={patch => setSettings(current => ({ ...current, studio: { ...current.studio, ...patch } }))}
             secret={studioKey} onSecret={value => { setStudioKey(value); setClearStudioKey(false); }}
             clear={clearStudioKey} onClear={value => { setClearStudioKey(value); if (value) setStudioKey(""); }}
             disabled={!isDesktop} />
+          {saveFeedback("studio")}
         </StudioRecovery>
-        <AiProxySettings value={settings.proxy} onChange={patch => setSettings(current => ({ ...current, proxy: { ...current.proxy, ...patch } }))} password={proxyPassword} onPassword={setProxyPassword} clearPassword={clearProxyPassword} onClearPassword={setClearProxyPassword} disabled={!isDesktop} />
-        <div className="ai-actions">
-          <button type="button" className="btn btn-secondary" onClick={handleSave} disabled={isDesktop !== true || isSaving}>{isSaving ? <UiText text="保存中..." /> : <UiText text="保存设置" />}</button>
-        </div>
+        <AiProxySettings value={settings.proxy} onChange={patch => setSettings(current => ({ ...current, proxy: { ...current.proxy, ...patch } }))} password={proxyPassword} onPassword={setProxyPassword} clearPassword={clearProxyPassword} onClearPassword={setClearProxyPassword} disabled={!isDesktop}>
+          <div className="ai-actions">{saveButton("proxy")}</div>
+          {saveFeedback("proxy")}
+        </AiProxySettings>
         {isDesktop === false ? <p className="muted" style={{ margin: "0.65rem 0 0" }}><UiText text="当前不是桌面端环境，界面内保存不可用；开发态可通过 .env.local 配置 AI 服务商。" /></p> : null}
       </fieldset> : null}
-      {message ? <p className="muted" role="status" style={{ margin: "0.65rem 0 0" }}><UiText text={message} /></p> : null}
+      {loadMessage ? <p className="muted" role="status" style={{ margin: "0.65rem 0 0" }}><UiText text={loadMessage} /></p> : null}
     </section>
   );
 }

@@ -1,17 +1,18 @@
 "use client";
 import { studioImageService } from "@/lib/ai-settings-core";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useLanguage } from "./language-provider";
 import type { PublicAiSettings } from "@/lib/ai-settings";
 
 type Fields = PublicAiSettings["studio"];
 type Props = {
+  saveButton: ReactNode;
   value: Fields; onChange: (patch: Partial<Fields>) => void;
   secret: string; onSecret: (key: string) => void;
   clear: boolean; onClear: (clear: boolean) => void; disabled: boolean;
 };
 
-export function StudioConfiguration({ value, onChange, secret, onSecret, clear, onClear, disabled }: Props) {
+export function StudioConfiguration({ saveButton, value, onChange, secret, onSecret, clear, onClear, disabled }: Props) {
   const en = useLanguage().locale === "en";
   const [checking, setChecking] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -39,7 +40,10 @@ export function StudioConfiguration({ value, onChange, secret, onSecret, clear, 
         placeholder={value.hasApiKey ? (en ? "Saved; leave blank to keep" : "已保存；留空则不修改") : "API Key"} onChange={e => onSecret(e.target.value)} /></label>}
       {value.keySource === "independent" && value.hasApiKey && <label className="field full"><span><input type="checkbox" checked={clear} disabled={disabled} onChange={e => onClear(e.target.checked)} /> {en ? "Clear independent key on save" : "保存时清除独立密钥"}</span></label>}
     </div>
-    <button type="button" className="btn btn-secondary" disabled={checking} onClick={check}>{en ? "Check saved model access" : "检查已保存模型"}</button>
+    <div className="ai-actions">
+      {saveButton}
+      <button type="button" className="btn btn-secondary" disabled={checking} onClick={check}>{en ? "Check saved model access" : "检查已保存模型"}</button>
+    </div>
     {feedback && <p aria-live="polite">{feedback}</p>}
   </div>;
 }

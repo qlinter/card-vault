@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import type { AccountStatus } from "@/lib/account-store";
 import { accountErrorMessage, accountRequest, AccountRequestError, changeGuestSession } from "@/lib/account-client";
 import { useLanguage } from "./language-provider";
+import { useHydrated } from "./use-hydrated";
 import { LanguageSwitch } from "./language-switch";
 import { PasswordField, RecoveryConfirmation } from "./account-fields";
 
@@ -12,6 +13,8 @@ export function AccountLogin({ status }: { status: AccountStatus }) {
   const [recover, setRecover] = useState(false), [code, setCode] = useState("");
   const [recoveredUsername, setRecoveredUsername] = useState("");
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const hydrated = useHydrated();
+  const disabled = !hydrated || busy;
   const setup = status.state === "setup";
   const showError = (problem: unknown) => setError(accountErrorMessage(problem, english));
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -29,7 +32,7 @@ export function AccountLogin({ status }: { status: AccountStatus }) {
   }
   return <div className="account-gateway">
     <div className="account-gateway-tools header-utilities">
-      {status.state === "ready" && status.guestAvailable && !recover && !code ? <button className="btn btn-secondary btn-quiet" type="button" disabled={busy} onClick={async () => {
+      {status.state === "ready" && status.guestAvailable && !recover && !code ? <button className="btn btn-secondary btn-quiet" type="button" disabled={disabled} onClick={async () => {
         setBusy(true); setError("");
         try { await changeGuestSession("start-guest", "login"); }
         catch (problem) { showError(problem); setBusy(false); }
@@ -41,18 +44,18 @@ export function AccountLogin({ status }: { status: AccountStatus }) {
       <h1 id="account-heading">{english ? (code ? "Recovery code" : setup ? "Create your account" : recover ? "Reset password" : "Sign in") : (code ? "恢复码" : setup ? "创建本地账户" : recover ? "重设密码" : "登录")}</h1>
       {status.state === "unavailable" ? <>
         <p role="alert" className="account-error">{accountErrorMessage(new AccountRequestError("account-unavailable"), english)}</p>
-        <button className="btn btn-secondary btn-quiet" type="button" onClick={() => window.location.reload()}>{english ? "Retry" : "重试"}</button>
+        <button className="btn btn-secondary btn-quiet" type="button" disabled={disabled} onClick={() => window.location.reload()}>{english ? "Retry" : "重试"}</button>
       </> : code ? <RecoveryConfirmation code={code} username={recoveredUsername} onError={showError} /> : <>
         <form key={recover ? "recover" : "login"} className="account-form" onSubmit={submit} aria-describedby={error ? "account-error" : undefined}>
-          <fieldset disabled={busy}>
+          <fieldset disabled={disabled}>
             {recover ? <label className="account-field" htmlFor="recovery-code"><span>{english ? "Recovery code" : "恢复码"}</span><input id="recovery-code" name="recoveryCode" autoComplete="off" spellCheck={false} required maxLength={128} /></label>
               : <label className="account-field" htmlFor="account-username"><span>{english ? "Username" : "用户名"}</span><input id="account-username" name="username" autoComplete="username" required minLength={3} maxLength={64} spellCheck={false} /></label>}
             <PasswordField key={recover ? "new" : "login"} id="account-password" label={english ? (recover ? "New password" : "Password") : (recover ? "新密码" : "密码")} newPassword={setup || recover} />
             {setup || recover ? <PasswordField id="confirm-password" name="confirmPassword" label={english ? "Confirm password" : "确认密码"} newPassword /> : null}
-            <button className="btn btn-secondary btn-quiet btn-soft account-submit" disabled={busy} type="submit">{english ? (busy ? "Please wait…" : setup ? "Create account" : recover ? "Reset password" : "Sign in") : (busy ? "正在处理…" : setup ? "创建账户" : recover ? "重设密码" : "登录")}</button>
+            <button className="btn btn-secondary btn-quiet btn-soft account-submit" disabled={disabled} type="submit">{english ? (busy ? "Please wait…" : setup ? "Create account" : recover ? "Reset password" : "Sign in") : (busy ? "正在处理…" : setup ? "创建账户" : recover ? "重设密码" : "登录")}</button>
           </fieldset>
         </form>
-        {!setup ? <button className="account-text-button" type="button" disabled={busy} onClick={() => { setRecover(!recover); setError(""); }}>{english ? (recover ? "Back to sign in" : "Forgot password?") : (recover ? "返回登录" : "忘记密码")}</button> : null}
+        {!setup ? <button className="account-text-button" type="button" disabled={disabled} onClick={() => { setRecover(!recover); setError(""); }}>{english ? (recover ? "Back to sign in" : "Forgot password?") : (recover ? "返回登录" : "忘记密码")}</button> : null}
       </>}
       {error ? <p id="account-error" className="account-error" role="alert">{error}</p> : null}
     </section>

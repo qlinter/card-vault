@@ -1,5 +1,6 @@
 "use client";
 
+import { useHydrated } from "./use-hydrated";
 import { UiElement, UiText } from "@/components/ui-text";
 import {
   useActionState,
@@ -8,7 +9,6 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  useSyncExternalStore,
   type FormEvent,
   type ReactNode
 } from "react";
@@ -58,11 +58,10 @@ const requiredEntryMessages: Record<string, string> = {
   sport: "请填写运动类型。"
 };
 
-const subscribeToClientTime = () => () => {};
 
 function DraftTime({ value }: { value: string }) {
   const { locale } = useLanguage();
-  const hydrated = useSyncExternalStore(subscribeToClientTime, () => true, () => false);
+  const hydrated = useHydrated();
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   const timestamp = date.toISOString();

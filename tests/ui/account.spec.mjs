@@ -183,7 +183,14 @@ test('setup, privacy gate, refresh, sign-out, account changes and one-use recove
   await signIn(page, nextPassword, 'New Collector');
   await page.getByRole('link', { name: '设置', exact: true }).click();
   await page.getByRole('button', { name: '退出登录', exact: true }).click();
+  // A cold login navigation can paint its server HTML before React handles clicks.
+  const loginHtml = await (await page.request.get(origin + '/login')).text();
+  expect(await page.evaluate(html => {
+    const login = new DOMParser().parseFromString(html, 'text/html');
+    return login.querySelector('.account-text-button')?.disabled && login.querySelector('.account-form fieldset')?.disabled;
+  }, loginHtml)).toBe(true);
   await page.getByRole('button', { name: '忘记密码', exact: true }).click();
+  await expect(page.locator('#recovery-code')).toBeVisible();
   for (const english of [true, false]) {
     await page.getByRole('button', { name: /^(选择语言|Choose language)$/ }).click();
     await page.getByRole('menuitemradio', { name: english ? 'English' : '简体中文' }).click();

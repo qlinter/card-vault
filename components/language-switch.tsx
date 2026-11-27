@@ -1,5 +1,6 @@
 "use client";
 
+import { useHydrated } from "./use-hydrated";
 import { useLanguage } from "@/components/language-provider";
 import { useEffect, useId, useRef, useState } from "react";
 
@@ -10,6 +11,7 @@ const languages = [
 
 export function LanguageSwitch() {
   const { locale, setLocale } = useLanguage();
+  const hydrated = useHydrated();
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const container = useRef<HTMLDivElement>(null);
@@ -42,6 +44,7 @@ export function LanguageSwitch() {
       className="language-switch header-tool"
       aria-label={label}
       title={label}
+      disabled={!hydrated}
       aria-haspopup="menu"
       aria-expanded={open}
       aria-controls={open ? menuId : undefined}

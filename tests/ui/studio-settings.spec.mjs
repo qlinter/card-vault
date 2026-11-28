@@ -51,11 +51,15 @@ test("studio configuration keeps model lookup separate from paid generation and 
     expect(await fields.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
     for (const row of await fields.locator(".ai-actions").all()) {
       const buttons = row.getByRole("button");
-      await expect(buttons.first()).toHaveText("保存设置");
-      const box = await buttons.first().boundingBox();
-      expect(Math.abs(box.x - (await row.boundingBox()).x)).toBeLessThan(1);
-      for (const peer of (await buttons.all()).slice(1)) {
+      await expect(buttons.last()).toHaveText("保存设置");
+      const box = await buttons.last().boundingBox();
+      const rowBox = await row.boundingBox();
+      const gap = await row.evaluate(el => parseFloat(getComputedStyle(el).columnGap));
+      let expectedX = rowBox.x;
+      for (const peer of await buttons.all()) {
         const bounds = await peer.boundingBox();
+        expect(Math.abs(bounds.x - expectedX)).toBeLessThan(1);
+        expectedX = bounds.x + bounds.width + gap;
         expect(Math.abs(bounds.y - box.y)).toBeLessThan(1);
         expect(Math.abs(bounds.height - box.height)).toBeLessThan(1);
       }

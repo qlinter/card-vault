@@ -37,7 +37,7 @@ export function ScoutWishlist({ identity, data, busy, saving, mutate, search, se
       {data?.plans.map(row => <article className="scout-wish" key={row.id} data-wish-id={row.id}>
         <div className="wish-identity"><h3>{row.title}</h3>{row.playerName ? <p className="muted">{row.playerName}</p> : null}</div>
         <div className="wish-budget">{row.budgetMinor === null ? "–" : formatMinorMoneyGrouped(BigInt(row.budgetMinor), row.currency)}</div>
-        <div className="wish-actions"><button type="button" className="btn btn-secondary" disabled={busy} onClick={() => openEditor(row)}>{l("编辑", "Edit")}</button><button type="button" className="btn btn-secondary" disabled={busy} onClick={() => void remove(row)}>{l("删除", "Delete")}</button></div>
+        <div className="wish-actions"><button type="button" className="btn btn-secondary" disabled={busy} onClick={() => openEditor(row)}>{l("编辑", "Edit")}</button><button type="button" className="btn btn-danger" disabled={busy} onClick={() => void remove(row)}>{l("删除", "Delete")}</button></div>
         {row.notes ? <p className="wish-notes">{row.notes}</p> : null}
       </article>)}
       {!data ? <p role="status" className="muted">{l("正在读取心愿…", "Loading wishes…")}</p> : !data.plans.length && search ? <p className="muted">{l("没有匹配的心愿。", "No matching wishes.")}</p> : null}

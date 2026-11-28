@@ -1,6 +1,7 @@
 "use client";
 
-import { UiText, UiElement } from "@/components/ui-text";
+import { useLanguage } from "./language-provider";
+import { UiText } from "@/components/ui-text";
 import { useEffect, useRef, useState } from "react";
 import {
   cardEntryTemplateFields,
@@ -8,7 +9,7 @@ import {
 } from "@/lib/card-entry-template-domain";
 import { readCardFormValues } from "@/lib/card-entry-domain";
 import { closestCardForm, setCardFormText } from "@/lib/card-form-controls";
-import { DisclosureIcon } from "@/components/disclosure-icon";
+import { CardEntryToolSummary } from "./card-entry-tool-summary";
 
 type TemplateResponse = {
   template?: CardEntryTemplateSummary;
@@ -26,6 +27,7 @@ function applyTemplateToForm(
 }
 
 export function CardEntryTemplatePanel() {
+  const { t } = useLanguage();
   const panelRef = useRef<HTMLDetailsElement>(null);
   const [templates, setTemplates] = useState<CardEntryTemplateSummary[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -39,11 +41,11 @@ export function CardEntryTemplatePanel() {
     fetch("/api/card-entry/templates")
       .then(async (response) => {
         const data = await response.json() as TemplateResponse;
-        if (!response.ok) throw new Error(data.error || "读取模板失败。");
+        if (!response.ok) throw new Error(data.error || "读取录入模板失败。");
         if (active) setTemplates(data.templates ?? []);
       })
       .catch((error) => {
-        if (active) setMessage(error instanceof Error ? error.message : "读取模板失败。");
+        if (active) setMessage(error instanceof Error ? error.message : "读取录入模板失败。");
       });
     return () => { active = false; };
   }, []);
@@ -61,44 +63,25 @@ export function CardEntryTemplatePanel() {
     return data.template;
   }
 
-  async function createTemplate() {
+  async function saveTemplate(existingId?: string) {
     const form = closestCardForm(panelRef.current);
     if (!form) return;
+    const fallback = existingId ? "更新录入模板失败。" : "创建录入模板失败。";
     setPending(true);
     try {
-      const template = await request("/api/card-entry/templates", {
-        method: "POST",
+      const base = "/api/card-entry/templates";
+      const template = await request(existingId ? base + "/" + encodeURIComponent(existingId) : base, {
+        method: existingId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, values: readCardFormValues(new FormData(form)) })
       });
-      if (!template) throw new Error("创建模板失败。");
-      setTemplates((current) => [template, ...current]);
-      setSelectedId(template.id);
+      if (!template) throw new Error(fallback);
+      setTemplates(current => [template, ...current.filter(item => item.id !== template.id)]);
+      if (!existingId) setSelectedId(template.id);
       setName(template.name);
-      setMessage("模板已创建。");
+      setMessage(existingId ? "模板名称和公共字段已更新。" : "模板已创建。");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "创建模板失败。");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function updateTemplate() {
-    const form = closestCardForm(panelRef.current);
-    if (!form || !selectedId) return;
-    setPending(true);
-    try {
-      const template = await request(`/api/card-entry/templates/${encodeURIComponent(selectedId)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, values: readCardFormValues(new FormData(form)) })
-      });
-      if (!template) throw new Error("更新模板失败。");
-      setTemplates((current) => [template, ...current.filter((item) => item.id !== template.id)]);
-      setName(template.name);
-      setMessage("模板名称和公共字段已更新。");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "更新模板失败。");
+      setMessage(error instanceof Error ? error.message : fallback);
     } finally {
       setPending(false);
     }
@@ -120,14 +103,14 @@ export function CardEntryTemplatePanel() {
       }
       setMessage("模板公共字段已应用。");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "应用模板失败。");
+      setMessage(error instanceof Error ? error.message : "应用录入模板失败。");
     } finally {
       setPending(false);
     }
   }
 
   async function deleteTemplate() {
-    if (!selectedId || !window.confirm("确定删除这个录入模板吗？")) return;
+    if (!selectedId || !window.confirm(t("确定删除这个录入模板吗？"))) return;
     setPending(true);
     try {
       await request(`/api/card-entry/templates/${encodeURIComponent(selectedId)}`, {
@@ -138,7 +121,7 @@ export function CardEntryTemplatePanel() {
       setName("");
       setMessage("模板已删除。");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "删除模板失败。");
+      setMessage(error instanceof Error ? error.message : "删除录入模板失败。");
     } finally {
       setPending(false);
     }
@@ -150,13 +133,7 @@ export function CardEntryTemplatePanel() {
       className="entry-template-panel"
       onToggle={(event) => setExpanded(event.currentTarget.open)}
     >
-      <UiElement as="summary" uiAttributes={["title"]} title={expanded ? "收起模板" : "展开模板"}>
-        <span className="entry-template-title"><UiText text={"模板"} /></span>
-        <span className="entry-template-summary-meta">
-          <span className="entry-template-count">{templates.length}</span>
-          <DisclosureIcon expanded={expanded} />
-        </span>
-      </UiElement>
+      <CardEntryToolSummary label="模板" count={templates.length} expanded={expanded} title={expanded ? "收起模板" : "展开模板"} />
       <div className="entry-template-controls">
         <label className="field">
           <span><UiText text={"已有模板"} /></span>
@@ -174,9 +151,9 @@ export function CardEntryTemplatePanel() {
       </div>
       <div className="entry-template-actions">
         <button type="button" className="btn btn-primary" disabled={pending || !selectedId} onClick={applyTemplate}><UiText text={"应用"} /></button>
-        <button type="button" className="btn btn-secondary" disabled={pending || !name.trim()} onClick={createTemplate}><UiText text={"保存为新模板"} /></button>
-        <button type="button" className="btn btn-secondary" disabled={pending || !selectedId || !name.trim()} onClick={updateTemplate}><UiText text={"更新模板"} /></button>
-        <button type="button" className="btn btn-secondary" disabled={pending || !selectedId} onClick={deleteTemplate}><UiText text={"删除"} /></button>
+        <button type="button" className="btn btn-secondary" disabled={pending || !name.trim()} onClick={() => saveTemplate()}><UiText text={"保存为新模板"} /></button>
+        <button type="button" className="btn btn-secondary" disabled={pending || !selectedId || !name.trim()} onClick={() => saveTemplate(selectedId)}><UiText text={"更新模板"} /></button>
+        <button type="button" className="btn btn-danger" disabled={pending || !selectedId} onClick={deleteTemplate}><UiText text={"删除"} /></button>
       </div>
       {message ? <p className="muted" aria-live="polite"><UiText text={message} /></p> : null}
     </details>

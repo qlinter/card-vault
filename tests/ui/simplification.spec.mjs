@@ -115,6 +115,19 @@ test("entry tools apply templates and import a batch without submitting the card
   expect(response.ok()).toBe(true);
   await page.goto("/cards/new", { waitUntil: "networkidle" });
   await page.locator(".entry-tools > summary").click();
+  const titles = page.locator(".entry-tools summary .entry-tool-title");
+  await expect(titles).toHaveText(["模板", "批量录入"]);
+  const styles = await titles.evaluateAll(nodes => nodes.map(node => {
+    const css = getComputedStyle(node);
+    return [css.font, css.color, css.letterSpacing];
+  }));
+  expect(styles[0]).toEqual(styles[1]);
+  const counts = page.locator(".entry-tools .entry-tool-count");
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const [templateRight, queueRight] = await counts.evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().right));
+    expect(Math.abs(templateRight - queueRight)).toBeLessThan(1);
+  }
   await page.locator(".entry-template-panel > summary").click();
   const template = page.locator(".entry-template-panel");
   const id = await template.locator('select option').filter({ hasText: "Stage 1 template" }).getAttribute("value");
@@ -132,6 +145,26 @@ test("entry tools apply templates and import a batch without submitting the card
   await page.getByRole('button', { name: '选择语言', exact: true }).click();
   await page.getByRole('menuitemradio', { name: 'English', exact: true }).click();
   await expect(page.locator('.entry-queue-panel')).not.toContainText(/[\u3400-\u9fff]/u);
+  const name = template.getByLabel("Template Name");
+  await name.fill("Audit template");
+  await template.getByRole("button", { name: "Save as New Template" }).click();
+  await expect(template.getByText("Template created.")).toBeVisible();
+  const createdId = await template.locator("select").inputValue();
+  expect(createdId).not.toBe(id);
+  await name.fill("Renamed audit template");
+  await template.getByRole("button", { name: "Update Template" }).click();
+  await expect(template.getByText("Template name and shared fields updated.")).toBeVisible();
+  await expect(template.locator("option:checked")).toHaveText("Renamed audit template");
+  await expect(template.locator("select")).toHaveValue(createdId);
+  const prompt = page.waitForEvent("dialog");
+  const deletion = template.getByRole("button", { name: "Delete", exact: true }).click();
+  const dialog = await prompt;
+  const question = dialog.message();
+  await dialog.accept();
+  await deletion;
+  expect(question).toBe("Delete this entry template?");
+  await expect(template.getByText("Template deleted.")).toBeVisible();
+  await expect(template.locator("option").filter({ hasText: "Stage 1 template" })).toHaveCount(1);
 });
 
 test("two-step share saving preserves legacy sections, stories, design and archive data", async ({ page }) => {

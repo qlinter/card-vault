@@ -295,14 +295,14 @@ form.panel {
   margin-bottom: 0.75rem;
 }
 
-.entry-queue-header,
+.entry-tool-summary,
 .entry-queue-item-title {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
 }
 
-.entry-queue-header {
+.entry-tool-summary {
   align-items: center;
   cursor: pointer;
   list-style: none;
@@ -312,28 +312,25 @@ form.panel {
   align-items: flex-start;
 }
 
-.entry-queue-header::-webkit-details-marker {
+.entry-tool-summary::-webkit-details-marker {
   display: none;
 }
 
-.entry-queue-title {
-  font-size: var(--text-lg);
+.entry-tool-title {
+  color: var(--ink);
+  font-size: var(--text-base);
   font-weight: var(--weight-bold);
+  line-height: var(--leading-heading);
 }
 
-.entry-queue-summary-meta {
+.entry-tool-meta {
+  color: var(--muted-ink);
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
 }
 
-.entry-queue-chevron {
-  color: var(--muted-ink);
-  width: 1.7rem;
-  height: 1.7rem;
-}
-
-.entry-queue-count,
+.entry-tool-count,
 .entry-queue-status {
   flex: 0 0 auto;
   padding: 0.25rem 0.55rem;
@@ -343,9 +340,10 @@ form.panel {
   white-space: nowrap;
 }
 
-.entry-queue-count {
+.entry-tool-count {
   display: inline-flex;
   align-items: center;
+  font-variant-numeric: tabular-nums;
   min-height: 1.7rem;
   color: var(--theme-link, #285c61);
   background: rgba(62, 168, 168, 0.12);
@@ -480,7 +478,11 @@ form.panel {
   padding: 0.72rem;
 }
 
-.entry-queue-item-title strong {
+.entry-queue-item-title strong,
+.entry-duplicate-list b,
+.entry-duplicate-list small,
+.entry-draft-item a strong,
+.entry-draft-item a span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -530,14 +532,17 @@ form.panel {
   color: var(--theme-warning, #755415);
 }
 
-.entry-queue-actions {
+.entry-queue-actions,
+.entry-template-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
   margin-top: 0.65rem;
 }
 
-.entry-queue-actions .btn {
+.entry-queue-actions .btn,
+.entry-template-actions .btn,
+.valuation-summary-actions .btn {
   min-height: var(--control-height-compact);
   padding: .3rem .65rem;
   font-size: var(--text-sm);
@@ -550,40 +555,10 @@ form.panel {
 .entry-template-panel {
   margin-bottom: 0.9rem;
   padding: 0.8rem;
+  padding-inline-end: var(--panel-space);
   border: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.09);
   border-radius: 10px;
   background: var(--surface-soft);
-}
-
-.entry-template-panel > summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  font-weight: var(--weight-bold);
-  list-style: none;
-}
-
-.entry-template-panel > summary::-webkit-details-marker {
-  display: none;
-}
-
-.entry-template-panel .entry-template-summary-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-.entry-template-panel .entry-template-count {
-  padding: 0.18rem 0.45rem;
-  border-radius: 999px;
-  color: var(--theme-link, #285c61);
-  background: rgba(62, 168, 168, 0.12);
-  font-size: var(--text-xs);
-}
-
-.entry-template-panel .entry-template-title {
-  color: inherit;
 }
 
 .entry-template-controls {
@@ -593,19 +568,6 @@ form.panel {
   margin-top: 0.8rem;
   padding-top: 0.8rem;
   border-top: 1px solid rgba(var(--theme-neutral-rgb, 16, 19, 26), 0.08);
-}
-
-.entry-template-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-top: 0.65rem;
-}
-
-.entry-template-actions .btn {
-  min-height: var(--control-height-compact);
-  padding: .3rem .65rem;
-  font-size: var(--text-sm);
 }
 
 .entry-template-panel > p {
@@ -649,13 +611,6 @@ form.panel {
   display: grid;
   min-width: 0;
   gap: 0.15rem;
-}
-
-.entry-duplicate-list b,
-.entry-duplicate-list small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .entry-duplicate-panel > p {
@@ -712,13 +667,6 @@ form.panel {
   padding: 0.62rem 0 0.62rem 0.68rem;
   color: inherit;
   text-decoration: none;
-}
-
-.entry-draft-item a strong,
-.entry-draft-item a span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .entry-draft-item a strong {
@@ -832,12 +780,6 @@ form.panel {
   align-items: center;
   gap: 0.45rem;
   margin-left: auto;
-}
-
-.valuation-summary-actions .btn {
-  min-height: var(--control-height-compact);
-  padding: .3rem .65rem;
-  font-size: var(--text-sm);
 }
 
 .filters {

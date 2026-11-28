@@ -12,9 +12,20 @@ export function studioVisionSettings(settings: StudioSettings) {
 
 export class StudioModerationError extends Error {
   readonly requestId: string | null;
-  constructor(requestId: string | null) {
+  readonly stage: "input" | "output" | "unknown" | null;
+  readonly categories: string[];
+  constructor(requestId: string | null, details?: { moderation_stage?: unknown; categories?: unknown }) {
     super("OpenAI 安全审核已拦截此次生图请求。如需复核，请联系 help.openai.com。" + (requestId ? " 请求 ID " + requestId : ""));
     this.requestId = requestId;
+    const stage = details?.moderation_stage;
+    this.stage = stage === "input" || stage === "output" || stage === "unknown" ? stage : null;
+    this.categories = Array.isArray(details?.categories)
+      ? details.categories.filter((item): item is string => typeof item === "string" && /^[a-z][a-z0-9_/-]{0,47}$/.test(item)).slice(0, 10) : [];
+  }
+
+  failureRecord() {
+    return ["moderation_blocked", this.requestId, this.stage && "stage=" + this.stage,
+      ...this.categories.map(category => "category=" + category)].filter(Boolean).join(" ");
   }
 }
 
@@ -32,7 +43,7 @@ async function studioRequestError(response: Response, apiKey: string) {
     const header = response.headers.get("x-request-id") || "";
     const id = /^req_[a-zA-Z0-9_-]{1,96}$/.test(header) ? header
       : safeText(error.message, 1000).match(/\breq_[a-zA-Z0-9_-]{1,96}\b/)?.[0];
-    return new StudioModerationError(id ?? null);
+    return new StudioModerationError(id ?? null, error.moderation_details);
   }
   const details = [
     safeText(error?.message, 350),

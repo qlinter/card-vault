@@ -8,6 +8,8 @@ const docsDir = path.join(rootDir, "docs");
 const markdownFiles = [
   path.join(rootDir, "README.md"),
   path.join(rootDir, "README.en.md"),
+  path.join(rootDir, "public", "platform-logos", "README.md"),
+  path.join(rootDir, "tests", "fixtures", "tls", "README.md"),
   ...fs.readdirSync(docsDir, { recursive: true })
     .filter(name => name.endsWith(".md"))
     .map(name => path.join(docsDir, name))

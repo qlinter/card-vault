@@ -5,7 +5,7 @@
 <a id="current-release"></a>
 ## 当前版本
 
-[v1.7.2 版本说明](./release-v1.7.2.md)汇总本版的变更。Windows 下载见 [v1.7.2](https://github.com/qlinter/card-vault/releases/tag/v1.7.2)，以前版本见[历史资料](./history/README.md)。
+[v1.7.2 版本说明](./release-v1.7.2.md)汇总本版的变更，并区分源码验收与安装包发布状态。已发布的 Windows 下载见 [v1.7.2](https://github.com/qlinter/card-vault/releases/tag/v1.7.2)，以前版本见[历史资料](./history/README.md)。
 
 ## 当前规则
 

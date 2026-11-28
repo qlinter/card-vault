@@ -366,9 +366,9 @@ export function AiSettings({ defaultOpen = false }: AiSettingsProps) {
               </> : settings.provider === "custom" ? <p className="muted full"><UiText text="尚未创建自定义配置，请点击“新增自定义 AI”。" /></p> : null}
           </div>
           <div className="ai-actions">
-            {saveButton("recognition")}
             <button type="button" className="btn btn-secondary" onClick={handleTest} disabled={isTesting || !testable}>{isTesting ? <UiText text="测试中..." /> : <UiText text="测试连接" />}</button>
             <button type="button" className="btn btn-secondary" onClick={handleLoadModels} disabled={isLoadingModels || !modelsReadable}>{isLoadingModels ? <UiText text="读取中..." /> : <UiText text="读取模型" />}</button>
+            {saveButton("recognition")}
           </div>
           {testRoute ? <p className="muted ai-route-result"><UiText text={{ direct: "直连设置", bypass: "绕过规则", manual: "手动代理", environment: "环境代理", system: "系统规则" }[testRoute.source]} /> · <UiText text={testRoute.connection === "direct" ? "直连" : "经代理连接"} />{testRoute.protocol ? ` (${testRoute.protocol.toUpperCase()})` : ""}</p> : null}
           {textTestPassed ? <p className="muted ai-capability-result"><UiText text="文本连接通过；图片识别能力需另行确认。" /></p> : null}

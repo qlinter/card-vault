@@ -1,5 +1,6 @@
 import { lockStudioFile, studioLockTimeout } from "./studio-file-lock.ts";
-import { studioCropInfo } from "./studio-crop";
+import { prepareImageUpload, maxDecodedImagePixels } from "./image-upload";
+import { studioAssetVersion, studioCropInfo } from "./studio-crop";
 import { cardImageOrder } from "./card-image-order.ts";
 import "server-only";
 import { studioFilename, oversized } from "./studio-file.js";
@@ -59,7 +60,7 @@ export async function studioInventory() {
   for (const card of cards) {
     if (!card.images.length) missingFront++;
     else if (await existingStudioFile(card)) ready++;
-    else pending.push(card.id);
+    else if (!await fileStat(studioFile(card)! + ".preview")) pending.push(card.id);
   }
   return { ready, pending, missingFront };
 }
@@ -77,20 +78,49 @@ export async function singleStudioStatus(id: string) {
   const file = await fileForCard(id);
   if (!file) return null;
   const [ready, lock, candidate, failure] = await Promise.all(["", ".lock", ".preview", ".error"].map(suffix => fileStat(file + suffix)));
-  return { version: path.basename(file), ready: Boolean(ready), generating: Boolean(lock && Date.now() - lock.mtimeMs < studioLockTimeout),
+  return { version: path.basename(file), assetVersion: ready ? studioAssetVersion(file, ready) : null, ready: Boolean(ready), generating: Boolean(lock && Date.now() - lock.mtimeMs < studioLockTimeout),
     candidate: candidate ? String(candidate.mtimeMs) : null, failure: failure ? await readFile(file + ".error", "utf8").catch(() => "") || "generation" : null, hasKey: hasStudioKey() };
 }
 
-export async function reviewStudioImage(id: string, version: string, candidate: string, adopt: boolean) {
+async function currentStudioFile(id: string, version: string) {
   const file = await fileForCard(id);
   if (!file || path.basename(file) !== version) throw new Error("首图已更改，请刷新后重试。");
+  return file;
+}
+
+export async function uploadStudioPreview(id: string, version: string, image: File) {
+  const file = await currentStudioFile(id, version);
+  await mkdir(directory(), { recursive: true });
+  const unlock = await lockStudioFile(file);
+  const temp = file + "." + randomUUID() + ".tmp";
+  try {
+    if (await fileStat(file + ".preview")) throw new Error("已有待确认的新图，请先采用或放弃。");
+    const { buffer } = await prepareImageUpload(image, "展馆图");
+    await sharp(buffer, { limitInputPixels: maxDecodedImagePixels, failOn: "warning" })
+      .autoOrient().png().toFile(temp);
+    if (await fileForCard(id) !== file) throw new Error("首图已更改，请刷新后重试。");
+    await rename(temp, file + ".preview");
+    if (await fileForCard(id) !== file) {
+      await removeStudioFile(file + ".preview");
+      throw new Error("首图已更改，请刷新后重试。");
+    }
+  } finally {
+    await unlink(temp).catch(() => {});
+    await unlock();
+  }
+}
+
+export async function reviewStudioImage(id: string, version: string, candidate: string, adopt: boolean) {
+  const file = await currentStudioFile(id, version);
   const unlock = await lockStudioFile(file);
   try {
     const preview = file + ".preview";
     const current = await fileStat(preview);
     if (!current || String(current.mtimeMs) !== candidate) throw new Error("预览已更新，请刷新后重试。");
     if (adopt) {
+      if (await fileForCard(id) !== file) throw new Error("首图已更改，请刷新后重试。");
       await rename(preview, file);
+      await removeStudioFile(file + ".error");
       await removeStudioFile(path.join(getThumbnailsDir(), "studio", path.basename(file) + ".webp"));
     } else await unlink(preview);
   } finally { await unlock(); }
@@ -114,7 +144,7 @@ export async function generateStudioImage(id: string, previewVersion?: string) {
   const unlock = await lockStudioFile(file);
   const temp = file + "." + randomUUID() + ".tmp";
   try {
-    if (previewVersion ? await fileStat(file + ".preview") : await existingStudioFile(card)) return;
+    if (await fileStat(file + ".preview") || (!previewVersion && await existingStudioFile(card))) return;
     const settings = getStudioAiSettings();
     if (!settings.apiKey) throw new Error("请先在设置中保存 OpenAI API Key。");
     const front = card.images[0];
@@ -137,7 +167,7 @@ export async function generateStudioImage(id: string, previewVersion?: string) {
     if (await fileForCard(id) !== file) await removeStudioFile(destination);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    const reason = error instanceof StudioModerationError ? ["moderation_blocked", error.requestId].filter(Boolean).join(" ")
+    const reason = error instanceof StudioModerationError ? error.failureRecord()
       : message.includes("API Key") ? "key" : message.includes("HTTP 429") ? "quota"
       : /HTTP 40[13]/.test(message) ? "access" : "generation";
     await writeFile(file + ".error", reason).catch(() => {});

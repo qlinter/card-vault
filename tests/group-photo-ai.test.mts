@@ -45,7 +45,20 @@ test("moderation rejection retains one support ID even when only the provider me
     assert.ok(error instanceof StudioModerationError);
     assert.equal(error.requestId, "req_fixture123");
     assert.match(error.message, /安全审核/);
+    assert.equal(error.failureRecord(), "moderation_blocked req_fixture123");
     assert.equal(error.message.split("req_fixture123").length, 2);
+    return true;
+  });
+});
+
+test("image review records the stage and public categories alongside the request ID", async t => {
+  const { editStudioImage, StudioModerationError } = await import("../lib/studio-provider.ts");
+  t.mock.method(globalThis, "fetch", async () => Response.json({
+    error: { code: "moderation_blocked", moderation_details: { moderation_stage: "output", categories: ["violence", "private message", 123] } }
+  }, { status: 400, headers: { "x-request-id": "req_review" } }));
+  await assert.rejects(editStudioImage(settings, "fixture", "1088x1456", []), (error: Error) => {
+    assert.ok(error instanceof StudioModerationError);
+    assert.equal(error.failureRecord(), "moderation_blocked req_review stage=output category=violence");
     return true;
   });
 });

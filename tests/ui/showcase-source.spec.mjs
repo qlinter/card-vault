@@ -1,4 +1,4 @@
-﻿import { expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -82,14 +82,30 @@ test("card editor preserves the accepted image until an owner adopts its current
   const before = await sharp({ create: { width: 6, height: 8, channels: 3, background: "red" } }).png().toBuffer();
   const after = await sharp({ create: { width: 6, height: 8, channels: 3, background: "blue" } }).png().toBuffer();
   try {
-    await writeFile(accepted, before); await writeFile(preview, after);
+    await writeFile(accepted, before);
     await page.goto("/cards/" + id + "/edit#studio-image");
     const panel = page.locator("#studio-image");
-    await expect(panel.getByText("待确认新图")).toBeVisible();
+    await panel.locator('input[type=file]').setInputFiles({ name: "replacement.png", mimeType: "image/png", buffer: after });
+    const current = panel.locator("figure").filter({ has: page.getByRole("button", { name: "保留原图" }) });
+    const proposed = panel.locator("figure").filter({ has: page.getByRole("button", { name: "采用新图" }) });
+    async function pixel(image) {
+      return image.evaluate(async img => {
+        await img.decode();
+        const ctx = document.createElement("canvas").getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
+      });
+    }
+    await expect(proposed).toBeVisible();
+    await expect(panel.getByText(/^(当前成品|新图预览)$/)).toHaveCount(0);
+    expect(await pixel(current.locator("img"))).toEqual([255, 0, 0]);
+    expect(await pixel(proposed.locator("img"))).toEqual([0, 0, 255]);
+    await expect(panel.locator(".studio-panel-tools [role=status]")).toHaveCount(0);
     for (const width of [1440, 768, 320]) {
       await page.setViewportSize({ width, height: 900 });
-      const originals = await page.locator(".card-image-workspace .card-image-editor").boundingBox();
-      const studio = await panel.boundingBox();
+      const [originals, studio] = await page.locator(".card-image-workspace").evaluate(workspace =>
+        [".card-image-editor", "#studio-image"].map(selector => workspace.querySelector(selector).getBoundingClientRect().toJSON())
+      );
       if (width > 760) {
         expect(studio.x).toBeGreaterThan(originals.x + originals.width);
         expect(Math.abs(studio.y - originals.y)).toBeLessThan(1);
@@ -99,18 +115,63 @@ test("card editor preserves the accepted image until an owner adopts its current
     expect((await readFile(accepted)).equals(before)).toBe(true);
     const stale = await request.post(endpoint, { data: { id, action:"adopt", version:"stale", candidate:(await status()).candidate } });
     expect(stale.ok()).toBe(false);
-    await panel.getByRole("button", { name:"放弃新图" }).click();
-    await expect(panel.getByText("已生成", { exact:true })).toBeVisible();
+    await current.getByRole("button", { name:"保留原图" }).click();
+    await expect(proposed).toHaveCount(0);
+    await expect(panel.getByRole("img", { name:"当前展馆图" })).toBeVisible();
     expect((await readFile(accepted)).equals(before)).toBe(true);
-    await writeFile(preview, after); await page.reload();
-    await panel.getByRole("button", { name:"采用新图" }).click();
-    await expect(panel.getByText("已生成", { exact:true })).toBeVisible();
-    expect((await readFile(accepted)).equals(after)).toBe(true);
+    expect((await pixel(panel.locator(".studio-current-photo")))[0]).toBeGreaterThan(240);
+    const upload = panel.getByRole("button", { name: "上传展馆图" });
+    await expect(upload).toBeEnabled();
+    const choose = page.waitForEvent("filechooser");
+    await upload.click();
+    await (await choose).setFiles({ name: "replacement.png", mimeType: "image/png", buffer: after });
+    await expect(proposed).toBeVisible();
+    expect((await readFile(accepted)).equals(before)).toBe(true);
+    const origin = new URL(page.url()).origin;
+    const conflict = await request.post(endpoint, { headers: { Origin: origin }, multipart: {
+      id, version, image: { name:"other.png", mimeType:"image/png", buffer:before }
+    } });
+    expect(conflict.ok()).toBe(false);
+    expect((await conflict.json()).error).toContain("待确认");
+    await proposed.getByRole("button", { name:"采用新图" }).click();
+    await expect(proposed).toHaveCount(0);
+    await expect(panel.getByRole("img", { name:"当前展馆图" })).toBeVisible();
+    expect(await sharp(await readFile(accepted)).raw().toBuffer()).toEqual(await sharp(after).raw().toBuffer());
+
+    expect((await pixel(panel.locator(".studio-current-photo")))[2]).toBeGreaterThan(240);
+
+    // An owner can also supply the first studio image after a blocked generation.
+    await rm(accepted);
+    await writeFile(accepted + ".error", "moderation_blocked req_example stage=input category=violence");
+    await page.reload();
+    await panel.getByText("审核详情").click();
+    await expect(panel.getByText("审核阶段 · 请求输入")).toBeVisible();
+    await expect(panel.getByText("类别 · violence")).toBeVisible();
+    const picker = panel.locator('input[type=file]');
+    await picker.setInputFiles({ name: "broken.png", mimeType: "image/png", buffer: after.subarray(0, 12) });
+    await expect(panel.getByRole("alert")).toContainText("无法解码");
+    expect((await status()).candidate).toBeNull();
+    await picker.setInputFiles({ name: "cancel.png", mimeType: "image/png", buffer: after });
+    await proposed.getByRole("button", { name: "放弃新图" }).click();
+    await expect(proposed).toHaveCount(0);
+    expect(await status()).toMatchObject({ ready: false, candidate: null });
+    const jpeg = await sharp(after).jpeg().toBuffer();
+    await picker.setInputFiles({ name: "manual.jpg", mimeType: "image/jpeg", buffer: jpeg });
+    await expect(proposed).toBeVisible();
+    expect((await status()).ready).toBe(false);
+    await panel.getByRole("button", { name: "采用新图" }).click();
+    await expect(proposed).toHaveCount(0);
+    await expect(panel.getByRole("img", { name:"当前展馆图" })).toBeVisible();
+    expect((await status()).failure).toBeNull();
+    const shown = await request.get("/api/immersive?studio=png&id=" + id);
+    expect(shown.ok()).toBe(true);
+    expect(await shown.body()).toEqual(await readFile(accepted));
+    expect((await sharp(accepted).metadata()).format).toBe("png");
   } finally {
     await page.close();
     withUiDatabase(db => db.prepare("DELETE FROM Card WHERE id=?").run(id));
     // Windows can still hold the last image request briefly after the page closes.
-    for (const file of [accepted, preview]) {
+    for (const file of [accepted, preview, accepted + ".error"]) {
       await expect(async () => { await rm(file, { force: true }); }).toPass({ timeout: 5000 });
     }
   }

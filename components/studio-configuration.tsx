@@ -41,8 +41,8 @@ export function StudioConfiguration({ saveButton, value, onChange, secret, onSec
       {value.keySource === "independent" && value.hasApiKey && <label className="field full"><span><input type="checkbox" checked={clear} disabled={disabled} onChange={e => onClear(e.target.checked)} /> {en ? "Clear independent key on save" : "保存时清除独立密钥"}</span></label>}
     </div>
     <div className="ai-actions">
-      {saveButton}
       <button type="button" className="btn btn-secondary" disabled={checking} onClick={check}>{en ? "Check saved model access" : "检查已保存模型"}</button>
+      {saveButton}
     </div>
     {feedback && <p aria-live="polite">{feedback}</p>}
   </div>;

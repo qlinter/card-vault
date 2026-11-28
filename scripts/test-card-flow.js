@@ -130,10 +130,9 @@ async function main() {
     if (
       newPage.includes("填写后将自动保存文字草稿。") ||
       newPage.includes("录入模板") ||
-      !newPage.includes("disclosure-icon entry-queue-chevron") ||
       !newPage.includes('title="展开模板"') ||
-      !newPage.includes('class="entry-template-summary-meta"') ||
-      !newPage.includes('class="entry-queue-count">0</span>')
+      newPage.split('class="entry-tool-summary"').length !== 3 ||
+      !newPage.includes('class="entry-tool-count">0</span>')
     ) {
       throw new Error("Entry workbench helper copy or queue disclosure icon does not match the compact layout.");
     }

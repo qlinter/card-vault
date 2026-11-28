@@ -4,7 +4,7 @@ import { UiElement, UiText } from "@/components/ui-text";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type ReactNode } from "react";
 import { useLanguage } from "./language-provider";
-import { DisclosureIcon } from "@/components/disclosure-icon";
+import { CardEntryToolSummary } from "./card-entry-tool-summary";
 import type { CardEntryQueueItemSummary } from "@/lib/card-entry-queue-domain";
 
 type CardEntryQueuePanelProps = {
@@ -163,13 +163,7 @@ export function CardEntryQueuePanel({
       open={isExpanded}
       onToggle={(event) => setIsExpanded(event.currentTarget.open)}
     >
-      <summary className="entry-queue-header">
-        <span className="entry-queue-title"><UiText text={"批量录入"} /></span>
-        <span className="entry-queue-summary-meta">
-          <span className="entry-queue-count">{items.length}</span>
-          <DisclosureIcon expanded={isExpanded} className="entry-queue-chevron" />
-        </span>
-      </summary>
+      <CardEntryToolSummary label="批量录入" count={items.length} expanded={isExpanded} />
 
       <form className="entry-queue-import" onSubmit={importBatch}>
         <label className="field">
@@ -296,7 +290,7 @@ export function CardEntryQueuePanel({
                     ><UiText text={"重试"} /></button>
                   ) : null}
                   <button
-                    className="btn btn-secondary"
+                    className="btn btn-danger"
                     type="button"
                     disabled={pendingItemId === item.id}
                     onClick={() => mutateItem(item.id, "delete")}
